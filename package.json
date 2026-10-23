@@ -1,0 +1,23 @@
+{
+  "name": "ember",
+  "version": "1.5.1",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "Ember - a companion to talk to about anything (PWA, APK-ready via Capacitor)",
+  "scripts": {
+    "test": "node tests/app-test.js && node tests/safety-test.js && node tests/voice-native-test.js",
+    "serve": "node serve.js 8080",
+    "sync": "cap sync android",
+    "patch:android": "python3 scripts/apply_android_patch.py android android_patch"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/local-notifications": "^6.1.0",
+    "@capacitor-community/speech-recognition": "^6.0.1",
+    "@capacitor-community/wakelock": "^5.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0"
+  }
+}

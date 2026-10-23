@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>Ember</title>
+<meta name="theme-color" content="#07060b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="ember-icon.svg">
+<link rel="stylesheet" href="style.css">
+</head><body>
+<div id="app">
+<header>
+<button class="hb" id="bHist" aria-label="Chat history">☰</button>
+<div class="who"><b id="pName">Ember</b><div id="engs" class="engs"></div></div>
+<div class="modes" id="modes"><button data-m="chill">Chill</button><button data-m="sharp">Sharp</button><button data-m="deep">Deep</button></div>
+<button id="bTermux" title="Toggle Termux Mode">💻 TX</button>
+<button id="bNine" title="999">🔥 999</button>
+<button class="hb" id="bSet" aria-label="Settings">⚙</button>
+</header>
+<div id="fBadge" class="fbadge hidden">Free Mode: no key needed. Replies can be slower.</div>
+<main id="log"></main>
+<div id="empty" class="empty hidden">
+<div class="flame"></div>
+<h1 id="eHi">Say anything.</h1>
+<p>No topic needed. I will pick it up and run with it.</p>
+<button class="btn" id="bSpark2">✨ Start something</button>
+<div id="noKey" class="card hidden"><b>Running on Free Mode.</b><p>No key needed. Optional faster engines are in Settings.</p><button class="btn g" id="bGoKeys">Open Keys</button></div>
+</div>
+<footer class="comp">
+<div class="tools"><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
+<div class="row"><button id="bGlobe" aria-label="Read a web page" title="Read a web page">🌐</button><button id="bMic" aria-label="Speak" aria-pressed="false" title="Speak">🎤</button><textarea id="inp" rows="1" placeholder="Say anything…" enterkeyhint="send"></textarea><button id="bSend" aria-label="Send">➤</button></div>
+</footer>
+</div>
+
+<aside id="drawer"><div class="dh"><b>Chats</b><button class="hb" id="bDx">✕</button></div>
+<button class="btn" id="bNew">＋ New chat</button>
+<input type="text" id="hq" placeholder="Search all chats…" autocomplete="off">
+<button class="hhead" id="hHead" aria-expanded="true" aria-controls="hwrap"><span id="hTitle">Recent Chats (0)</span><span class="chev">▾</span></button>
+<div class="hwrap open" id="hwrap"><div id="hlist"></div></div>
+<div id="sitesBox" class="hidden"><div class="ct" style="margin:14px 0 8px">Saved Sites</div><div id="sitesList"></div>
+<input type="text" id="siteName" placeholder="Name (e.g. GitHub)" autocomplete="off"><input type="text" id="siteUrl" placeholder="https://github.com/you" autocomplete="off" style="margin-top:6px"><button class="btn g" id="siteAdd" style="margin-top:6px">Save site</button></div></aside>
+<div id="scrim"></div>
+
+<section id="settings" class="sheet"><div class="sh"><b>Settings</b><button class="hb" id="bSx">✕</button></div>
+<div class="sb">
+<div class="card"><div class="ct">Free Mode</div>
+<div class="cr"><span>Enable Free Mode (No Keys Needed)</span><div class="sw" id="swFree"></div></div>
+<p class="hint">Chats go through Pollinations.ai, a free third-party service, so your messages leave this phone. It is slower, rate-limited for anonymous use, and has no uptime promise. Keys stay on this phone. Free Mode is never used for background memory work. It is not a crisis line: if you are in danger, contact local emergency services or a crisis line now.</p></div>
+
+<div class="card"><div class="ct">Optional faster engines · keys (Groq, Mistral, Gemini, plus OpenRouter, Cohere, HuggingFace as Prototypes)</div>
+<p class="hint">Not needed for Free Mode. Paste your notes if you have keys. Only API keys are pulled out and checked, the notes themselves are never saved. Keys stay on this phone.</p>
+<textarea id="notes" class="pad" placeholder="Paste notes here…" spellcheck="false" autocomplete="off"></textarea>
+<button class="btn" id="bIngest">Extract + check keys</button>
+<div id="kRep" class="rep"></div>
+<div id="kList"></div>
+<div class="btnrow"><button class="btn g" id="bCheckAll">Check all</button></div>
+<div class="ct" style="margin-top:14px">Add one by hand</div>
+<div class="btnrow"><select id="kProv"><option value="groq">Groq</option><option value="mistral">Mistral</option><option value="gemini">Gemini</option><option value="openrouter">OpenRouter (Prototype)</option><option value="cohere">Cohere (Prototype)</option><option value="huggingface">HuggingFace (Prototype)</option></select><input type="password" id="kIn" placeholder="Paste a key" autocomplete="off" spellcheck="false"><button class="btn" id="bKAdd" style="width:auto;padding:0 16px">Add</button></div>
+<p class="hint">More than one key per engine is fine. When one is rate-limited, the next one takes over, then the next engine.</p></div>
+
+<div class="card"><div class="ct">About you</div>
+<label class="lb">Your name</label><input type="text" id="sName" placeholder="What should it call you?">
+<label class="lb">About you (it treats this as known, never recites it)</label><textarea id="sAbout" class="pad" placeholder="Who you are, what you are into, how you like to be talked to…"></textarea>
+<label class="lb">Its name</label><input type="text" id="sPname">
+<label class="lb">Its own curiosities</label><textarea id="sInt" class="pad" style="min-height:70px"></textarea></div>
+
+<div class="card"><div class="ct">Voice &amp; pacing</div>
+<p class="hint">How Ember sounds. These sit under a calm, non-judgmental baseline and the safety rules, which always win.</p>
+<label class="lb">Warmth</label><select id="sWarm"><option value="low">Reserved</option><option value="warm">Warm</option><option value="high">Very warm</option></select>
+<label class="lb">Directness</label><select id="sDirect"><option value="soft">Gentle, suggests</option><option value="balanced">Balanced</option><option value="direct">Direct, says it plainly</option></select>
+<label class="lb">Humour</label><select id="sHumor"><option value="none">None</option><option value="light">Light</option><option value="dry">Dry</option></select>
+<label class="lb">Pacing</label><select id="sPace"><option value="short">Short check-ins</option><option value="normal">Normal</option><option value="deep">Longer conversations</option></select>
+<label class="lb">How I like to be spoken to (in your own words)</label><textarea id="sTalk" class="pad" maxlength="300" placeholder="e.g. Call me Fez. Skip small talk. Ask before giving advice." spellcheck="false"></textarea>
+<div class="cr" style="margin-top:10px"><span>Lucid Dreams Mode (999, poetic tone)</span><div class="sw" id="swLucid"></div></div>
+<p class="hint">Leans into the 999 philosophy, more feeling in the words. Drops automatically if you're ever in real distress — the crisis response always wins.</p>tarea></div>
+
+<div class="card"><div class="ct">System prompt · Persona</div>
+<p class="hint">Your own rules for Ember, sent at the start of every single chat. Use it for style, length and focus. It sits under Ember's core purpose (a conversational companion) so it tunes Ember, it cannot replace it.</p>
+<textarea id="sPersona" class="pad" maxlength="2000" placeholder="e.g. Be brief. Never repeat my words. Talk like a friend who codes." spellcheck="false"></textarea></div>
+
+<div class="card"><div class="ct">Termux Mode <span class="txbadge">HACKER</span></div>
+<div class="cr"><span>Enable Termux Mode (Pen-Test Persona)</span><div class="sw" id="swTermux"></div></div>
+<p class="hint">When ON, Ember acts as a senior penetration tester. Real Termux commands, OPSEC explanations, and Hacker Lessons woven into replies. Lesson of the Day drops on your first message each session. Toggle the 💻 TX button in the header for quick on/off.</p></div>
+
+<div class="card"><div class="ct">Memory &amp; Context</div>
+<label class="lb">Context window</label>
+<select id="sCtx"><option value="short">Short (Last 5 messages)</option><option value="normal">Normal (Last 15 messages)</option><option value="long">Long (Last 50 messages)</option></select>
+<p class="hint">How many recent messages Ember sends with each reply. This is how much of the chat it remembers word for word.</p>
+<div class="cr"><span>Auto-summarize old chats</span><div class="sw" id="swSum"></div></div>
+<p class="hint">When a chat grows past the window, the older messages become a short summary instead of raw text. Saves tokens, keeps the thread alive.</p>
+<div class="cr"><span>Persistent Memory</span><div class="sw" id="swLearn"></div></div>
+<p class="hint">ON: Ember learns facts about you and keeps them in Core Memory. OFF: it stops learning and stops using Core Memory, so every new chat starts fresh. Private chats (🔒) are never learned from.</p>
+<p class="hint hidden" id="mPause">Paused. What is listed below is kept on this phone but not used until you switch Persistent Memory back on.</p>
+<div class="ct" style="margin-top:12px">Core Memory · what it knows</div><div id="mFacts"></div>
+<div class="ct" style="margin-top:10px">Threads to bring back</div><div id="mThreads"></div>
+<p class="hint">Tap Edit to change a line, ✕ to delete it.</p>
+<button class="btn g" id="bMemClr" style="margin-top:6px">Clear memory</button></div>
+
+<div class="card"><div class="ct">Permissions</div>
+<p class="hint" id="permStatus">Checking…</p>
+<div class="btnrow"><button class="btn" id="bPermNotify">Notifications</button><button class="btn" id="bPermMic">Microphone</button></div>
+<p class="hint">Notifications fire while the app is backgrounded and have a real reply box. Needs android_patch/ copied into your android/ project and built — see docs/ANDROID_PERMISSIONS.md. Music library reads your device's audio files; Prodigy playback control is not wired yet.</p></div>
+
+<div class="card"><div class="ct">Voice</div>
+<div class="cr"><span>Read replies aloud automatically</span><div class="sw" id="swRead"></div></div>
+<p class="hint">Every reply also has a 🔊 button to read just that one. Voice input (🎤) uses the phone's speech service (Google, on most Android phones), which can send the audio to Google. It needs microphone permission. In the installed app it uses the native Android recogniser; in a browser it uses the browser's own.</p></div>
+
+<div class="card"><div class="ct">Look</div>
+<div class="cr"><span>Show which engine answered</span><div class="sw" id="swEng"></div></div>
+<div class="chips" id="acc"></div></div>
+
+<div class="card"><div class="ct">Add-Ons</div>
+<div class="cr"><span>Music Control</span><div class="sw" id="swMusic"></div></div>
+<p class="hint">When on, you can ask Ember about your music: what's playing, search Spotify, create playlists, and control playback. Requires the EmberMedia bridge (connect via your music player app).</p>
+<div class="cr" style="margin-top:10px"><span>Document Reading</span><div class="sw" id="swDocs"></div></div>
+<p class="hint">When on, Ember can read, search and summarise documents in your vault. Requires the EmberDocs bridge (connect via Conduint Files or Bojack Secures). Document text is sent to whichever engine answers, including Free Mode, so leave this off for anything private.</p></div>
+
+<div class="card"><div class="ct">Web Scraping</div>
+<div class="cr"><span>Enable Web Scraping &amp; Saved Sites</span><div class="sw" id="swScrape"></div></div>
+<p class="hint">Providers are tried in this order, skipping any without a key: Firecrawl, Browserless, ScraperAPI, ScraperBee, Sting, ZenRows, SerpApi (search snippets only), Octoparse (not supported yet). Page text is sent to whichever chat engine answers, including Free Mode. Keys stay on this phone and are not in backups.</p>
+<div class="wtabs"><button class="wtab on" data-t="keys">Keys</button><button class="wtab" data-t="health">Health</button><button class="wtab" data-t="test">Test</button></div>
+<div class="wpane" id="wp_keys"><p class="hint" id="wkStatus"></p><label class="lb">Firecrawl</label><input type="password" id="wk_firecrawl" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Browserless</label><input type="password" id="wk_browserless" placeholder="Token" autocomplete="off" spellcheck="false"><label class="lb">ScraperAPI</label><input type="password" id="wk_scraperapi" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">ScraperBee</label><input type="password" id="wk_scraperbee" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Sting</label><input type="password" id="wk_sting" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">ZenRows</label><input type="password" id="wk_zenrows" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">SerpApi (stored only)</label><input type="password" id="wk_serpapi" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Octoparse (stored only)</label><input type="password" id="wk_octoparse" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Sting endpoint (https, use {key} and {url} as placeholders)</label><input type="text" id="wk_stingEp" placeholder="https://…?key={key}&amp;url={url}" autocomplete="off" spellcheck="false"></div>
+<div class="wpane hidden" id="wp_health"><p class="hint">Local checks are instant. Provider checks fetch example.com once per provider, so each uses a small amount of that provider's credit.</p>
+<div class="ct" style="margin-top:8px">This phone</div><div id="hLocal"></div>
+<div class="ct" style="margin-top:12px">Providers</div><div id="hProv"></div>
+<div class="btnrow" style="margin-top:10px"><button class="btn" id="hRun">Check all providers</button></div><p class="hint" id="hWhen"></p></div>
+<div class="wpane hidden" id="wp_test"><label class="lb">Provider</label><select id="tProv"><option value="auto">Auto (try in order)</option><option value="firecrawl">Firecrawl</option><option value="browserless">Browserless</option><option value="scraperapi">ScraperAPI</option><option value="scraperbee">ScraperBee</option><option value="sting">Sting</option><option value="zenrows">ZenRows</option><option value="serpapi">SerpApi (snippets only)</option></select>
+<label class="lb">URL</label><input type="text" id="tUrl" value="https://example.com" autocomplete="off" spellcheck="false">
+<label class="lb">Objective</label><input type="text" id="tObj" placeholder="e.g. Extract the main article text" autocomplete="off">
+<div class="btnrow" style="margin-top:10px"><button class="btn" id="tRun">Run scrape test</button><button class="btn g" id="tSelf">Offline self-test</button></div>
+<p class="hint" id="tMeta"></p><div class="wout hidden" id="tOut"></div></div>
+</div>
+
+<div class="card"><div class="ct">Your data</div>
+<div class="cr"><span>Include keys in backup</span><div class="sw" id="swBk"></div></div>
+<div class="btnrow"><button class="btn" id="bExp">Export backup</button><button class="btn g" id="bImp">Import backup</button></div>
+<input type="file" id="fImp" accept="application/json,.json" hidden>
+<button class="btn g danger" id="bWipe" style="margin-top:10px">Delete everything</button>
+<p class="hint" id="ver">Ember V1.5.0 · S.O.I. × Bojack 999</p></div>
+</div></section>
+
+<section id="nine" class="sheet"><div class="sh"><b>999</b><button class="hb" id="bNx">✕</button></div>
+<div class="sb">
+<div class="card"><div class="ct">Quote</div><p id="nineQuote" class="hint">—</p></div>
+<div class="card"><div class="ct">Playlist</div><button class="btn" id="bNinePlay">▶ Play 999 Playlist</button>
+<p class="hint" id="nineMsg"></p></div>
+<div class="card"><div class="ct">Lyrics</div><p id="nineLyrics" class="hint">Not synced.</p></div>
+</div></section>
+
+<div class="modal" id="dlg"><div class="mc"><h2 id="dT"></h2><p id="dX"></p><input type="text" id="dI" class="hidden"><div class="btnrow" style="margin-top:14px"><button class="btn" id="dOk">OK</button><button class="btn g" id="dNo">Cancel</button></div></div></div>
+<div id="toast"></div>
+<script src="store.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script>
+<script>
+// Apply termux-mode-on class to body when S is available, for CSS theming
+(function pollTermux(){
+  const check = () => {
+    try {
+      const s = JSON.parse(localStorage.getItem('ember_set') || '{}');
+      document.body.classList.toggle('termux-mode-on', !!s.termuxMode);
+    } catch(e){}
+  };
+  check();
+  window.addEventListener('storage', check);
+  // also re-check whenever the TX button is toggled (fired from app.js via custom event)
+  document.addEventListener('ember-termux-changed', check);
+})();
+</script>
+</body></html>

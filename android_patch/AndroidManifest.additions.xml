@@ -1,0 +1,25 @@
+<!-- android_patch/AndroidManifest.additions.xml  (V1.5.1)
+     Applied automatically by scripts/apply_android_patch.py (idempotent). Reference copy of what it inserts.
+
+     1. Inside <manifest>, above <application> -->
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+<uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<!-- WAKE_LOCK is added automatically by @capacitor-community/wakelock during `cap sync` -->
+
+<!-- 2. Inside <manifest>, above <application>: Android 11+ package visibility so the
+        native speech recogniser (voice input) is actually discoverable -->
+<queries>
+    <intent>
+        <action android:name="android.speech.RecognitionService" />
+    </intent>
+</queries>
+
+<!-- 3. Inside <application>, alongside <activity android:name=".MainActivity"> -->
+<receiver
+    android:name=".ReplyReceiver"
+    android:exported="false" />
