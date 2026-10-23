@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ember V1.5.3 - apply native Android patch to a freshly generated Capacitor 6 `android/` project.
+"""Ember V1.5.4 - apply native Android patch to a freshly generated Capacitor 6 `android/` project.
 
 Usage: python3 scripts/apply_android_patch.py <android_dir> <android_patch_dir>
 Idempotent: safe to run on every CI build. Does:

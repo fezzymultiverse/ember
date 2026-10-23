@@ -2,6 +2,11 @@
 
 *For everyone.* Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [V1.5.4] - 2026-10-23
+
+### Fixed
+- **CI `npm install` ERESOLVE failure.** `package.json` pinned `@capacitor-community/keep-awake@^7.0.0`, whose peer dependency is `@capacitor/core >=7.0.0`, but this repo is on Capacitor 6.2.x. Pinned to `^5.0.0`, the line that pairs with Capacitor 6 (the plugin maintainer's own demo app pairs `keep-awake 5.0.0` with `@capacitor/core 6.0.0`). The plugin's majors do not track Capacitor's one-to-one: 4.0.0 already requires Capacitor 5 and 7.x requires Capacitor 7. The JS API used in `www/ember_native.js` (`keepAwake()` / `allowSleep()`) is unchanged across these versions. Upgrade `keep-awake` to 7.x only together with the whole Capacitor 7 move (and Java 21, see `docs/ANDROID_BUILD.md`). Versions bumped everywhere: `package.json`, `www/sw.js` (cache `ember-v1.5.4`), `index.html`, README, `apply_android_patch.py`.
+
 ## [V1.5.3] - 2026-10-23
 
 ### Fixed

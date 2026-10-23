@@ -1,4 +1,4 @@
-// Ember V1.5.3 - persona.js: Termux Hacker Persona, Lesson of the Day, Mood Check, rolling summary + memory.
+// Ember V1.5.4 - persona.js: Termux Hacker Persona, Lesson of the Day, Mood Check, rolling summary + memory.
 'use strict';
 (() => {
 const norm = s => String(s).toLowerCase().replace(/[^a-z0-9' ]+/g, ' ').split(/\s+/).filter(Boolean);

@@ -21,6 +21,10 @@
 | `KEY_ALIAS` | key alias inside the keystore |
 | `KEY_PASSWORD` | optional; defaults to `KEYSTORE_PASSWORD` |
 
+## Plugin versions must match Capacitor 6
+
+Every Capacitor plugin declares a peer range on `@capacitor/core`. On Capacitor 6.2.x use `keep-awake` ^5.0.0 and `speech-recognition` ^6.0.1. `keep-awake` 7.x needs Capacitor 7 and makes `npm install` fail with ERESOLVE. Do not "fix" that with `--force` or `--legacy-peer-deps`; pin the plugin instead.
+
 ## Java version
 
 Capacitor 6 ships Gradle 8.2.x, which does not run on Java 21. CI uses Temurin 17. If you move to Capacitor 7, move to Java 21 at the same time.

@@ -1,4 +1,4 @@
-// Ember V1.5.3 - app.js: UI, state, persistent session restore, Termux Mode toggle.
+// Ember V1.5.4 - app.js: UI, state, persistent session restore, Termux Mode toggle.
 'use strict';
 (() => {
 const { $, esc, LS, uid } = U;
