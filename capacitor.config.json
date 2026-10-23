@@ -1,0 +1,8 @@
+{
+  "appId": "com.fezzy.ember",
+  "appName": "Ember",
+  "webDir": "www",
+  "backgroundColor": "#07060b",
+  "android": { "allowMixedContent": false, "backgroundColor": "#07060b" },
+  "plugins": { "CapacitorHttp": { "enabled": true } }
+}

@@ -1,0 +1,40 @@
+# Ember V1.3.0 CI. Cheap on purpose: no builds, no containers beyond tiny images.
+# lint + audit run first; the Pages deploy (unchanged from V1.2.0) only runs if both pass.
+stages:
+  - check
+  - deploy
+
+lint:
+  stage: check
+  image: node:20-alpine
+  script:
+    - |
+      fail=0
+      for f in $(find www tests -name '*.js'); do
+        if node --check "$f"; then echo "ok   $f"; else echo "FAIL $f"; fail=1; fi
+      done
+      exit $fail
+
+audit:
+  stage: check
+  image: alpine:3.20
+  script:
+    - |
+      fail=0
+      if grep -rn "flagged" www tests; then echo "FORBIDDEN: a flagged field. The safety level must never be persisted."; fail=1; fi
+      if grep -rn -i "it sounds like" www --exclude=persona.js; then echo "FORBIDDEN: reflection opener outside persona.js"; fail=1; fi
+      if grep -rn "api_key" www --exclude=providers.js; then echo "FORBIDDEN: api_key outside providers.js"; fail=1; fi
+      if grep -rn -E "gsk_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{30,}" www; then echo "FORBIDDEN: a key-shaped string in www/"; fail=1; fi
+      exit $fail
+
+pages:
+  stage: deploy
+  image: alpine:3.20
+  script:
+    - mkdir -p public
+    - cp -r www/. public/
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
