@@ -6,7 +6,7 @@
 
 `.github/workflows/build.yml` runs on every push to `main` and on manual dispatch:
 
-1. `npm install` (Capacitor 6, wakelock, speech-recognition).
+1. `npm install` (Capacitor 6, keep-awake, speech-recognition).
 2. `npx cap add android` (skipped quietly if `android/` already exists).
 3. `python3 scripts/apply_android_patch.py android android_patch` copies the Kotlin plugins, merges the manifest, enables Kotlin in Gradle and adds release signing. It exits non-zero if a permission is missing, so a bad build never ships.
 4. `npx cap sync android`.

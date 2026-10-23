@@ -11,7 +11,7 @@ it. Treat it as a draft to build and fix, not a finished artifact.
 
 1. If `android/` doesn't exist yet in this repo: `cap add android`. If it
    already exists (likely, since CI builds it): skip this.
-2. `npm i` (pulls in `@capacitor-community/wakelock` from package.json).
+2. `npm i` (pulls in `@capacitor-community/keep-awake` from package.json).
 3. `cap sync android`.
 4. Copy the plugin files in:
    ```
@@ -36,8 +36,9 @@ it. Treat it as a draft to build and fix, not a finished artifact.
   like a typed message, app open or not.
 - **On-device music library** (`EmberMedia.getLibrary()`): real
   `MediaStore.Audio` query, actual device tracks.
-- **Wakelock during a reply**: CPU stays awake only while the model call is
-  in flight; releases right after. Not a persistent background service.
+- **Keep-awake during a reply** (`@capacitor-community/keep-awake`): CPU
+  stays awake only while the model call is in flight; releases right after.
+  Not a persistent background service.
 - **Voice input**: inside the APK the mic button uses the native Android
   recogniser via `@capacitor-community/speech-recognition` (the WebView has no
   `SpeechRecognition`). In a browser/PWA it still uses the Web Speech API.
@@ -51,7 +52,7 @@ it. Treat it as a draft to build and fix, not a finished artifact.
   need Prodigy's real API (MediaSession, content provider, whatever it
   exposes). Nothing here guesses at that.
 - A persistent background service (app survives the OS killing the process
-  between messages). Current wakelock is reply-duration only.
+  between messages). Current keep-awake hold is reply-duration only.
 
 ## Permission table (V1.5.1)
 
@@ -64,7 +65,7 @@ it. Treat it as a draft to build and fix, not a finished artifact.
 | `READ_MEDIA_AUDIO` | on-device music library (Android 13+) | yes |
 | `READ_EXTERNAL_STORAGE` (max SDK 32) | same, Android 12 and older | yes |
 | `FOREGROUND_SERVICE` | reserved | no |
-| `WAKE_LOCK` | added by the wakelock plugin | no |
+| `WAKE_LOCK` | added by the keep-awake plugin | no |
 | `<queries>` RecognitionService | lets the app find the speech engine on Android 11+ | n/a |
 
 Not requested: location, camera, contacts, SMS, call log, accessibility.

@@ -2,6 +2,11 @@
 
 *For everyone.* Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [V1.5.3] - 2026-10-23
+
+### Fixed
+- **CI install failure.** `package.json` depended on `@capacitor-community/wakelock`, which has never existed on npm (404 on install). The real package is `@capacitor-community/keep-awake`. Swapped the dependency and fixed the usage in `www/ember_native.js`, which was also wrong in two more ways that would have surfaced only after install succeeded: it looked up the plugin as `Capacitor.Plugins.Wakelock` (the plugin actually registers as `KeepAwake`) and called `.acquire()`/`.release()` (the real API is `.keepAwake()`/`.allowSleep()`). All three are fixed together so the hold-screen-awake-during-a-reply feature will actually work once the correct package installs. Docs (`ANDROID_PERMISSIONS.md`, `ANDROID_BUILD.md`) and the manifest comment updated to match. No test covered this path, so it only surfaced via a real `npm install` in CI, not the test suite.
+
 ## [V1.5.2] - 2026-10-23
 
 ### Fixed

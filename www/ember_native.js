@@ -2,7 +2,7 @@
 // Talks to android_patch/.../EmberMediaPlugin.kt and EmberNotifyPlugin.kt (registered
 // manually in MainActivity -- these are local plugins, not npm packages, so `cap sync`
 // alone will NOT pull them in; they must be copied into android/app/src/main/java/...).
-// Needs @capacitor-community/wakelock synced for holdDuringReply to do anything.
+// Needs @capacitor-community/keep-awake synced for holdDuringReply to do anything.
 // No-ops gracefully in a plain browser (no Capacitor) so dev/testing still works.
 'use strict';
 (() => {
@@ -10,7 +10,7 @@
   const P = (cap && cap.Plugins) || {};
   const Media = P.EmberMedia;   // local plugin
   const Notify = P.EmberNotify; // local plugin
-  const WL = P.Wakelock;        // @capacitor-community/wakelock
+  const WL = P.KeepAwake;        // @capacitor-community/keep-awake
 
   // Bridge EmberMedia/EmberNotify onto window so ai_music.js's existing
   // window.EmberMedia.* checks pick them up without rewriting that file.
@@ -25,11 +25,11 @@
     };
   }
 
-  // ---------- wakelock: hold while a reply is streaming in ----------
+  // ---------- keep-awake: hold while a reply is streaming in ----------
   async function holdDuringReply(promise) {
-    try { if (WL) await WL.acquire(); } catch (e) { /* no-op outside Capacitor */ }
+    try { if (WL) await WL.keepAwake(); } catch (e) { /* no-op outside Capacitor, or isSupported() is false */ }
     try { return await promise; }
-    finally { try { if (WL) await WL.release(); } catch (e) {} }
+    finally { try { if (WL) await WL.allowSleep(); } catch (e) {} }
   }
 
   // ---------- real notification + real reply box ----------
