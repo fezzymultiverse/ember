@@ -1,4 +1,4 @@
-// Ember V1.3.0 test: headless Chromium against MOCKED Groq / Mistral / Gemini. Run: node tests/app-test.js
+// Ember V1.5.1 test: headless Chromium against MOCKED Groq / Mistral / Gemini. Run: node tests/app-test.js
 const { chromium } = require(process.env.PW || '/home/claude/.npm-global/lib/node_modules/playwright');
 const http = require('http'), fs = require('fs'), path = require('path');
 const ROOT = process.env.WWW || path.join(__dirname, '..', 'www'), SHOTS = process.env.SHOTS || path.join(__dirname, 'shots');
@@ -120,7 +120,7 @@ const NOTES = ['my stuff for the studio', 'groq: ' + GROQ, 'gemini ' + GEM, 'Mis
   ok('rewrite is shown', /Cheese has a better origin story/.test(await pg.textContent('#log')));
   M.echoFirst = false;
   ok('system prompt carries his name + about', g1[0].sys.includes('Fezzy') && g1[0].sys.includes('Self-taught builder'));
-  ok('system prompt forbids mentioning coping habits', /never mention it, never point at it/.test(g1[0].sys));
+  ok('system prompt forbids mentioning coping habits', /never mention it unless HE brings it up/.test(g1[0].sys));
   ok('system prompt has the no-echo rule', /Never repeat or paraphrase/.test(g1[0].sys));
   ok('user message is last', g1[0].last.includes('moon is made of cheese'));
 
@@ -165,7 +165,7 @@ const NOTES = ['my stuff for the studio', 'groq: ' + GROQ, 'gemini ' + GEM, 'Mis
 
   // 10. reload: keys + history survive
   await pg.reload(); await pg.waitForFunction(() => window.__ember && window.__ember.ready); await pg.waitForTimeout(300);
-  ok('chat restored? (starts fresh, history has it)', await pg.locator('.msg').count() == 0);
+  ok('chat restored after reload (V1.5.0 persistent session)', await pg.locator('.msg').count() > 0);
   await pg.click('#bHist'); await pg.waitForTimeout(300);
   ok('history lists the chat with the learned title', /Moon cheese/.test(await pg.textContent('#hlist')));
   await pg.fill('#hq', 'midnight'); await pg.waitForTimeout(200);

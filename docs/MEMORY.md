@@ -1,4 +1,4 @@
-# Memory · V1.3.0
+# Memory · V1.4.0
 
 *For contributors and reviewers.*
 

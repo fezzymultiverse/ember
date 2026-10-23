@@ -1,4 +1,4 @@
-# Safety layer · V1.3.0
+# Safety layer · V1.4.0
 
 *For reviewers and contributors.*
 

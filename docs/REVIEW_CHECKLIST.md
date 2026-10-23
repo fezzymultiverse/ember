@@ -1,4 +1,4 @@
-# Review checklist · V1.3.0
+# Review checklist · V1.4.0
 
 *For reviewers.* Tick each box against the code, not against these docs.
 
@@ -15,7 +15,7 @@
 - [ ] The card is drawn on send, before any engine answers, and survives `renderLog`
 - [ ] Card and dot reset on "New chat" and when opening an old chat
 - [ ] The numbers (0800 567 567, 0861 322 322, 112) match in `crisisCard()` and `CRISIS_BLOCK`, and are re-checked
-- [ ] The footer version in `index.html` reads V1.3.0, matching `package.json` and `sw.js`
+- [ ] The footer version in `index.html` reads V1.4.0, matching `package.json` and `sw.js`
 - [ ] `node --check` passes on every `.js` file
 - [ ] `node tests/safety-test.js` passes
 - [ ] `.gitlab-ci.yml` has no secrets and the `audit` job passes

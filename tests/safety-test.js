@@ -1,4 +1,4 @@
-// Ember V1.3.0 safety test (pure node, no browser). Run: node tests/safety-test.js
+// Ember V1.4.0 safety test (pure node, no browser). Run: node tests/safety-test.js
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const ctx = { window: {} }; vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'www', 'safety.js'), 'utf8'), ctx);

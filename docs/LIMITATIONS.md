@@ -1,4 +1,4 @@
-# Limitations · V1.3.0
+# Limitations · V1.4.0
 
 *For everyone, including reviewers and users.*
 

@@ -26,8 +26,85 @@ header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1
 .empty{position:absolute;left:0;right:0;top:90px;bottom:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;gap:12px;pointer-events:none}
 .empty>*{pointer-events:auto}
 .empty h1{font-size:26px;font-weight:800}.empty p{color:var(--m);font-size:14px;max-width:300px}
-.flame{width:54px;height:72px;background:radial-gradient(ellipse at 50% 70%,var(--ac),color-mix(in srgb,var(--pu) 70%,#000) 70%,transparent 72%);border-radius:50% 50% 50% 50%/62% 62% 38% 38%;box-shadow:0 0 40px color-mix(in srgb,var(--ac) 60%,transparent);animation:fl 3s ease-in-out infinite}
-@keyframes fl{50%{transform:scale(1.07) rotate(-2deg)}}
+
+/* ─── Breathing Orb (Part 4) ──────────────────────────────────────────────── */
+.flame{
+  width:54px;height:72px;
+  background:radial-gradient(ellipse at 50% 70%,var(--ac),color-mix(in srgb,var(--pu) 70%,#000) 70%,transparent 72%);
+  border-radius:50% 50% 50% 50%/62% 62% 38% 38%;
+  box-shadow:0 0 40px color-mix(in srgb,var(--ac) 60%,transparent);
+  animation:breathe 4s ease-in-out infinite;
+}
+/* Breathing: inhale (scale up + glow) then exhale (scale down + dim) — calm, alive */
+@keyframes breathe{
+  0%,100%{transform:scale(1);box-shadow:0 0 28px color-mix(in srgb,var(--ac) 40%,transparent);}
+  40%{transform:scale(1.12) rotate(-1.5deg);box-shadow:0 0 54px color-mix(in srgb,var(--ac) 75%,transparent),0 0 90px color-mix(in srgb,var(--pu) 30%,transparent);}
+  60%{transform:scale(1.09) rotate(1deg);box-shadow:0 0 48px color-mix(in srgb,var(--ac) 65%,transparent);}
+}
+/* Termux Mode: orb pulses green when Termux Mode is active */
+.termux-active .flame{
+  background:radial-gradient(ellipse at 50% 70%,var(--gr),color-mix(in srgb,#004400 80%,#000) 70%,transparent 72%);
+  box-shadow:0 0 40px color-mix(in srgb,var(--gr) 60%,transparent);
+  animation:breathe-termux 3s ease-in-out infinite;
+}
+@keyframes breathe-termux{
+  0%,100%{transform:scale(1);box-shadow:0 0 28px color-mix(in srgb,var(--gr) 40%,transparent);}
+  40%{transform:scale(1.11) rotate(-1deg);box-shadow:0 0 60px color-mix(in srgb,var(--gr) 80%,transparent),0 0 100px color-mix(in srgb,var(--cy) 25%,transparent);}
+}
+
+/* ─── Termux Mode UI styling (Part 4) ────────────────────────────────────── */
+/* When active, a green terminal border glows around the log */
+body.termux-mode-on #log{
+  border:1px solid color-mix(in srgb,var(--gr) 30%,transparent);
+  box-shadow:inset 0 0 40px color-mix(in srgb,var(--gr) 6%,transparent);
+}
+/* Termux mode assistant messages get a green left border instead of accent */
+body.termux-mode-on .msg.a{
+  border-left-color:var(--gr);
+  background:color-mix(in srgb,var(--gr) 4%,var(--p));
+}
+/* Termux Mode toolbar button */
+#bTermux{
+  background:var(--p2);
+  border:1px solid var(--b);
+  color:var(--m);
+  font-size:11px;
+  font-weight:700;
+  padding:6px 10px;
+  border-radius:10px;
+  cursor:pointer;
+  flex-shrink:0;
+  letter-spacing:.3px;
+  transition:background .2s,border-color .2s,color .2s;
+}
+#bTermux.on{
+  background:color-mix(in srgb,var(--gr) 18%,var(--p2));
+  border-color:var(--gr);
+  color:var(--gr);
+  box-shadow:0 0 10px color-mix(in srgb,var(--gr) 35%,transparent);
+  animation:termux-btn-pulse 2.5s ease-in-out infinite;
+}
+@keyframes termux-btn-pulse{
+  0%,100%{box-shadow:0 0 8px color-mix(in srgb,var(--gr) 30%,transparent);}
+  50%{box-shadow:0 0 18px color-mix(in srgb,var(--gr) 55%,transparent);}
+}
+
+/* ─── SVG icon in UI header (Part 3) ──────────────────────────────────────── */
+.ember-icon{
+  width:32px;height:32px;border-radius:10px;
+  object-fit:contain;flex-shrink:0;
+}
+
+/* ─── Termux Mode toggle in Settings ─────────────────────────────────────── */
+.txbadge{
+  display:inline-block;font-size:10px;font-weight:700;
+  padding:1px 7px;border-radius:8px;margin-left:4px;
+  background:color-mix(in srgb,var(--gr) 20%,var(--p2));
+  color:var(--gr);border:1px solid color-mix(in srgb,var(--gr) 40%,transparent);
+  vertical-align:middle;
+}
+
+/* ─── Existing unchanged rules below ─────────────────────────────────────── */
 .comp{padding:8px 12px calc(10px + var(--safe));border-top:1px solid var(--b);background:rgba(7,6,11,.92)}
 .tools{display:flex;gap:6px;margin-bottom:8px;overflow-x:auto;scrollbar-width:none}
 .tools button{flex-shrink:0;background:var(--p2);border:1px solid var(--b);color:var(--t);font-size:12px;font-weight:600;padding:7px 12px;border-radius:99px;cursor:pointer}
@@ -74,12 +151,26 @@ textarea.pad{min-height:92px;resize:vertical;margin:8px 0}
 .mc{background:var(--p);border:1px solid var(--ac);border-radius:20px;padding:22px;width:100%;max-width:400px}
 .mc h2{font-size:18px;margin-bottom:8px}.mc p{font-size:14px;color:var(--m);line-height:1.5}.mc input{margin-top:12px}
 #toast{position:fixed;bottom:calc(110px + var(--safe));left:50%;transform:translateX(-50%);background:var(--ac);color:#fff;padding:10px 18px;border-radius:99px;font-size:13px;font-weight:700;opacity:0;transition:.3s;z-index:400;pointer-events:none;max-width:90vw;text-align:center}#toast.show{opacity:1}
-
 .mi button.ed{color:var(--cy);font-size:12px;font-weight:700}.mi.off span{opacity:.45}
 .fbadge{margin:8px 12px 0;padding:7px 12px;border-radius:12px;background:color-mix(in srgb,var(--am) 16%,var(--p));border:1px solid var(--am);color:var(--am);font-size:12px;font-weight:700;line-height:1.4}
-
 .crisis-card{border:1px solid #ff3355;background:#1a0810;color:#ffd9e0;padding:14px 16px;border-radius:12px;margin:10px 12px;font-size:15px;line-height:1.5}
 .crisis-card b{display:block;margin-bottom:8px;font-size:16px;color:#fff}
 .crisis-card p{margin:4px 0}
 .crisis-card a{color:#ff6b85;text-decoration:underline;font-weight:600}
 .support-dot::after{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff3355;margin-left:6px;vertical-align:middle}
+.wtabs{display:flex;gap:6px;margin:12px 0}.wtab{flex:1;padding:9px 6px;border-radius:10px;border:1px solid var(--b);background:var(--p2);color:var(--m);font-size:13px;font-weight:600;cursor:pointer}.wtab.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.hrow{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b);font-size:13px}.hrow small{color:var(--m);display:block;font-size:11px}.hrow .l{display:flex;gap:8px;align-items:center;min-width:0}.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.wout{white-space:pre-wrap;word-break:break-word;font-size:12px;max-height:280px;overflow:auto;background:var(--p2);border:1px solid var(--b);border-radius:10px;padding:10px;margin-top:8px}
+.wpane.hidden{display:none}
+.pbadge{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:4px;background:#E5B800;color:#000;vertical-align:middle}
+#bMic,#bGlobe{width:42px;height:42px;border-radius:50%;border:1px solid var(--b);background:var(--p2);color:var(--t);font-size:17px;cursor:pointer;flex-shrink:0}
+#bMic.rec{background:#FF2D2D;border-color:#FF2D2D;color:#fff;animation:recpulse 1.1s infinite}
+@keyframes recpulse{0%{box-shadow:0 0 0 0 rgba(255,45,45,.65)}70%{box-shadow:0 0 0 13px rgba(255,45,45,0)}100%{box-shadow:0 0 0 0 rgba(255,45,45,0)}}
+#bGlobe:disabled{opacity:.4}
+.mt button[data-act=say]{font-size:13px;color:var(--t);opacity:.8}
+.hhead{display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:none;color:var(--t);font-weight:700;font-size:13px;padding:8px 2px;cursor:pointer;flex-shrink:0}
+.hhead .chev{display:inline-block;transition:transform .3s ease;font-size:15px}
+.hhead.closed .chev{transform:rotate(-90deg)}
+.hwrap{overflow:hidden;max-height:0;opacity:0;transition:max-height .3s ease,opacity .3s ease;flex:0 0 auto}
+.hwrap.open{max-height:60vh;opacity:1}
+.hwrap #hlist{flex:none;max-height:60vh;overflow-y:auto}

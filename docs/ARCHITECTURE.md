@@ -1,4 +1,4 @@
-# Architecture · V1.3.0
+# Architecture · V1.4.0
 
 *For reviewers and contributors.*
 
@@ -24,7 +24,7 @@ Ember is a static web app. Every file is an IIFE with `'use strict'`. Files talk
 
 **`style.css`** owns appearance, including `.crisis-card` and `.support-dot`.
 
-**`sw.js`** is the service worker. Network first, cache as the offline fallback, same-origin GET only. It must never cache or touch API calls. Its cache name (`ember-v1.3.0`) changes with each version.
+**`sw.js`** is the service worker. Network first, cache as the offline fallback, same-origin GET only. It must never cache or touch API calls. Its cache name (`ember-v1.4.0`) changes with each version.
 
 ## Request flow
 
@@ -75,7 +75,7 @@ app.js after()  (skips: private chat, memory off, crisis window)
 | localStorage | `ember_models` | Cached provider model lists (12 hours) |
 | IndexedDB `ember` v1 | store `convs` | Every chat |
 | IndexedDB `ember` v1 | store `kv`, key `mem` | Core memory (the `mem` object) |
-| Cache Storage | `ember-v1.3.0` | App files only |
+| Cache Storage | `ember-v1.4.0` | App files only |
 | JS memory only | `Safety` level, key cool-down map | Gone on reload |
 
 If IndexedDB is blocked, chats and memory fall back to memory and are lost on reload.

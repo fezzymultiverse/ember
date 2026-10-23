@@ -1,4 +1,4 @@
-// Ember V1.3.0 - safety layer: offline, instant, no AI call. Detects distress / self-harm language, hardens the prompt, and feeds the local crisis card.
+// Ember V1.4.0 - safety layer: offline, instant, no AI call. Detects distress / self-harm language, hardens the prompt, and feeds the local crisis card.
 'use strict';
 (() => {
 // Direct self-harm or suicide ideation (level 2)

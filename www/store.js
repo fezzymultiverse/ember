@@ -1,4 +1,4 @@
-// Ember V1.3.0 - storage + small helpers. Chats live in IndexedDB (falls back to memory if the browser blocks it). Settings and keys live in localStorage.
+// Ember V1.4.0 - storage + small helpers. Chats live in IndexedDB (falls back to memory if the browser blocks it). Settings and keys live in localStorage.
 'use strict';
 (() => {
 const LS = {

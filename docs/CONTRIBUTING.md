@@ -1,4 +1,4 @@
-# Contributing · V1.3.0
+# Contributing · V1.4.0
 
 *For contributors.*
 

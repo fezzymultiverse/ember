@@ -1,4 +1,4 @@
-> Feature notes carried over from the root README up to V1.3.0. The root README is now a short pointer; start with [docs/README.md](README.md).
+> Feature notes carried over from the root README up to V1.4.0. The root README is now a short pointer; start with [docs/README.md](README.md).
 
 # Ember V1.3.0 - a companion to talk to about anything
 

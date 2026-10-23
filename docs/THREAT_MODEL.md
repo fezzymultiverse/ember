@@ -1,4 +1,4 @@
-# Threat model · V1.3.0
+# Threat model · V1.4.0
 
 *For reviewers.*
 

@@ -1,4 +1,4 @@
-// Ember V1.3.0 - Groq + Mistral + Gemini behind one door.
+// Ember V1.4.0 - Groq + Mistral + Gemini (+ OpenRouter, Cohere, HuggingFace as prototypes) behind one door.
 // Pulls keys out of pasted notes, health-checks every key, picks models from each provider's live model list (no hard-coded names that go stale),
 // and fails over key to key and engine to engine so the chat keeps going when one is rate-limited.
 'use strict';
@@ -7,11 +7,15 @@ const { LS } = U;
 const CFG = {
   groq: { name: 'Groq', base: 'https://api.groq.com/openai/v1', kind: 'oai' },
   mistral: { name: 'Mistral', base: 'https://api.mistral.ai/v1', kind: 'oai' },
-  gemini: { name: 'Gemini', base: 'https://generativelanguage.googleapis.com/v1beta', kind: 'gem' }
+  gemini: { name: 'Gemini', base: 'https://generativelanguage.googleapis.com/v1beta', kind: 'gem' },
+  // prototypes: written from the providers' public docs, never run against a live account yet. Always last in every lane.
+  openrouter: { name: 'OpenRouter', base: 'https://openrouter.ai/api/v1', kind: 'oai', status: 'prototype' },
+  cohere: { name: 'Cohere', base: 'https://api.cohere.com', kind: 'cohere', status: 'prototype' },
+  huggingface: { name: 'HuggingFace', base: 'https://router.huggingface.co/v1', kind: 'oai', status: 'prototype' }
 };
 const IDS = Object.keys(CFG);
 // fast = quick everyday replies. deep = slow, careful turns. util = background jobs (memory, titles).
-const ORDER = { fast: ['groq', 'mistral', 'gemini'], deep: ['gemini', 'mistral', 'groq'], util: ['groq', 'mistral', 'gemini'] };
+const ORDER = { fast: ['groq', 'mistral', 'gemini', 'openrouter', 'cohere', 'huggingface'], deep: ['gemini', 'mistral', 'groq', 'openrouter', 'cohere', 'huggingface'], util: ['groq', 'mistral', 'gemini', 'openrouter', 'cohere', 'huggingface'] };
 
 function load() {
   const k = LS.get('ember_keys', {}), o = {};
@@ -58,6 +62,10 @@ async function listModels(id, key) {
     const j = await jfetch(c.base + '/models', { headers: { Authorization: 'Bearer ' + key } }, 15000);
     return (j.data || []).map(m => m.id).filter(Boolean);
   }
+  if (c.kind == 'cohere') {
+    const j = await jfetch(c.base + '/v1/models?endpoint=chat&page_size=100', { headers: { Authorization: 'Bearer ' + key, Accept: 'application/json' } }, 15000);
+    return (j.models || []).map(m => m.name).filter(Boolean);
+  }
   const j = await jfetch(c.base + '/models?pageSize=200', { headers: { 'x-goog-api-key': key } }, 15000);
   return (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => String(m.name).replace(/^models\//, ''));
 }
@@ -74,6 +82,28 @@ function rank(id, list, lane) {
   if (id == 'mistral') {
     const ok = list.filter(m => !/embed|moderation|ocr|codestral|voxtral|pixtral|devstral|ministral/i.test(m));
     const pref = deep ? [/large-latest/, /medium-latest/, /small-latest/, /large/, /medium/, /small/] : [/small-latest/, /medium-latest/, /large-latest/, /small/, /medium/, /large/];
+    const out = []; pref.forEach(p => ok.filter(m => p.test(m)).forEach(m => { if (!out.includes(m)) out.push(m); }));
+    ok.forEach(m => { if (!out.includes(m)) out.push(m); });
+    return out;
+  }
+  if (id == 'openrouter') {
+    // free models only: a paid model would spend the user's credits without them noticing
+    const ok = list.filter(m => /:free$/.test(m) && !/embed|moderation|image|vision|audio|tts|whisper|guard|-vl|flux|stable|veo|sora/i.test(m));
+    const pref = [/llama-3\.3-70b/, /llama.*70b/, /gemma/, /mistral/, /qwen/, /deepseek/, /llama/];
+    const out = []; pref.forEach(p => ok.filter(m => p.test(m)).forEach(m => { if (!out.includes(m)) out.push(m); }));
+    ok.forEach(m => { if (!out.includes(m)) out.push(m); });
+    return out;
+  }
+  if (id == 'cohere') {
+    const ok = list.filter(m => !/embed|rerank|vision|audio|translate|nightly/i.test(m));
+    const pref = deep ? [/command-a-0/, /command-r-plus/, /command-a/, /command-r/] : [/command-r7b/, /command-r-08/, /command-a-0/, /command-r/, /command/];
+    const out = []; pref.forEach(p => ok.filter(m => p.test(m)).forEach(m => { if (!out.includes(m)) out.push(m); }));
+    ok.forEach(m => { if (!out.includes(m)) out.push(m); });
+    return out;
+  }
+  if (id == 'huggingface') {
+    const ok = list.filter(m => !/embed|whisper|flux|stable-diffusion|vision|-vl|ocr|guard|rerank|tts/i.test(m));
+    const pref = [/llama-3\.3-70b-instruct/i, /llama.*instruct/i, /qwen.*instruct/i, /mistral.*instruct/i, /gpt-oss/i];
     const out = []; pref.forEach(p => ok.filter(m => p.test(m)).forEach(m => { if (!out.includes(m)) out.push(m); }));
     ok.forEach(m => { if (!out.includes(m)) out.push(m); });
     return out;
@@ -104,6 +134,11 @@ async function call(id, key, model, o) {
     if (o.json) body.response_format = { type: 'json_object' };
     const j = await jfetch(c.base + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, 40000);
     text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content || '';
+  } else if (c.kind == 'cohere') {
+    const body = { model, messages: [{ role: 'system', content: o.system }].concat(o.messages), temperature: o.temp == null ? 0.8 : o.temp, max_tokens: o.max || 400 };
+    if (o.json) body.response_format = { type: 'json_object' };
+    const j = await jfetch(c.base + '/v2/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, 40000);
+    text = j.message && Array.isArray(j.message.content) ? j.message.content.map(p => p.text || '').join('') : '';
   } else {
     const contents = [];
     o.messages.forEach(m => {
@@ -155,15 +190,20 @@ function removeKey(id, key) { keys[id] = keys[id].filter(e => e.key !== key); co
 
 // ---------- pull keys out of messy notes ----------
 function extract(text) {
-  const out = { groq: [], gemini: [], mistral: [], unknown: [] };
+  const out = { groq: [], gemini: [], mistral: [], openrouter: [], huggingface: [], cohere: [], unknown: [] };
   const put = (k, v) => { if (!out[k].includes(v)) out[k].push(v); };
   let t = String(text || '');
   t = t.replace(/gsk_[A-Za-z0-9]{20,}/g, m => { put('groq', m); return ' '; });
+  t = t.replace(/sk-or-v1-[A-Za-z0-9]{20,}/g, m => { put('openrouter', m); return ' '; });
+  t = t.replace(/hf_[A-Za-z0-9]{20,}/g, m => { put('huggingface', m); return ' '; });
+  t = t.replace(/AQ\.Ab8RN6LW[0-9A-Za-z_\-.]{10,}/g, m => { put('gemini', m); return ' '; }); // new Gemini key format
   t = t.replace(/AIza[0-9A-Za-z_\-]{30,}/g, m => { put('gemini', m); return ' '; });
+  // Cohere keys have no prefix: a 40-character token on a line that says "cohere"
+  t = t.split(/\r?\n/).map(line => /cohere/i.test(line) ? line.replace(/(?<![A-Za-z0-9_\-])[A-Za-z0-9]{40}(?![A-Za-z0-9_\-])/g, m => { put('cohere', m); return ' '; }) : line).join('\n');
   // Mistral keys have no prefix: take 32-char tokens near the word "mistral"; other 32-char tokens are tested against Mistral later
   let cur = '', ttl = 0;
   for (const line of t.split(/\r?\n/)) {
-    const ms = /mistral/i.test(line), ot = /groq|gemini|google|openai|deepseek|anthropic|claude|cohere|huggingface/i.test(line);
+    const ms = /mistral/i.test(line), ot = /groq|gemini|google|openrouter|openai|deepseek|anthropic|claude|cohere|huggingface/i.test(line);
     if (ms) { cur = 'mistral'; ttl = 2; } else if (ot) { cur = 'other'; ttl = 2; }
     for (const m of line.matchAll(/(?<![A-Za-z0-9_\-])[A-Za-z0-9]{32}(?![A-Za-z0-9_\-])/g)) {
       const v = m[0];
@@ -176,8 +216,8 @@ function extract(text) {
 }
 async function ingest(text) {
   const f = extract(text);
-  const rep = { found: { groq: f.groq.length, gemini: f.gemini.length, mistral: f.mistral.length, unknown: f.unknown.length }, added: [], dupes: 0, rejected: 0 };
-  for (const id of ['groq', 'gemini', 'mistral']) for (const k of f[id]) {
+  const rep = { found: { groq: f.groq.length, gemini: f.gemini.length, mistral: f.mistral.length, openrouter: f.openrouter.length, huggingface: f.huggingface.length, cohere: f.cohere.length, unknown: f.unknown.length }, added: [], dupes: 0, rejected: 0 };
+  for (const id of ['groq', 'gemini', 'mistral', 'openrouter', 'huggingface', 'cohere']) for (const k of f[id]) {
     const r = await addKey(id, k);
     if (!r.ok) { rep.dupes++; continue; }
     rep.added.push({ id, key: k, ok: !!(r.e.st && r.e.st.ok), guess: false });
@@ -245,12 +285,14 @@ const label = id => CFG[id] ? CFG[id].name : id == 'pollinations' ? 'Free' : id;
 // Free Mode ON: Pollinations goes first, then the keys. OFF: keys first. Either way Pollinations is the last resort,
 // so a chat is never blocked just because keys are missing or rested. Util jobs skip it entirely.
 async function run(lane, o) {
-  const pl = lane != 'util', errs = [];
+  const pl = lane != 'util', errs = [], failed = [];
+  // when an engine failed and a different one answered, tell the UI (ai.js shows a toast). Background jobs stay silent.
+  const done = r => { const f = failed.find(x => x.id != r.provider); if (f && pl) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
   let tried = false;
   if (pl && freeOn()) {
     tried = true;
-    try { const r = await callPollinations(flat(o), o); return { text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }; }
-    catch (er) { errs.push('Free Mode: ' + er.message); }
+    try { const r = await callPollinations(flat(o), o); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
+    catch (er) { errs.push('Free Mode: ' + er.message); failed.push({ id: 'pollinations', status: er.status, why: er.message }); }
   }
   for (const id of ORDER[lane] || ORDER.fast) {
     for (const e of keys[id]) {
@@ -259,12 +301,12 @@ async function run(lane, o) {
       try { models = await modelsFor(id, e.key, lane); }
       catch (er) {
         if (er.status == 401 || er.status == 403) { e.bad = true; save(); } else if (er.status == 429) cool.set(e.key, Date.now() + (er.retryAfter || 60) * 1000);
-        errs.push(CFG[id].name + ': ' + er.message); continue;
+        errs.push(CFG[id].name + ': ' + er.message); failed.push({ id, status: er.status, why: er.message }); continue;
       }
       for (const m of models.slice(0, 3)) {
-        try { const r = await call(id, e.key, m, o); return { text: r.text, provider: id, model: m, ms: r.ms }; }
+        try { const r = await call(id, e.key, m, o); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
         catch (er) {
-          errs.push(CFG[id].name + ': ' + er.message);
+          errs.push(CFG[id].name + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
           if (er.status == 429) { cool.set(e.key, Date.now() + (er.retryAfter || 60) * 1000); break; }
           if (er.status == 401 || er.status == 403) { e.bad = true; save(); break; }
           if (er.status == 404 || (er.status == 400 && /model/i.test(er.message))) continue;
@@ -274,8 +316,8 @@ async function run(lane, o) {
     }
   }
   if (pl && !tried) {
-    try { const r = await callPollinations(flat(o), o); return { text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }; }
-    catch (er) { errs.push('Free Mode: ' + er.message); }
+    try { const r = await callPollinations(flat(o), o); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
+    catch (er) { errs.push('Free Mode: ' + er.message); failed.push({ id: 'pollinations', status: er.status, why: er.message }); }
   }
   if (!hasKeys() && pl) throw Object.assign(new Error(FREE_BUSY), { code: 'fail' });
   if (!hasKeys()) throw Object.assign(new Error('Add an API key in Settings first.'), { code: 'nokeys' });

@@ -1,4 +1,4 @@
-# Crisis protocol · V1.3.0
+# Crisis protocol · V1.4.0
 
 *For maintainers.*
 

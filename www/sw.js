@@ -1,5 +1,5 @@
-// Ember V1.3.0 service worker: app files only. Network first so updates arrive, cache as the offline fallback. API calls are never touched.
-const V = 'ember-v1.3.0', FILES = ['./', 'index.html', 'style.css', 'store.js', 'providers.js', 'safety.js', 'persona.js', 'app.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
+// Ember V1.5.2 service worker: app files only. Network first so updates arrive, cache as the offline fallback. API calls are never touched.
+const V = 'ember-v1.5.2', FILES = ['./', 'index.html', 'style.css', 'store.js', 'providers.js', 'safety.js', 'ai_music.js', 'nine_nine.js', 'persona.js', 'ai_docs.js', 'ai_scraper.js', 'ai_sites.js', 'app.js', 'ember_native.js', 'ai.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(FILES)).catch(() => {})); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k != V).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {

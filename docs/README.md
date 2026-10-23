@@ -1,4 +1,4 @@
-# Ember docs · V1.3.0
+# Ember docs · V1.4.0
 
 *For reviewers and anyone new to the repo.*
 

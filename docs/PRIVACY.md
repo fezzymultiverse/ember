@@ -1,4 +1,4 @@
-# Privacy · V1.3.0
+# Privacy · V1.4.0
 
 *For users and reviewers.*
 
@@ -21,7 +21,7 @@ Ember has no server and no account. Everything it stores stays on the person's d
 | `convs` | Every chat: messages, title, short summary, rolling summary, private flag |
 | `kv` | One record, key `mem`: Core Memory (see [MEMORY.md](MEMORY.md)) |
 
-**Cache Storage**: `ember-v1.3.0` holds the app's own files for offline use. No chat content.
+**Cache Storage**: `ember-v1.4.0` holds the app's own files for offline use. No chat content.
 
 If the browser blocks IndexedDB, chats and memory live in memory only and are lost on reload.
 

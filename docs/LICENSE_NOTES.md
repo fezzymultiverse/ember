@@ -1,4 +1,4 @@
-# License notes · V1.3.0
+# License notes · V1.4.0
 
 *For maintainers.*
 
