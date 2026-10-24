@@ -106,6 +106,7 @@ async function youtube_download(a) {
     if (!seen.has(m[1])) return { error: 'That link did not come from him or from youtube_search, so it was not downloaded. Search first, or ask him for the link.' };
     key = 'https://www.youtube.com/watch?v=' + m[1];
   }
+  try { if (window.EmberNative && window.EmberNative.ensureNotifyPermission) await window.EmberNative.ensureNotifyPermission(); } catch (e) { /* notifications are optional; the download still runs */ }
   try {
     const r = await P.downloadVideo({ url: key, title: str(a.title, 120) });
     if (r && r.jobId) trackJob(r.jobId, a.title || '');
@@ -128,6 +129,7 @@ async function playlist_download(a) {
   if (!dlAllowed()) return { error: 'He did not ask to download or save anything in his latest message, so nothing was downloaded. Do not download unless he asks.' };
   const raw = String(a.url || '').trim();
   if (!seenUrl.has(raw)) return { error: 'That playlist link did not come from him or from playlist_list, so nothing was downloaded. Ask him for the link.' };
+  try { if (window.EmberNative && window.EmberNative.ensureNotifyPermission) await window.EmberNative.ensureNotifyPermission(); } catch (e) { /* optional */ }
   let r; try { r = await P.downloadPlaylist({ url: raw, limit: 30 }); } catch (e) { return { error: 'Could not start the playlist download: ' + ((e && e.message) || e) }; }
   const list = (r && r.jobs) || [];
   list.forEach(j => trackJob(j.jobId, j.title));

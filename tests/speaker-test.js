@@ -102,10 +102,9 @@ const MOCK = `
   ok('lively on: values stay inside 0.5 to 2', c1 && c1.rate >= 0.5 && c1.rate <= 2 && c1.pitch >= 0.5 && c1.pitch <= 2, JSON.stringify(c1));
   await pg.evaluate(() => window.EmberSpeech.stop());
 
-  // mic is explained
-  const lab = await pg.evaluate(() => ({ t: document.getElementById('bMic').title, a: document.getElementById('bMic').getAttribute('aria-label') }));
-  ok('mic says it is dictation', /dictat/i.test(lab.t) && /dictat/i.test(lab.a), JSON.stringify(lab));
-  ok('settings explain the mic and the red Stop', /dictation, not a call/.test(await pg.locator('#ttsNote').innerText()) && /turns red/.test(await pg.locator('#ttsNote').innerText()));
+  // V1.9.8: the dictation button was removed; the 📎 Docs button replaced it
+  ok('dictation button is gone, Docs button is there', (await pg.locator('#bMic').count()) == 0 && (await pg.locator('#bDocsQuick').count()) == 1);
+  ok('settings explain the red Stop', /turns red/.test(await pg.locator('#ttsNote').innerText()));
   await pg.click('#bSx'); await pg.waitForTimeout(200);
 
   // left-panel Music Console opens the full panel and draws it

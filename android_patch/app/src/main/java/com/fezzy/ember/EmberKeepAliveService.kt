@@ -12,7 +12,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 
-// Foreground service that keeps Ember's process alive in the background (stops "keeps restarting").
+// Foreground service that keeps Ember's process alive in the background while the app is open (V1.9.8: it stops when the app is closed, it no longer restarts).
 // Holds a partial CPU wake lock and shows a small ongoing notification (Android requires one for a foreground service).
 // Started/stopped from JS through EmberNotifyPlugin.startKeepAlive / stopKeepAlive.
 class EmberKeepAliveService : Service() {
@@ -63,7 +63,16 @@ class EmberKeepAliveService : Service() {
         }
         try { if (wl?.isHeld == false) wl?.acquire() } catch (e: Exception) { /* no WAKE_LOCK permission: service still runs */ }
         running = true
-        return START_STICKY
+        // V1.9.8: NOT_STICKY. START_STICKY made Android bring the service (and its notification) back after you closed the app,
+        // which looked like Ember restarting by itself. It now only lives while the app does.
+        return START_NOT_STICKY
+    }
+
+    // Swiped away from recents / closed: stop the service so nothing is left to restart.
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        stopForegroundCompat()
+        stopSelf()
+        super.onTaskRemoved(rootIntent)
     }
 
     private fun stopForegroundCompat() {

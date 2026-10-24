@@ -128,14 +128,16 @@ async function openDoc(id) {
 }
 function closeDoc() { docId = ''; $('dcView').classList.add('hidden'); $('dcList').classList.remove('hidden'); renderDocs(); }
 $('dcQ').addEventListener('input', renderDocs);
-$('dcAdd').onclick = () => $('dcFile').click();
+const dcMenu = (on) => { const m = $('dcMenu'); if (!m) return; m.classList.toggle('hidden', on === undefined ? !m.classList.contains('hidden') ? true : false : !on); $('dcAttach').setAttribute('aria-expanded', m.classList.contains('hidden') ? 'false' : 'true'); };
+$('dcAttach').onclick = e => { e.stopPropagation(); dcMenu(); };
+$('dcAdd').onclick = () => { dcMenu(false); $('dcFile').click(); };
 $('dcFile').addEventListener('change', async () => {
   const D = DOCS(), fs = [...($('dcFile').files || [])]; $('dcFile').value = ''; if (!D || !fs.length) return;
   let ok = 0; const bad = [];
   for (const f of fs) { const r = await D.addFile(f); if (r.error) bad.push(r.error); else ok++; }
   toast((ok ? 'Added ' + ok + ' file' + (ok == 1 ? '' : 's') : 'Nothing added') + (bad.length ? ' · ' + bad[0] : '')); renderDocs();
 });
-$('dcNew').onclick = async () => { const D = DOCS(); if (!D) return; const r = await D.addText('Untitled note.txt', '', 'note'); if (r.doc) openDoc(r.doc.id); };
+$('dcNew').onclick = async () => { dcMenu(false); const D = DOCS(); if (!D) return; const r = await D.addText('Untitled note.txt', '', 'note'); if (r.doc) openDoc(r.doc.id); };
 $('dcItems').addEventListener('click', async e => {
   const row = e.target.closest('.dci'); if (!row) return; const id = row.dataset.id;
   if (e.target.closest('.x')) {

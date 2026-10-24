@@ -13,6 +13,8 @@ Ember has no server and no account. Everything it stores stays on the person's d
 | `ember_set` | Settings: their name, the "About you" text, Ember's name and curiosities, style choices, the Persona box text, mode, context size, accent colour, Free Mode choice |
 | `ember_keys` | API keys for Groq, Mistral and Gemini, with the last health-check result. Stored in plain text on the device |
 | `ember_models` | Cached lists of model names from each provider (12 hours) |
+| `ember_voice` | Ember Voice choices: engine, voice, and the ElevenLabs key if one was pasted (plain text on the device). Cleared by Wipe |
+| `ember_voice_gm` | Which Gemini speech model last worked |
 
 **IndexedDB** (database `ember`, version 1)
 
@@ -34,6 +36,8 @@ Nothing leaves except calls to the AI provider that answers.
 | Every reply | The system prompt (character rules, the "About you" text, Core Memory facts and threads, the Persona box, the rolling summary) plus the recent messages, up to 5, 15 or 50 depending on the setting | The engine that answers (Groq, Mistral, Gemini or Pollinations) |
 | Memory learning, titles, rolling summaries | The last 14 messages (memory) or older messages (summary) | A key-based engine only. Never Pollinations |
 | Key checks and model lists | The key itself, as the provider's own credential | That key's own provider |
+| Reading a reply aloud with Ember Voice | The text of that one reply (links and code removed) plus a short tone instruction. Only when the Gemini or ElevenLabs voice is selected; "Phone voice only" sends nothing | Google (Gemini speech, with the Gemini key) or ElevenLabs (with its key) |
+| Lyrics preview | Title, artist, album and length of the song that is playing. Only while Settings > Music > Lyrics preview is on | lrclib.net (no key, no account) |
 | Key extraction from pasted notes | Nothing, except: each unlabeled 32-character string that passes the filters is tried as a Mistral key, so it is sent to `api.mistral.ai` as a credential | Mistral |
 
 The pasted notes themselves are never sent anywhere and never saved. They are parsed locally.

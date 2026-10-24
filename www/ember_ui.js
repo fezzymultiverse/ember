@@ -79,3 +79,17 @@ applyNames(); mountNames(); paintWall(); if (Object.keys(lsGet(NK, {})).length) 
 document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#bSet')) setTimeout(() => { mountNames(); syncLabels(); }, 30); });
 window.EmberUI = { applyNames, syncLabels, paintWall };
 })();
+
+// V1.9.3: the empty-state hero sits above the music widget + composer, whatever their height (no more overlap).
+(() => {
+  const root = document.documentElement, foot = document.querySelector('footer.comp'), mw = document.getElementById('mw');
+  if (!foot) return;
+  const fit = () => {
+    const h = foot.offsetHeight + ((mw && !mw.classList.contains('hidden')) ? mw.offsetHeight + 6 : 0);
+    root.style.setProperty('--dock', h + 'px');
+  };
+  fit();
+  if (window.ResizeObserver) { const ro = new ResizeObserver(fit); ro.observe(foot); if (mw) ro.observe(mw); }
+  if (mw && window.MutationObserver) new MutationObserver(fit).observe(mw, { attributes: true, attributeFilter: ['class'] });
+  window.addEventListener('resize', fit);
+})();

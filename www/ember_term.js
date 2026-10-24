@@ -277,10 +277,11 @@ async function copyText(t) {
   try { const a = document.createElement('textarea'); a.value = t; a.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(a); a.select(); const ok = document.execCommand('copy'); a.remove(); return ok; } catch (e) { return false; }
 }
 
-const cfg = Object.assign({ port: PORT_DEF, base: '', enter: true, share: true, auto: false, state: 'half', presets: null }, LSget('ember_term', {}));
+const cfg = Object.assign({ port: PORT_DEF, base: '', enter: true, share: true, auto: false, state: 'bar', fs: 10.5, hist: [], presets: null }, LSget('ember_term', {}));
 if (!cfg.base || !/^\/[a-z0-9]{6,}$/.test(cfg.base)) cfg.base = genBase();
 if (!Array.isArray(cfg.presets) || !cfg.presets.length) cfg.presets = DEFAULT_PRESETS.map(p => Object.assign({}, p));
-if (['full', 'half', 'bar'].indexOf(cfg.state) < 0) cfg.state = 'half';
+if (['full', 'half', 'bar'].indexOf(cfg.state) < 0) cfg.state = 'bar';
+cfg.fs = Math.max(8, Math.min(16, +cfg.fs || 10.5)); if (!Array.isArray(cfg.hist)) cfg.hist = [];
 cfg.port = parseInt(cfg.port, 10) || PORT_DEF;
 const save = () => LSset('ember_term', cfg);
 save();
@@ -300,6 +301,7 @@ panel.innerHTML =
     '<div class="ettabs" id="etTabs"><button class="on" data-v="term">Terminal</button><button data-v="chat">Ask Ember</button><button data-v="setup">Setup</button></div>' +
     '<div class="etview" id="etvTerm">' +
       '<div class="etv" id="etV"><div class="etsb" id="etSb"></div><div class="etscr" id="etScr"></div></div>' +
+      '<div class="etcl" id="etCl"><span class="etps">$</span><input id="etCli" type="text" inputmode="text" enterkeyhint="send" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="command, then ⏎ to run in Termux" aria-label="Command line"><button id="etCmdGo" aria-label="Run command">⏎</button></div>' +
       '<textarea id="etIn" class="etin" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Terminal input"></textarea>' +
       '<div class="etoff" id="etOff"><div class="etoffbox"><b id="etOffT">Not connected</b><p id="etOffP">Start the bridge in Termux (Setup tab), then tap Connect.</p><div class="etrow"><button class="etbtn on" id="etOffGo">Connect</button><button class="etbtn" id="etOffSet">Setup</button></div></div></div>' +
     '</div>' +
@@ -317,7 +319,7 @@ settings.appendChild(panel);
 const ledEl = $('etLed'), subEl = $('etSub'), hostV = $('etV'), scrEl = $('etScr'), sbEl = $('etSb'), inEl = $('etIn');
 
 // ---- terminal view ----
-let tc = new TermCore(80, 24), cw = 7.6, lh = 16, rowEls = [], stick = true, view = 'term';
+let tc = new TermCore(80, 24, { sbMax: 500 }), cw = 7.6, lh = 16, rowEls = [], stick = true, view = 'term';
 const FG = '#d7e8ee';
 function cssFor(a) {
   if (a._css !== undefined) return a._css;
@@ -341,6 +343,7 @@ function rowHTML(t, row, cx) {
   }
   flush(); return out;
 }
+function applyFs() { hostV.style.fontSize = cfg.fs + 'px'; measure(); tc.allDirty(); schedule(); fit(); }
 function buildRows() {
   scrEl.innerHTML = ''; rowEls = [];
   for (let i = 0; i < tc.rows; i++) { const d = document.createElement('div'); d.className = 'etr'; scrEl.appendChild(d); rowEls.push(d); }
@@ -391,7 +394,7 @@ function setState(s, note) {
   ledEl.className = 'etled ' + (s === 'on' ? 'on' : s === 'connecting' ? 'wait' : 'off');
   subEl.textContent = s === 'on' ? 'connected · 127.0.0.1:' + cfg.port : s === 'connecting' ? 'connecting…' : (note || 'disconnected');
   $('etOff').classList.toggle('hidden', s === 'on');
-  paintSetup();
+  try { paintSetup(); } catch (e) { console.error('paintSetup', e); } // a paint error must never stop connect()
 }
 function sendRaw(u8) { if (ws && ws.readyState === 1) { try { ws.send(u8); return true; } catch (e) { return false; } } return false; }
 function send(data) {
@@ -490,12 +493,13 @@ hostV.addEventListener('click', () => {
 });
 
 // ---- extra keys ----
-const KEYS = [['Ctrl', 'ctrl'], ['Esc', 'esc'], ['Tab', 'tab'], ['^C', 'c-c'], ['^D', 'c-d'], ['←', 'left'], ['↑', 'up'], ['↓', 'down'], ['→', 'right'], ['/', '/'], ['-', '-'], ['~', '~'], ['|', '|'], ['$', '$'], ['Copy', 'copy'], ['Paste', 'paste']];
+const KEYS = [['Ctrl', 'ctrl'], ['Esc', 'esc'], ['Tab', 'tab'], ['^C', 'c-c'], ['^D', 'c-d'], ['←', 'left'], ['↑', 'up'], ['↓', 'down'], ['→', 'right'], ['/', '/'], ['-', '-'], ['~', '~'], ['|', '|'], ['$', '$'], ['A−', 'fs-'], ['A+', 'fs+'], ['Copy', 'copy'], ['Paste', 'paste']];
 $('etKeys').innerHTML = KEYS.map(k => '<button data-k="' + esc(k[1]) + '">' + esc(k[0]) + '</button>').join('');
 $('etKeys').addEventListener('mousedown', e => e.preventDefault());
 $('etKeys').addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b) return; const k = b.dataset.k;
   if (k === 'ctrl') { setCtrl(!ctrl); return; }
+  if (k === 'fs-' || k === 'fs+') { cfg.fs = Math.max(8, Math.min(16, +(cfg.fs + (k === 'fs+' ? 0.5 : -0.5)).toFixed(1))); save(); applyFs(); toast('Text ' + cfg.fs + 'px'); return; }
   if (k === 'copy') {
     const sel = window.getSelection ? window.getSelection().toString() : '';
     const t = sel || tc.getText(tc.rows).join('\n'); toast((await copyText(t)) ? (sel ? 'Selection copied' : 'Screen copied') : 'Copy blocked'); return;
@@ -506,6 +510,23 @@ $('etKeys').addEventListener('click', async e => {
   let out = map[k] !== undefined ? map[k] : k;
   if (ctrl && out.length === 1) { out = ctrlOf(out); setCtrl(false); }
   send(out);
+});
+
+// ---- command line (V1.9.8): a plain input that runs real commands in Termux ----
+const cmdEl = $('etCli'); let hi = -1, armed = '';
+const pushHist = c => { cfg.hist = cfg.hist.filter(x => x !== c); cfg.hist.push(c); if (cfg.hist.length > 50) cfg.hist.shift(); save(); };
+async function runLine() {
+  const c = cmdEl.value.trim(); if (!c) return;
+  if (isDanger(c) && armed !== c) { armed = c; $('etCmdGo').classList.add('arm'); toast('Looks destructive. Tap ⏎ again to run.'); setTimeout(() => { armed = ''; $('etCmdGo').classList.remove('arm'); }, 3000); return; }
+  armed = ''; $('etCmdGo').classList.remove('arm');
+  pushHist(c); hi = -1; cmdEl.value = '';
+  await runCmd(c, true);
+}
+$('etCmdGo').onclick = runLine;
+cmdEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); runLine(); return; }
+  if (e.key === 'ArrowUp' && cfg.hist.length) { e.preventDefault(); hi = hi < 0 ? cfg.hist.length - 1 : Math.max(0, hi - 1); cmdEl.value = cfg.hist[hi]; }
+  else if (e.key === 'ArrowDown' && hi >= 0) { e.preventDefault(); hi++; if (hi >= cfg.hist.length) { hi = -1; cmdEl.value = ''; } else cmdEl.value = cfg.hist[hi]; }
 });
 
 // ---- presets ----
@@ -548,7 +569,7 @@ function setView(v) {
   view = v;
   document.querySelectorAll('#etTabs button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
   $('etvTerm').classList.toggle('hidden', v !== 'term'); $('etvChat').classList.toggle('hidden', v !== 'chat'); $('etvSetup').classList.toggle('hidden', v !== 'setup');
-  $('etKeys').classList.toggle('hidden', v !== 'term');
+  $('etKeys').classList.toggle('hidden', v !== 'term'); $('etCl').classList.toggle('hidden', v !== 'term');
   if (v === 'term') { fit(); schedule(); } if (v === 'chat') { paintChat(); setTimeout(() => { const l = $('etLog'); l.scrollTop = l.scrollHeight; }, 30); }
   if (v === 'setup') paintSetup();
 }
@@ -608,12 +629,15 @@ function startWatch() {
   if (state === 'on') return;
   connect(true);
   watchT = setInterval(() => {
-    if (state === 'on') { stopWatch(); toast('Termux connected'); if (cfg.state === 'bar') setPanel('half'); setView('term'); return; }
+    if (state === 'on') { stopWatch(); toast('Termux connected'); setView('term'); return; }
     if (Date.now() > watchUntil) { stopWatch(); return; }
     if (state === 'off') connect(false);
   }, 2500);
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden && state !== 'on' && watchUntil > Date.now() - 600000 && !userDown) startWatch(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { if (cfg.state !== 'bar') setPanel('bar'); stopWatch(); clearTimeout(retryT); return; }
+  if (state !== 'on' && watchUntil > Date.now() - 600000 && !userDown) startWatch();
+});
 // ---- Setup view ----
 function paintSetup() {
   const el = $('etSetup'); if (!el || $('etvSetup').classList.contains('hidden')) return;
@@ -630,9 +654,8 @@ function paintSetup() {
     '<p class="etnote">It only listens on this phone (127.0.0.1) behind a private random path. Press Ctrl+C in Termux to stop it. It starts a plain <b>bash</b>: Ember never runs or sources your scripts. <b>termux-wake-lock</b> keeps Termux alive while Ember is in front.</p>' +
     '<p class="etnote">If Termux is running and Connect still fails, this APK may be blocking local connections: set <b>allowMixedContent</b> to true in capacitor.config.json and rebuild (see docs/TERMUX_PANEL.md).</p>' +
     '<div class="etrow"><button class="etbtn" id="etPreReset">Reset presets</button></div>';
-  $('etGo').onclick = async () => { const okc = await copyText(cmd); toast(okc ? 'Command copied. Paste it in Termux.' : 'Copy blocked'); startWatch(); setTimeout(openTermux, 350); };
-  $('etCopy').onclick = async () => { toast((await copyText(cmd)) ? 'Command copied' : 'Copy blocked'); startWatch(); };
-  $('etOpen').onclick = () => { startWatch(); openTermux(); };
+  if ($('etCopy')) $('etCopy').onclick = async () => { toast((await copyText(cmd)) ? 'Command copied' : 'Copy blocked'); startWatch(); };
+  $('etOpen').onclick = async () => { const okc = await copyText(cmd); toast(okc ? 'Command copied. Paste it in Termux.' : 'Copy blocked'); startWatch(); setTimeout(openTermux, 350); };
   if ($('etCon')) $('etCon').onclick = () => connect(true);
   if ($('etDis')) $('etDis').onclick = disconnect;
   $('etToTerm').onclick = () => setView('term');
@@ -641,6 +664,7 @@ function paintSetup() {
   $('etPreReset').onclick = () => { cfg.presets = DEFAULT_PRESETS.map(x => Object.assign({}, x)); save(); paintPre(); toast('Presets reset'); };
 }
 async function openTermux() {
+  setPanel('bar'); // V1.9.8: Ember's panel folds itself away so it never sits over Termux; the arrow reopens it
   const N = window.EmberNative;
   try { if (N && N.openTermux) { const r = await N.openTermux(); if (r && r.ok) return; } } catch (e) { /* fall back */ }
   toast('Could not open Termux. Open it from your home screen; Ember keeps trying to connect.');
@@ -703,6 +727,6 @@ $('etChips').addEventListener('click', e => {
 });
 
 // ---- boot ----
-paintPre(); setView('term'); setState('off');
+paintPre(); setView('term'); setState('off'); applyFs();
 window.EmberTerm = { ensureOn, startWatch, stopWatch, connect: () => connect(true), disconnect, send, state: () => state, getText: n => tc.getText(n), setPanel, cfg, ask };
 })();
