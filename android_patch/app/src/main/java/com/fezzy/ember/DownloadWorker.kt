@@ -43,7 +43,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         try {
             report("Looking up the video...", 0, true)
             EmberYtCore.ensure()
-            val info = StreamInfo.getInfo(ServiceList.YouTube, url)
+            val svc = if (inputData.getString("service") == "soundcloud") ServiceList.SoundCloud else ServiceList.YouTube
+            val info = StreamInfo.getInfo(svc, url)
             shownTitle = asked.ifEmpty { info.name ?: "YouTube audio" }
 
             // Only plain HTTP audio streams (DASH/HLS manifests are not handled). Prefer M4A, then the highest bitrate.
@@ -59,6 +60,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             val where = publish(tmp, safeName(shownTitle) + "." + suffix, mime)
             tmp.delete()
             remember("done", where)
+            saveJob("done", 100, shownTitle, where)
             finish("Saved: $shownTitle", "Music/Ember")
             Result.success()
         } catch (e: CancellationException) {
@@ -67,6 +69,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         } catch (e: Exception) {
             tmp.delete()
             remember("failed", e.message ?: "unknown error")
+            saveJob("failed", lastPct.coerceAtLeast(0), shownTitle, e.message ?: "unknown error")
             finish("Download failed: $shownTitle", e.message ?: "unknown error")
             Result.failure()
         }
@@ -120,6 +123,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
     }
 
     private suspend fun report(text: String, pct: Int, indeterminate: Boolean) {
+        saveJob("running", pct, shownTitle, text)
         val n = build(text, pct, indeterminate)
         try {
             setForeground(if (Build.VERSION.SDK_INT >= 29)
@@ -130,6 +134,15 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             // foreground not allowed right now (permission, background start limits): still show a normal progress notification
             try { nm.notify(progressId, n) } catch (_: Exception) { }
         }
+    }
+
+    // Per-job progress, read by EmberYoutubePlugin.status({ jobId }) for the chat cards.
+    private fun saveJob(state: String, pct: Int, title: String, detail: String) {
+        try {
+            applicationContext.getSharedPreferences("ember_yt", Context.MODE_PRIVATE).edit()
+                .putString("job_${id}_state", state).putInt("job_${id}_pct", pct)
+                .putString("job_${id}_title", title).putString("job_${id}_detail", detail).apply()
+        } catch (_: Exception) { /* progress is cosmetic; the download itself carries on */ }
     }
 
     private fun channel() {
@@ -143,7 +156,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         channel()
         NotificationCompat.Builder(applicationContext, channelId)
             .setContentTitle("Ember download").setContentText(shownTitle + " · " + text)
-            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setSmallIcon(R.drawable.ember_notif)
             .setContentIntent(tapIntent()).setOngoing(true).setOnlyAlertOnce(true)
             .setProgress(100, pct, indeterminate).build()
     }
@@ -154,7 +167,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             channel()
             nm.notify(doneId, NotificationCompat.Builder(applicationContext, channelId)
                 .setContentTitle(title).setContentText(detail)
-                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                .setSmallIcon(R.drawable.ember_notif)
                 .setContentIntent(tapIntent()).setAutoCancel(true).build())
         } catch (_: Exception) { /* notifications blocked: the result is still saved and readable through status() */ }
     }

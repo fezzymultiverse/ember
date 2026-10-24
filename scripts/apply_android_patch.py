@@ -30,7 +30,7 @@ for old in list((app / 'src/main/java').rglob('MainActivity.java')) + list((app 
 src = PATCH / 'app/src/main/java/com/fezzy/ember'
 kts = sorted(src.glob('*.kt'))
 need_kt = {'EmberMediaPlugin.kt', 'EmberNotifyPlugin.kt', 'EmberMediaSession.kt', 'EmberPingWorker.kt', 'EmberAiPlugin.kt', 'EmberAiWorker.kt', 'MainActivity.kt', 'ReplyReceiver.kt', 'EmberKeepAliveService.kt',
-           'EmberYoutubePlugin.kt', 'EmberYtCore.kt', 'DownloadWorker.kt'}
+           'EmberYoutubePlugin.kt', 'EmberYtCore.kt', 'DownloadWorker.kt', 'EmberDevicePlugin.kt'}
 if not need_kt.issubset({f.name for f in kts}):
     sys.exit('missing Kotlin files in ' + str(src) + ': ' + ', '.join(sorted(need_kt - {f.name for f in kts})))
 for f in kts:
@@ -51,6 +51,9 @@ perms = [
     ('android.permission.FOREGROUND_SERVICE_DATA_SYNC', ''),  # V1.6.0: YouTube download shows a foreground progress notification
     ('android.permission.WAKE_LOCK', ''),
     ('android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS', ''),
+    ('android.permission.ACCESS_NETWORK_STATE', ''),  # V1.6.6 Device panel: Wi-Fi / VPN / mobile detection
+    ('android.permission.ACCESS_WIFI_STATE', ''),
+    ('android.permission.ACCESS_FINE_LOCATION', ''),   # V1.6.6: only so Android will reveal the Wi-Fi name; asked only when the person taps Show Wi-Fi name
 ]
 add = ''
 for name, extra in perms:

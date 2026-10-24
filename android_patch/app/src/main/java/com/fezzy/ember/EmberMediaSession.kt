@@ -104,7 +104,7 @@ object EmberMediaSession {
         val openPi = if (open != null) PendingIntent.getActivity(app, 0, open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT) else null
 
         val b = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) Notification.Builder(app, CHANNEL_ID) else Notification.Builder(app)
-        b.setSmallIcon(if (isPlaying) android.R.drawable.ic_media_play else android.R.drawable.ic_media_pause)
+        b.setSmallIcon(R.drawable.ember_notif)
             .setContentTitle(title)
             .setContentText(artist)
             .setOnlyAlertOnce(true)

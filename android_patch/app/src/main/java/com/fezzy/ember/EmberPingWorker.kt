@@ -49,12 +49,12 @@ class EmberPingWorker(appContext: Context, params: WorkerParameters) : Worker(ap
             val openPi = if (open != null) PendingIntent.getActivity(ctx, 888, open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT) else null
             // Lock screen shows only a generic line; the real text appears once the phone is unlocked.
             val publicV = NotificationCompat.Builder(ctx, EMBER_CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setSmallIcon(R.drawable.ember_notif)
                 .setContentTitle("Ember")
                 .setContentText("Ember pinged you")
                 .build()
             val n = NotificationCompat.Builder(ctx, EMBER_CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setSmallIcon(R.drawable.ember_notif)
                 .setContentTitle("Ember")
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))

@@ -66,7 +66,7 @@ const srv = http.createServer((q, r) => {
   const names = S => pg.evaluate(S => window.EmberAgentAddon.toolsFor(S).map(t => t.name).join(','), S);
   ok('no switch on = no agent tools', await names({}) == '');
   ok('Web Search on = web_search only', await names({ agentAddon: true }) == 'web_search');
-  ok('YouTube on = youtube_search + youtube_download', await names({ youtubeAddon: true }) == 'youtube_search,youtube_download');
+  ok('YouTube on = youtube_search + youtube_download', await names({ youtubeAddon: true }) == 'youtube_search,youtube_download,playlist_list,playlist_download');
   ok('Vision on = see_image only', await names({ visionAddon: true }) == 'see_image');
 
   // ---------- 2. Tavily ----------

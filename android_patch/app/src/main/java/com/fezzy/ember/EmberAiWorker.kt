@@ -144,10 +144,10 @@ class EmberAiWorker(appContext: Context, params: WorkerParameters) : Worker(appC
             .addRemoteInput(remoteInput).setAllowGeneratedReplies(true).build()
         val open = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
         val openPi = if (open != null) PendingIntent.getActivity(ctx, id, open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT) else null
-        val publicV = NotificationCompat.Builder(ctx, EMBER_CHANNEL_ID).setSmallIcon(android.R.drawable.ic_dialog_info)
+        val publicV = NotificationCompat.Builder(ctx, EMBER_CHANNEL_ID).setSmallIcon(R.drawable.ember_notif)
             .setContentTitle("Ember").setContentText("New reply").build()
         val n = NotificationCompat.Builder(ctx, EMBER_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ember_notif)
             .setContentTitle("Ember")
             .setContentText(text.take(120))
             .setStyle(NotificationCompat.BigTextStyle().bigText(text.take(600)))

@@ -1,6 +1,39 @@
 # Changelog
 
+## V1.6.6
+- **Fix (V1.6.5 bug):** the saved accent colour (old default pink) was overriding the new cyan at startup. New default accent is cyan; anyone still on the old pink or purple default moves to it once. Text on the accent now switches between dark and white automatically.
+- New 📟 Device panel (pill above the message box): network (Wi-Fi name, signal, VPN on/off and, with a VPN on, the exit area), AI details (engine mode, key health per provider, persona, add-ons, chat and memory counts), storage and RAM with colour bars, uptime, battery integrity (health, temperature, voltage, cycles, a 0-100 guide score).
+- Rotating Juice WRLD interview quotes (not lyrics, credited, under 15 words each) on top, plus "Add your own quote".
+- Privacy tab (what is stored, what leaves the phone, permissions, your control) and About tab (disclaimers, crisis numbers, music/copyright, trademarks, no-warranty) with a credits grid: YouTube, AI, web scraping, GitHub, GitLab, Spotify.
+- Android: new EmberDevicePlugin.kt (read-only). New permissions ACCESS_NETWORK_STATE, ACCESS_WIFI_STATE and ACCESS_FINE_LOCATION (location is requested only when the person taps Show Wi-Fi name; Android needs it to reveal a Wi-Fi name). Needs a new APK build.
+
+## V1.6.5
+- New colour system: deep #0a0a10 background, cyan #00e5ff primary, purple glow, blue info, green good, amber warning, red #ff3b30 danger. Delete/Clear buttons are red; Save/active are cyan; cards are colour-coded by Settings tab.
+- Glowing borders on the playing music card, widget and the latest chat bubble.
+- Permission/system rows: coloured icons and green / amber / red status pills.
+- Music panel: album artwork, Artist/Album/Year/Genre chips, scrollable About section (song + artist), timeline bar pinned at the bottom.
+- ember_player.js: metadata fetcher (MP3 tags + embedded cover first, then iTunes for art/album/year, Wikipedia and TheAudioDB for the About text). Cached on the phone.
+- get_current_track now returns album, year, genre, artworkUrl and about so Ember can talk about the song and artist.
+
 *For everyone.* Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## V1.6.4
+- Browser: the globe button opens a Browser (search or paste a link, clean reader view, tap links to keep browsing, back/forward/reload, saved sites). Send a page to Ember or save it to Documents.
+- Documents: a real library on the phone (add text files, make notes, save pages). The AI's list/search/read/summarize tools now have it behind them; the bridge they called did not exist before.
+- Left prompt box: fixed the save crash (the input shared the header's id), then added search, tags, pin, edit, copy, export/import and a starter pack.
+- AI knowledge: the system prompt now carries a live map of the app (what is ON/OFF and the exact switch), a find_in_app tool (chats, prompts, sites, memory, notepad, documents, masked keys), and a log of actions it already took so it stops forgetting them. Tools no longer switch off for ordinary distress, only for a crisis.
+
+## V1.6.3
+- Termux: the top-right Termux button now opens the existing Termux (Hacking) tab in Settings, where the mode switch and Ask Termux live.
+- Engine label: every reply shows the engine that answered it (ms stays behind the Show engine switch), and the header chip of the engine that answered last is marked.
+- Notifications: every Ember notification (replies, pings, downloads, media, keep-alive) uses the Ember flame as its status-bar icon. Needs an APK rebuild.
+- Permissions: Settings shows the real notification status and remembers the microphone answer instead of "tap to check".
+
+## V1.6.2
+- Safety: ordinary distress (levels 1-2) no longer shows a hotline card or injects numbers. Ember stays present and lifts instead of pitying. Tools stay on. Only a plan, means or goodbye (level 3) switches to crisis mode with 112 and SADAG.
+- Chat: live download progress cards (title, percent bar) and a "saved to Music/Ember" message when each track lands. The AI is told the last result.
+- SoundCloud: track download, set/playlist listing (playlist_list), whole-playlist download (playlist_download), SoundCloud search. YouTube playlists use the same tools.
+- Native: EmberYoutubePlugin gains playlist, downloadPlaylist, per-job status. DownloadWorker picks the service and saves per-job progress. Not compiled on a phone yet.
 
 ## [V1.6.0] - 2026-10-24
 

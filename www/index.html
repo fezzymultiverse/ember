@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <title>Ember</title>
-<meta name="theme-color" content="#07060b">
+<meta name="theme-color" content="#0a0a10">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="ember-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -12,7 +12,7 @@
 <header>
 <button class="hb" id="bHist" aria-label="Chat history">☰</button>
 <div class="who"><b id="pName">Ember</b><div id="engs" class="engs"></div></div>
-<button id="bTermux" title="Toggle Termux Mode" aria-label="Toggle Termux Mode">💻 Termux Mode</button>
+<button id="bTermux" title="Open the Termux tab" aria-label="Open the Termux tab">💻 Termux</button>
 <button class="hb" id="bSet" aria-label="Settings">⚙</button>
 </header>
 <div id="fBadge" class="fbadge hidden">Free Mode: no key needed. Replies can be slower.</div>
@@ -24,10 +24,10 @@
 <button class="btn" id="bSpark2">✨ Start something</button>
 <div id="noKey" class="card hidden"><b>Running on Free Mode.</b><p>No key needed. Optional faster engines are in Settings.</p><button class="btn g" id="bGoKeys">Open Keys</button></div>
 </div>
-<div id="mw" class="mw hidden"><button id="mwOpen" class="mwt" aria-label="Open the music panel"><b id="mwTitle">—</b><small id="mwSub"></small></button><button id="mwPlay" aria-label="Play or pause">▶</button><button id="mwNext" aria-label="Next">⏭</button></div>
+<div id="mw" class="mw hidden"><img id="mwArt" class="mwart hidden" alt=""><button id="mwOpen" class="mwt" aria-label="Open the music panel"><b id="mwTitle">—</b><small id="mwSub"></small></button><button id="mwPlay" aria-label="Play or pause">▶</button><button id="mwNext" aria-label="Next">⏭</button></div>
 <footer class="comp">
 <div class="modes" id="modes"><button data-m="chill">Chill</button><button data-m="sharp">Sharp</button><button data-m="deep">Deep</button></div>
-<div class="tools"><button id="bMusic">🎵 Music</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
+<div class="tools"><button id="bMusic">🎵 Music</button><button id="bDevice">📟 Device</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
 <div class="row"><button id="bGlobe" aria-label="Read a web page" title="Read a web page">🌐</button><button id="bMic" aria-label="Speak" aria-pressed="false" title="Speak">🎤</button><textarea id="inp" rows="1" placeholder="Say anything…" enterkeyhint="send"></textarea><button id="bSend" aria-label="Send">➤</button></div>
 </footer>
 </div>
@@ -43,14 +43,38 @@
 <input type="text" id="siteName" placeholder="Name (e.g. GitHub)" autocomplete="off"><input type="text" id="siteUrl" placeholder="https://github.com/you" autocomplete="off" style="margin-top:6px"><button class="btn g" id="siteAdd" style="margin-top:6px">Save site</button></div>
 </div>
 <div class="dpane hidden" id="dp_prompts">
-<p class="hint" style="margin:0">Your own AI prompts. Tap one to put it in the message box.</p>
+<input type="text" id="pQ" placeholder="Search prompts…" autocomplete="off">
+<div id="pTags" class="ptags"></div>
 <div id="plist"></div>
-<input type="text" id="pName" placeholder="Name (e.g. Explain like I'm new)" autocomplete="off" maxlength="40">
-<textarea id="pText" rows="3" placeholder="The prompt text…" maxlength="1200" style="margin-top:6px"></textarea>
-<button class="btn g" id="pAdd" style="margin-top:6px">Save prompt</button>
+<div id="pForm">
+<input type="text" id="pmName" placeholder="Name (e.g. Fix this script)" autocomplete="off" maxlength="40">
+<input type="text" id="pmTags" placeholder="Tags, comma separated (e.g. debug, termux)" autocomplete="off" maxlength="80" list="pTagList"><datalist id="pTagList"></datalist>
+<textarea id="pText" rows="4" placeholder="The prompt text…" maxlength="2000"></textarea>
+<div class="prow"><button class="btn g" id="pAdd">Save prompt</button><button class="btn g hidden" id="pCancel">Cancel</button></div>
+</div>
+<div class="prow"><button class="btn g" id="pExport">Export</button><button class="btn g" id="pImportBtn">Import</button><button class="btn g hidden" id="pStarter">Starter pack</button></div>
+<textarea id="pIO" class="hidden" rows="4" placeholder="Paste exported prompts here, then tap Import now"></textarea><button class="btn g hidden" id="pImportGo">Import now</button>
 </div></aside>
 <div id="scrim"></div>
 
+<section id="browser" class="sheet"><div class="sh"><b>Browser</b><button class="hb" id="brX" aria-label="Close">✕</button></div>
+<div class="stabs" id="brTabs"><button class="stab on" data-bt="web">Browser</button><button class="stab" data-bt="docs">Documents</button></div>
+<div class="brbody" id="brWeb">
+<div class="brbar"><button class="hb" id="brBack" aria-label="Back">←</button><button class="hb" id="brFwd" aria-label="Forward">→</button><button class="hb" id="brReload" aria-label="Reload">⟳</button><input type="text" id="brUrl" placeholder="Search or paste a link" autocomplete="off" autocapitalize="off" enterkeyhint="go"><button class="hb" id="brGo" aria-label="Go">Go</button></div>
+<div id="brSites" class="ptags"></div>
+<div id="brNote" class="hint"></div>
+<div id="brView" class="brview"><p class="hint">Search the web or paste a link. Pages open as clean text; tap a link to keep browsing. Send any page to Ember, or save it to Documents.</p></div>
+<div class="bract"><input type="text" id="brAsk" placeholder="Ask Ember about this page (optional)" autocomplete="off"><div class="brbtns"><button class="btn" id="brSend">Ask Ember</button><button class="btn g" id="brSave">Save to Documents</button><button class="btn g" id="brExt">Open externally</button></div></div>
+</div>
+<div class="brbody hidden" id="brDocs">
+<div id="dcList"><div class="brbar"><input type="text" id="dcQ" placeholder="Search documents…" autocomplete="off"><button class="hb" id="dcAdd">＋ Files</button><button class="hb" id="dcNew">＋ Note</button></div>
+<input type="file" id="dcFile" class="hidden" multiple>
+<div id="dcItems"></div></div>
+<div id="dcView" class="hidden"><input type="text" id="dcName" maxlength="120" placeholder="Name"><textarea id="dcText" rows="14" placeholder="Document text"></textarea>
+<input type="text" id="dcAskQ" placeholder="Ask Ember about this document (optional)" autocomplete="off">
+<div class="brbtns"><button class="btn" id="dcAsk">Ask Ember</button><button class="btn g" id="dcSave">Save</button><button class="btn g" id="dcBack">Back</button></div></div>
+</div>
+</section>
 <section id="settings" class="sheet"><div class="sh"><b>Settings</b><button class="hb" id="bSx">✕</button></div>
 <div class="stabs" id="stabs">
 <button class="stab on" data-st="general">General</button>
@@ -65,6 +89,15 @@
 <div class="cr"><span>Enable Free Mode (No Keys Needed)</span><div class="sw" id="swFree"></div></div>
 <p class="hint">Chats go through Pollinations.ai, a free third-party service, so your messages leave this phone. It is slower, rate-limited for anonymous use, and has no uptime promise. Keys stay on this phone. Free Mode is never used for background memory work. It is not a crisis line: if you are in danger, contact local emergency services or a crisis line now.</p></div>
 
+<div class="card" data-tab="keys"><div class="ct">Which engine answers</div>
+<label class="lb">Engine</label>
+<select id="engPin"><option value="">Auto (fastest working key)</option></select>
+<p class="hint">Auto tries Groq first because it's the fastest, then falls through the rest. Pin one to always try it first — it still falls back if that engine is down or rate-limited.</p></div>
+
+<div class="card" data-tab="keys"><div class="ct">Get a key</div>
+<div class="btnrow" id="getKeyRow" style="flex-wrap:wrap"></div>
+<p class="hint">Opens the provider's signup page in your browser (these sites block being shown inside Ember). Come back and paste the key below.</p></div>
+
 <div class="card" data-tab="keys"><div class="ct">Optional faster engines · keys (Groq, Mistral, Gemini, plus OpenRouter, Cohere, HuggingFace as Prototypes)</div>
 <p class="hint">Not needed for Free Mode. Paste your notes if you have keys. Only API keys are pulled out and checked, the notes themselves are never saved. Keys stay on this phone.</p>
 <textarea id="notes" class="pad" placeholder="Paste notes here…" spellcheck="false" autocomplete="off"></textarea>
@@ -75,6 +108,11 @@
 <div class="ct" style="margin-top:14px">Add one by hand</div>
 <div class="btnrow"><select id="kProv"><option value="groq">Groq</option><option value="mistral">Mistral</option><option value="gemini">Gemini</option><option value="openrouter">OpenRouter (Prototype)</option><option value="cohere">Cohere (Prototype)</option><option value="huggingface">HuggingFace (Prototype)</option></select><input type="password" id="kIn" placeholder="Paste a key" autocomplete="off" spellcheck="false"><button class="btn" id="bKAdd" style="width:auto;padding:0 16px">Add</button></div>
 <p class="hint">More than one key per engine is fine. When one is rate-limited, the next one takes over, then the next engine.</p></div>
+
+<div class="card" data-tab="keys"><div class="ct">Notepad · paste anything, pull the keys out</div>
+<textarea id="padText" class="pad" placeholder="Paste a note, a doc dump, anything with keys buried in it…" spellcheck="false"></textarea>
+<div class="btnrow"><button class="btn" id="padSave">Save note</button><button class="btn g" id="padExtract">Extract keys</button><button class="btn g danger" id="padClear">Clear</button></div>
+<p class="hint" id="padStatus"></p></div>
 
 <div class="card" data-tab="general"><div class="ct">About you</div>
 <label class="lb">Your name</label><input type="text" id="sName" placeholder="What should it call you?">
@@ -99,7 +137,13 @@
 
 <div class="card" data-tab="hacking"><div class="ct">Termux Mode <span class="txbadge">HACKER</span></div>
 <div class="cr"><span>Enable Termux Mode (Pen-Test Persona)</span><div class="sw" id="swTermux"></div></div>
-<p class="hint">When ON, Ember acts as a senior penetration tester. Real Termux commands, OPSEC explanations, and Hacker Lessons woven into replies. Lesson of the Day drops on your first message each session. Toggle the 💻 Termux Mode button in the header for quick on/off.</p></div>
+<p class="hint">When ON, Ember acts as a senior penetration tester. Real Termux commands, OPSEC explanations, and Hacker Lessons woven into replies. Lesson of the Day drops on your first message each session. Toggle the 💻 Termux Mode button in the header for quick on/off. OFF means OFF now — mentioning the word "termux" in normal chat no longer flips this on by itself.</p></div>
+
+<div class="card" data-tab="hacking"><div class="ct">Ask Termux</div>
+<p class="hint">A straight answer about Termux, Linux, networking, or anything else — doesn't touch your current chat or its memory.</p>
+<textarea id="txQ" class="pad" style="min-height:70px" placeholder="e.g. how do I find what's using port 8080?" spellcheck="false"></textarea>
+<button class="btn" id="txAsk">Ask</button>
+<div class="wout hidden" id="txOut"></div></div>
 
 <div class="card" data-tab="general"><div class="ct">Memory &amp; Context</div>
 <label class="lb">Context window</label>
@@ -117,7 +161,7 @@
 
 <div class="card" data-tab="permissions"><div class="ct">Permissions</div>
 <p class="hint" id="permStatus">Checking…</p>
-<div class="prow"><span>Notifications</span><span class="pstatus" id="pstNotify">—</span><button class="btn g" id="bPermNotify">Request</button></div>
+<div class="prow"><span>Notifications</span><span class="pstatus" id="pstNotify">—</span><button class="btn g" id="bPermNotify">Request</button><button class="btn g" id="bNotifyTest" style="width:auto;padding:0 12px;margin-left:6px">Test</button></div>
 <div class="prow"><span>Microphone</span><span class="pstatus" id="pstMic">—</span><button class="btn g" id="bPermMic">Request</button></div>
 <div class="prow"><span>Keep screen awake (wake lock)</span><span class="pstatus" id="pstWake">—</span><div class="sw" id="swWake"></div></div>
 <div class="prow"><span>Background keep-alive (stops restarts)</span><span class="pstatus" id="pstKeep">—</span><div class="sw" id="swKeep"></div></div>
@@ -138,7 +182,9 @@
 
 <div class="card" data-tab="permissions"><div class="ct">Voice</div>
 <div class="cr"><span>Read replies aloud automatically</span><div class="sw" id="swRead"></div></div>
-<p class="hint" id="ttsNote">Every reply also has a 🔊 button to read just that one. Voice input (🎤) uses the phone's speech service (Google, on most Android phones), which can send the audio to Google. It needs microphone permission. In the installed app it uses the native Android recogniser and native text-to-speech; in a browser it uses the browser's own.</p></div>
+<p class="hint" id="ttsNote">Every reply also has a 🔊 button to read just that one. Voice input (🎤) uses the phone's speech service (Google, on most Android phones), which can send the audio to Google. It needs microphone permission. In the installed app it uses the native Android recogniser and native text-to-speech; in a browser it uses the browser's own.</p>
+<label class="lb">Voice</label><select id="sVoice"><option value="">Default</option></select>
+<p class="hint">First read-aloud of a session can take a few seconds while the engine spins up — it's warming in the background on app open now, so it should be instant after that.</p></div>
 
 <div class="card" data-tab="general"><div class="ct">Look</div>
 <div class="cr"><span>Show which engine answered</span><div class="sw" id="swEng"></div></div>
@@ -178,7 +224,9 @@
 <div class="cr"><span>Free reader · plain text, no key needed</span><div class="sw on" id="swReader"></div></div>
 <p class="hint">The Free reader needs no key and is tried first: it fetches the page straight from this phone, then falls back to the free r.jina.ai and allorigins readers (those two see the link you read). Providers are then tried in this order, skipping any without a key: Firecrawl, Browserless, ScraperAPI, ScraperBee, Sting, ZenRows, SerpApi (search snippets only), Octoparse (not supported yet). Page text is sent to whichever chat engine answers, including Free Mode. Keys stay on this phone and are not in backups.</p>
 <div class="wtabs"><button class="wtab on" data-t="keys">Keys</button><button class="wtab" data-t="health">Health</button><button class="wtab" data-t="test">Test</button></div>
-<div class="wpane" id="wp_keys"><p class="hint" id="wkStatus"></p><label class="lb">Firecrawl</label><input type="password" id="wk_firecrawl" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Browserless</label><input type="password" id="wk_browserless" placeholder="Token" autocomplete="off" spellcheck="false"><label class="lb">ScraperAPI</label><input type="password" id="wk_scraperapi" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">ScraperBee</label><input type="password" id="wk_scraperbee" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Sting</label><input type="password" id="wk_sting" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">ZenRows</label><input type="password" id="wk_zenrows" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">SerpApi (stored only)</label><input type="password" id="wk_serpapi" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Octoparse (stored only)</label><input type="password" id="wk_octoparse" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Sting endpoint (https, use {key} and {url} as placeholders)</label><input type="text" id="wk_stingEp" placeholder="https://…?key={key}&amp;url={url}" autocomplete="off" spellcheck="false"></div>
+<div class="wpane" id="wp_keys"><p class="hint" id="wkStatus"></p>
+<div class="ct">Get a key</div><div class="btnrow" id="getKeyRowScrape" style="flex-wrap:wrap;margin-bottom:10px"></div>
+<label class="lb">Firecrawl</label><input type="password" id="wk_firecrawl" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Browserless</label><input type="password" id="wk_browserless" placeholder="Token" autocomplete="off" spellcheck="false"><label class="lb">ScraperAPI</label><input type="password" id="wk_scraperapi" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">ScraperBee</label><input type="password" id="wk_scraperbee" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Sting</label><input type="password" id="wk_sting" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">ZenRows</label><input type="password" id="wk_zenrows" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">SerpApi (stored only)</label><input type="password" id="wk_serpapi" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Octoparse (stored only)</label><input type="password" id="wk_octoparse" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Sting endpoint (https, use {key} and {url} as placeholders)</label><input type="text" id="wk_stingEp" placeholder="https://…?key={key}&amp;url={url}" autocomplete="off" spellcheck="false"></div>
 <div class="wpane hidden" id="wp_health"><p class="hint">Local checks are instant. Provider checks fetch example.com once per provider, so each uses a small amount of that provider's credit.</p>
 <div class="ct" style="margin-top:8px">This phone</div><div id="hLocal"></div>
 <div class="ct" style="margin-top:12px">Providers</div><div id="hProv"></div>
@@ -195,16 +243,17 @@
 <div class="btnrow"><button class="btn" id="bExp">Export backup</button><button class="btn g" id="bImp">Import backup</button></div>
 <input type="file" id="fImp" accept="application/json,.json" hidden>
 <button class="btn g danger" id="bWipe" style="margin-top:10px">Delete everything</button>
-<p class="hint" id="ver">Ember V1.6.0 · S.O.I. × Bojack 999</p></div>
+<p class="hint" id="ver">Ember V1.6.4 · S.O.I. × Bojack 999</p></div>
 </div></section>
 
 <section id="music" class="sheet"><div class="sh"><b>Music</b><button class="hb" id="bMx" aria-label="Close music">✕</button></div>
 <div class="sb">
-<div class="card np"><div class="npt" id="npTitle">Nothing playing</div><div class="nps" id="npSub">Upload music or connect Spotify.</div><div class="npsrc" id="npSrc"></div>
-<input type="range" id="npSeek" min="0" max="1000" value="0" aria-label="Seek"><div class="nptm"><span id="npPos">0:00</span><span id="npDur">0:00</span></div>
+<div class="card np" id="npCard"><div class="npart"><img id="npArt" class="hidden" alt="Album artwork"><div id="npArtPh" class="npph">🎵</div></div>
+<div class="npt" id="npTitle">Nothing playing</div><div class="nps" id="npSub">Upload music or connect Spotify.</div><div class="npsrc" id="npSrc"></div><div class="npchips" id="npChips"></div>
 <div class="npc"><button id="npShuf" aria-label="Shuffle" title="Shuffle (library)">🔀</button><button id="npPrev" aria-label="Previous">⏮</button><button id="npPlay" class="big" aria-label="Play or pause">▶</button><button id="npNext" aria-label="Next">⏭</button><button id="npRep" aria-label="Repeat" title="Repeat (library)">🔁</button></div>
 <div class="npv"><span>🔈</span><input type="range" id="npVol" min="0" max="100" value="100" aria-label="Volume"></div>
 <p class="hint" id="npErr"></p></div>
+<div class="card about hidden" id="npAbout"><div class="ct">About</div><div class="abody" id="npAboutBody"></div></div>
 <div class="mtabs"><button class="mtab on" data-m="lib">Library</button><button class="mtab" data-m="sp">Spotify</button><button class="mtab" data-m="ai">Ember</button></div>
 <div class="mpane" id="mp_lib">
 <div class="btnrow"><button class="btn" id="mUp">＋ Upload music</button><button class="btn g" id="mScan">Scan phone</button></div>
@@ -231,8 +280,99 @@
 <div class="ct" style="margin:10px 0 4px">Ember cannot</div><ul class="cl" id="mCant"></ul>
 <div class="ct" style="margin:10px 0 4px">What Ember did</div><div id="mLog"></div>
 </div>
-</div></section>
+</div><div class="mbar"><span id="npPos">0:00</span><input type="range" id="npSeek" min="0" max="1000" value="0" aria-label="Timeline"><span id="npDur">0:00</span></div>
+</section>
 
+<section id="device" class="sheet"><div class="sh"><b>📟 Device</b><button class="hb" id="bDvx" aria-label="Close device panel">✕</button></div>
+<div class="qban" id="qBan" role="button" tabindex="0" aria-label="Next quote"><div class="qtxt" id="qTxt">…</div><div class="qsrc" id="qSrc"></div></div>
+<div class="dvtabs"><button class="dvtab on" data-dv="dev">Device</button><button class="dvtab" data-dv="priv">Privacy</button><button class="dvtab" data-dv="about">About</button></div>
+<div class="sb">
+<div class="dvpane" id="dv_dev">
+<div class="card" style="--cc:var(--bl)"><div class="ct">🌐 Network</div><div id="dvNet"><p class="hint">Reading…</p></div></div>
+<div class="card" style="--cc:var(--pu)"><div class="ct">🧠 AI details</div><div id="dvAi"></div></div>
+<div class="card" style="--cc:var(--ac)"><div class="ct">💾 Storage and RAM</div><div id="dvMem"></div></div>
+<div class="card" style="--cc:var(--am)"><div class="ct">⏱ Uptime</div><div id="dvUp"></div></div>
+<div class="card" style="--cc:var(--gr)"><div class="ct">🔋 Battery integrity</div><div id="dvBat"></div></div>
+<div class="btnrow"><button class="btn" id="dvRefresh">⟳ Refresh</button></div>
+<p class="hint">Everything on this tab is read from the phone and shown only here. Nothing in it is sent anywhere, except the one optional public-IP area lookup described in the Privacy tab.</p>
+</div>
+<div class="dvpane hidden legal" id="dv_priv">
+<div class="card" style="--cc:var(--ac)"><div class="ct">Privacy, in plain words</div>
+<h3>The short version</h3>
+<p>Ember has <b>no account, no server, no ads and no analytics of its own</b>. Your chats, memory, settings, keys and music live on this phone. The maintainer does not receive them. What does leave the phone is listed below, and it only happens when a feature you turned on needs it.</p>
+<div class="warn"><p><b>Be aware:</b> the AI services you use (Groq, Mistral, Gemini, or the free Pollinations service) <b>do</b> receive what you send them, and they have their own rules. Do not type anything into any AI service that you would not be comfortable with that service holding.</p></div>
+<h3>What is stored on this phone</h3>
+<ul><li><b>Chats and memory</b> (IndexedDB): every message you and Ember sent, chat titles and summaries, and Core Memory (facts and threads the AI learned from non-private chats).</li>
+<li><b>Settings and keys</b> (localStorage): your name and "About you" text, persona, switches, and any API keys you pasted (Groq, Mistral, Gemini, Tavily, scraper keys). <b>Keys are stored unencrypted</b> in the app's own storage.</li>
+<li><b>Music</b>: songs you uploaded (a private copy inside Ember), playlists, and a small cache of song info (artwork link, album, year, short bio text) so lookups are not repeated.</li>
+<li><b>Device panel</b>: your own added quotes. The live readings are not saved.</li></ul>
+<h3>What can leave the phone</h3>
+<table><tr><th>Feature</th><th>What is sent</th><th>To</th></tr>
+<tr><td>Every chat reply</td><td>System prompt, your "About you" text, memory facts, persona text and the most recent messages</td><td>The engine that answers: Groq, Mistral or Gemini (your key), or Pollinations (Free Mode)</td></tr>
+<tr><td>Free Mode</td><td>The same chat content, no key. Message text can appear in the request address</td><td>text.pollinations.ai, a free third party with no uptime or privacy promise this project can vouch for</td></tr>
+<tr><td>Memory, titles, summaries</td><td>Recent or older messages</td><td>A key-based engine only. Never Free Mode</td></tr>
+<tr><td>Key checks, model lists</td><td>The key, as the provider's credential</td><td>That key's own provider</td></tr>
+<tr><td>Background replies (on by default)</td><td>The request and the keys of the engines to try, held in private app storage until done, then deleted</td><td>The same engines</td></tr>
+<tr><td>Proactive pings (off by default)</td><td>Your Groq key and up to 600 characters of open-thread topics</td><td>Groq</td></tr>
+<tr><td>Web search (off by default)</td><td>The words the AI searches for, plus your key</td><td>Tavily</td></tr>
+<tr><td>Reading or scraping a page</td><td>The page address (and your key for paid scrapers). The page text then goes to the chat engine</td><td>The reader or scraper you chose</td></tr>
+<tr><td>YouTube search and saving</td><td>Search and download requests from the phone</td><td>YouTube / Google servers</td></tr>
+<tr><td>Vision (off by default)</td><td>The image link you paste and your question</td><td>Pollinations</td></tr>
+<tr><td>Spotify (optional)</td><td>Sign-in and playback commands</td><td>Spotify</td></tr>
+<tr><td>Song info (artwork, album, year, bio)</td><td>The song title and artist name only. Never audio, files or your library</td><td>Apple iTunes Search, Wikipedia and TheAudioDB</td></tr>
+<tr><td>VPN area lookup</td><td>Your public IP address, which the request reveals by existing</td><td>ipwho.is. Only while a VPN is detected, or when you tap the lookup button</td></tr>
+<tr><td>Device readings (Wi-Fi, RAM, battery…)</td><td>Nothing</td><td>Stays on the phone</td></tr></table>
+<p>Anything you send to a third party is also covered by that party's own terms and retention. This project does not control them.</p>
+<h3>Permissions, and why</h3>
+<ul><li><b>Microphone</b>: voice input. <b>Notifications</b>: reply and music notifications. <b>Music and audio files</b>: scanning and playing songs from the phone. <b>Battery exemption and keep-alive</b>: so Android does not kill the app mid-reply.</li>
+<li><b>Location</b>: asked <b>only</b> if you tap "Show Wi-Fi name". Android refuses to reveal a Wi-Fi network's name without it. Ember never reads where you are, and you can switch the permission off in Android settings at any time.</li>
+<li>Network and Wi-Fi state: to tell whether you are on Wi-Fi, mobile data or a VPN.</li></ul>
+<h3>Never stored, by design</h3>
+<ul><li>A crisis flag: the safety level lives only in memory while the app runs.</li><li>Private chats (🔒): never learned from.</li><li>Chats during a crisis: never learned from.</li><li>The AI is told never to save health details, secrets, passwords or keys into memory. That filter is a net, not a guarantee.</li></ul>
+<h3>Stored anyway, and worth knowing</h3>
+<ul><li>The text of every message is saved, including one that triggered the safety card.</li><li>A chat's first message becomes its title.</li><li><b>Anyone holding the unlocked phone can open Ember and read it.</b> There is no app lock yet.</li><li>A backup file you export contains your whole chat history. Treat it as private. Keys are included only if you tick that box.</li></ul>
+<h3>Your control</h3>
+<ul><li><b>Settings, Your data</b>: export a backup, import one, or <b>Delete everything</b> (chats, memory, settings, keys). It cannot touch files you already exported or anything a service kept.</li><li>Turn add-ons off (music control, documents, web, YouTube, vision, pings) to stop their traffic.</li><li>Mark a chat 🔒 Private so nothing is learned from it.</li><li>Remove a single song or playlist in the Music panel.</li></ul>
+<h3>Laws and your rights</h3>
+<p>Because the maintainer does not receive or hold your data, you are the controller of what is on your phone. Under POPIA (South Africa), GDPR and similar laws, requests about data held by an AI service go to that service. If you are under 18, use Ember together with a trusted adult.</p>
+<h3>Changes</h3>
+<p>This page describes V1.6.6. When a version changes what leaves the phone, this page and the privacy document in the project are updated in the same release.</p></div>
+</div>
+<div class="dvpane hidden legal" id="dv_about">
+<div class="card" style="--cc:var(--ac)"><div class="ct">About Ember</div>
+<p>Ember is an AI companion app that runs on your phone. It is software, not a person, and it does not have feelings or lived experience, even when it sounds like it does. <b>Version 1.6.6.</b></p>
+<h3>Important disclaimer</h3>
+<div class="crit"><p><b>Ember is not a therapist, doctor, lawyer or financial adviser, and it is not a crisis service.</b> It can support you and talk things through. It cannot diagnose, treat, monitor or rescue anyone, and it does not contact anyone for you.</p>
+<p><b>If you are in danger or thinking about ending your life:</b> call <a href="tel:112">112</a> now, or SADAG <a href="tel:0800567567">0800 567 567</a>, or Lifeline South Africa <a href="tel:0861322322">0861 322 322</a>, or go to someone near you. Outside South Africa, use your local emergency number.</p></div>
+<ul><li><b>AI makes mistakes.</b> Replies can be wrong, out of date, biased or confidently invented. Check anything that matters (health, money, law, safety) with a qualified person.</li>
+<li><b>The safety check will miss things.</b> It looks for warning signs in your words; it cannot see tone, context or what you do not say.</li>
+<li><b>You are responsible for what you do</b> with Ember's answers, and for anything you ask it to run, save, download or send.</li></ul>
+<h3>Music, downloads and copyright</h3>
+<p>Ember plays files you add and, if you connect it, controls your own Spotify. Saving audio from YouTube or elsewhere is <b>your responsibility</b>: only save what you have the right to keep, and follow the service's terms and your local copyright law. Song info is looked up from public sources and may be wrong or missing.</p>
+<h3>Quotes</h3>
+<p>The rotating quotes at the top are short excerpts from public interviews with Juice WRLD, each credited to its publication. They are <b>not song lyrics</b>. Ember is an independent project and is not affiliated with, sponsored or endorsed by Juice WRLD's estate, his labels, or the publications named. Quotes can lose context when shortened. If you are a rights holder and want one removed, tell the maintainer and it will go.</p>
+<h3>Logos and trademarks</h3>
+<p>YouTube, GitHub, GitLab, Spotify and the other names and marks belong to their owners. The simplified marks below only say which services Ember works with. No partnership or endorsement is implied.</p>
+<h3>No warranty</h3>
+<p>Ember is provided <b>as is</b>, with no promise that it is accurate, always available, or fit for any purpose. To the extent the law allows, the maintainer is not liable for loss or harm from using it. Nothing here limits rights you cannot lawfully give up. All rights in the app are reserved by the maintainer unless a licence says otherwise.</p>
+</div>
+<div class="card" style="--cc:var(--pu)"><div class="ct">Built with · credits</div>
+<div class="logos">
+<div class="logo"><svg viewBox="0 0 48 48" role="img" aria-label="YouTube"><rect x="2" y="9" width="44" height="30" rx="9" fill="#ff0033"/><path d="M19 17v14l12-7z" fill="#fff"/></svg><b>YouTube</b><small>Audio search and saving, via NewPipe Extractor</small></div>
+<div class="logo"><svg viewBox="0 0 48 48" role="img" aria-label="AI"><defs><linearGradient id="gAi" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00e5ff"/><stop offset="1" stop-color="#9d00ff"/></linearGradient></defs><path d="M22 4l4.4 13.6L40 22l-13.6 4.4L22 40l-4.4-13.6L4 22l13.6-4.4z" fill="url(#gAi)"/><path d="M38 28l1.8 5.2L45 35l-5.2 1.8L38 42l-1.8-5.2L31 35l5.2-1.8z" fill="#9d00ff"/></svg><b>AI engines</b><small>Groq, Mistral, Gemini, Pollinations</small></div>
+<div class="logo"><svg viewBox="0 0 48 48" role="img" aria-label="Web scraping"><g fill="none" stroke="#00e5ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M24 3v42M3 24h42M9 9l30 30M39 9L9 39"/><polygon points="24,11 33,15 37,24 33,33 24,37 15,33 11,24 15,15"/><polygon points="24,18 29,20 31,24 29,28 24,30 19,28 17,24 19,20"/></g><circle cx="24" cy="24" r="3" fill="#9d00ff"/></svg><b>Web scraping</b><small>Reader, Tavily search, Firecrawl, Browserless and friends</small></div>
+<div class="logo"><svg viewBox="0 0 24 24" role="img" aria-label="GitHub"><path fill="#f2f2fc" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg><b>GitHub</b><small>Source hosting and Actions builds</small></div>
+<div class="logo"><svg viewBox="0 0 48 48" role="img" aria-label="GitLab"><path d="M24 43L16 22h16z" fill="#e24329"/><path d="M24 43L4 28l12-6z" fill="#fc6d26"/><path d="M24 43l20-15-12-6z" fill="#fc6d26"/><path d="M4 28L9 8l7 14z" fill="#fca326"/><path d="M44 28L39 8l-7 14z" fill="#fca326"/></svg><b>GitLab</b><small>CI builds for the Android app</small></div>
+<div class="logo"><svg viewBox="0 0 48 48" role="img" aria-label="Spotify"><circle cx="24" cy="24" r="21" fill="#1ed760"/><g fill="none" stroke="#0a0a10" stroke-linecap="round"><path d="M11 18c9-3 20-2 27 2" stroke-width="3.6"/><path d="M12.5 25c8-2.5 17-1.5 23 2" stroke-width="3.1"/><path d="M14 31.5c6.5-2 13-1 18 1.8" stroke-width="2.6"/></g></svg><b>Spotify</b><small>Optional playback control (your own account)</small></div>
+</div>
+<p class="hint">Also: Capacitor (the Android shell), NewPipe Extractor (YouTube reading, see the licence notes in the project), Apple iTunes Search, Wikipedia and TheAudioDB (song info), ipwho.is (VPN area). Built by Fezzy, one phone, rootless Termux.</p></div>
+<div class="card" style="--cc:var(--am)"><div class="ct">Quote credits</div>
+<p class="hint">Rotating quotes come from: MTV TRL (2018, via TIDAL), Interview Magazine, Chicago Tribune (2018, via Legacy.com), Billboard, Rolling Stone ("The First Time") and Clash. Short excerpts only, credited on screen.</p></div>
+<div class="card" style="--cc:var(--ac)"><div class="ct">Add your own quote</div>
+<input type="text" id="qNew" maxlength="200" placeholder="A quote that hits (no song lyrics)" autocomplete="off"><input type="text" id="qNewSrc" maxlength="80" placeholder="Who said it / where (optional)" autocomplete="off" style="margin-top:6px"><button class="btn" id="qAdd" style="margin-top:8px">Add to rotation</button>
+<div class="qlist" id="qMine"></div></div>
+</div>
+</div></section>
 <section id="nine" class="sheet"><div class="sh"><b>999</b><button class="hb" id="bNx">✕</button></div>
 <div class="sb">
 <div class="card"><div class="ct">Quote</div><p id="nineQuote" class="hint">—</p></div>
@@ -243,7 +383,10 @@
 
 <div class="modal" id="dlg"><div class="mc"><h2 id="dT"></h2><p id="dX"></p><input type="text" id="dI" class="hidden"><div class="btnrow" style="margin-top:14px"><button class="btn" id="dOk">OK</button><button class="btn g" id="dNo">Cancel</button></div></div></div>
 <div id="toast"></div>
-<script src="store.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_spotify.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script>
+<script src="store.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_spotify.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script><script src="ember_device.js"></script>
+<script src="ember_docs_lib.js"></script>
+<script src="ember_find.js"></script>
+<script src="ember_browser.js"></script>
 <script>
 // Apply termux-mode-on class to body when S is available, for CSS theming
 (function pollTermux(){

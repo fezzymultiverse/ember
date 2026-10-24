@@ -1,6 +1,7 @@
 package com.fezzy.ember
 
 import androidx.work.Data
+import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.getcapacitor.JSArray
@@ -14,34 +15,69 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.schabi.newpipe.extractor.ServiceList
+import org.schabi.newpipe.extractor.StreamingService
+import org.schabi.newpipe.extractor.playlist.PlaylistInfo
 import org.schabi.newpipe.extractor.search.SearchInfo
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 
-// V1.6.0: YouTube search + audio download for www/ai_agent.js. Uses NewPipe Extractor (no Google API key).
+// V1.6.2: YouTube + SoundCloud search, playlist listing, audio download, per-job progress for the chat.
 @CapacitorPlugin(name = "EmberYoutube")
 class EmberYoutubePlugin : Plugin() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val ytUrl = Regex("^https://(www\\.|m\\.|music\\.)?(youtube\\.com|youtu\\.be)/\\S+$")
+    private val scUrl = Regex("^https://(www\\.|m\\.)?soundcloud\\.com/\\S+$")
+
+    private fun serviceFor(url: String): StreamingService? = when {
+        ytUrl.matches(url) -> ServiceList.YouTube
+        scUrl.matches(url) -> ServiceList.SoundCloud
+        else -> null
+    }
+
+    private fun serviceName(url: String): String = if (scUrl.matches(url)) "soundcloud" else "youtube"
 
     @PluginMethod
     fun search(call: PluginCall) {
         val q = call.getString("query")?.trim().orEmpty()
         if (q.isEmpty()) { call.reject("query required"); return }
         val limit = (call.getInt("limit") ?: 5).coerceIn(1, 10)
+        val soundcloud = call.getString("service") == "soundcloud"
         scope.launch {
             try {
                 EmberYtCore.ensure()
-                // same call chain as Prodigy Syncing's YtFetch.search (known to compile against NewPipe 0.26.x)
-                val qh = ServiceList.YouTube.searchQHFactory.fromQuery(q, listOf("videos"), "")
-                val si = SearchInfo.getInfo(ServiceList.YouTube, qh)
+                val svc: StreamingService = if (soundcloud) ServiceList.SoundCloud else ServiceList.YouTube
+                val filter = if (soundcloud) "tracks" else "videos"
+                val qh = svc.searchQHFactory.fromQuery(q, listOf(filter), "")
+                val si = SearchInfo.getInfo(svc, qh)
                 val arr = JSArray()
-                for (it in si.relatedItems.filterIsInstance<StreamInfoItem>().take(limit)) {
-                    arr.put(JSObject().put("title", it.name).put("url", it.url)
-                        .put("channel", it.uploaderName ?: "").put("durationSec", it.duration))
+                for (item in si.relatedItems.filterIsInstance<StreamInfoItem>().take(limit)) {
+                    arr.put(JSObject().put("title", item.name).put("url", item.url)
+                        .put("channel", item.uploaderName ?: "").put("durationSec", item.duration))
                 }
                 call.resolve(JSObject().put("results", arr))
             } catch (e: Exception) {
-                call.reject(e.message ?: "YouTube search failed")
+                call.reject(e.message ?: "Search failed")
+            }
+        }
+    }
+
+    // Lists the first page of a YouTube playlist or a SoundCloud set/playlist.
+    @PluginMethod
+    fun playlist(call: PluginCall) {
+        val url = call.getString("url")?.trim().orEmpty()
+        val svc = serviceFor(url) ?: run { call.reject("A YouTube or SoundCloud playlist link is required"); return }
+        val limit = (call.getInt("limit") ?: 30).coerceIn(1, 50)
+        scope.launch {
+            try {
+                EmberYtCore.ensure()
+                val pi = PlaylistInfo.getInfo(svc, url)
+                val arr = JSArray()
+                for (item in pi.relatedItems.filterIsInstance<StreamInfoItem>().take(limit)) {
+                    arr.put(JSObject().put("title", item.name).put("url", item.url)
+                        .put("artist", item.uploaderName ?: "").put("durationSec", item.duration))
+                }
+                call.resolve(JSObject().put("title", pi.name ?: "").put("tracks", arr))
+            } catch (e: Exception) {
+                call.reject(e.message ?: "Could not read that playlist")
             }
         }
     }
@@ -49,17 +85,54 @@ class EmberYoutubePlugin : Plugin() {
     @PluginMethod
     fun downloadVideo(call: PluginCall) {
         val url = call.getString("url")?.trim().orEmpty()
-        if (!ytUrl.matches(url)) { call.reject("A youtube.com or youtu.be link is required"); return }
-        val data = Data.Builder().putString("url", url).putString("title", call.getString("title") ?: "").build()
-        val req = OneTimeWorkRequestBuilder<DownloadWorker>().setInputData(data).build()
-        WorkManager.getInstance(context).enqueue(req)
+        if (serviceFor(url) == null) { call.reject("A YouTube or SoundCloud link is required"); return }
+        val req = enqueue(url, call.getString("title") ?: "", serviceName(url))
         call.resolve(JSObject().put("jobId", req.id.toString()))
     }
 
-    // What the last finished download did (kept in app-private SharedPreferences by the worker).
+    // Queues every track of a playlist (up to 30), each as its own download job with its own progress.
+    @PluginMethod
+    fun downloadPlaylist(call: PluginCall) {
+        val url = call.getString("url")?.trim().orEmpty()
+        val svc = serviceFor(url) ?: run { call.reject("A YouTube or SoundCloud playlist link is required"); return }
+        val limit = (call.getInt("limit") ?: 30).coerceIn(1, 30)
+        scope.launch {
+            try {
+                EmberYtCore.ensure()
+                val pi = PlaylistInfo.getInfo(svc, url)
+                val arr = JSArray()
+                for (item in pi.relatedItems.filterIsInstance<StreamInfoItem>().take(limit)) {
+                    val req = enqueue(item.url, item.name ?: "", serviceName(item.url))
+                    arr.put(JSObject().put("jobId", req.id.toString()).put("title", item.name ?: ""))
+                }
+                call.resolve(JSObject().put("title", pi.name ?: "").put("jobs", arr))
+            } catch (e: Exception) {
+                call.reject(e.message ?: "Could not queue that playlist")
+            }
+        }
+    }
+
+    private fun enqueue(url: String, title: String, service: String): OneTimeWorkRequest {
+        val data = Data.Builder().putString("url", url).putString("title", title).putString("service", service).build()
+        val req = OneTimeWorkRequestBuilder<DownloadWorker>().setInputData(data).build()
+        WorkManager.getInstance(context).enqueue(req)
+        return req
+    }
+
+    // With a jobId: that job's live progress (state running/done/failed, pct, title, detail).
+    // Without one: the last finished download (kept for the Settings line).
     @PluginMethod
     fun status(call: PluginCall) {
         val p = context.getSharedPreferences("ember_yt", android.content.Context.MODE_PRIVATE)
+        val job = call.getString("jobId")
+        if (!job.isNullOrEmpty()) {
+            call.resolve(JSObject()
+                .put("state", p.getString("job_${job}_state", "") ?: "")
+                .put("pct", p.getInt("job_${job}_pct", 0))
+                .put("title", p.getString("job_${job}_title", "") ?: "")
+                .put("detail", p.getString("job_${job}_detail", "") ?: ""))
+            return
+        }
         call.resolve(JSObject().put("state", p.getString("state", "") ?: "").put("title", p.getString("title", "") ?: "")
             .put("detail", p.getString("detail", "") ?: "").put("at", p.getLong("at", 0L)))
     }

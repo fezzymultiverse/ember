@@ -83,3 +83,15 @@ When "Keep replying in the background" is on and you leave Ember mid-reply, the 
 - **YouTube:** searching and downloading go from the phone straight to YouTube/Google servers, like any browser or app would. Nothing goes through an Ember server. The last download's title and result are kept in the app's private storage. Saved audio lands in `Music/Ember`, where other music apps can see it.
 - **Vision:** the image link you paste (and your question about it) is sent to Pollinations (`text.pollinations.ai`), which fetches the picture. Leave it off for private images.
 - Search results and image descriptions are passed to whichever chat engine answers (including Free Mode), like other tool results.
+
+## V1.6.5 · Song info lookups
+
+When a song plays in the Music panel, Ember looks up artwork, album, year and a short bio. The song **title and artist name** (never audio, never the library) are sent to `itunes.apple.com` (Apple iTunes Search), `en.wikipedia.org` and `theaudiodb.com`. Embedded tags and cover art in an MP3 are read on the phone. Results are cached in localStorage (`ember_meta`, up to 150 songs). The `get_current_track` tool gives the AI the same artwork link and About text.
+
+## V1.6.6 · Device panel
+
+- Wi-Fi, VPN, RAM, storage, uptime and battery readings are read on the phone and shown on screen only. They are not stored and not sent anywhere.
+- **Public IP area:** while a VPN is detected, or when the person taps "Look up my public IP area", the app requests `https://ipwho.is/`, which sees the phone's public IP address. The result (city, region, country, provider) is shown and kept in memory for 5 minutes.
+- **Permissions added:** `ACCESS_NETWORK_STATE` and `ACCESS_WIFI_STATE` (normal, no prompt) and `ACCESS_FINE_LOCATION`, which is requested only when the person taps "Show Wi-Fi name". Android will not reveal a Wi-Fi network's name without it. Ember does not read the phone's location.
+- Added quotes are stored in localStorage (`ember_quotes`) and are not included in backups.
+- The rotating quotes are short credited excerpts from public interviews, not lyrics.

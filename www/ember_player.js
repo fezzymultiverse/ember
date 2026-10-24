@@ -1,4 +1,4 @@
-// Ember V1.5.7 - ember_player.js: the music engine. No bridge, no other app. Ember plays your music itself.
+// Ember V1.6.5 - ember_player.js: the music engine. No bridge, no other app. Ember plays your music itself.
 // Local library (uploaded files + phone scan) lives in IndexedDB. Spotify is handled by ember_spotify.js and merged here
 // so everything else (panel, widget, the AI) talks to ONE object: window.EmberPlayer.
 'use strict';
@@ -272,9 +272,129 @@ function capabilities() {
   return { can, cannot, library: lib.length, playlists: playlists(), spotify: sp, phoneScan: deviceOk() };
 }
 
+// ---------- V1.6.5 metadata + artwork: embedded tags first, then iTunes (art/album/year), Wikipedia + TheAudioDB (about) ----------
+const META_KEY = 'ember_meta', metaMem = new Map(), metaBusy = new Map(); let embUrl = null;
+const mkey = (a, t) => (String(a || '') + '|' + String(t || '')).toLowerCase().replace(/\s+/g, ' ').trim();
+const norm = s => String(s || '').toLowerCase().replace(/\(.*?\)|\[.*?\]|feat\.?.*$|ft\.?.*$/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+const firstArtist = a => String(a || '').split(/,|&| feat\.? | ft\.? | x /i)[0].trim();
+function metaLoad() { try { return JSON.parse(localStorage.getItem(META_KEY) || '{}') || {}; } catch (e) { return {}; } }
+function metaSave(k, v) {
+  try {
+    const o = metaLoad(); o[k] = Object.assign({}, v, { t: Date.now() }); const ks = Object.keys(o);
+    if (ks.length > 150) ks.sort((a, b) => o[a].t - o[b].t).slice(0, ks.length - 150).forEach(x => delete o[x]);
+    localStorage.setItem(META_KEY, JSON.stringify(o));
+  } catch (e) { /* cache is a bonus */ }
+}
+async function jget(u, ms) {
+  const c = new AbortController(), h = setTimeout(() => c.abort(), ms || 6000);
+  try { const r = await fetch(u, { signal: c.signal }); return r.ok ? await r.json() : null; } catch (e) { return null; } finally { clearTimeout(h); }
+}
+// ID3v2 (mp3): title, artist, album, year and the embedded cover picture
+async function readId3(blob) {
+  try {
+    const h = new Uint8Array(await blob.slice(0, 10).arrayBuffer());
+    if (h[0] !== 0x49 || h[1] !== 0x44 || h[2] !== 0x33) return null;
+    const ver = h[3], size = ((h[6] & 127) << 21) | ((h[7] & 127) << 14) | ((h[8] & 127) << 7) | (h[9] & 127);
+    const buf = new Uint8Array(await blob.slice(10, 10 + Math.min(size, 8 * 1024 * 1024)).arrayBuffer());
+    const dec = (b, enc) => {
+      try {
+        if (enc === 1) { const be = b[0] === 0xFE && b[1] === 0xFF; return new TextDecoder(be ? 'utf-16be' : 'utf-16le').decode(b).replace(/^\uFEFF/, '').replace(/\0/g, '').trim(); }
+        return new TextDecoder(enc === 2 ? 'utf-16be' : enc === 3 ? 'utf-8' : 'iso-8859-1').decode(b).replace(/\0/g, '').trim();
+      } catch (e) { return ''; }
+    };
+    const out = {}; let p = 0;
+    while (p + 10 <= buf.length) {
+      const id = String.fromCharCode(buf[p], buf[p + 1], buf[p + 2], buf[p + 3]); if (!/^[A-Z0-9]{4}$/.test(id)) break;
+      const fl = ver === 4 ? ((buf[p + 4] & 127) << 21) | ((buf[p + 5] & 127) << 14) | ((buf[p + 6] & 127) << 7) | (buf[p + 7] & 127) : ((buf[p + 4] << 24) | (buf[p + 5] << 16) | (buf[p + 6] << 8) | buf[p + 7]) >>> 0;
+      const body = buf.subarray(p + 10, p + 10 + fl); p += 10 + fl; if (!fl) continue;
+      if (id === 'TIT2') out.title = dec(body.subarray(1), body[0]);
+      else if (id === 'TPE1') out.artist = dec(body.subarray(1), body[0]);
+      else if (id === 'TALB') out.album = dec(body.subarray(1), body[0]);
+      else if (id === 'TYER' || id === 'TDRC') out.year = dec(body.subarray(1), body[0]).slice(0, 4);
+      else if (id === 'TCON') out.genre = dec(body.subarray(1), body[0]).replace(/^\(\d+\)/, '');
+      else if (id === 'APIC' && !out.pic) {
+        const enc = body[0]; let i = 1; while (i < body.length && body[i]) i++;
+        const mime = String.fromCharCode.apply(null, body.subarray(1, i)); i += 2;
+        if (enc === 1 || enc === 2) { while (i + 1 < body.length && !(body[i] === 0 && body[i + 1] === 0)) i += 2; i += 2; } else { while (i < body.length && body[i]) i++; i++; }
+        if (body.length - i > 200) out.pic = new Blob([body.subarray(i)], { type: /^image\//.test(mime) ? mime : 'image/jpeg' });
+      }
+    }
+    return out;
+  } catch (e) { return null; }
+}
+async function wiki(q, must) {
+  const r = await jget('https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&prop=extracts&exintro=1&explaintext=1&exchars=1100&generator=search&gsrlimit=1&gsrsearch=' + encodeURIComponent(q));
+  const pg = r && r.query && r.query.pages && Object.values(r.query.pages)[0];
+  if (!pg || !pg.extract || pg.extract.length < 60) return '';
+  const hay = norm(pg.title + ' ' + pg.extract); if (must && !hay.includes(norm(must))) return '';
+  let t = pg.extract.replace(/\s+/g, ' ').trim();
+  if (t.length > 1000) { const c = t.slice(0, 1000), i = c.lastIndexOf('. '); t = i > 400 ? c.slice(0, i + 1) : c + '…'; }
+  return t;
+}
+async function fetchOnline(title, artist) {
+  const out = {}, a1 = firstArtist(artist);
+  const it = await jget('https://itunes.apple.com/search?media=music&entity=song&limit=6&term=' + encodeURIComponent([a1, title].filter(Boolean).join(' ')));
+  const rs = (it && it.results) || [], nt = norm(title);
+  const hit = rs.find(r => norm(r.trackName) && (norm(r.trackName).includes(nt) || nt.includes(norm(r.trackName))) && (!a1 || norm(r.artistName).includes(norm(a1)) || norm(a1).includes(norm(r.artistName))));
+  if (hit) {
+    if (hit.artworkUrl100) out.art = hit.artworkUrl100.replace(/\/\d+x\d+bb\./, '/600x600bb.');
+    out.artist = hit.artistName; out.album = hit.collectionName; out.year = String(hit.releaseDate || '').slice(0, 4); out.genre = hit.primaryGenreName || '';
+  }
+  const name = out.artist ? firstArtist(out.artist) : a1;
+  if (name) {
+    const [bio, song] = await Promise.all([
+      wiki(name + ' musician OR band OR singer OR rapper', name),
+      title ? wiki('"' + title + '" ' + name + ' song', name) : ''
+    ]);
+    out.aboutArtist = bio; if (song && song !== bio) out.aboutSong = song;
+    if (!bio || !out.art) {
+      const d = await jget('https://www.theaudiodb.com/api/v1/json/2/search.php?s=' + encodeURIComponent(name)), ar = d && d.artists && d.artists[0];
+      if (ar) { if (!bio && ar.strBiographyEN) out.aboutArtist = ar.strBiographyEN.replace(/\s+/g, ' ').slice(0, 1000); if (!out.art && ar.strArtistThumb) out.art = ar.strArtistThumb; if (!out.genre && ar.strGenre) out.genre = ar.strGenre; }
+    }
+  }
+  return out;
+}
+async function embeddedFor(t) {
+  const rec = get(t.id); if (!rec) return null; let blob = null;
+  try { if (rec.kind === 'file') { const r = await dbGet('blobs', rec.id); blob = r && r.blob; } else { const h = devCache.find(x => x.id === rec.id); blob = h && h.blob; } } catch (e) { blob = null; }
+  return blob ? readId3(blob) : null;
+}
+// meta(track, source) -> { art, title, artist, album, year, genre, aboutArtist, aboutSong }. Never throws; fields are '' when unknown.
+function meta(t, source) {
+  if (!t || !t.title) return Promise.resolve(null);
+  const id = (source || '') + '|' + (t.id || '') + '|' + mkey(t.artist, t.title);
+  if (metaMem.has(id)) return Promise.resolve(metaMem.get(id));
+  if (metaBusy.has(id)) return metaBusy.get(id);
+  const job = (async () => {
+    const m = { title: t.title || '', artist: t.artist || '', album: t.album || '', year: '', genre: '', art: t.art || '', aboutArtist: '', aboutSong: '', sources: [] };
+    let emb = null;
+    if (source !== 'spotify' && t.id) {
+      emb = await embeddedFor(t);
+      if (emb) {
+        ['title', 'artist', 'album', 'year', 'genre'].forEach(k => { if (emb[k] && (k === 'year' || k === 'genre' || !m[k])) m[k] = emb[k]; });
+        if (emb.pic) { if (embUrl) { try { URL.revokeObjectURL(embUrl); } catch (e) {} } embUrl = URL.createObjectURL(emb.pic); m.art = embUrl; m.embedded = true; }
+        m.sources.push('file tags');
+        const rec = get(t.id); if (rec && ((!rec.artist && m.artist) || (!rec.album && m.album))) { rec.artist = rec.artist || m.artist; rec.album = rec.album || m.album; dbPut('tracks', rec); }
+      }
+    }
+    const k = mkey(m.artist || t.artist, m.title || t.title), cached = metaLoad()[k];
+    const on = cached || await fetchOnline(m.title || t.title, m.artist || t.artist);
+    if (!cached && (on.art || on.aboutArtist || on.album)) metaSave(k, on);
+    if (on.art || on.aboutArtist || on.album || on.year) m.sources.push('iTunes / Wikipedia');
+    if (!m.art || (!m.embedded && !t.art)) m.art = m.art || on.art || '';
+    ['album', 'year', 'genre'].forEach(f => { if (!m[f]) m[f] = on[f] || ''; });
+    if (!m.artist) m.artist = on.artist || ''; m.aboutArtist = on.aboutArtist || ''; m.aboutSong = on.aboutSong || '';
+    metaMem.set(id, m); if (metaMem.size > 40) metaMem.delete(metaMem.keys().next().value);
+    try { if (cur && t.id === cur.id && 'mediaSession' in navigator && navigator.mediaSession.metadata && m.art && !/^blob:/.test(m.art)) navigator.mediaSession.metadata = new MediaMetadata({ title: t.title || '', artist: m.artist || '', album: m.album || '', artwork: [{ src: m.art, sizes: '600x600' }] }); } catch (e) { /* lock-screen art is a bonus */ }
+    emit('meta'); return m;
+  })().finally(() => metaBusy.delete(id));
+  metaBusy.set(id, job); return job;
+}
+const metaPeek = (t, source) => (t && metaMem.get((source || '') + '|' + (t.id || '') + '|' + mkey(t.artist, t.title))) || null;
+
 window.EmberPlayer = {
   init, list, get, brief, addFiles, remove, wipe, scanDevice, playlists, savePlaylist, deletePlaylist, playlistIds, playPlaylist,
-  playLocal, control, nowPlaying, snapshot, capabilities, seek, stop,
+  playLocal, control, nowPlaying, snapshot, capabilities, seek, stop, meta, metaPeek,
   on: f => { subs.add(f); return () => subs.delete(f); },
   position: () => (cur ? audio.currentTime || 0 : 0), count: () => lib.length, deviceOk, setActive: s => { active = s === 'spotify' ? 'spotify' : 'local'; emit('state'); },
   pauseLocal: () => { try { audio.pause(); } catch (e) { /* not loaded */ } }

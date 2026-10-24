@@ -12,6 +12,10 @@
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 <uses-permission android:name="android.permission.WAKE_LOCK" />
 <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+<!-- V1.6.6 Device panel -->
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 <!-- WAKE_LOCK is added automatically by @capacitor-community/keep-awake during `cap sync` -->
 
 <!-- 2. Inside <manifest>, above <application>: Android 11+ package visibility so the

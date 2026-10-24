@@ -20,6 +20,7 @@
   const Media = plug('EmberMedia');   // local plugin
   const Notify = plug('EmberNotify'); // local plugin
   const AiP = plug('EmberAi');        // local plugin (V1.5.9: background replies)
+  const Dev = plug('EmberDevice');   // local plugin (V1.6.6: Device panel)
   const WL = plug('KeepAwake');       // @capacitor-community/keep-awake
 
   // V1.5.7: phone music access for Ember's own player (ember_player.js). Lists the audio files Android has indexed and reads one
@@ -114,6 +115,13 @@
     } catch (e) { return false; }
   }
 
+  // V1.6.3: asks Android whether notifications are allowed WITHOUT showing a prompt (used by the Settings status line).
+  async function notifyPermissionStatus() {
+    if (!Notify) return { granted: false, native: false };
+    try { const p = await Notify.hasPermission(); return { granted: !!(p && p.granted), native: true }; }
+    catch (e) { return { granted: false, native: true, note: e.message }; }
+  }
+
   async function notifyReply(previewText) {
     if (!document.hidden) return; // app is foreground, chat already shows it
     const ok = await ensureNotifyPermission();
@@ -121,6 +129,15 @@
     try {
       await Notify.notify({ title: 'Ember', body: String(previewText || '').slice(0, 120) || 'New reply.' });
     } catch (e) { /* notification failed, chat still has the reply */ }
+  }
+
+  // V1.6.1: fires a real notification right now, regardless of whether the app is foreground — for testing that
+  // notifications actually work on this phone, separate from the proactive-pings flow which needs a Groq key.
+  async function testNotify() {
+    const ok = await ensureNotifyPermission();
+    if (!ok || !Notify) return { ok: false, note: 'No permission, or no native bridge.' };
+    try { await Notify.notify({ title: 'Ember', body: 'Notifications are working.' }); return { ok: true }; }
+    catch (e) { return { ok: false, note: e.message || 'Could not send it.' }; }
   }
 
   // ---------- native speech recognition (Android WebView has NO webkitSpeechRecognition) ----------
@@ -248,9 +265,16 @@
     try { const r = await AiP.takeResults(); return (r && Array.isArray(r.results)) ? r.results : []; } catch (e) { return []; }
   }
 
+  // V1.6.6: read-only phone facts for the Device panel (Wi-Fi, VPN, RAM, storage, uptime, battery). Null in a plain browser.
+  const sys = Dev ? {
+    async info() { try { return await Dev.getInfo(); } catch (e) { return { error: (e && e.message) || 'The Device plugin did not answer. Update the APK.' }; } },
+    async requestWifiName() { try { const r = await Dev.requestWifiName(); return !!(r && r.granted); } catch (e) { return false; } }
+  } : null;
+
   window.EmberNative = {
+    sys,
     device, tts, keepAliveStart, keepAliveStop, keepAliveStatus, openAppSettings,
-    speech, holdDuringReply, ensureNotifyPermission, notifyReply, ensureMicPermission, musicPermissionStatus,
+    speech, holdDuringReply, ensureNotifyPermission, notifyPermissionStatus, notifyReply, testNotify, ensureMicPermission, musicPermissionStatus,
     wakeLockAvailable, setWakeLock, wakeLockHeld, requestBatteryExemption, batteryExemptionStatus, fileAccessStatus, requestFileAccess,
     mediaNotify, mediaClear, syncNativeConfig, setProactivePings, pingNow,
     aiAvailable, aiAsk, aiCancel, aiSetVisible, aiTakeResults

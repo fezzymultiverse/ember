@@ -153,7 +153,7 @@ class EmberNotifyPlugin : Plugin() {
         )
 
         val n = NotificationCompat.Builder(context, EMBER_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ember_notif)
             .setContentTitle(title)
             .setContentText(body)
             .setContentIntent(openPending)

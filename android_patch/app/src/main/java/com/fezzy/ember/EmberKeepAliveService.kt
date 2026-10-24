@@ -44,7 +44,7 @@ class EmberKeepAliveService : Service() {
         val stopIntent = Intent(this, EmberKeepAliveService::class.java).setAction(ACTION_STOP)
         val stopPi = PendingIntent.getService(this, 1, stopIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val n = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ember_notif)
             .setContentTitle("Ember is staying awake")
             .setContentText("Keep-alive is on so Android does not close the app.")
             .setContentIntent(openPi)

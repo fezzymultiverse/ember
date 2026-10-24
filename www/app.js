@@ -2,10 +2,12 @@
 'use strict';
 (() => {
 const { $, esc, LS, uid } = U;
-const DEF = { name: '', about: '', pname: 'Ember', interests: 'how minds work, slang and language, music and how it gets made, strange history, ethics puzzles, space, why people do what they do, small design details', mode: 'sharp', learn: true, ctx: 'normal', summarize: true, persona: '', showEng: false, accent: '#FF005F', warm: 'warm', direct: 'balanced', humor: 'dry', pace: 'normal', talk: '', musicAddon: false, docsAddon: false, agentAddon: false, youtubeAddon: false, visionAddon: false, autoRead: false, termuxMode: false, wakeLock: false, keepAlive: false, proactivePings: false, pingHours: 4, musicWidget: true, bgReplies: true };
+const DEF = { name: '', about: '', pname: 'Ember', interests: 'how minds work, slang and language, music and how it gets made, strange history, ethics puzzles, space, why people do what they do, small design details', mode: 'sharp', learn: true, ctx: 'normal', summarize: true, persona: '', showEng: false, accent: '#00E5FF', warm: 'warm', direct: 'balanced', humor: 'dry', pace: 'normal', talk: '', musicAddon: false, docsAddon: false, agentAddon: false, youtubeAddon: false, visionAddon: false, autoRead: false, termuxMode: false, wakeLock: false, keepAlive: false, proactivePings: false, pingHours: 4, musicWidget: true, bgReplies: true };
 const WINS = { short: 1, normal: 1, long: 1 };
-const ACCENTS = ['#FF005F', '#AF5FFF', '#00E5FF', '#5FFF00'];
+const ACCENTS = ['#00E5FF', '#9D00FF', '#FF005F', '#2EE86B'];
 let S = Object.assign({}, DEF, LS.get('ember_set', {}));
+// V1.6.6: the old default accent was pink. Anyone still on it moves to the new cyan once; a colour picked on purpose is kept.
+if (S.accentV !== 166) { if (!S.accent || S.accent === '#FF005F' || S.accent === '#AF5FFF') S.accent = '#00E5FF'; S.accentV = 166; LS.set('ember_set', S); }
 const MEM_DEF = () => ({ facts: [], threads: [], callbacks: [], patterns: {}, moodLog: [], futureLetters: [], deck: [] });
 const migrateMem = m => {
   const base = MEM_DEF();
@@ -100,7 +102,7 @@ function newConv(priv) { return { id: uid(), title: 'New chat', auto: true, crea
 function ensure() { if (!conv) conv = newConv(false); }
 async function persist() { if (conv && conv.msgs.length) { conv.updated = Date.now(); const ok = await Store.put(conv); if (!ok) toast('Could not save this chat (storage full?)'); } }
 function bub(x, last, i) {
-  const eng = S.showEng && x.eng ? ' · ' + Prov.label(x.eng.p) + ' ' + x.eng.ms + 'ms' : '';
+  const eng = x.eng ? ' · ' + Prov.label(x.eng.p) + (S.showEng && x.eng.ms ? ' ' + x.eng.ms + 'ms' : '') : '';
   const regen = last && x.r == 'a' ? '<button data-act="regen">↻ again</button>' : '';
   const say = x.r == 'a' ? '<button data-act="say" data-i="' + i + '" aria-label="Read aloud" title="Read aloud">🔊</button>' : '';
   return '<div class="msg ' + x.r + '"><div>' + fmt(x.t) + '</div><div class="mt"><span>' + U.time(x.ts) + (x.deep ? ' · 💡' : '') + eng + '</span>' + say + regen + '</div></div>';
@@ -109,9 +111,9 @@ function renderLog() {
   const m = conv ? conv.msgs : [];
   $('empty').classList.toggle('hidden', m.length > 0);
   $('noKey').classList.toggle('hidden', Prov.hasKeys());
-  $('log').innerHTML = m.map((x, i) => bub(x, i == m.length - 1, i)).join('') +
+  $('log').innerHTML = m.map((x, i) => bub(x, i == m.length - 1, i)).join('') + (window.EmberAgentAddon ? window.EmberAgentAddon.cardsHtml() : '') +
     (lastErr ? '<div class="msg e"><div>' + esc(lastErr) + '</div><div class="mt"><button data-act="retry">Try again</button><button data-act="keys">Open Keys</button></div></div>' : '');
-  if (Safety.lastLevel() >= 2 && m.length) $('log').insertAdjacentHTML('beforeend', Safety.crisisCard());
+  if (Safety.lastLevel() >= 3 && m.length) $('log').insertAdjacentHTML('beforeend', Safety.crisisCard());
   down(); renderTop();
 }
 function down() { const l = $('log'); l.scrollTop = l.scrollHeight; }
@@ -124,7 +126,9 @@ function renderTop() {
   $('pName').classList.toggle('support-dot', Safety.lastLevel() >= 2);
   $('fBadge').classList.toggle('hidden', !Prov.freeOn());
   const st = Prov.status();
-  $('engs').innerHTML = Prov.IDS.map(id => '<i class="' + st[id] + '" title="' + Prov.CFG[id].name + ': ' + st[id] + '">' + Prov.CFG[id].name.slice(0, 3).toUpperCase() + (Prov.CFG[id].status == 'prototype' ? '*' : '') + '</i>').join('');
+  let lastEng = ''; if (conv) for (let k = conv.msgs.length - 1; k >= 0; k--) { const mm = conv.msgs[k]; if (mm.r == 'a' && mm.eng && mm.eng.p) { lastEng = mm.eng.p; break; } }
+  $('engs').innerHTML = Prov.IDS.map(id => '<i class="' + st[id] + (id == lastEng ? ' act' : '') + '" title="' + Prov.CFG[id].name + ': ' + st[id] + (id == lastEng ? ' (answered the last reply)' : '') + '">' + Prov.CFG[id].name.slice(0, 3).toUpperCase() + (Prov.CFG[id].status == 'prototype' ? '*' : '') + '</i>').join('') +
+    (lastEng == 'pollinations' ? '<i class="act" title="Free Mode answered the last reply">FREE</i>' : '');
   document.querySelectorAll('#modes button').forEach(b => b.classList.toggle('on', b.dataset.m == S.mode));
   const p = conv && conv.priv; $('bPriv').textContent = p ? '🔒 Private' : '🔓 Normal'; $('bPriv').classList.toggle('on', !!p);
   const h = new Date().getHours();
@@ -153,7 +157,9 @@ async function runTool(tool, args) {
   const A = window, scrapeOn = !!(A.EmberScraper && A.EmberScraper.enabled());
   try {
     if (S.musicAddon && A.EmberMusicAddon && namesOf(A.EmberMusicAddon).includes(tool)) return await A.EmberMusicAddon.dispatch(tool, args);
-    if (S.docsAddon && A.EmberDocsAddon && namesOf(A.EmberDocsAddon).includes(tool)) return await A.EmberDocsAddon.dispatch(tool, args);
+    if (A.EmberKnow && namesOf(A.EmberKnow).includes(tool)) return await A.EmberKnow.dispatch(tool, args);
+    const docsOn = S.docsAddon || !!(A.EmberDocs && A.EmberDocs.count && A.EmberDocs.count() > 0);
+    if (docsOn && A.EmberDocsAddon && namesOf(A.EmberDocsAddon).includes(tool)) return await A.EmberDocsAddon.dispatch(tool, args);
     if (A.EmberAgentAddon && A.EmberAgentAddon.toolsFor(S).some(t => t.name == tool)) return await A.EmberAgentAddon.dispatch(tool, args);
     if (scrapeOn && namesOf(A.EmberScraper).includes(tool)) return await A.EmberScraper.dispatch(tool, args);
     if (scrapeOn && A.EmberSites && namesOf(A.EmberSites).includes(tool)) return await A.EmberSites.dispatch(tool, args);
@@ -170,15 +176,17 @@ async function resolveAddonCalls(text, L) {
   }
   let cur = text, calls = parseCalls(cur);
   if (!calls.length) return stripTags(cur) || text;
-  const anyOn = S.musicAddon || S.docsAddon || S.agentAddon || S.youtubeAddon || S.visionAddon || (window.EmberScraper && window.EmberScraper.enabled());
-  if (Safety.lastLevel() >= 2 || !anyOn) return stripTags(cur);
+  const anyOn = true; // find_in_app is always available
+  if (Safety.lastLevel() >= 3 || !anyOn) return stripTags(cur);
   const msgs = Persona.sentMsgs(conv, S).map(x => ({ role: x.r == 'u' ? 'user' : 'assistant', content: Persona.body(x) }));
   if (msgs.length && msgs[0].role == 'assistant') msgs.unshift({ role: 'user', content: '(we are picking the conversation back up)' });
   for (let round = 0; round < 4 && calls.length; round++) {
     const results = [];
     for (const c of calls.slice(0, 2)) {
       const args = (c.args && typeof c.args == 'object' && !Array.isArray(c.args)) ? c.args : {};
-      results.push({ tool: c.tool, result: await runTool(c.tool, args) });
+      const res = await runTool(c.tool, args);
+      try { if (window.EmberKnow) window.EmberKnow.log(conv, c.tool, args, res); } catch (e) { /* logging never blocks a reply */ }
+      results.push({ tool: c.tool, result: res });
     }
     const ctx = results.map(r => 'Tool: ' + r.tool + '\nResult: ' + JSON.stringify(r.result, null, 2).slice(0, 9000)).join('\n\n');
     const last = round == 3;
@@ -251,20 +259,17 @@ $('inp').addEventListener('keydown', e => { if (e.key == 'Enter' && (e.ctrlKey |
 // Save input text as user types
 $('inp').addEventListener('input', () => { grow(); saveSession(); });
 function grow() { const i = $('inp'); i.style.height = 'auto'; i.style.height = Math.min(140, i.scrollHeight) + 'px'; }
-const spark = async () => { if (busy || needKeys()) return; ensure(); reply({ directive: SPARK }); };
+function fire(el) { if (!el) return; el.classList.remove('fire'); void el.offsetWidth; el.classList.add('fire'); }
+const spark = async () => { fire($('bSpark')); if (busy || needKeys()) return; ensure(); reply({ directive: SPARK }); };
 $('bSpark').onclick = spark; $('bSpark2').onclick = spark;
-$('bDeep').onclick = () => { if (busy || needKeys()) return; if (!conv || conv.msgs.length < 2) { toast('Say a little more first'); return; } reply({ directive: DEEPER, force: true }); };
+$('bDeep').onclick = () => { fire($('bDeep')); if (busy || needKeys()) return; if (!conv || conv.msgs.length < 2) { toast('Say a little more first'); return; } reply({ directive: DEEPER, force: true }); };
 $('bPriv').onclick = () => { ensure(); conv.priv = !conv.priv; renderTop(); toast(conv.priv ? 'Private: this chat will not be learned from' : 'Normal: it can learn from this chat'); persist(); };
 document.querySelectorAll('#modes button').forEach(b => b.onclick = () => { S.mode = b.dataset.m; saveS(); renderTop(); });
 
 // Termux Mode toggle button
 const bTx = $('bTermux');
 if (bTx) {
-  bTx.onclick = () => {
-    S.termuxMode = !S.termuxMode;
-    saveS(); renderTop();
-    toast(S.termuxMode ? '💻 Termux Mode ON — hacker persona active' : 'Termux Mode OFF');
-  };
+  bTx.onclick = () => openSettings('hacking');
 }
 
 $('log').addEventListener('click', e => {
@@ -330,6 +335,10 @@ function micUI(on) { recOn = on; $('bMic').classList.toggle('rec', on); $('bMic'
 $('bMic').onclick = async () => {
   const NSR = nativeSpeech();
   if (recOn) { if (NSR) { await NSR.stop(); } else { try { rec.stop(); } catch (e) { } } return; }
+  // V1.6.1: browser speech recognition needs a secure origin (https, or http://localhost itself). If this is opened
+  // over the phone's LAN IP (e.g. http://192.168.x.x:8080 from another device, or a non-localhost hostname), the mic
+  // button looks dead with no error — Chrome silently refuses to even try. Catch that case and say so plainly.
+  if (!NSR && !window.isSecureContext) { toast('Mic needs https, or open this as http://localhost:PORT on the same phone running the server'); return; }
   const base = $('inp').value ? $('inp').value.replace(/\s+$/, '') + ' ' : '';
   const lang = navigator.language || 'en-US';
   if (NSR) {
@@ -340,7 +349,8 @@ $('bMic').onclick = async () => {
       if (!got) toast('No speech service on this phone. Install or enable the Google app / Speech Services');
       return;
     }
-    if (!(await NSR.ensurePermission())) { toast('Microphone permission denied. Allow it in Settings > Permissions'); return; }
+    if (!(await NSR.ensurePermission())) { micFlag(false); toast('Microphone permission denied. Allow it in Settings > Permissions'); return; }
+    micFlag(true);
     await NSR.start({ lang, onText: t => { $('inp').value = base + t.trim(); grow(); }, onState: micUI, onError: m => { micUI(false); toast(m.slice(0, 120)); } });
     return;
   }
@@ -349,7 +359,7 @@ $('bMic').onclick = async () => {
   rec = new SR(); rec.lang = lang; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
   rec.onstart = () => micUI(true);
   rec.onresult = e => { let t = ''; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; $('inp').value = base + t.trim(); grow(); };
-  rec.onerror = e => { const M = { 'not-allowed': 'Microphone permission denied', 'service-not-allowed': 'Microphone permission denied', 'no-speech': 'Heard nothing, try again', 'audio-capture': 'No microphone found', network: 'Speech service needs a connection', aborted: '' }; const m = e.error in M ? M[e.error] : 'Voice error: ' + e.error; if (m) toast(m); };
+  rec.onerror = e => { if (e.error == 'not-allowed' || e.error == 'service-not-allowed') micFlag(false); const M = { 'not-allowed': 'Microphone permission denied', 'service-not-allowed': 'Microphone permission denied', 'no-speech': 'Heard nothing, try again', 'audio-capture': 'No microphone found', network: 'Speech service needs a connection', aborted: '' }; const m = e.error in M ? M[e.error] : 'Voice error: ' + e.error; if (m) toast(m); };
   rec.onend = () => micUI(false);
   try { rec.start(); } catch (e) { toast('Could not start the microphone'); }
 };
@@ -358,6 +368,15 @@ $('bMic').onclick = async () => {
 const TTS = 'speechSynthesis' in window && typeof SpeechSynthesisUtterance != 'undefined';
 // V1.5.6: inside the APK the native text-to-speech plugin is used first (WebView speechSynthesis often has no voices); the browser one is the fallback.
 const nativeTTS = () => (window.EmberNative && window.EmberNative.tts) || null;
+// V1.6.1: voice list + pre-warm. Now that TTS/nativeTTS exist, it's safe to wire the picker and fire a silent first
+// utterance on load — engines are slow on their *first* call of a session, so eating that delay now means the first
+// real 🔊 tap is instant instead of the ~5s cold start.
+if (TTS) { speechSynthesis.onvoiceschanged = paintVoices; setTimeout(paintVoices, 300); }
+window.addEventListener('load', () => setTimeout(() => {
+  const N = nativeTTS();
+  if (N) { try { N.speak(' ', navigator.language || 'en-US'); } catch (e) {} }
+  else if (TTS) { try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch (e) {} }
+}, 800));
 let sayIdx = -1, speakTok = 0;
 const plainSpeech = t => String(t || '').replace(/```[\s\S]*?```/g, ' ').replace(/https?:\/\/\S+/g, 'link').replace(/[*_`#>]+/g, '').replace(/\s+/g, ' ').trim();
 function stopSpeak() {
@@ -372,7 +391,8 @@ function speakText(t, idx) {
   parts.forEach(p => { while (p.length > 220) { chunks.push(p.slice(0, 220)); p = p.slice(220); } if (p.trim()) chunks.push(p); });
   sayIdx = idx == null ? -1 : idx;
   const tok = ++speakTok, lang = navigator.language || 'en-US';
-  const webSpeak = () => { if (!TTS) { sayIdx = -1; return; } chunks.forEach((c, n) => { const u = new SpeechSynthesisUtterance(c); u.lang = lang; if (n == chunks.length - 1) u.onend = u.onerror = () => { sayIdx = -1; }; speechSynthesis.speak(u); }); };
+  const pickedVoice = () => { if (!TTS || !S.ttsVoice) return null; return speechSynthesis.getVoices().find(v => v.voiceURI === S.ttsVoice) || null; };
+  const webSpeak = () => { if (!TTS) { sayIdx = -1; return; } const vo = pickedVoice(); chunks.forEach((c, n) => { const u = new SpeechSynthesisUtterance(c); u.lang = vo ? vo.lang : lang; if (vo) u.voice = vo; if (n == chunks.length - 1) u.onend = u.onerror = () => { sayIdx = -1; }; speechSynthesis.speak(u); }); };
   if (N) {
     (async () => {
       for (const c of chunks) {
@@ -385,13 +405,14 @@ function speakText(t, idx) {
     })();
     return;
   }
-  chunks.forEach((c, n) => { const u = new SpeechSynthesisUtterance(c); u.lang = navigator.language || 'en-US'; if (n == chunks.length - 1) u.onend = u.onerror = () => { sayIdx = -1; }; speechSynthesis.speak(u); });
+  webSpeak();
 }
 function speakMsg(i) { const m = conv && conv.msgs[i]; if (!m) return; if (sayIdx === i) { stopSpeak(); return; } speakText(m.t, i); }
 window.addEventListener('pagehide', stopSpeak);
 
 // ---------- globe ----------
 $('bGlobe').onclick = async () => {
+  if (window.EmberBrowser) { window.EmberBrowser.open(); return; }
   if (busy) return;
   const SCR = window.EmberScraper;
   if (!SCR || !SCR.enabled()) { toast('Turn on Web Scraping in Settings first'); return; }
@@ -415,15 +436,82 @@ $('bGlobe').onclick = async () => {
 
 // ---------- settings ----------
 const DOT = { ok: 'ok', limited: 'limited', bad: 'bad' };
+// V1.6.1: a provider with more than one key gets its own collapsible header (tap to fold/unfold just that provider).
+// A provider with 0 or 1 key is never collapsible — nothing to hide. Collapsed state remembered per provider.
+const KEY_FOLD = 'ember_keyfold';
+const keyFold = () => LS.get(KEY_FOLD, {});
+function toggleFold(id) { const f = keyFold(); f[id] = !f[id]; LS.set(KEY_FOLD, f); }
 function renderKeys() {
-  let h = '';
-  Prov.IDS.forEach(id => Prov.entries(id).forEach(e => {
-    const st = e.st, cls = !st ? '' : st.ok ? (st.limited ? 'limited' : 'ok') : 'bad';
-    const line = !st ? 'not checked yet' : st.ok ? (st.limited ? st.msg : '✓ working · ' + st.ms + ' ms · ' + st.model) : '✗ ' + st.msg;
-    h += '<div class="kr"><span class="d ' + (DOT[cls] || '') + '"></span><div class="kt"><b>' + Prov.CFG[id].name + (Prov.CFG[id].status == 'prototype' ? ' <span class="pbadge">Prototype</span>' : '') + ' · ' + esc(Prov.mask(e.key)) + '</b><small>' + esc(line) + '</small></div><button data-k="chk" data-id="' + id + '" data-key="' + esc(e.key) + '" title="Check">↻</button><button data-k="rm" data-id="' + id + '" data-key="' + esc(e.key) + '" title="Remove">✕</button></div>';
-  }));
+  let h = ''; const fold = keyFold();
+  Prov.IDS.forEach(id => {
+    const list = Prov.entries(id); if (!list.length) return;
+    const many = list.length > 1, closed = many && fold[id];
+    let rows = '';
+    list.forEach(e => {
+      const st = e.st, cls = !st ? '' : st.ok ? (st.limited ? 'limited' : 'ok') : 'bad';
+      const line = !st ? 'not checked yet' : st.ok ? (st.limited ? st.msg : '✓ working · ' + st.ms + ' ms · ' + st.model) : '✗ ' + st.msg;
+      rows += '<div class="kr"><span class="d ' + (DOT[cls] || '') + '"></span><div class="kt"><b>' + esc(Prov.mask(e.key)) + '</b><small>' + esc(line) + '</small></div><button data-k="chk" data-id="' + id + '" data-key="' + esc(e.key) + '" title="Check">↻</button><button data-k="rm" data-id="' + id + '" data-key="' + esc(e.key) + '" title="Remove">✕</button></div>';
+    });
+    const title = Prov.CFG[id].name + (Prov.CFG[id].status == 'prototype' ? ' <span class="pbadge">Prototype</span>' : '') + ' <small>(' + list.length + ')</small>';
+    if (many) h += '<div class="kgrp"><button class="kghead" data-fold="' + id + '">' + title + '<span class="chev">' + (closed ? '▸' : '▾') + '</span></button><div class="kgbody' + (closed ? ' hidden' : '') + '">' + rows + '</div></div>';
+    else h += '<div class="kgrp"><div class="kghead static">' + title + '</div>' + rows + '</div>';
+  });
   $('kList').innerHTML = h || '<p class="hint">No keys yet.</p>';
 }
+$('kList').addEventListener('click', e => { const b = e.target.closest('[data-fold]'); if (!b) return; toggleFold(b.dataset.fold); renderKeys(); });
+
+// ---------- V1.6.1: Get Key buttons ----------
+const KEY_LINKS = { groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', openrouter: 'https://openrouter.ai/settings/keys', cohere: 'https://dashboard.cohere.com/api-keys', huggingface: 'https://huggingface.co/settings/tokens' };
+const SCRAPE_LINKS = { firecrawl: 'https://www.firecrawl.dev/app/api-keys', browserless: 'https://www.browserless.io/', scraperapi: 'https://www.scraperapi.com/', scraperbee: 'https://app.scrapingbee.com/account/manage', zenrows: 'https://app.zenrows.com/builder', serpapi: 'https://serpapi.com/manage-api-key', sting: '', octoparse: 'https://www.octoparse.com/' };
+function paintGetKeyRow(el, links) { if (!el) return; el.innerHTML = Object.keys(links).filter(k => links[k]).map(k => '<button class="btn g" data-link="' + esc(links[k]) + '" style="width:auto;padding:7px 12px;font-size:12px">' + (Prov.CFG[k] ? Prov.CFG[k].name : k) + ' ↗</button>').join(''); }
+document.addEventListener('click', e => { const b = e.target.closest('[data-link]'); if (b) window.open(b.dataset.link, '_blank', 'noopener'); });
+
+// ---------- V1.6.1: engine pin ----------
+function paintEngPin() {
+  const sel = $('engPin'); if (!sel) return;
+  sel.innerHTML = '<option value="">Auto (fastest working key)</option>' + Prov.IDS.map(id => '<option value="' + id + '">' + Prov.CFG[id].name + '</option>').join('');
+  sel.value = Prov.getPinned() || '';
+}
+$('engPin') && $('engPin').addEventListener('change', () => { Prov.setPinned($('engPin').value || null); toast($('engPin').value ? Prov.CFG[$('engPin').value].name + ' goes first now' : 'Back to auto'); });
+
+// ---------- V1.6.1: notepad (Keys tab) — save, and Extract pulls keys out the same way the notes box above does ----------
+const PAD_KEY = 'ember_pad';
+function paintPad() { const v = LS.get(PAD_KEY, ''); if ($('padText')) $('padText').value = v; }
+$('padSave') && ($('padSave').onclick = () => { LS.set(PAD_KEY, $('padText').value); toast('Note saved'); });
+$('padClear') && ($('padClear').onclick = () => { $('padText').value = ''; LS.set(PAD_KEY, ''); $('padStatus').textContent = ''; toast('Note cleared'); });
+$('padExtract') && ($('padExtract').onclick = async () => {
+  const t = $('padText').value; if (!t.trim()) { toast('Nothing to extract from'); return; }
+  const b = $('padExtract'); b.disabled = true; b.textContent = 'Extracting…';
+  try {
+    const r = await Prov.ingest(t);
+    const sc = window.EmberScraper ? window.EmberScraper.ingestKeys(t) : { added: [] };
+    const n = r.added.length + sc.added.length;
+    const bits = []; if (r.added.length) bits.push(r.added.length + ' chat engine key(s)'); if (sc.added.length) bits.push(sc.added.map(id => window.EmberScraper.LABEL[id]).join(', ') + ' (scraping)');
+    $('padStatus').textContent = n ? ('Added: ' + bits.join(' · ') + '.') : 'No keys found in that text.';
+  } catch (e) { $('padStatus').textContent = 'Failed: ' + e.message; }
+  b.disabled = false; b.textContent = 'Extract keys'; renderKeys(); renderTop(); if (window.EmberScrapeUI) window.EmberScrapeUI.repaint();
+});
+
+// ---------- V1.6.1: Ask Termux — a side-channel question, never touches the open chat ----------
+$('txAsk') && ($('txAsk').onclick = async () => {
+  const q = $('txQ').value.trim(); if (!q) return;
+  const b = $('txAsk'), out = $('txOut'); b.disabled = true; b.textContent = 'Asking…'; out.classList.remove('hidden'); out.textContent = '…';
+  try {
+    const sys = 'You are a senior Termux and Linux specialist answering one direct question. Real commands, real package names (pkg install …), no padding, no disclaimers about legality for his own device. If the question is not about Termux/Linux/networking, just answer it straight anyway.';
+    const r = await Prov.run('util', { system: sys, messages: [{ role: 'user', content: q }], temp: 0.4, max: 500 });
+    out.textContent = r.text;
+  } catch (e) { out.textContent = 'Failed: ' + e.message; }
+  b.disabled = false; b.textContent = 'Ask';
+});
+
+// ---------- V1.6.1: TTS voice picker + pre-warm (cuts the first-read delay) ----------
+function paintVoices() {
+  const sel = $('sVoice'); if (!sel || !TTS) return;
+  const vs = speechSynthesis.getVoices(); if (!vs.length) return;
+  sel.innerHTML = '<option value="">Default</option>' + vs.map(v => '<option value="' + esc(v.voiceURI) + '">' + esc(v.name) + ' (' + v.lang + ')' + '</option>').join('');
+  sel.value = S.ttsVoice || '';
+}
+$('sVoice') && $('sVoice').addEventListener('change', () => { S.ttsVoice = $('sVoice').value; saveS(); });
 function renderMem() {
   const row = (k, a) => a.map((f, i) => '<div class="mi' + (S.learn ? '' : ' off') + '"><span>' + esc(f.t) + '</span><button class="ed" data-m="' + k + '" data-i="' + i + '" data-e="1">Edit</button><button data-m="' + k + '" data-i="' + i + '" title="Delete">✕</button></div>').join('') || '<p class="hint">Nothing yet.</p>';
   $('mFacts').innerHTML = row('facts', mem.facts); $('mThreads').innerHTML = row('threads', mem.threads);
@@ -442,8 +530,11 @@ function renderSet() {
   $('swBgReply') && $('swBgReply').classList.toggle('on', S.bgReplies !== false);
   $('swMusicWidget') && $('swMusicWidget').classList.toggle('on', S.musicWidget !== false);
   $('swLucid').classList.toggle('on', !!S.lucidMode);
+  paintEngPin(); paintGetKeyRow($('getKeyRow'), KEY_LINKS); paintGetKeyRow($('getKeyRowScrape'), SCRAPE_LINKS); paintPad(); paintVoices();
   $('acc').innerHTML = ACCENTS.map(c => '<div class="chip' + (c == S.accent ? ' on' : '') + '" data-c="' + c + '" style="background:' + c + '"></div>').join('');
 }
+// V1.6.3: the mic grant is remembered after Android answers, so Settings stops saying "tap to check" every time.
+function micFlag(v) { try { if (v === undefined) { const s = localStorage.getItem('ember_perm_mic'); return s === '1' ? true : s === '0' ? false : null; } localStorage.setItem('ember_perm_mic', v ? '1' : '0'); } catch (e) { return null; } }
 function pset(id, ok, label) { const el = $(id); if (!el) return; el.textContent = label; el.className = 'pstatus ' + (ok === true ? 'ok' : ok === false ? 'bad' : 'warn'); }
 async function renderPerms() {
   const el = $('permStatus'); if (!el) return;
@@ -454,7 +545,8 @@ async function renderPerms() {
   try { const a = await N.wakeLockAvailable(); $('swWake') && $('swWake').classList.toggle('on', !!S.wakeLock); pset('pstWake', a ? (S.wakeLock ? true : null) : false, a ? (S.wakeLock ? 'held' : 'off') : 'plugin not synced'); } catch (e) { pset('pstWake', null, 'unknown'); }
   try { const k = await N.keepAliveStatus(); $('swKeep') && $('swKeep').classList.toggle('on', !!S.keepAlive); pset('pstKeep', !k.native ? false : (k.running ? true : (S.keepAlive ? false : null)), !k.native ? 'service not built in' : (k.running ? 'running' : (S.keepAlive ? 'not running' : 'off'))); } catch (e) { pset('pstKeep', null, 'unknown'); }
   try { const b = await N.batteryExemptionStatus(); pset('pstBatt', b.granted === true ? true : b.granted === false ? false : null, b.granted ? 'exempt' : (b.note || 'not exempt')); } catch (e) { pset('pstBatt', null, 'unknown'); }
-  pset('pstNotify', null, 'tap to check'); pset('pstMic', null, 'tap to check');
+  try { const n = await N.notifyPermissionStatus(); pset('pstNotify', n.native ? !!n.granted : null, n.native ? (n.granted ? 'granted' : 'not granted') : 'unknown'); } catch (e) { pset('pstNotify', null, 'unknown'); }
+  const mg = micFlag(); pset('pstMic', mg === true ? true : mg === false ? false : null, mg === true ? 'granted' : mg === false ? 'not granted' : 'not asked yet');
 }
 $('bPermNotify') && ($('bPermNotify').onclick = async () => {
   const ok = window.EmberNative && await window.EmberNative.ensureNotifyPermission();
@@ -462,7 +554,7 @@ $('bPermNotify') && ($('bPermNotify').onclick = async () => {
 });
 $('bPermMic') && ($('bPermMic').onclick = async () => {
   const ok = window.EmberNative && await window.EmberNative.ensureMicPermission();
-  pset('pstMic', !!ok, ok ? 'granted' : 'not granted'); toast(ok ? 'Microphone: granted' : 'Microphone: not granted');
+  micFlag(!!ok); pset('pstMic', !!ok, ok ? 'granted' : 'not granted'); toast(ok ? 'Microphone: granted' : 'Microphone: not granted');
 });
 $('swWake') && ($('swWake').onclick = async () => {
   const N = window.EmberNative; if (!N) { toast('No native bridge loaded'); return; }
@@ -614,10 +706,15 @@ document.querySelector('#settings .sb').addEventListener('click', e => {
   const ct = e.target.closest('.card>.ct'); if (!ct) return;
   ct.parentElement.classList.toggle('collapsed');
 });
-function openSettings() { drawer(false); renderSet(); renderPerms(); showStab('general'); $('settings').classList.add('show'); }
+function openSettings(tab) { drawer(false); renderSet(); renderPerms(); showStab(typeof tab == 'string' ? tab : 'general'); $('settings').classList.add('show'); }
 function closeSettings() { $('settings').classList.remove('show'); S.name = $('sName').value.trim(); S.about = $('sAbout').value; S.pname = $('sPname').value.trim() || 'Ember'; S.interests = $('sInt').value.trim() || DEF.interests; S.persona = $('sPersona').value.trim().slice(0, 2000); S.talk = $('sTalk').value.trim().slice(0, 300); saveS(); renderLog(); }
 $('bSet').onclick = openSettings; $('bSx').onclick = closeSettings; $('bGoKeys').onclick = openSettings;
-function accent(c) { document.documentElement.style.setProperty('--ac', c); document.querySelector('meta[name=theme-color]').content = '#07060b'; }
+function accent(c) {
+  const r = document.documentElement.style, h = String(c || '#00E5FF').replace('#', ''), n = parseInt(h.length === 3 ? h.replace(/./g, '$&$&') : h, 16) || 0;
+  const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  r.setProperty('--ac', c); r.setProperty('--on', lum > 0.55 ? '#021419' : '#ffffff');   // readable text on any accent
+  document.querySelector('meta[name=theme-color]').content = '#0a0a10';
+}
 $('acc').addEventListener('click', e => { const c = e.target.dataset.c; if (!c) return; S.accent = c; saveS(); accent(c); renderSet(); });
 $('swLearn').onclick = () => { S.learn = !S.learn; saveS(); renderSet(); toast(S.learn ? 'Persistent Memory on' : 'Persistent Memory off: Core Memory is paused'); };
 $('swSum').onclick = () => { S.summarize = !S.summarize; saveS(); renderSet(); };
@@ -737,4 +834,31 @@ $('bWipe').onclick = async () => {
   window.__ember = { ready: true };
 })();
 window.addEventListener('error', e => { try { console.error('Ember error:', e.message); } catch (x) {} });
+// ---------- V1.6.2: download progress cards + "it is done" message from the agent ----------
+window.addEventListener('ember-dl', e => {
+  const j = e.detail || {};
+  const el = document.getElementById('dl-' + j.id);
+  if (el && window.EmberAgentAddon) el.outerHTML = window.EmberAgentAddon.cardHtml(j);
+  else if (conv && window.EmberAgentAddon) renderLog();
+});
+window.addEventListener('ember-dl-final', e => {
+  const text = (e.detail && e.detail.text) || '';
+  if (!text) return;
+  ensure(); conv.msgs.push({ r: 'a', t: text, ts: Date.now() }); renderLog(); persist();
+});
+
+// ---------- V1.6.4: bridge for the Browser, Documents and find_in_app screens ----------
+window.EmberBridge = {
+  getS: () => S, getMem: () => mem,
+  enable: k => { S[k] = true; saveS(); try { renderSet(); } catch (e) { /* settings not drawn yet */ } },
+  askAbout: async ({ chip, ctx, q, title, degraded }) => {
+    if (busy) { toast('Wait for the current reply to finish'); return false; }
+    ensure(); q = String(q || '').trim();
+    const head = (degraded ? '[Only search snippets, not the real page. Say so.]\n' : '') + (q ? '' : '[He shared this without a question. Say in one or two sentences what it is, then ask what he wants from it.]\n');
+    conv.msgs.push({ r: 'u', t: q ? q + '\n\n' + chip : chip, ctx: head + String(ctx || ''), ts: Date.now() });
+    if (q) Safety.mark(Safety.detect(q).level);
+    if (conv.auto && conv.title == 'New chat' && title) conv.title = String(title).slice(0, 40);
+    stopSpeak(); await persist(); renderLog(); reply(); return true;
+  }
+};
 })();

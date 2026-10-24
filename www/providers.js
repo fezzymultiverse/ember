@@ -33,6 +33,10 @@ function load() {
 }
 let keys = load();
 let freePref = null; // null = auto (Free Mode on only while the user has no keys); true/false = the user's own choice
+// V1.6.1: engine pin. null/'auto' = router decides (Groq first in fast/util since it's near-instant). Any CFG id = try that engine's keys first, every lane.
+let pinnedEngine = LS.get('ember_pin', null);
+function setPinned(id) { pinnedEngine = (id && CFG[id]) ? id : null; LS.set('ember_pin', pinnedEngine); }
+function orderFor(lane) { const base = ORDER[lane] || ORDER.fast; if (!pinnedEngine) return base; return [pinnedEngine].concat(base.filter(id => id != pinnedEngine)); }
 const save = () => LS.set('ember_keys', keys);
 const cool = new Map(); // key -> timestamp until which it is resting after a 429
 const isCool = k => (cool.get(k) || 0) > Date.now();
@@ -332,7 +336,7 @@ async function runInner(lane, o) {
     try { const r = await callPollinations(flat(o), o); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
     catch (er) { errs.push('Free Mode: ' + er.message); failed.push({ id: 'pollinations', status: er.status, why: er.message }); }
   }
-  for (const id of ORDER[lane] || ORDER.fast) {
+  for (const id of orderFor(lane)) {
     for (const e of keys[id]) {
       if (e.bad || isCool(e.key)) continue;
       let models;
@@ -373,7 +377,7 @@ const pending = () => inflight;
 // The engines the router would try for this lane, from the cached model lists only (no network), OpenAI-style providers only.
 function nativePlan(lane) {
   const out = [], cache = LS.get('ember_models', {});
-  for (const id of ORDER[lane] || ORDER.fast) {
+  for (const id of orderFor(lane)) {
     if (CFG[id].kind != 'oai') continue;
     for (const e of keys[id]) {
       if (e.bad || isCool(e.key)) continue;
@@ -395,5 +399,5 @@ function status() {
   });
   return o;
 }
-window.Prov = { pending, nativePlan, CFG, IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations };
+window.Prov = { pending, nativePlan, CFG, IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine };
 })();

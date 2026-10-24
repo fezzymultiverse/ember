@@ -1,4 +1,4 @@
-// Ember V1.5.7 - ai_music.js: what the AI is allowed to do with music, and the code that enforces it.
+// Ember V1.6.5 - ai_music.js: what the AI is allowed to do with music, and the code that enforces it.
 // Everything here runs on the real player (ember_player.js) and real Spotify (ember_spotify.js). No stubs, no "bridge", no simulated results.
 // The AI gets exactly the tools below, told exactly what is true right now, and the code refuses anything he did not ask for.
 'use strict';
@@ -9,7 +9,7 @@ const str = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' '
 
 // ---------- tool schemas (the AI only ever sees these) ----------
 const LOCAL_TOOLS = [
-  { name: 'get_current_track', description: 'What is playing right now: title, artist, source (ember or spotify), playing or paused, position. Use it whenever he asks what is playing.', parameters: {} },
+  { name: 'get_current_track', description: 'What is playing right now: title, artist, album, year, genre, artworkUrl, an "about" text (artist bio and song background), source (ember or spotify), playing or paused, position. Use it whenever he asks what is playing, or wants to talk about the song or the artist. Base what you say on this data and say so when a field is empty.', parameters: {} },
   { name: 'get_library', description: 'Searches his uploaded music. query matches title or artist (optional), limit defaults to 20. Returns song ids to use with control_player or create_playlist.', parameters: { query: 'string?', limit: 'number?' } },
   { name: 'control_player', description: 'Controls playback. action: play | pause | toggle | next | prev | stop | seek | volume | shuffle | repeat. "play" with songId plays that library song, "play" alone resumes. seek needs value in seconds, volume needs value 0-100.', parameters: { action: 'string', songId: 'string?', value: 'number?' } },
   { name: 'play_playlist', description: 'Plays one of his local playlists by name.', parameters: { name: 'string' } },
@@ -59,6 +59,18 @@ async function get_current_track() {
   const np = await P().nowPlaying(), s = summarize(np), cap = P().capabilities();
   if (np && np.error && !s.title) return { playing: false, track: null, note: np.error };
   if (!s.title) return { playing: false, track: null, note: cap.spotify ? 'Nothing is playing in Ember or on Spotify.' : 'Nothing is playing in Ember. Spotify is not connected, so music playing in other apps cannot be seen.' };
+  try {
+    const m = await Promise.race([P().meta(np.track, np.source), sleep(5000).then(() => null)]);
+    if (m) {
+      s.album = s.album || m.album || undefined; s.artist = s.artist || m.artist || undefined;
+      if (m.year) s.year = m.year; if (m.genre) s.genre = m.genre;
+      const http = /^https?:/.test(m.art || '');
+      s.artworkUrl = http ? m.art : undefined; if (m.art && !http) s.artwork = 'embedded in the file (shown in the player, no link)';
+      const about = [m.aboutSong && 'SONG: ' + m.aboutSong, m.aboutArtist && 'ARTIST: ' + m.aboutArtist].filter(Boolean).join('\n');
+      s.about = about ? str(about, 1600) : undefined;
+      if (!about) s.note = 'No bio or song background was found online. Say so instead of guessing details.';
+    } else s.note = 'Extra details (artwork, bio) are still loading or offline. Use only what is here.';
+  } catch (e) { /* metadata is a bonus */ }
   return s;
 }
 async function get_library(a) {

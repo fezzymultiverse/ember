@@ -32,6 +32,28 @@ const enabled = () => !!get().on;
 const keyOf = id => cleanKey((get().keys || {})[id] || '');
 const available = () => ORDER.filter(id => id == 'reader' ? readerOn() : (keyOf(id) && (id != 'sting' || /^https:\/\//i.test(get().stingEndpoint || ''))));
 
+// ---------- V1.6.1: pull scraping-provider keys out of pasted notes ----------
+// These providers don't have a fixed key prefix like gsk_/AIza, so this uses the same trick already used for
+// Mistral/Cohere in providers.js: find the provider's name on a line, then grab the key-shaped token nearby.
+const ALIAS = { firecrawl: ['firecrawl'], browserless: ['browserless'], scraperapi: ['scraperapi', 'scraper api'], scraperbee: ['scraperbee', 'scraper bee'], zenrows: ['zenrows', 'zen rows'], serpapi: ['serpapi', 'serp api'], octoparse: ['octoparse'] };
+const KEYSTOP = /^(https?|www|firecrawl|browserless|scraperapi|scraperbee|zenrows|serpapi|octoparse|api|key|token)$/i;
+function extractKeys(text) {
+  const out = {}; KEY_IDS.forEach(id => out[id] = []);
+  let cur = '', ttl = 0;
+  String(text || '').split(/\r?\n/).forEach(line => {
+    let hit = ''; for (const id of KEY_IDS) if ((ALIAS[id] || [id]).some(a => new RegExp(a, 'i').test(line))) { hit = id; break; }
+    if (hit) { cur = hit; ttl = 2; }
+    if (cur && ttl > 0) (line.match(/[A-Za-z0-9_\-]{16,64}/g) || []).forEach(tok => { if (!KEYSTOP.test(tok) && !out[cur].includes(tok)) out[cur].push(tok); });
+    if (!hit && ttl > 0) ttl--;
+  });
+  return out;
+}
+function ingestKeys(text) {
+  const found = extractKeys(text), s = get(); s.keys = s.keys || {}; const added = [];
+  KEY_IDS.forEach(id => { if (!s.keys[id] && found[id].length) { s.keys[id] = cleanKey(found[id][0]); added.push(id); } });
+  save(s); return { added, found };
+}
+
 // ---------- url check ----------
 function checkUrl(u) {
   let x; try { x = new URL(String(u || '').trim()); } catch (e) { return null; }
@@ -285,5 +307,5 @@ async function dispatch(name, args) {
   return { error: 'Unknown scraper tool: ' + name };
 }
 
-window.EmberScraper = { TOOLS, dispatch, scrape_url, test, healthCheck, healthAll, healthLocal, selfTest, ORDER, KEY_IDS, LABEL, get, setKey, setOn, setReader, readerOn, setStingEndpoint, enabled, available, htmlToMd, toPlain, checkUrl, focus };
+window.EmberScraper = { TOOLS, dispatch, scrape_url, test, healthCheck, healthAll, healthLocal, selfTest, ORDER, KEY_IDS, LABEL, get, setKey, setOn, setReader, readerOn, setStingEndpoint, enabled, available, htmlToMd, toPlain, checkUrl, focus, ingestKeys };
 })();

@@ -1,4 +1,4 @@
-// Ember V1.5.7 - ember_music_ui.js: the Music panel, the now-playing widget above the message box, and the Spotify settings card.
+// Ember V1.6.5 - ember_music_ui.js: the Music panel, the now-playing widget above the message box, and the Spotify settings card.
 // Loaded last. Talks only to EmberPlayer / EmberSpotify / EmberMusicAddon. The chat code (app.js) is not involved.
 'use strict';
 (() => {
@@ -23,6 +23,7 @@ function paintPos() {
   const t = np.track, dur = t ? (t.durationSec || 0) : 0, p = posNow();
   $('npPos').textContent = fmt(p); $('npDur').textContent = dur ? fmt(dur) : '';
   if (!dragging) { $('npSeek').max = String(dur || 1); $('npSeek').value = String(p); }
+  $('npSeek').style.setProperty('--pct', (dur ? Math.min(100, p / dur * 100) : 0) + '%');
   $('npSeek').disabled = !t || !dur;
 }
 function paint() {
@@ -39,7 +40,41 @@ function paint() {
   $('mwTitle').innerHTML = (playing ? '<span class="live"></span>' : '') + esc(t ? t.title : '');
   $('mwSub').textContent = t ? [t.artist, np.source === 'spotify' ? 'Spotify' : ''].filter(Boolean).join(' · ') : '';
   $('mwPlay').textContent = playing ? '⏸' : '▶';
+  $('npCard').classList.toggle('playing', playing && !!t); $('mw').classList.toggle('playing', playing && !!t);
+  paintMeta();
   document.querySelectorAll('#mList .trk').forEach(r => r.classList.toggle('on', !!(t && np.source === 'local' && r.dataset.id === t.id)));
+}
+// ---------- artwork + About (V1.6.5) ----------
+let metaKey = '';
+function setArt(u) {
+  const ok = !!u;
+  [['npArt', 'npArtPh'], ['mwArt', null]].forEach(([i, ph]) => {
+    const im = $(i); if (!im) return;
+    if (!ok) { im.classList.add('hidden'); im.removeAttribute('src'); if (ph) $(ph).classList.remove('hidden'); return; }
+    if (im.getAttribute('src') !== u) im.src = u;
+    im.onload = () => { im.classList.remove('hidden'); if (ph) $(ph).classList.add('hidden'); };
+    im.onerror = () => { im.classList.add('hidden'); if (ph) $(ph).classList.remove('hidden'); };
+  });
+}
+function renderAbout(m) {
+  const box = $('npAbout'), body = $('npAboutBody'), chips = $('npChips');
+  if (!m) { box.classList.add('hidden'); chips.innerHTML = ''; return; }
+  if (m === 'loading') { box.classList.remove('hidden'); body.innerHTML = '<p class="hint">Looking up artist and song info…</p>'; return; }
+  const c = [['Artist', m.artist], ['Album', m.album], ['Year', m.year], ['Genre', m.genre]].filter(x => x[1]);
+  chips.innerHTML = c.map(x => '<span class="chip2 c' + x[0] + '"><i>' + x[0] + '</i>' + esc(x[1]) + '</span>').join('');
+  const parts = [];
+  if (m.aboutSong) parts.push('<h4>The song</h4><p>' + esc(m.aboutSong) + '</p>');
+  if (m.aboutArtist) parts.push('<h4>' + esc(m.artist || 'The artist') + '</h4><p>' + esc(m.aboutArtist) + '</p>');
+  if (!parts.length) parts.push('<p class="hint">No bio found' + (navigator.onLine === false ? ' (you are offline)' : ' for this one') + '. Artwork and details come from the file tags, iTunes and Wikipedia when they have it.</p>');
+  box.classList.remove('hidden'); body.innerHTML = parts.join('') + (m.sources && m.sources.length ? '<small class="asrc">Source: ' + esc(m.sources.join(' + ')) + '</small>' : '');
+  body.scrollTop = 0;
+}
+function paintMeta() {
+  const t = np.track, k = t ? np.source + '|' + t.id + '|' + t.title + '|' + t.artist : '';
+  if (k === metaKey) return; metaKey = k;
+  if (!t) { setArt(''); renderAbout(null); return; }
+  const peek = P.metaPeek(t, np.source); setArt((peek && peek.art) || t.art || ''); if (peek) { renderAbout(peek); return; } renderAbout('loading');
+  P.meta(t, np.source).then(m => { if (metaKey !== k || !m) return; setArt(m.art || t.art || ''); renderAbout(m); }).catch(() => { if (metaKey === k) renderAbout({}); });
 }
 async function refresh() {
   if (busy) return; busy = true;
@@ -65,7 +100,7 @@ $('npNext').onclick = () => act('next'); $('mwNext').onclick = () => act('next')
 $('npShuf').onclick = () => act('shuffle'); $('npRep').onclick = () => act('repeat');
 $('npVol').oninput = () => P.control('volume', { value: +$('npVol').value });
 ['pointerdown', 'touchstart', 'mousedown'].forEach(ev => $('npSeek').addEventListener(ev, () => { dragging = true; }, { passive: true }));
-$('npSeek').addEventListener('input', () => { $('npPos').textContent = fmt($('npSeek').value); });
+$('npSeek').addEventListener('input', () => { $('npPos').textContent = fmt($('npSeek').value); const d = +$('npSeek').max || 1; $('npSeek').style.setProperty('--pct', Math.min(100, $('npSeek').value / d * 100) + '%'); });
 $('npSeek').addEventListener('change', () => { dragging = false; act('seek', { value: +$('npSeek').value }); });
 
 // ---------- tabs ----------

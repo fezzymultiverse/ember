@@ -10,6 +10,7 @@ import com.getcapacitor.BridgeActivity
 //   2. registerPlugin(EmberNotifyPlugin::class.java)
 //   2b. registerPlugin(EmberAiPlugin::class.java)   (V1.5.9, background replies)
 //   2c. registerPlugin(EmberYoutubePlugin::class.java)   (V1.6.0, YouTube search + audio download)
+//   2d. registerPlugin(EmberDevicePlugin::class.java)   (V1.6.6, Device panel: Wi-Fi, VPN, RAM, storage, uptime, battery)
 //   3. the onCreate / onNewIntent body below, which (a) reads a backgrounded reply and pushes it into the
 //      WebView as a window event, and (b) hands the com.fezzy.ember:// app link (Spotify sign-in coming back) to the WebView.
 class MainActivity : BridgeActivity() {
@@ -18,6 +19,7 @@ class MainActivity : BridgeActivity() {
         registerPlugin(EmberNotifyPlugin::class.java)
         registerPlugin(EmberAiPlugin::class.java)
         registerPlugin(EmberYoutubePlugin::class.java)
+        registerPlugin(EmberDevicePlugin::class.java)
         super.onCreate(savedInstanceState)
         handleBgReply(intent)
         handleLink(intent)
