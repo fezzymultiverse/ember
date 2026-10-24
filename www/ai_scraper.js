@@ -10,7 +10,7 @@ const KEY_IDS = ['firecrawl', 'browserless', 'scraperapi', 'scraperbee', 'sting'
 const MAX_CHARS = 8000;
 
 const TOOLS = [
-  { name: 'scrape_url', description: 'Fetches and READS any web page by url and returns its content as clean Markdown. Use this (not web_search) whenever he says scrape, read, open, check or summarise a page, or gives you a link or a saved site name. It rotates through ALL his saved scraper keys by itself and falls back to the free reader, so one failure is not the end: read the result\'s tried list. objective says what to look for (e.g. "find the error log"); the most relevant parts are kept when the page is long.', parameters: { url: 'string (a full url, or the name of a saved site)', objective: 'string?', format: '"text" for plain text with no Markdown (optional)', via: 'string? provider to force when he names one: firecrawl, browserless, scraperapi, scraperbee, sting, zenrows, serpapi, reader (octoparse is saved-only: no fetcher exists). Only that provider runs and the result says so.' } }
+  { name: 'scrape_url', description: 'Fetches a web page and returns its content as clean Markdown. objective says what to look for (e.g. "find the error log"); the most relevant parts are kept when the page is long.', parameters: { url: 'string (a full url, or the name of a saved site)', objective: 'string?', format: '"text" for plain text with no Markdown (optional)', via: 'string? provider to force when he names one: firecrawl, browserless, scraperapi, scraperbee, zenrows, serpapi, reader. Only that provider runs and the result says so.' } }
 ];
 
 // ---------- settings ----------

@@ -117,7 +117,7 @@ const NOTES = ['my stuff for the studio', 'groq: ' + GROQ, 'gemini ' + GEM, 'Mis
   await pg.click('#kList .kr:has-text("rejected") button[data-k=rm]'); await pg.click('#dOk'); await pg.waitForTimeout(200);
   ok('bad key removed', await pg.locator('#kList .kr').count() == 3);
   await pg.fill('#sName', 'Fezzy'); await pg.fill('#sAbout', 'Self-taught builder from Cape Town. Loves music.'); await pg.click('#bSx');
-  ok('engine pill dot green (V1.9.0 single pill)', await pg.locator('#engs.ok').count() == 1);
+  ok('three engine dots green', await pg.locator('#engs i.ok').count() == 3);
   ok('badge hides once keys exist (Free Mode auto-off)', await pg.locator('#fBadge.hidden').count() == 1);
 
   // 4. chat + no-echo
@@ -141,7 +141,7 @@ const NOTES = ['my stuff for the studio', 'groq: ' + GROQ, 'gemini ' + GEM, 'Mis
   M.limit.groq = true;
   await sendMsg('ok but seriously what do you think about midnight thoughts');
   ok('failed over to Mistral', /Mistral\b.*\d+ms/.test(await pg.textContent('#log')));
-  ok('groq state turned limited', await pg.evaluate(() => Prov.stateOf('groq') == 'limited'));
+  ok('groq dot turned amber', await pg.locator('#engs i.limited').count() == 1);
   M.limit.groq = false;
 
   // 7. memory learning (after the 2nd user message)

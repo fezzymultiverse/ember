@@ -49,25 +49,13 @@ class EmberWebPlugin : Plugin() {
         return if (looksLikeHost) "https://" + t else "https://duckduckgo.com/?q=" + Uri.encode(t)
     }
 
-    // V1.9.2: dark pill buttons (orange for the main action) instead of the stock white Android buttons.
-    private fun mkButton(label: String, primary: Boolean = false, action: () -> Unit): Button {
+    private fun mkButton(label: String, action: () -> Unit): Button {
         val b = Button(activity)
         b.text = label
         b.isAllCaps = false
         b.minWidth = 0
         b.minimumWidth = 0
-        b.minHeight = dp(40)
-        b.minimumHeight = dp(40)
-        b.textSize = 13f
-        b.stateListAnimator = null
-        b.elevation = 0f
-        b.setTextColor(if (primary) Color.parseColor("#1A0800") else Color.WHITE)
-        val bg = android.graphics.drawable.GradientDrawable()
-        bg.cornerRadius = dp(20).toFloat()
-        bg.setColor(Color.parseColor(if (primary) "#FF6A00" else "#1E1E1E"))
-        bg.setStroke(dp(1), Color.parseColor(if (primary) "#FF6A00" else "#2A2A2A"))
-        b.background = android.graphics.drawable.InsetDrawable(bg, dp(3), dp(4), dp(3), dp(4))
-        b.setPadding(dp(14), 0, dp(14), 0)
+        b.setPadding(dp(10), 0, dp(10), 0)
         b.setOnClickListener { action() }
         return b
     }
@@ -108,12 +96,6 @@ class EmberWebPlugin : Plugin() {
                 addr.hint = "Search or paste a link"
                 addr.setTextColor(Color.WHITE)
                 addr.setHintTextColor(Color.GRAY)
-                val abg = android.graphics.drawable.GradientDrawable()
-                abg.cornerRadius = dp(20).toFloat()
-                abg.setColor(Color.parseColor("#1E1E1E"))
-                abg.setStroke(dp(1), Color.parseColor("#2A2A2A"))
-                addr.background = abg
-                addr.setPadding(dp(14), dp(8), dp(14), dp(8))
                 addr.imeOptions = EditorInfo.IME_ACTION_GO
                 addr.setOnEditorActionListener { _, actionId, _ ->
                     if (actionId == EditorInfo.IME_ACTION_GO) {
@@ -175,7 +157,7 @@ class EmberWebPlugin : Plugin() {
                 val bottom = LinearLayout(activity)
                 bottom.orientation = LinearLayout.HORIZONTAL
                 bottom.gravity = Gravity.CENTER
-                bottom.addView(mkButton("Ask Ember", true) { sendPage("ask") })
+                bottom.addView(mkButton("Ask Ember") { sendPage("ask") })
                 bottom.addView(mkButton("Save to Documents") { sendPage("save") })
                 bottom.addView(mkButton("Open in Chrome") {
                     try {
@@ -215,11 +197,6 @@ class EmberWebPlugin : Plugin() {
                 web = view
                 urlBox = addr
                 bar = progress
-                // V1.9.2: medium bottom sheet (about 62% of the screen) instead of full screen, so chat stays visible above it.
-                val screenH = activity.resources.displayMetrics.heightPixels
-                dlg.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (screenH * 0.62f).toInt())
-                dlg.window?.setGravity(Gravity.BOTTOM)
-                dlg.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.BLACK))
                 dlg.show()
                 view.loadUrl(start)
                 call.resolve(JSObject().put("ok", true))

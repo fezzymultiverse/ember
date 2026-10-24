@@ -419,8 +419,7 @@ header{border-bottom-color:color-mix(in srgb,var(--ac) 22%,var(--b))}
 .etp{position:absolute;left:0;right:0;bottom:0;margin:0 auto;max-width:760px;z-index:5;display:flex;flex-direction:column;background:#05060a;border:1px solid color-mix(in srgb,var(--gr) 35%,var(--b));border-bottom:none;border-radius:18px 18px 0 0;box-shadow:0 -10px 34px rgba(0,0,0,.65),0 -2px 22px color-mix(in srgb,var(--gr) 18%,transparent);overflow:hidden;transition:height .38s cubic-bezier(.22,.9,.28,1);padding-bottom:var(--safe)}
 .etp.hidden{display:none}
 .etp[data-st=full]{height:calc(100% - 58px)}.etp[data-st=half]{height:50%}.etp[data-st=bar]{height:calc(62px + var(--safe))}
-/* V1.9.8: the page no longer slides up to make room. Half and full overlay it; only the bar leaves a little room. */
-#settings.hk.et-bar .sb{padding-bottom:calc(78px + var(--safe))}
+#settings.hk.et-full .sb{padding-bottom:calc(100vh - 70px)}#settings.hk.et-half .sb{padding-bottom:calc(50vh + 16px)}#settings.hk.et-bar .sb{padding-bottom:calc(78px + var(--safe))}
 .eth{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:9px 12px;background:linear-gradient(180deg,#0d0f18,#07080e);border-bottom:1px solid var(--b);position:relative;cursor:pointer;touch-action:pan-x;user-select:none}
 .eth::before{content:"";position:absolute;top:4px;left:50%;width:36px;height:4px;margin-left:-18px;border-radius:4px;background:var(--b)}
 .etlogo{width:38px;height:38px;border-radius:11px;flex:0 0 auto;box-shadow:0 0 14px color-mix(in srgb,var(--pu) 55%,transparent);margin-top:4px}
@@ -709,71 +708,3 @@ header{padding:6px 10px;gap:6px;border-bottom-color:#2a1a0c}
 /* V1.9.1: Get-a-key buttons scroll sideways in one row instead of eating the screen */
 #getKeyRow,#getKeyRowScrape{flex-wrap:nowrap!important;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
 #getKeyRow>.btn,#getKeyRowScrape>.btn{flex:0 0 auto;white-space:nowrap}
-
-/* V1.9.3: no brown ring/box inside the composer pill; the whole pill glows instead */
-#inp:focus,#inp:focus-visible{box-shadow:none!important;border:none!important;outline:none!important}
-.row:focus-within{box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 18%,transparent)}
-/* hero follows the real height of widget + composer, never under them */
-.empty{bottom:calc(var(--dock,150px) + 8px);overflow:hidden;padding-top:8px;padding-bottom:8px}
-@media (max-height:700px){.empty p{display:none}.flame{transform:scale(.8)}}
-
-
-/* ===== V1.9.8 ===== */
-/* header: Providers chip left, Ember's name in the true middle, tools right */
-header{position:relative;z-index:50}
-header .hl,header .hr{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:6px}
-header .hr{justify-content:flex-end}
-header .hl .hb,header .hr .hb{order:0!important}
-header .who{flex:0 1 auto;order:0!important;text-align:center;display:flex;flex-direction:column;align-items:center;min-width:0;max-width:46%}
-header .who b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-#bProv{display:inline-flex;align-items:center;justify-content:center;padding:0;color:var(--ac)}
-#bProv svg{display:block}
-#bProv.on{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 16%,#141414)}
-.provdrop{position:absolute;left:8px;right:8px;top:calc(100% + 6px);z-index:60;max-width:430px;background:#0a0a0a;border:1px solid color-mix(in srgb,var(--ac) 45%,var(--b));border-radius:16px;box-shadow:0 14px 40px rgba(0,0,0,.75);padding:6px 6px 8px;transform-origin:top left;animation:pdin .16s ease-out}
-.provdrop.hidden{display:none}
-@keyframes pdin{from{opacity:0;transform:translateY(-6px) scale(.97)}to{opacity:1;transform:none}}
-.pdh{display:flex;align-items:center;justify-content:space-between;padding:4px 8px 6px}
-.pdh b{font-size:12px;letter-spacing:.8px;text-transform:uppercase;color:var(--ac)}
-.pdre{width:30px;height:30px;border-radius:9px;border:1px solid var(--b);background:#141414;color:var(--t);font-size:15px;cursor:pointer}
-.pdrow{display:grid;grid-template-columns:14px 1fr;column-gap:10px;align-items:center;width:100%;text-align:left;padding:9px 10px;border:none;background:transparent;color:var(--t);border-radius:11px;cursor:pointer;font:inherit}
-.pdrow:active{background:#151515}
-.pdrow .pdn{font-size:14px;font-weight:700}
-.pdrow small{grid-column:2;color:var(--m);font-size:11px;margin-top:1px}
-.pdproto{font-style:normal;font-size:9.5px;font-weight:700;color:var(--m);border:1px solid var(--b);border-radius:99px;padding:1px 6px;margin-left:4px;vertical-align:1px}
-.pdd{display:inline-block;width:11px;height:11px;border-radius:50%;background:transparent;border:2px solid #5a5a5a;box-sizing:border-box;flex-shrink:0}
-.pdd.ok{background:var(--gr);border-color:var(--gr);box-shadow:0 0 8px var(--gr)}
-.pdd.limited{background:var(--am);border-color:var(--am);box-shadow:0 0 7px var(--am)}
-.pdd.bad{background:var(--rd);border-color:var(--rd);box-shadow:0 0 7px var(--rd)}
-.pdd.free{background:var(--ac);border-color:var(--ac);box-shadow:0 0 7px var(--ac)}
-.pdd.unknown{border-color:#8a8a8a}
-.pdd.none{background:transparent;border-color:#4a4a4a}
-.pdd.chk{border-color:var(--am);border-top-color:transparent;animation:pdspin .7s linear infinite}
-@keyframes pdspin{to{transform:rotate(360deg)}}
-.pdleg{display:flex;flex-wrap:wrap;gap:4px 12px;padding:8px 10px 2px;border-top:1px solid var(--b);margin-top:4px;font-size:10.5px;color:var(--m)}
-.pdleg span{display:inline-flex;align-items:center;gap:5px}.pdleg .pdd{width:9px;height:9px;border-width:1.5px}
-.pdnote{margin:4px 10px 0;font-size:10.5px;color:var(--m)}
-
-/* quick Docs button (replaced the dictation button) */
-#bDocsQuick{width:auto;height:34px;padding:0 14px 0 11px;border-radius:99px;font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--b);background:#141414;color:var(--t);cursor:pointer;flex-shrink:0}
-#bDocsQuick span{font-size:12px}
-
-/* Documents: one paperclip, its menu is two icons */
-#brDocs .brbar{position:relative}
-.dcmenu{position:absolute;right:0;top:calc(100% + 4px);z-index:5;display:flex;gap:6px;padding:6px;background:#0a0a0a;border:1px solid color-mix(in srgb,var(--ac) 40%,var(--b));border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,.7)}
-.dcmenu.hidden{display:none}
-.dcmenu .hb{font-size:18px}
-
-/* terminal: smaller text, command line */
-.etv{font-size:10.5px;line-height:1.25}
-.etcl{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:6px 8px;border-top:1px solid color-mix(in srgb,var(--gr) 30%,var(--b));background:#06070d}
-.etcl .etps{color:var(--gr);font:700 13px ui-monospace,monospace}
-.etcl input{flex:1;min-width:0;background:#0c0e16;border:1px solid var(--b);border-radius:10px;color:#d7e8ee;padding:8px 10px;font:12.5px ui-monospace,"Roboto Mono",Menlo,Consolas,monospace}
-.etcl input:focus{outline:none;border-color:var(--gr)}
-.etcl button{flex:0 0 auto;min-width:38px;height:34px;border-radius:10px;border:1px solid var(--gr);background:color-mix(in srgb,var(--gr) 14%,#0c0e16);color:var(--gr);font:700 14px ui-monospace,monospace;cursor:pointer}
-.etcl button.arm{background:var(--rd);border-color:var(--rd);color:#fff}
-
-/* ===== V1.9.10: lyrics preview ===== */
-.card.lyr{--cc:var(--ac)}.card.lyr.hidden{display:none}
-.lyr .lbody{font-size:15px;line-height:1.55;color:var(--m);min-height:24px}
-.lyr .ly{padding:1px 0;transition:color .2s}.lyr .ly.now{color:var(--t);font-weight:600}
-.lyr .asrc{display:block;color:var(--m);font-size:10.5px;margin-top:6px}

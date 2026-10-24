@@ -1,6 +1,4 @@
 // Ember V1.5.1 test: native (Capacitor) voice input path with a MOCKED SpeechRecognition plugin.
-// V1.9.8: the dictation button (#bMic) was removed, so this suite has nothing to click. It exits at once.
-if (!process.env.FORCE_VOICE_TEST) { console.log('SKIP voice-native-test: dictation button removed in V1.9.8'); process.exit(0); }
 // Run: node tests/voice-native-test.js   (PW=/path/to/playwright overrides the module path)
 const { chromium } = require(process.env.PW || '/home/claude/.npm-global/lib/node_modules/playwright');
 const http = require('http'), fs = require('fs'), path = require('path');

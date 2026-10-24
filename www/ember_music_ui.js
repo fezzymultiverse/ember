@@ -42,7 +42,6 @@ function paint() {
   $('mwPlay').textContent = playing ? '⏸' : '▶';
   $('npCard').classList.toggle('playing', playing && !!t); $('mw').classList.toggle('playing', playing && !!t);
   paintMeta();
-  if (window.EmberLyrics) window.EmberLyrics.paint(np, posNow());
   document.querySelectorAll('#mList .trk').forEach(r => r.classList.toggle('on', !!(t && np.source === 'local' && r.dataset.id === t.id)));
 }
 // ---------- artwork + About (V1.6.5) ----------
@@ -93,7 +92,7 @@ async function act(a, o) {
 // ---------- open / close ----------
 function openMusic() { renderLib(); renderPls(); renderAi(); refresh(); $('music').classList.add('show'); }
 function closeMusic() { $('music').classList.remove('show'); }
-window.EmberMusicUI = { open: openMusic, close: closeMusic, refresh }; // V1.8.1: the left-panel Music Console opens the full panel through this, so the lists are drawn
+window.EmberMusicUI = { open: openMusic, close: closeMusic }; // V1.8.1: the left-panel Music Console opens the full panel through this, so the lists are drawn
 if ($('bMusic')) $('bMusic').onclick = openMusic; // the header Music button no longer exists; an unguarded assignment here aborted the rest of this file
 $('bMx').onclick = closeMusic; $('mwOpen').onclick = openMusic;
 if ($('bOpenMusic')) $('bOpenMusic').onclick = () => { $('bSx').click(); openMusic(); };
@@ -218,7 +217,7 @@ window.addEventListener('ember-audd', renderAu);
 // ---------- live updates ----------
 P.on(kind => { if (kind === 'library') { renderLib(); renderPls(); } if (kind === 'playlists') renderPls(); soon(kind === 'tick' ? 0 : 80); });
 setInterval(() => { if (!document.hidden && !P.snapshot().playing) refresh(); }, 5000);
-setInterval(() => { if (np.playing && !dragging && (panelOpen() || !$('mw').classList.contains('hidden'))) paintPos(); if (np.playing && panelOpen() && window.EmberLyrics) window.EmberLyrics.paint(np, posNow()); }, 1000);
+setInterval(() => { if (np.playing && !dragging && (panelOpen() || !$('mw').classList.contains('hidden'))) paintPos(); }, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 
 renderAu();
