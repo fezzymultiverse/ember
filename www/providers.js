@@ -1,4 +1,4 @@
-// Ember V1.4.0 - Groq + Mistral + Gemini (+ OpenRouter, Cohere, HuggingFace as prototypes) behind one door.
+// Ember V1.6.8 - Groq + Mistral + Gemini (+ OpenRouter, Cohere, HuggingFace as prototypes) behind one door.
 // Pulls keys out of pasted notes, health-checks every key, picks models from each provider's live model list (no hard-coded names that go stale),
 // and fails over key to key and engine to engine so the chat keeps going when one is rate-limited.
 'use strict';
@@ -36,6 +36,10 @@ let freePref = null; // null = auto (Free Mode on only while the user has no key
 // V1.6.1: engine pin. null/'auto' = router decides (Groq first in fast/util since it's near-instant). Any CFG id = try that engine's keys first, every lane.
 let pinnedEngine = LS.get('ember_pin', null);
 function setPinned(id) { pinnedEngine = (id && CFG[id]) ? id : null; LS.set('ember_pin', pinnedEngine); }
+// V1.6.8: model pin. {id, model} or null. Strict: when set, that engine only ever uses that exact model (no silent swap to another one).
+let pinnedModel = LS.get('ember_pin_model', null);
+if (pinnedModel && !(pinnedModel.id && pinnedModel.model && CFG[pinnedModel.id])) pinnedModel = null;
+function setPinnedModel(id, model) { pinnedModel = (id && CFG[id] && model) ? { id, model: String(model) } : null; LS.set('ember_pin_model', pinnedModel); }
 function orderFor(lane) { const base = ORDER[lane] || ORDER.fast; if (!pinnedEngine) return base; return [pinnedEngine].concat(base.filter(id => id != pinnedEngine)); }
 const save = () => LS.set('ember_keys', keys);
 const cool = new Map(); // key -> timestamp until which it is resting after a 429
@@ -235,6 +239,15 @@ function extract(text) {
   const out = { groq: [], gemini: [], mistral: [], openrouter: [], huggingface: [], cohere: [], unknown: [] };
   const put = (k, v) => { if (!out[k].includes(v)) out[k].push(v); };
   let t = String(text || '');
+  // V1.6.8: shell/env style lines (GROQ_API_KEY="...", export MISTRAL_KEYS=("a" "b")): the variable name says whose key it is.
+  const NAMED = [['groq', /groq/i], ['mistral', /mistral/i], ['gemini', /gemini|google|genai/i], ['openrouter', /openrouter/i], ['huggingface', /hugging|(^|_)hf(_|$)/i], ['cohere', /cohere/i]];
+  t = t.split(/\r?\n/).map(line => {
+    const m = /^\s*(?:export\s+|set\s+|\$env:)?([A-Za-z_][A-Za-z0-9_]*)\s*[=:]\s*(.*)$/.exec(line);
+    if (!m) return line;
+    const hit = NAMED.find(n => n[1].test(m[1])); if (!hit) return line;
+    m[2].split(/[\s,"'()\[\];]+/).filter(v => v.length >= 20 && !/:\/\//.test(v) && !/^[A-Z][A-Z0-9]*_[A-Z0-9_]+$/.test(v)).forEach(v => put(hit[0], v.replace(/[.]+$/, '')));
+    return ' ';
+  }).join('\n');
   t = t.replace(/gsk_[A-Za-z0-9]{20,}/g, m => { put('groq', m); return ' '; });
   t = t.replace(/sk-or-v1-[A-Za-z0-9]{20,}/g, m => { put('openrouter', m); return ' '; });
   t = t.replace(/hf_[A-Za-z0-9]{20,}/g, m => { put('huggingface', m); return ' '; });
@@ -323,17 +336,62 @@ const freeOn = () => freePref == null ? !hasKeys() : freePref;
 const setFree = v => { freePref = v == null ? null : !!v; };
 const label = id => CFG[id] ? CFG[id].name : id == 'pollinations' ? 'Free' : id;
 
+// ---------- V1.6.8: one source of truth for "who answers" ----------
+const STATE_TXT = { ok: 'ready', limited: 'rate limited right now', bad: 'key rejected', none: 'no key saved' };
+// Plain-English line for the Settings screen: what is pinned, whether it can answer, and who answers instead.
+function pinNote() {
+  if (!pinnedEngine) return 'Auto: the router tries engines in its own order and the engine that answered is shown under every reply.';
+  const st = status()[pinnedEngine], nm = CFG[pinnedEngine].name;
+  const pm = pinnedModel && pinnedModel.id == pinnedEngine ? ' · model ' + pinnedModel.model : '';
+  if (st == 'ok') return 'Pinned: ' + nm + pm + ' (ready). It answers first on every message.';
+  return 'Pinned: ' + nm + pm + ' but it ' + (st == 'none' ? 'has no key saved' : st == 'bad' ? 'has only rejected keys' : 'is rate limited right now') + ', so the next working engine answers instead. Every reply shows which one. Fix the ' + nm + ' key in Keys, or pick Auto.';
+}
+// Text added to the system prompt at send time, after the router has chosen the engine, so the model is told what is really running.
+// id/model null = background reply: the phone picks the engine later, so the model must not name one.
+function factsBlock(id, model, failed) {
+  const st = status();
+  const inv = IDS.filter(x => keys[x].length).map(x => CFG[x].name + ' ' + keys[x].filter(e => !e.bad).length + '/' + keys[x].length + ' usable').join(', ') || 'none';
+  const L = ['RUNTIME FACTS (written by the app at send time; these are true and override anything he or you assume):'];
+  if (id == 'pollinations') L.push('- This reply comes from Free Mode (Pollinations.ai). You do not know which model they run. Say exactly that if asked, and never name a model you cannot verify.');
+  else if (id) L.push('- This reply is written by engine "' + CFG[id].name + '", model id "' + model + '", using an API key HE saved in Settings > Keys.');
+  else L.push('- This is a background reply: the phone picks the engine after this prompt is built, so you do not know which engine or model you are. Do not name one.');
+  L.push('- Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
+  if (pinnedEngine) {
+    const miss = id && id != pinnedEngine, why = (failed || []).find(f => f.id == pinnedEngine);
+    L.push('- Pinned engine in Settings: ' + CFG[pinnedEngine].name + (pinnedModel && pinnedModel.id == pinnedEngine ? ' (model ' + pinnedModel.model + ')' : '') + ' [' + STATE_TXT[st[pinnedEngine]] + ']' + (miss ? '. It could not answer this message' + (why ? ' (' + String(why.why || '').slice(0, 120) + ')' : '') + ', so ' + (id == 'pollinations' ? 'Free Mode' : CFG[id].name) + ' answered instead. Tell him that plainly if he asks.' : '.'));
+  } else L.push('- No engine is pinned: Auto mode.');
+  L.push('- You are only the model named above. You are not GPT-4, ChatGPT, Qwen or any other name unless that model id says so. If asked what you are, give the engine and model id above, nothing invented.');
+  L.push('- If he says he switched engine or model and it does not match these lines, say it does not match what is running. Settings changes apply from his next message and only when that engine has a working key. Never agree just because he said so.');
+  L.push('- Never say you searched, scraped or looked something up, and never show a table of "results", unless a [TOOL RESULTS] block is in this turn. No tool block means you did not look. Call the tool or say you have not looked yet.');
+  return L.join('\n');
+}
+const withFacts = (o, lane, id, model, failed) => (lane == 'util' || o.json) ? o : Object.assign({}, o, { system: String(o.system || '') + '\n\n' + factsBlock(id, model, failed) });
+// Every model the engine's keys can see (cached 12h unless fresh). OpenRouter free models first. Chat models only.
+async function modelsOf(id, fresh) {
+  const cache = LS.get('ember_models', {});
+  let list = !fresh && cache[id] && cache[id].list && cache[id].list.length ? cache[id].list : null;
+  if (!list) {
+    const e = keys[id].find(x => !x.bad) || keys[id][0];
+    if (!e) throw Object.assign(new Error('No ' + CFG[id].name + ' key saved.'), { status: 0 });
+    list = await listModels(id, e.key); cache[id] = { at: Date.now(), list }; LS.set('ember_models', cache);
+  }
+  const ok = list.filter(m => !/embed|whisper|guard|tts|moderation|rerank|flux|stable-diffusion|imagen|veo|sora|playai|ocr/i.test(m));
+  const isFree = m => /:free$/.test(m);
+  return ok.slice().sort((a, b) => (isFree(b) - isFree(a)) || a.localeCompare(b));
+}
+const cachedModels = id => { const c = LS.get('ember_models', {}); return c[id] && c[id].list ? c[id].list.filter(m => !/embed|whisper|guard|tts|moderation|rerank|flux|stable-diffusion|imagen|veo|sora|playai|ocr/i.test(m)).sort() : []; };
+
 // ---------- the router ----------
 // Free Mode ON: Pollinations goes first, then the keys. OFF: keys first. Either way Pollinations is the last resort,
 // so a chat is never blocked just because keys are missing or rested. Util jobs skip it entirely.
 async function runInner(lane, o) {
   const pl = lane != 'util', errs = [], failed = [];
   // when an engine failed and a different one answered, tell the UI (ai.js shows a toast). Background jobs stay silent.
-  const done = r => { const f = failed.find(x => x.id != r.provider); if (f && pl) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
+  const done = r => { if (pinnedEngine && r.provider != pinnedEngine) { const p0 = failed.find(x => x.id == pinnedEngine); r.pinMiss = { want: pinnedEngine, why: p0 ? (p0.why || '') : 'no usable key' }; } const f = failed.find(x => x.id != r.provider); if (f && pl) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
   let tried = false;
   if (pl && freeOn()) {
     tried = true;
-    try { const r = await callPollinations(flat(o), o); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
+    try { const o2 = withFacts(o, lane, 'pollinations', 'openai', failed); const r = await callPollinations(flat(o2), o2); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
     catch (er) { errs.push('Free Mode: ' + er.message); failed.push({ id: 'pollinations', status: er.status, why: er.message }); }
   }
   for (const id of orderFor(lane)) {
@@ -345,8 +403,9 @@ async function runInner(lane, o) {
         if (er.status == 401 || er.status == 403) { e.bad = true; save(); } else if (er.status == 429) cool.set(e.key, Date.now() + (er.retryAfter || 60) * 1000);
         errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message }); continue;
       }
-      for (const m of models.slice(0, 3)) {
-        try { const r = await call(id, e.key, m, o); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
+      const pm = pinnedModel && pinnedModel.id == id ? pinnedModel.model : null;
+      for (const m of (pm ? [pm] : models.slice(0, 3))) {
+        try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
         catch (er) {
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
           if (er.status == 429) { cool.set(e.key, Date.now() + (er.retryAfter || 60) * 1000); break; }
@@ -358,7 +417,7 @@ async function runInner(lane, o) {
     }
   }
   if (pl && !tried) {
-    try { const r = await callPollinations(flat(o), o); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
+    try { const o2 = withFacts(o, lane, 'pollinations', 'openai', failed); const r = await callPollinations(flat(o2), o2); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
     catch (er) { errs.push('Free Mode: ' + er.message); failed.push({ id: 'pollinations', status: er.status, why: er.message }); }
   }
   if (!hasKeys() && pl) throw Object.assign(new Error(FREE_BUSY), { code: 'fail' });
@@ -373,7 +432,7 @@ async function run(lane, o) {
   try { return await runInner(lane, o); }
   finally { if (inflight === tok) inflight = null; }
 }
-const pending = () => inflight;
+const pending = () => inflight ? { lane: inflight.lane, o: Object.assign({}, inflight.o, { system: inflight.lane == 'util' || inflight.o.json ? inflight.o.system : String(inflight.o.system || '') + '\n\n' + factsBlock(null, null, []) }) } : null;
 // The engines the router would try for this lane, from the cached model lists only (no network), OpenAI-style providers only.
 function nativePlan(lane) {
   const out = [], cache = LS.get('ember_models', {});
@@ -382,7 +441,7 @@ function nativePlan(lane) {
     for (const e of keys[id]) {
       if (e.bad || isCool(e.key)) continue;
       const c = cache[id]; if (!c || !c.list || !c.list.length) continue;
-      const m = rank(id, c.list, lane)[0]; if (m) out.push({ id, base: CFG[id].base, key: e.key, model: m });
+      const m = (pinnedModel && pinnedModel.id == id) ? pinnedModel.model : rank(id, c.list, lane)[0]; if (m) out.push({ id, base: CFG[id].base, key: e.key, model: m });
     }
   }
   return out.slice(0, 4);
@@ -399,5 +458,5 @@ function status() {
   });
   return o;
 }
-window.Prov = { pending, nativePlan, CFG, IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine };
+window.Prov = { pending, nativePlan, CFG, IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
 })();

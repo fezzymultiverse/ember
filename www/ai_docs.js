@@ -1,4 +1,4 @@
-// Ember Add-On: Document Reading (www/ai_docs.js)
+// Ember Add-On: Document Reading (www/ai_docs.js) - V1.8.0: long documents are handled by Local Context (ember_context.js): outline, search, read chunk.
 // Defines tool schemas and stub handlers for reading documents from the vault.
 // Connects to Conduint Files / Bojack Secures vault path via EmberDocs bridge,
 // or falls back gracefully when the bridge is absent.
@@ -14,20 +14,22 @@ const DOCS_TOOLS = [
   },
   {
     name: 'search_documents',
-    description: 'Finds documents whose name or content matches the query string.',
+    description: 'Finds documents whose name or content matches the query string (one short snippet per document). To find passages inside a long document use search_in_document.',
     parameters: { query: 'string' }
   },
   {
     name: 'read_document',
-    description: 'Returns the full text content of a specific document by fileId.',
+    description: 'Returns the text of a document by fileId. Only the first 8000 characters come back; if the result says truncated, the document is long: use get_document_outline, search_in_document and read_document_chunk (or run_react with mode document) instead of guessing.',
     parameters: { fileId: 'string' }
   },
   {
     name: 'summarize_document',
-    description: 'Reads a document by fileId and returns a short summary of its contents.',
+    description: 'Reads the START of a document by fileId (first 6000 characters) so it can be summarised. If the result says partial, the summary covers only the beginning: say so, or use the Local Context tools to cover the rest.',
     parameters: { fileId: 'string' }
   }
 ];
+// Local Context tools (ember_context.js loads first). Missing file = the three tools simply do not exist.
+if (window.EmberContext && Array.isArray(window.EmberContext.TOOLS)) window.EmberContext.TOOLS.forEach(t => DOCS_TOOLS.push(t));
 
 // ---------- handlers ----------
 
@@ -65,8 +67,10 @@ async function read_document(fileId) {
       const result = await window.EmberDocs.readDocument({ fileId });
       // Truncate to ~8000 chars to stay inside the context window
       if (result && result.content && result.content.length > 8000) {
+        const total = result.content.length;
         result.content = result.content.slice(0, 8000) + '\n[...truncated for length]';
-        result.truncated = true;
+        result.truncated = true; result.total_chars = total; result.returned_chars = 8000;
+        result.hint = 'Only the first 8000 of ' + total + ' characters are shown. Use get_document_outline, search_in_document and read_document_chunk for the rest.';
       }
       return result;
     }
@@ -88,7 +92,8 @@ async function summarize_document(fileId) {
     if (!doc.content) return { summary: null, note: 'Document has no readable text.' };
     // Return the raw text; ai.js will include it in the next AI reply as context.
     // The AI's system prompt already tells it to summarise when this tool is called.
-    return { fileId, rawText: doc.content.slice(0, 6000), needsSummary: true };
+    const cut = doc.truncated === true || doc.content.length > 6000, total = doc.total_chars || doc.content.length;
+    return Object.assign({ fileId, rawText: doc.content.slice(0, 6000), needsSummary: true }, cut ? { partial: true, total_chars: total, covers: 'the first 6000 characters only', hint: 'Say the summary covers only the start, or use search_in_document and read_document_chunk for the rest.' } : {});
   } catch (e) {
     return { error: e.message || 'Could not summarise document.' };
   }
@@ -101,7 +106,9 @@ async function dispatch(name, args) {
     case 'search_documents':  return search_documents(args.query);
     case 'read_document':     return read_document(args.fileId);
     case 'summarize_document': return summarize_document(args.fileId);
-    default: return { error: 'Unknown doc tool: ' + name };
+    default:
+      if (window.EmberContext && window.EmberContext.NAMES.includes(name)) return window.EmberContext.dispatch(name, args);
+      return { error: 'Unknown doc tool: ' + name };
   }
 }
 

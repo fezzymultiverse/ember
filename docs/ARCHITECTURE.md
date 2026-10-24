@@ -92,3 +92,14 @@ These must hold in every version. [REVIEW_CHECKLIST.md](REVIEW_CHECKLIST.md) tur
 6. **The safety flag is transient.** It lives in one JS integer. It is never written to `conv`, `mem`, `ember_set` or a backup. See [SAFETY.md](SAFETY.md).
 7. **The crisis card is local.** It is static markup with no user text, no fetch and no delay.
 8. **No new persistent state without a migration.** New `mem` keys need an entry in `MEM_DEF` and `migrateMem`.
+
+## Local Context, tool binding and the ReAct graph · V1.8.0
+
+**`ember_context.js`** owns chunking and search for long documents. It reads text only through `window.EmberDocs` and never stores anything: the chunk index is an in-memory cache keyed by document id, update time and length. Its three tools are added to `EmberDocsAddon.TOOLS` by `ai_docs.js`, so the plan engine, the ReAct loop and the chat tool block all see them. It returns an error at safety level 2 or higher.
+
+**`ember_schema.js`** owns argument binding. `app.js runTool` calls `EmberSchema.bind(def, args)` before dispatch. `def.schema` means strict; otherwise the loose `parameters` shorthand is only coerced.
+
+**`ember_react.js`** runs as a state graph. The `GRAPH` table is the only source of legal moves. Load order: `persona.js`, `ember_schema.js`, `ember_context.js`, `ai_docs.js`, `ember_engine.js`, `ember_react.js`, `app.js`.
+
+Data flow: in document mode only the chunks the model asks for leave the phone, not the whole file.
+

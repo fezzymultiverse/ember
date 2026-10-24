@@ -88,12 +88,13 @@ $('brSend').onclick = async () => {
 
 // ---------- Documents ----------
 const kb = n => n < 1024 ? n + ' chars' : (n / 1024).toFixed(n < 10240 ? 1 : 0) + ' k chars';
+const lcb = d => { const C = window.EmberContext; return (C && d.size > 8000) ? ' · <span class="lcb">LOCAL CONTEXT · ' + C.count(d) + ' chunks</span>' : ''; };
 async function renderDocs() {
   const D = DOCS(); if (!D) return;
   const q = $('dcQ').value.trim().toLowerCase();
   let list = await D.all(); list.sort((a, b) => b.updated - a.updated);
   if (q) list = list.filter(d => d.name.toLowerCase().includes(q) || d.text.toLowerCase().includes(q));
-  $('dcItems').innerHTML = list.length ? list.map(d => '<div class="dci" data-id="' + esc(d.id) + '"><button class="btn g go"><b>' + esc(d.name) + '</b><small>' + kb(d.size) + ' · ' + new Date(d.updated).toLocaleDateString() + ' · ' + esc(d.text.slice(0, 70).replace(/\s+/g, ' ')) + '</small></button><button class="btn g x" aria-label="Delete document">✕</button></div>').join('')
+  $('dcItems').innerHTML = list.length ? list.map(d => '<div class="dci" data-id="' + esc(d.id) + '"><button class="btn g go"><b>' + esc(d.name) + '</b><small>' + kb(d.size) + lcb(d) + ' · ' + new Date(d.updated).toLocaleDateString() + ' · ' + esc(d.text.slice(0, 70).replace(/\s+/g, ' ')) + '</small></button><button class="btn g x" aria-label="Delete document">✕</button></div>').join('')
     : '<p class="hint">' + (q ? 'Nothing matches.' : 'No documents yet. Add text files, make a note, or save a page from the Browser tab. Ember can list, search and read everything here.') + '</p>';
 }
 async function openDoc(id) {

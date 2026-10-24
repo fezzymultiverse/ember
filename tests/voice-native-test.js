@@ -62,7 +62,7 @@ const MOCK = mode => `
   });
   await run('unavailable', async pg => {
     await pg.click('#bMic'); await pg.waitForTimeout(150);
-    ok('engine not started when no speech service', await pg.evaluate(() => window.__sr.started == 0));
+    ok('only the Android popup fallback is tried when the quiet engine is missing', await pg.evaluate(() => window.__sr.started == 0 || (window.__sr.started == 1 && window.__sr.opts.popup === true && window.__sr.opts.partialResults === false)));
     ok('toast explains the missing speech service', /No speech service/i.test(await pg.textContent('body')));
   });
 

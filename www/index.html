@@ -12,7 +12,7 @@
 <header>
 <button class="hb" id="bHist" aria-label="Chat history">☰</button>
 <div class="who"><b id="pName">Ember</b><div id="engs" class="engs"></div></div>
-<button id="bTermux" title="Open the Termux tab" aria-label="Open the Termux tab">💻 Termux</button>
+<button id="bTermux" title="Termux Mode" aria-label="Open the Termux tab" class="hb">💻</button>
 <button class="hb" id="bSet" aria-label="Settings">⚙</button>
 </header>
 <div id="fBadge" class="fbadge hidden">Free Mode: no key needed. Replies can be slower.</div>
@@ -27,8 +27,8 @@
 <div id="mw" class="mw hidden"><img id="mwArt" class="mwart hidden" alt=""><button id="mwOpen" class="mwt" aria-label="Open the music panel"><b id="mwTitle">—</b><small id="mwSub"></small></button><button id="mwPlay" aria-label="Play or pause">▶</button><button id="mwNext" aria-label="Next">⏭</button></div>
 <footer class="comp">
 <div class="modes" id="modes"><button data-m="chill">Chill</button><button data-m="sharp">Sharp</button><button data-m="deep">Deep</button></div>
-<div class="tools"><button id="bMusic">🎵 Music</button><button id="bDevice">📟 Device</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
-<div class="row"><button id="bGlobe" aria-label="Read a web page" title="Read a web page">🌐</button><button id="bMic" aria-label="Speak" aria-pressed="false" title="Speak">🎤</button><textarea id="inp" rows="1" placeholder="Say anything…" enterkeyhint="send"></textarea><button id="bSend" aria-label="Send">➤</button></div>
+<div class="tools"><button id="bDevice">📟 Device</button><button id="bReact">🧠 Reasoning</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
+<div class="row"><button id="bGlobe" aria-label="Read a web page" title="Read a web page">🌐</button><button id="bMic" aria-label="Dictate: talk and your words are typed here" aria-pressed="false" title="Dictate: tap, talk, and your words are typed here. Tap again to stop.">🎤</button><textarea id="inp" rows="1" placeholder="Say anything…" enterkeyhint="send"></textarea><button id="bSend" aria-label="Send">➤</button></div>
 </footer>
 </div>
 
@@ -50,11 +50,44 @@
 <input type="text" id="pmName" placeholder="Name (e.g. Fix this script)" autocomplete="off" maxlength="40">
 <input type="text" id="pmTags" placeholder="Tags, comma separated (e.g. debug, termux)" autocomplete="off" maxlength="80" list="pTagList"><datalist id="pTagList"></datalist>
 <textarea id="pText" rows="4" placeholder="The prompt text…" maxlength="2000"></textarea>
+<textarea id="pNo" rows="2" placeholder="Don't: what Ember must NOT do (e.g. no bullet points)" maxlength="600"></textarea>
+<input type="text" id="pRem" placeholder="Remind me on / when (e.g. check the build at 6pm)" autocomplete="off" maxlength="160">
+<input type="text" id="pTask" placeholder="Task (e.g. play music for 1 hour, then remind me to stretch)" autocomplete="off" maxlength="200">
 <div class="prow"><button class="btn g" id="pAdd">Save prompt</button><button class="btn g hidden" id="pCancel">Cancel</button></div>
 </div>
 <div class="prow"><button class="btn g" id="pExport">Export</button><button class="btn g" id="pImportBtn">Import</button><button class="btn g hidden" id="pStarter">Starter pack</button></div>
 <textarea id="pIO" class="hidden" rows="4" placeholder="Paste exported prompts here, then tap Import now"></textarea><button class="btn g hidden" id="pImportGo">Import now</button>
-</div></aside>
+</div>
+
+<!-- Music Console Widget — bottom of left panel -->
+<div id="drawerMusic" class="drawer-music">
+  <button id="dmConsoleBtn" class="dm-console-btn" aria-label="Open Music Console">
+    <span class="dm-flame-logo">🔥</span>
+    <span class="dm-label">Music Console</span>
+    <span class="dm-chevron">▲</span>
+  </button>
+  <div id="dmConsole" class="dm-console hidden">
+    <div class="dm-console-header">
+      <span class="dm-console-title">🎵 Music Console</span>
+      <button id="dmClose" class="hb" style="width:30px;height:30px;font-size:13px">✕</button>
+    </div>
+    <div id="dmNowPlaying" class="dm-now-playing">
+      <span id="dmTrackName" class="dm-track-name">Nothing playing</span>
+      <span id="dmTrackSub" class="dm-track-sub"></span>
+    </div>
+    <div class="dm-controls">
+      <button id="dmPrev" aria-label="Previous">⏮</button>
+      <button id="dmPlay" class="dm-play-btn" aria-label="Play or pause">▶</button>
+      <button id="dmNext" aria-label="Next">⏭</button>
+    </div>
+    <button class="btn dm-open-full" id="dmOpenFull">Open Full Music Panel</button>
+  </div>
+  <!-- Watermark -->
+  <div class="dm-watermark" aria-hidden="true">
+    <img src="ember-icon.svg" alt="" class="dm-wm-img">
+  </div>
+</div>
+</aside>
 <div id="scrim"></div>
 
 <section id="browser" class="sheet"><div class="sh"><b>Browser</b><button class="hb" id="brX" aria-label="Close">✕</button></div>
@@ -82,7 +115,7 @@
 <button class="stab" data-st="scraping">Scraping</button>
 <button class="stab" data-st="hacking">Hacking</button>
 <button class="stab" data-st="music">Music</button>
-<button class="stab" data-st="permissions">Permissions</button>
+<button class="stab" data-st="permissions">Perms</button>
 </div>
 <div class="sb">
 <div class="card" data-tab="general"><div class="ct">Free Mode</div>
@@ -92,7 +125,11 @@
 <div class="card" data-tab="keys"><div class="ct">Which engine answers</div>
 <label class="lb">Engine</label>
 <select id="engPin"><option value="">Auto (fastest working key)</option></select>
-<p class="hint">Auto tries Groq first because it's the fastest, then falls through the rest. Pin one to always try it first — it still falls back if that engine is down or rate-limited.</p></div>
+<label class="lb">Model (any model your key can see)</label>
+<select id="engModel" disabled><option value="">Auto (router picks from the engine's live list)</option></select>
+<button class="btn g" id="bModels" style="margin-top:8px">Load models from my key</button>
+<p class="hint" id="engTruth"></p>
+<p class="hint">Auto tries Groq first because it's the fastest, then falls through the rest. Pin an engine to try it first. Pin a model to use only that exact model. If the pinned engine cannot answer, the next one does, and every reply says so. OpenRouter free models (:free) are listed first.</p></div>
 
 <div class="card" data-tab="keys"><div class="ct">Get a key</div>
 <div class="btnrow" id="getKeyRow" style="flex-wrap:wrap"></div>
@@ -139,11 +176,7 @@
 <div class="cr"><span>Enable Termux Mode (Pen-Test Persona)</span><div class="sw" id="swTermux"></div></div>
 <p class="hint">When ON, Ember acts as a senior penetration tester. Real Termux commands, OPSEC explanations, and Hacker Lessons woven into replies. Lesson of the Day drops on your first message each session. Toggle the 💻 Termux Mode button in the header for quick on/off. OFF means OFF now — mentioning the word "termux" in normal chat no longer flips this on by itself.</p></div>
 
-<div class="card" data-tab="hacking"><div class="ct">Ask Termux</div>
-<p class="hint">A straight answer about Termux, Linux, networking, or anything else — doesn't touch your current chat or its memory.</p>
-<textarea id="txQ" class="pad" style="min-height:70px" placeholder="e.g. how do I find what's using port 8080?" spellcheck="false"></textarea>
-<button class="btn" id="txAsk">Ask</button>
-<div class="wout hidden" id="txOut"></div></div>
+<div class="card" data-tab="hacking"><div class="ct">EMBER TERMUX</div><p class="hint">The terminal is docked at the bottom of this tab: Terminal, Ask Ember (reads your screen, hands back commands) and Setup. Drag the top bar or tap ⤢ to expand, ▾ to drop it to a bar.</p></div>
 
 <div class="card" data-tab="general"><div class="ct">Memory &amp; Context</div>
 <label class="lb">Context window</label>
@@ -178,12 +211,17 @@
 <div class="cr" style="margin-top:10px"><span>Keep replying in the background</span><div class="sw on" id="swBgReply"></div></div>
 <p class="hint">If you leave Ember while it is still writing a reply, the unfinished request is handed to a background task on the phone, which finishes it and sends a notification with a reply box. It uses the same engines and keys as the app and is cancelled if the app finishes first. The request (including your keys) sits in the app's private storage until it completes, then is deleted. Add-on tools (music, documents, web) do not run in the background.</p>
 <div class="cr" style="margin-top:10px"><span>Native music widget</span><div class="sw on" id="swMusicWidget"></div></div>
-<p class="hint">Shows the track playing in Ember's own player in the Android notification shade and on the lock screen, with previous, play/pause and next. It follows Ember's player only, not Spotify.</p></div>
+<p class="hint">Shows the track playing in Ember's own player in the Android notification shade and on the lock screen, with previous, play/pause and next. It follows Ember's player.</p></div>
 
 <div class="card" data-tab="permissions"><div class="ct">Voice</div>
 <div class="cr"><span>Read replies aloud automatically</span><div class="sw" id="swRead"></div></div>
-<p class="hint" id="ttsNote">Every reply also has a 🔊 button to read just that one. Voice input (🎤) uses the phone's speech service (Google, on most Android phones), which can send the audio to Google. It needs microphone permission. In the installed app it uses the native Android recogniser and native text-to-speech; in a browser it uses the browser's own.</p>
+<p class="hint" id="ttsNote">Every reply also has a 🔊 button to read just that one. While it is reading, that button turns red and says Stop: tap it to stop, and it goes back to 🔊 when the voice is done. The 🎤 next to the message box is dictation, not a call: tap it, talk, and your words are typed into the message box; tap it again to stop. Dictation uses the phone's speech service (Google, on most Android phones), which can send the audio to Google. It needs microphone permission. In the installed app it uses the native Android recogniser and native text-to-speech; in a browser it uses the browser's own.</p>
 <label class="lb">Voice</label><select id="sVoice"><option value="">Default</option></select>
+<label class="lb">Speed <span id="vRate" class="hint">1.00×</span></label><input type="range" id="sRate" min="0.6" max="1.6" step="0.05" value="1" style="width:100%">
+<label class="lb">Pitch <span id="vPitch" class="hint">1.00</span></label><input type="range" id="sPitch" min="0.6" max="1.6" step="0.05" value="1" style="width:100%">
+<div class="cr"><span>Lively delivery (questions lift, exclamations speed up)</span><div class="sw on" id="swLively"></div></div>
+<button class="btn g" id="bVoiceTest">▶ Test this voice</button>
+<p class="hint">The default Android voice is basic. For better ones, install voice data for your language in your phone's text-to-speech settings (Google Speech Services), then pick one here. Voices marked "online" need internet.</p>
 <p class="hint">First read-aloud of a session can take a few seconds while the engine spins up — it's warming in the background on app open now, so it should be instant after that.</p></div>
 
 <div class="card" data-tab="general"><div class="ct">Look</div>
@@ -192,18 +230,21 @@
 
 <div class="card" data-tab="music"><div class="ct">Music player</div>
 <button class="btn" id="bOpenMusic">🎵 Open Music panel</button>
-<p class="hint">Ember plays your music itself: upload songs or scan the phone, and the player widget shows above the message box whenever something is playing. No other app needed. The panel is also under the 🎵 Music pill above the message box.</p></div>
+<p class="hint">Ember plays your music itself: upload songs or scan the phone, and the player widget shows above the message box whenever something is playing. No other app needed. The full panel opens from Music Console at the bottom of the left menu, or from the player widget.</p></div>
 
-<div class="card" data-tab="music"><div class="ct">Spotify</div>
-<p class="hint" id="spStat"></p>
-<label class="lb">Client ID</label><input type="text" id="spClient" placeholder="Client ID from developer.spotify.com" autocomplete="off" spellcheck="false">
-<label class="lb">Redirect URI (add this exact text to your Spotify app)</label><input type="text" id="spRedir" autocomplete="off" spellcheck="false">
-<div class="btnrow" style="margin-top:8px"><button class="btn" id="spConnect">Connect Spotify</button><button class="btn g" id="spDisc">Disconnect</button><button class="btn g" id="spCopy">Copy URI</button></div>
-<p class="hint">Setup, once: 1) developer.spotify.com/dashboard, Create app. 2) Under Redirect URIs add the text from the box above, exactly. 3) Paste the app's Client ID here and tap Connect. Seeing what is playing and your playlists works on any account. Controlling playback needs Spotify Premium and the Spotify app open on a device. Spotify's rules for new apps: the app owner needs Premium and up to 5 users can be added. Tokens stay on this phone and are not in backups.</p></div>
+<div class="card" data-tab="music"><div class="ct">Song identification (Audd.io)</div>
+<p class="hint" id="auStat"></p>
+<label class="lb">Audd.io API token</label><input type="password" id="auToken" placeholder="API token from dashboard.audd.io" autocomplete="off" spellcheck="false">
+<div class="btnrow" style="margin-top:8px"><button class="btn" id="auSave">Save token</button><button class="btn g" id="auClear">Remove token</button></div>
+<label class="lb" style="margin-top:10px">Identify from a direct audio link</label><input type="text" id="auUrl" placeholder="https://example.com/clip.mp3" autocomplete="off" spellcheck="false">
+<div class="btnrow" style="margin-top:8px"><button class="btn" id="auUrlGo">Identify link</button></div>
+<p class="hint" id="auUrlRes"></p>
+<p class="hint">Setup, once: make an account at dashboard.audd.io and copy the API token. Nothing is sent until you tap Identify in the Music panel, press Identify link, or ask Ember in chat. A short clip (about 12 seconds of the song, as a small WAV) or the link you typed goes to Audd.io with your token. Audd.io names the best match and gives no confidence score. Your allowance, pricing and limits are Audd.io's, not Ember's. The token stays on this phone and is not in backups.</p></div>
 
 <div class="card" data-tab="music"><div class="ct">Ember add-ons</div>
 <div class="cr"><span>Let Ember control music</span><div class="sw" id="swMusic"></div></div>
-<p class="hint">When on, you can tell Ember in chat to play, pause, skip, change the volume, search, make playlists or say what is playing. It only touches the player when your message asks for it, and everything it does shows in the Ember tab of the Music panel. Ember can see only its own player and Spotify (when connected), not other apps. If you tell it to look something up or scrape a page, it does that with Web Scraping (Settings, Scraping).</p>
+<div class="cr"><span>Small freedoms: skip, volume, pick a song on her own</span><div class="sw" id="swMusicFree"></div></div>
+<p class="hint">When on, you can tell Ember in chat to play, pause, skip, change the volume, search, make playlists or say what is playing. It only touches the player when your message asks for it, and everything it does shows in the Ember tab of the Music panel. Ember can see only its own player, not other apps. If you tell it to look something up or scrape a page, it does that with Web Scraping (Settings, Scraping).</p>
 <div class="cr" style="margin-top:10px"><span>Document Reading</span><div class="sw" id="swDocs"></div></div>
 <p class="hint">When on, Ember can read, search and summarise documents in your vault. Requires the EmberDocs bridge (connect via Conduint Files or Bojack Secures). Document text is sent to whichever engine answers, including Free Mode, so leave this off for anything private.</p></div>
 
@@ -243,18 +284,30 @@
 <div class="btnrow"><button class="btn" id="bExp">Export backup</button><button class="btn g" id="bImp">Import backup</button></div>
 <input type="file" id="fImp" accept="application/json,.json" hidden>
 <button class="btn g danger" id="bWipe" style="margin-top:10px">Delete everything</button>
-<p class="hint" id="ver">Ember V1.6.4 · S.O.I. × Bojack 999</p></div>
+<p class="hint" id="ver">Ember V1.8.1 · S.O.I. × Bojack 999 · 🔥 Orange Build</p></div>
 </div></section>
+
+<section id="react" class="sheet"><div class="sh"><b>Reasoning</b><button class="hb" id="bRx" aria-label="Close reasoning">✕</button></div>
+<div class="sb">
+<div class="card"><div class="ct">Live run</div><p class="hint" id="rxStatus"></p><p class="hint" id="rxGoal"></p><div class="btnrow"><button class="btn g hidden" id="rxStop">Stop the run</button></div></div>
+<div class="card"><div class="ct">Control what it analyses</div>
+<div class="cr"><span>Approve each action first</span><div class="sw" id="rxApprove"></div></div>
+<div class="cr"><span>Edit what it sees before it continues</span><div class="sw" id="rxObserve"></div></div>
+<label class="lb">Steer it (goes in with its next step)</label><textarea id="rxSteerTxt" rows="2" placeholder="e.g. look at the second result instead, ignore the ads" spellcheck="false"></textarea>
+<div class="btnrow" style="margin-top:8px"><button class="btn" id="rxSteerGo">Send note</button></div>
+<p class="hint">A reasoning run works one step at a time: Thought, then Action, then what the action returned (Observation), until it can answer. With approval on it pauses before every action so you can change its Thought, the tool or the arguments, skip it, or stop. With observation edit on it pauses after every action so you can cut or fix what it is about to read. Every action still goes through the same tools and switches as normal chat. A run ends at 10 steps, 4 minutes, or when you stop it.</p></div>
+<div id="rxTrace"></div></div></section>
 
 <section id="music" class="sheet"><div class="sh"><b>Music</b><button class="hb" id="bMx" aria-label="Close music">✕</button></div>
 <div class="sb">
 <div class="card np" id="npCard"><div class="npart"><img id="npArt" class="hidden" alt="Album artwork"><div id="npArtPh" class="npph">🎵</div></div>
-<div class="npt" id="npTitle">Nothing playing</div><div class="nps" id="npSub">Upload music or connect Spotify.</div><div class="npsrc" id="npSrc"></div><div class="npchips" id="npChips"></div>
+<div class="npt" id="npTitle">Nothing playing</div><div class="nps" id="npSub">Upload music or scan the phone.</div><div class="npsrc" id="npSrc"></div><div class="npchips" id="npChips"></div>
 <div class="npc"><button id="npShuf" aria-label="Shuffle" title="Shuffle (library)">🔀</button><button id="npPrev" aria-label="Previous">⏮</button><button id="npPlay" class="big" aria-label="Play or pause">▶</button><button id="npNext" aria-label="Next">⏭</button><button id="npRep" aria-label="Repeat" title="Repeat (library)">🔁</button></div>
 <div class="npv"><span>🔈</span><input type="range" id="npVol" min="0" max="100" value="100" aria-label="Volume"></div>
+<div class="btnrow" style="margin-top:8px"><button class="btn g" id="npId">🎧 Identify this song</button></div><div class="hint" id="npIdRes"></div>
 <p class="hint" id="npErr"></p></div>
 <div class="card about hidden" id="npAbout"><div class="ct">About</div><div class="abody" id="npAboutBody"></div></div>
-<div class="mtabs"><button class="mtab on" data-m="lib">Library</button><button class="mtab" data-m="sp">Spotify</button><button class="mtab" data-m="ai">Ember</button></div>
+<div class="mtabs"><button class="mtab on" data-m="lib">Library</button><button class="mtab" data-m="ai">Ember</button></div>
 <div class="mpane" id="mp_lib">
 <div class="btnrow"><button class="btn" id="mUp">＋ Upload music</button><button class="btn g" id="mScan">Scan phone</button></div>
 <input type="file" id="mFile" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac" multiple hidden>
@@ -265,13 +318,6 @@
 <div id="mPls"></div>
 <input type="text" id="mPlName" placeholder="Playlist name" maxlength="40" autocomplete="off" style="margin-top:6px">
 <button class="btn g" id="mPlSave" style="margin-top:6px">Save the listed songs as a playlist</button>
-</div>
-<div class="mpane hidden" id="mp_sp">
-<div id="spOff"><p class="hint" id="spOffTxt">Spotify is not connected.</p><button class="btn" id="spToSet">Set up Spotify</button></div>
-<div id="spOn" class="hidden"><p class="hint" id="spWho"></p>
-<div class="cr2"><input type="text" id="spQ" placeholder="Search Spotify…" autocomplete="off"><button class="btn" id="spGo">Search</button></div>
-<div id="spRes"></div>
-<div class="ct" style="margin:14px 0 6px">Your Spotify playlists</div><div id="spPls"></div></div>
 </div>
 <div class="mpane hidden" id="mp_ai">
 <div class="cr"><span>Let Ember control music</span><div class="sw" id="mAiSw"></div></div>
@@ -289,7 +335,7 @@
 <div class="sb">
 <div class="dvpane" id="dv_dev">
 <div class="card" style="--cc:var(--bl)"><div class="ct">🌐 Network</div><div id="dvNet"><p class="hint">Reading…</p></div></div>
-<div class="card" style="--cc:var(--pu)"><div class="ct">🧠 AI details</div><div id="dvAi"></div></div>
+<div class="card" style="--cc:var(--ac)"><div class="ct">🔥 Engine Status</div><div id="dvAi"></div></div>
 <div class="card" style="--cc:var(--ac)"><div class="ct">💾 Storage and RAM</div><div id="dvMem"></div></div>
 <div class="card" style="--cc:var(--am)"><div class="ct">⏱ Uptime</div><div id="dvUp"></div></div>
 <div class="card" style="--cc:var(--gr)"><div class="ct">🔋 Battery integrity</div><div id="dvBat"></div></div>
@@ -318,8 +364,8 @@
 <tr><td>Reading or scraping a page</td><td>The page address (and your key for paid scrapers). The page text then goes to the chat engine</td><td>The reader or scraper you chose</td></tr>
 <tr><td>YouTube search and saving</td><td>Search and download requests from the phone</td><td>YouTube / Google servers</td></tr>
 <tr><td>Vision (off by default)</td><td>The image link you paste and your question</td><td>Pollinations</td></tr>
-<tr><td>Spotify (optional)</td><td>Sign-in and playback commands</td><td>Spotify</td></tr>
-<tr><td>Song info (artwork, album, year, bio)</td><td>The song title and artist name only. Never audio, files or your library</td><td>Apple iTunes Search, Wikipedia and TheAudioDB</td></tr>
+<tr><td>Song identification (optional, off until you add a token)</td><td>A clip of about 12 seconds of the song (or the audio link you typed) and your Audd.io token. Only when you tap Identify or ask Ember to</td><td>Audd.io</td></tr>
+<tr><td>Song info (artwork, album, year, bio)</td><td>The song title and artist name only. Never audio, files or your library</td><td>Deezer, MusicBrainz and Wikipedia</td></tr>
 <tr><td>VPN area lookup</td><td>Your public IP address, which the request reveals by existing</td><td>ipwho.is. Only while a VPN is detected, or when you tap the lookup button</td></tr>
 <tr><td>Device readings (Wi-Fi, RAM, battery…)</td><td>Nothing</td><td>Stays on the phone</td></tr></table>
 <p>Anything you send to a third party is also covered by that party's own terms and retention. This project does not control them.</p>
@@ -348,11 +394,11 @@
 <li><b>The safety check will miss things.</b> It looks for warning signs in your words; it cannot see tone, context or what you do not say.</li>
 <li><b>You are responsible for what you do</b> with Ember's answers, and for anything you ask it to run, save, download or send.</li></ul>
 <h3>Music, downloads and copyright</h3>
-<p>Ember plays files you add and, if you connect it, controls your own Spotify. Saving audio from YouTube or elsewhere is <b>your responsibility</b>: only save what you have the right to keep, and follow the service's terms and your local copyright law. Song info is looked up from public sources and may be wrong or missing.</p>
+<p>Ember plays files you add and, if you add an Audd.io token, can name a song from a short clip. Saving audio from YouTube or elsewhere is <b>your responsibility</b>: only save what you have the right to keep, and follow the service's terms and your local copyright law. Song info is looked up from public sources and may be wrong or missing.</p>
 <h3>Quotes</h3>
 <p>The rotating quotes at the top are short excerpts from public interviews with Juice WRLD, each credited to its publication. They are <b>not song lyrics</b>. Ember is an independent project and is not affiliated with, sponsored or endorsed by Juice WRLD's estate, his labels, or the publications named. Quotes can lose context when shortened. If you are a rights holder and want one removed, tell the maintainer and it will go.</p>
 <h3>Logos and trademarks</h3>
-<p>YouTube, GitHub, GitLab, Spotify and the other names and marks belong to their owners. The simplified marks below only say which services Ember works with. No partnership or endorsement is implied.</p>
+<p>YouTube, GitHub, GitLab, Deezer, MusicBrainz, Audd.io and the other names and marks belong to their owners. The simplified marks below only say which services Ember works with. No partnership or endorsement is implied.</p>
 <h3>No warranty</h3>
 <p>Ember is provided <b>as is</b>, with no promise that it is accurate, always available, or fit for any purpose. To the extent the law allows, the maintainer is not liable for loss or harm from using it. Nothing here limits rights you cannot lawfully give up. All rights in the app are reserved by the maintainer unless a licence says otherwise.</p>
 </div>
@@ -363,9 +409,11 @@
 <div class="logo"><svg viewBox="0 0 48 48" role="img" aria-label="Web scraping"><g fill="none" stroke="#00e5ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M24 3v42M3 24h42M9 9l30 30M39 9L9 39"/><polygon points="24,11 33,15 37,24 33,33 24,37 15,33 11,24 15,15"/><polygon points="24,18 29,20 31,24 29,28 24,30 19,28 17,24 19,20"/></g><circle cx="24" cy="24" r="3" fill="#9d00ff"/></svg><b>Web scraping</b><small>Reader, Tavily search, Firecrawl, Browserless and friends</small></div>
 <div class="logo"><svg viewBox="0 0 24 24" role="img" aria-label="GitHub"><path fill="#f2f2fc" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg><b>GitHub</b><small>Source hosting and Actions builds</small></div>
 <div class="logo"><svg viewBox="0 0 48 48" role="img" aria-label="GitLab"><path d="M24 43L16 22h16z" fill="#e24329"/><path d="M24 43L4 28l12-6z" fill="#fc6d26"/><path d="M24 43l20-15-12-6z" fill="#fc6d26"/><path d="M4 28L9 8l7 14z" fill="#fca326"/><path d="M44 28L39 8l-7 14z" fill="#fca326"/></svg><b>GitLab</b><small>CI builds for the Android app</small></div>
-<div class="logo"><svg viewBox="0 0 48 48" role="img" aria-label="Spotify"><circle cx="24" cy="24" r="21" fill="#1ed760"/><g fill="none" stroke="#0a0a10" stroke-linecap="round"><path d="M11 18c9-3 20-2 27 2" stroke-width="3.6"/><path d="M12.5 25c8-2.5 17-1.5 23 2" stroke-width="3.1"/><path d="M14 31.5c6.5-2 13-1 18 1.8" stroke-width="2.6"/></g></svg><b>Spotify</b><small>Optional playback control (your own account)</small></div>
+<div class="logo"><svg viewBox="0 0 48 48" role="img" aria-label="Deezer"><g fill="#a238ff"><rect x="6" y="30" width="7" height="8" rx="1"/><rect x="15" y="24" width="7" height="14" rx="1"/><rect x="24" y="18" width="7" height="20" rx="1"/><rect x="33" y="10" width="7" height="28" rx="1"/></g></svg><b>Deezer</b><small>Song search, artwork, album and year</small></div>
+<div class="logo"><svg viewBox="0 0 48 48" role="img" aria-label="MusicBrainz"><g fill="none" stroke="#ba478f" stroke-width="3"><path d="M24 6l15 8.5v17L24 40 9 31.500v-17z"/><path d="M24 6v34M9 14.500l15 8.500 15-8.500"/></g></svg><b>MusicBrainz</b><small>Artist and album background</small></div>
+<div class="logo"><svg viewBox="0 0 48 48" role="img" aria-label="Audd.io"><g fill="none" stroke="#00e5ff" stroke-width="3" stroke-linecap="round"><path d="M10 24v0M17 18v12M24 11v26M31 17v14M38 22v4"/></g></svg><b>Audd.io</b><small>Optional song identification (your own token)</small></div>
 </div>
-<p class="hint">Also: Capacitor (the Android shell), NewPipe Extractor (YouTube reading, see the licence notes in the project), Apple iTunes Search, Wikipedia and TheAudioDB (song info), ipwho.is (VPN area). Built by Fezzy, one phone, rootless Termux.</p></div>
+<p class="hint">Also: Capacitor (the Android shell), NewPipe Extractor (YouTube reading, see the licence notes in the project), Deezer, MusicBrainz and Wikipedia (song info), Audd.io (song identification), ipwho.is (VPN area). Built by Fezzy, one phone, rootless Termux.</p></div>
 <div class="card" style="--cc:var(--am)"><div class="ct">Quote credits</div>
 <p class="hint">Rotating quotes come from: MTV TRL (2018, via TIDAL), Interview Magazine, Chicago Tribune (2018, via Legacy.com), Billboard, Rolling Stone ("The First Time") and Clash. Short excerpts only, credited on screen.</p></div>
 <div class="card" style="--cc:var(--ac)"><div class="ct">Add your own quote</div>
@@ -383,10 +431,11 @@
 
 <div class="modal" id="dlg"><div class="mc"><h2 id="dT"></h2><p id="dX"></p><input type="text" id="dI" class="hidden"><div class="btnrow" style="margin-top:14px"><button class="btn" id="dOk">OK</button><button class="btn g" id="dNo">Cancel</button></div></div></div>
 <div id="toast"></div>
-<script src="store.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_spotify.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script><script src="ember_device.js"></script>
+<script src="store.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js"></script><script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script><script src="ember_react_ui.js"></script><script src="ember_device.js"></script>
 <script src="ember_docs_lib.js"></script>
-<script src="ember_find.js"></script>
+<script src="ember_find.js"></script><script src="ember_tasks.js"></script>
 <script src="ember_browser.js"></script>
+<script src="ember_term.js"></script>
 <script>
 // Apply termux-mode-on class to body when S is available, for CSS theming
 (function pollTermux(){
@@ -398,8 +447,78 @@
   };
   check();
   window.addEventListener('storage', check);
-  // also re-check whenever the TX button is toggled (fired from app.js via custom event)
   document.addEventListener('ember-termux-changed', check);
+})();
+
+// ===== MUSIC CONSOLE WIDGET (drawer bottom) =====
+(function initMusicConsole(){
+  const btn = document.getElementById('dmConsoleBtn');
+  const console_ = document.getElementById('dmConsole');
+  const closeBtn = document.getElementById('dmClose');
+  const dmPlay = document.getElementById('dmPlay');
+  const dmPrev = document.getElementById('dmPrev');
+  const dmNext = document.getElementById('dmNext');
+  const dmTrack = document.getElementById('dmTrackName');
+  const dmSub = document.getElementById('dmTrackSub');
+  const openFull = document.getElementById('dmOpenFull');
+
+  if (!btn) return;
+
+  // Toggle console open/close
+  btn.addEventListener('click', () => {
+    const isOpen = !console_.classList.contains('hidden');
+    console_.classList.toggle('hidden', isOpen);
+    btn.classList.toggle('open', !isOpen);
+    btn.querySelector('.dm-chevron').textContent = isOpen ? '▲' : '▼';
+  });
+  closeBtn && closeBtn.addEventListener('click', () => {
+    console_.classList.add('hidden');
+    btn.classList.remove('open');
+    btn.querySelector('.dm-chevron').textContent = '▲';
+  });
+
+  // Open full music panel
+  openFull && openFull.addEventListener('click', () => {
+    const dx = document.getElementById('bDx'); if (dx) dx.click();
+    if (window.EmberMusicUI) window.EmberMusicUI.open();
+    else { const ms = document.getElementById('music'); if (ms) ms.classList.add('show'); }
+  });
+
+  // Mirror player controls to the existing ember_player buttons
+  function mirrorClick(sourceId, targetIds) {
+    const src = document.getElementById(sourceId);
+    if (!src) return;
+    src.addEventListener('click', () => {
+      for (const tid of targetIds) {
+        const t = document.getElementById(tid);
+        if (t) { t.click(); break; }
+      }
+    });
+  }
+  mirrorClick('dmPlay', ['npPlay']);
+  mirrorClick('dmPrev', ['npPrev']);
+  mirrorClick('dmNext', ['npNext']);
+
+  // Sync track info from the main now-playing title
+  function syncTrack() {
+    const t = document.getElementById('npTitle');
+    const s = document.getElementById('npSub');
+    if (t && dmTrack) dmTrack.textContent = t.textContent || 'Nothing playing';
+    if (s && dmSub) dmSub.textContent = s.textContent || '';
+    // Sync play/pause icon
+    const np = document.getElementById('npPlay');
+    if (np && dmPlay) dmPlay.textContent = np.textContent || '▶';
+  }
+
+  // Poll every 2s when drawer is open
+  setInterval(() => {
+    const drawer = document.getElementById('drawer');
+    if (drawer && drawer.classList.contains('show')) syncTrack();
+  }, 2000);
+
+  // Also sync on music events
+  document.addEventListener('ember-track-changed', syncTrack);
+  document.addEventListener('ember-player-state', syncTrack);
 })();
 </script>
 </body></html>

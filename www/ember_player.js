@@ -1,6 +1,6 @@
-// Ember V1.6.5 - ember_player.js: the music engine. No bridge, no other app. Ember plays your music itself.
-// Local library (uploaded files + phone scan) lives in IndexedDB. Spotify is handled by ember_spotify.js and merged here
-// so everything else (panel, widget, the AI) talks to ONE object: window.EmberPlayer.
+// Ember V1.7.0 - ember_player.js: the music engine. No bridge, no other app. Ember plays your music itself.
+// Local library (uploaded files + phone scan) lives in IndexedDB. Song info comes from Deezer (art, album, year, genre) and
+// MusicBrainz (artist and album background). Everything else (panel, widget, the AI) talks to ONE object: window.EmberPlayer.
 'use strict';
 (() => {
 const DB_NAME = 'ember_music', EXT = /\.(mp3|m4a|aac|wav|ogg|oga|opus|flac|weba|webm|mp4|3gp|amr|wma)$/i;
@@ -10,7 +10,6 @@ const mem = { tracks: new Map(), blobs: new Map() };
 let lib = [];                       // track records (no audio data), sorted by title
 let queue = [], qi = -1;            // queue of local track ids, index into it
 let shuffle = false, repeat = false;
-let active = 'local';               // which source last started playing: local | spotify
 let loadToken = 0;
 const devCache = [];                // small LRU of device-track blobs: [{id, blob}]
 const subs = new Set();
@@ -103,8 +102,8 @@ async function remove(id) {
 async function wipe() {
   stop(); lib = []; mem.tracks.clear(); mem.blobs.clear();
   if (db) { try { await rq(store('tracks', 'readwrite').clear()); await rq(store('blobs', 'readwrite').clear()); } catch (e) { /* nothing to clear */ } }
-  try { localStorage.removeItem(PL_KEY); } catch (e) {}
-  emit('library');
+  try { localStorage.removeItem(PL_KEY); localStorage.removeItem(META_KEY); localStorage.removeItem('ember_meta'); } catch (e) {}
+  metaMem.clear(); emit('library');
 }
 const deviceOk = () => !!(window.EmberNative && window.EmberNative.device);
 async function scanDevice() {
@@ -163,17 +162,15 @@ async function loadAndPlay(t, autoplay) {
   if (curUrl) { try { URL.revokeObjectURL(curUrl); } catch (e) {} }
   curUrl = URL.createObjectURL(blob); cur = t; audio.src = curUrl; setSession(t);
   if (autoplay) {
-    try { await audio.play(); active = 'local'; } catch (e) { lastErr = 'The phone blocked or could not play that file (' + (e.name || 'error') + ').'; emit('error'); return { ok: false, error: lastErr }; }
+    try { await audio.play(); } catch (e) { lastErr = 'The phone blocked or could not play that file (' + (e.name || 'error') + ').'; emit('error'); return { ok: false, error: lastErr }; }
   }
   emit('track'); return { ok: true };
 }
-async function pauseSpotify() { const S = window.EmberSpotify; if (S && S.isConnected()) { try { await S.control('pause'); } catch (e) { /* nothing was playing there */ } } }
 
 async function playLocal(id, ids) {
   const t = get(id); if (!t) return { ok: false, error: 'No track with id ' + id + ' in the library.' };
   queue = (Array.isArray(ids) && ids.includes(id)) ? ids.filter(x => get(x)) : lib.map(x => x.id);
   qi = queue.indexOf(id);
-  await pauseSpotify();
   return loadAndPlay(t, true);
 }
 async function step(dir, auto) {
@@ -196,20 +193,13 @@ let lastTick = 0; audio.addEventListener('timeupdate', () => { const n = Date.no
 const localPlaying = () => !!cur && !audio.paused && !audio.ended;
 function snapshot() {
   return {
-    source: 'local', active, playing: localPlaying(), loaded: !!cur, track: brief(cur),
+    source: 'local', playing: localPlaying(), loaded: !!cur, track: brief(cur),
     positionSec: cur ? Math.round(audio.currentTime || 0) : 0, volume: Math.round(audio.volume * 100), shuffle, repeat, error: lastErr, queueLength: queue.length
   };
 }
-// What is playing right now, from whichever source. This is what the widget, the panel and the AI all read.
+// What is playing right now. This is what the widget, the panel and the AI all read.
 async function nowPlaying() {
   const loc = snapshot();
-  if (localPlaying()) return Object.assign({}, loc, { source: 'local' });
-  const S = window.EmberSpotify;
-  if (S && S.isConnected()) {
-    const sp = await S.current();
-    if (sp && !sp.error && sp.track && (sp.playing || !loc.loaded)) return Object.assign({ source: 'spotify' }, sp);
-    if (sp && sp.error && !loc.loaded) return { source: 'spotify', playing: false, track: null, error: sp.error };
-  }
   if (loc.loaded) return Object.assign({}, loc, { source: 'local' });
   return { source: 'none', playing: false, track: null };
 }
@@ -217,23 +207,18 @@ async function nowPlaying() {
 // ---------- unified control ----------
 // action: play | pause | toggle | next | prev | stop | seek | volume | shuffle | repeat
 async function control(action, o) {
-  o = o || {}; const S = window.EmberSpotify;
-  const spOn = !!(S && S.isConnected());
+  o = o || {};
   if (action === 'volume') {
     const v = Math.max(0, Math.min(100, Math.round(+o.value)));
     if (!isFinite(v)) return { ok: false, error: 'volume needs a number from 0 to 100.' };
-    const wantSp = active === 'spotify' && spOn && !localPlaying();
-    if (wantSp) return S.control('volume', { value: v });
     audio.volume = v / 100; emit('state'); return { ok: true, volume: v, source: 'local' };
   }
   if (action === 'shuffle') { shuffle = o.value == null ? !shuffle : !!o.value; emit('state'); return { ok: true, shuffle }; }
   if (action === 'repeat') { repeat = o.value == null ? !repeat : !!o.value; emit('state'); return { ok: true, repeat }; }
   if (action === 'play' && o.songId) return playLocal(String(o.songId), o.ids);
-  const useSp = spOn && !localPlaying() && (active === 'spotify' || !cur);
-  if (useSp) { const r = await S.control(action === 'toggle' ? 'toggle' : action, o); if (r && r.ok) active = 'spotify'; return r; }
   switch (action) {
     case 'play': {
-      if (cur) { try { await pauseSpotify(); await audio.play(); active = 'local'; return { ok: true }; } catch (e) { return { ok: false, error: 'Could not resume (' + (e.name || 'error') + ').' }; } }
+      if (cur) { try { await audio.play(); return { ok: true }; } catch (e) { return { ok: false, error: 'Could not resume (' + (e.name || 'error') + ').' }; } }
       if (lib.length) return playLocal(lib[0].id, lib.map(x => x.id));
       return { ok: false, error: 'The library is empty. Upload music in the Music panel first.' };
     }
@@ -254,26 +239,25 @@ async function playPlaylist(name) {
 
 // ---------- what Ember can and cannot do, built from the real state (the AI is told exactly this) ----------
 function capabilities() {
-  const S = window.EmberSpotify, sp = !!(S && S.isConnected());
+  const au = !!(window.EmberAudd && window.EmberAudd.hasKey());
   const can = [
     'play, pause, resume, skip, go back, stop, seek, set volume, shuffle and repeat for his uploaded music (' + lib.length + ' track' + (lib.length === 1 ? '' : 's') + ' in the library)',
     'tell him what is playing right now',
     'search the library and play a track by id, make local playlists and play them (' + (playlists().map(p => p.name).join(', ') || 'none yet') + ')'
   ];
-  if (sp) can.push('Spotify: see what is playing, play / pause / skip / seek / volume on his active Spotify device, search Spotify, play a track, list his playlists and make a Spotify playlist');
+  if (au) can.push('identify the song that is playing in Ember\'s player (a short audio clip goes to Audd.io), or a song from a direct audio link he gives');
   const cannot = [
     'delete music or playlists, change settings, or connect / disconnect anything',
     'start, stop or change music by himself: only when his latest message asks for it',
     'hear audio or read lyrics from the player (lyrics need a web lookup)',
-    'see music playing in other apps: only Ember\'s own player' + (sp ? ' and Spotify' : '') + ' are visible to you'
+    'see music playing in other apps: only Ember\'s own player is visible to you'
   ];
-  if (!sp) cannot.push('use Spotify: it is not connected (he connects it in Settings > Music or the Music panel)');
-  else cannot.push('control Spotify with no active device (the Spotify app must be open on a device) or without Premium');
-  return { can, cannot, library: lib.length, playlists: playlists(), spotify: sp, phoneScan: deviceOk() };
+  if (!au) cannot.push('identify an unknown song: song identification is off until he pastes an Audd.io API token in Settings > Music');
+  return { can, cannot, library: lib.length, playlists: playlists(), audd: au, phoneScan: deviceOk() };
 }
 
-// ---------- V1.6.5 metadata + artwork: embedded tags first, then iTunes (art/album/year), Wikipedia + TheAudioDB (about) ----------
-const META_KEY = 'ember_meta', metaMem = new Map(), metaBusy = new Map(); let embUrl = null;
+// ---------- V1.7.0 metadata + artwork: embedded tags first, then Deezer (art/album/year/genre), then MusicBrainz (artist and album background, with the Wikipedia page it links to) ----------
+const META_KEY = 'ember_meta2', metaMem = new Map(), metaBusy = new Map(); let embUrl = null;
 const mkey = (a, t) => (String(a || '') + '|' + String(t || '')).toLowerCase().replace(/\s+/g, ' ').trim();
 const norm = s => String(s || '').toLowerCase().replace(/\(.*?\)|\[.*?\]|feat\.?.*$|ft\.?.*$/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 const firstArtist = a => String(a || '').split(/,|&| feat\.? | ft\.? | x /i)[0].trim();
@@ -322,36 +306,122 @@ async function readId3(blob) {
     return out;
   } catch (e) { return null; }
 }
+const clipText = x => {
+  let t = String(x || '').replace(/\s+/g, ' ').trim();
+  if (t.length > 1000) { const c = t.slice(0, 1000), i = c.lastIndexOf('. '); t = i > 400 ? c.slice(0, i + 1) : c + '…'; }
+  return t;
+};
 async function wiki(q, must) {
   const r = await jget('https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&prop=extracts&exintro=1&explaintext=1&exchars=1100&generator=search&gsrlimit=1&gsrsearch=' + encodeURIComponent(q));
   const pg = r && r.query && r.query.pages && Object.values(r.query.pages)[0];
   if (!pg || !pg.extract || pg.extract.length < 60) return '';
   const hay = norm(pg.title + ' ' + pg.extract); if (must && !hay.includes(norm(must))) return '';
-  let t = pg.extract.replace(/\s+/g, ' ').trim();
-  if (t.length > 1000) { const c = t.slice(0, 1000), i = c.lastIndexOf('. '); t = i > 400 ? c.slice(0, i + 1) : c + '…'; }
-  return t;
+  return clipText(pg.extract);
+}
+async function wikiPage(title) {
+  const r = await jget('https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&prop=extracts&exintro=1&explaintext=1&exchars=1100&titles=' + encodeURIComponent(title));
+  const pg = r && r.query && r.query.pages && Object.values(r.query.pages)[0];
+  return pg && pg.extract && pg.extract.length >= 60 ? clipText(pg.extract) : '';
+}
+// MusicBrainz links an artist or album to its Wikipedia page directly, or through Wikidata. Follow that link instead of guessing by search.
+async function wikiFromRels(rels) {
+  rels = Array.isArray(rels) ? rels.filter(x => x && x.url && x.url.resource) : [];
+  let title = '';
+  const w = rels.find(x => x.type === 'wikipedia'), m = w && String(w.url.resource).match(/^https?:\/\/en\.wikipedia\.org\/wiki\/([^#?]+)/);
+  if (m) { try { title = decodeURIComponent(m[1]).replace(/_/g, ' '); } catch (e) { title = ''; } }
+  if (!title) {
+    const wd = rels.find(x => x.type === 'wikidata'), q = wd && String(wd.url.resource).match(/\/(Q\d+)$/);
+    if (q) { const j = await jget('https://www.wikidata.org/w/api.php?action=wbgetentities&props=sitelinks&sitefilter=enwiki&format=json&origin=*&ids=' + q[1]); const e = j && j.entities && j.entities[q[1]]; title = (e && e.sitelinks && e.sitelinks.enwiki && e.sitelinks.enwiki.title) || ''; }
+  }
+  return title ? wikiPage(title) : '';
+}
+const mbText = a => String(a || '').replace(/\[\[(?:[^\]|]*\|)?([^\]]*)\]\]/g, '$1').replace(/\[(?:https?:[^\s\]]+)\s+([^\]]*)\]/g, '$1').replace(/'''?/g, '').replace(/\s+/g, ' ').trim();
+const topGenre = a => (Array.isArray(a) && a.length ? a.slice().sort((x, y) => (y.count || 0) - (x.count || 0))[0].name : '');
+const cap1 = s => String(s || '').replace(/\b\w/g, c => c.toUpperCase());
+
+// Deezer: keyless search. A plain browser has no CORS access to it, so the fallback is Deezer's own JSONP mode.
+const DZ = 'https://api.deezer.com';
+function jsonp(u, ms) {
+  return new Promise(res => {
+    const cb = 'emberdz' + Date.now().toString(36) + Math.floor(Math.random() * 1e9).toString(36), sc = document.createElement('script'); let done = false;
+    const fin = v => { if (done) return; done = true; try { delete window[cb]; } catch (e) { window[cb] = undefined; } try { sc.remove(); } catch (e) { /* already gone */ } res(v); };
+    window[cb] = d => fin(d); sc.onerror = () => fin(null); sc.src = u + (u.includes('?') ? '&' : '?') + 'output=jsonp&callback=' + cb;
+    setTimeout(() => fin(null), ms || 7000); document.head.appendChild(sc);
+  });
+}
+async function dz(path) {
+  const u = DZ + path, j = await jget(u, 6000);
+  if (j && !j.error) return j;
+  const k = await jsonp(u, 7000);
+  return k && !k.error ? k : null;
+}
+// MusicBrainz asks for at most one request per second, so every call waits its turn.
+let mbChain = Promise.resolve(), mbLast = 0;
+function mb(path) {
+  const run = async () => {
+    const w = mbLast + 1100 - Date.now(); if (w > 0) await new Promise(r => setTimeout(r, w));
+    mbLast = Date.now(); return jget('https://musicbrainz.org/ws/2' + path + (path.includes('?') ? '&' : '?') + 'fmt=json', 8000);
+  };
+  const p = mbChain.then(run); mbChain = p.catch(() => null); return p;
+}
+const lq = s => String(s || '').replace(/["\\]/g, ' ').replace(/\s+/g, ' ').trim();
+async function fetchDeezer(title, artist, out) {
+  const a1 = firstArtist(artist), nt = norm(title); if (!nt) return;
+  let r = await dz('/search/track?limit=6&q=' + encodeURIComponent((a1 ? 'artist:"' + lq(a1) + '" ' : '') + 'track:"' + lq(title) + '"'));
+  let rs = (r && r.data) || [];
+  if (!rs.length) { r = await dz('/search/track?limit=6&q=' + encodeURIComponent([a1, title].filter(Boolean).join(' '))); rs = (r && r.data) || []; }
+  const same = (x, y) => !!x && !!y && (x === y || x.includes(y) || y.includes(x));
+  const hit = rs.find(x => same(norm(x.title_short || x.title), nt) && (!a1 || same(norm(x.artist && x.artist.name), norm(a1))));
+  if (!hit) return;
+  const al = hit.album || {}, ar = hit.artist || {};
+  out.art = al.cover_xl || al.cover_big || ar.picture_xl || ''; out.artist = ar.name || ''; out.album = al.title || '';
+  if (al.id) { const d = await dz('/album/' + encodeURIComponent(al.id)); if (d) { out.year = String(d.release_date || '').slice(0, 4); out.genre = (d.genres && d.genres.data && d.genres.data[0] && d.genres.data[0].name) || ''; } }
+  out.sources.push('Deezer');
+}
+async function fetchBrainz(title, artist, out) {
+  const name = lq(out.artist ? firstArtist(out.artist) : firstArtist(artist));
+  const tasks = [];
+  if (name) tasks.push((async () => {
+    const s = await mb('/artist/?limit=3&query=' + encodeURIComponent('artist:"' + name + '"'));
+    const a = ((s && s.artists) || []).find(x => norm(x.name) === norm(name) && (x.score || 0) >= 85);
+    if (!a) return;
+    const d = await mb('/artist/' + a.id + '?inc=url-rels+genres+annotation'); if (!d) return;
+    let bio = await wikiFromRels(d.relations);
+    if (!bio && d.annotation) bio = clipText(mbText(d.annotation));
+    if (!bio) {
+      const ty = String(d.type || '').toLowerCase(), area = d.area && d.area.name, ls = d['life-span'] || {}, b = String(ls.begin || '').slice(0, 4);
+      const bits = [d.name + (ty ? ' is a ' + ty : ' is an artist') + (area ? ' from ' + area : '') + (b ? ', active since ' + b : '') + '.'];
+      const g = (d.genres || []).slice().sort((x, y) => (y.count || 0) - (x.count || 0)).slice(0, 3).map(x => cap1(x.name)); if (g.length) bits.push('Known for ' + g.join(', ') + '.');
+      bio = bits.join(' ');
+    }
+    out.aboutArtist = bio; if (!out.genre) out.genre = cap1(topGenre(d.genres));
+    out.sources.push('MusicBrainz');
+  })());
+  if (title) tasks.push((async () => {
+    const q = 'recording:"' + lq(title) + '"' + (name ? ' AND artist:"' + name + '"' : '');
+    const s = await mb('/recording/?limit=3&query=' + encodeURIComponent(q));
+    const rec = ((s && s.recordings) || []).find(x => norm(x.title) === norm(title) && (x.score || 0) >= 85);
+    if (!rec) return;
+    if (!out.year && rec['first-release-date']) out.year = String(rec['first-release-date']).slice(0, 4);
+    const rg = rec.releases && rec.releases[0] && rec.releases[0]['release-group'];
+    if (rg && rg.id) {
+      const d = await mb('/release-group/' + rg.id + '?inc=url-rels+genres+annotation');
+      if (d) {
+        const t = await wikiFromRels(d.relations) || (d.annotation ? clipText(mbText(d.annotation)) : '');
+        if (t) out.aboutAlbum = t;
+        if (!out.album && d.title) out.album = d.title; if (!out.genre) out.genre = cap1(topGenre(d.genres));
+      }
+    }
+    if (out.sources.indexOf('MusicBrainz') < 0) out.sources.push('MusicBrainz');
+  })());
+  await Promise.all(tasks);
 }
 async function fetchOnline(title, artist) {
-  const out = {}, a1 = firstArtist(artist);
-  const it = await jget('https://itunes.apple.com/search?media=music&entity=song&limit=6&term=' + encodeURIComponent([a1, title].filter(Boolean).join(' ')));
-  const rs = (it && it.results) || [], nt = norm(title);
-  const hit = rs.find(r => norm(r.trackName) && (norm(r.trackName).includes(nt) || nt.includes(norm(r.trackName))) && (!a1 || norm(r.artistName).includes(norm(a1)) || norm(a1).includes(norm(r.artistName))));
-  if (hit) {
-    if (hit.artworkUrl100) out.art = hit.artworkUrl100.replace(/\/\d+x\d+bb\./, '/600x600bb.');
-    out.artist = hit.artistName; out.album = hit.collectionName; out.year = String(hit.releaseDate || '').slice(0, 4); out.genre = hit.primaryGenreName || '';
-  }
-  const name = out.artist ? firstArtist(out.artist) : a1;
-  if (name) {
-    const [bio, song] = await Promise.all([
-      wiki(name + ' musician OR band OR singer OR rapper', name),
-      title ? wiki('"' + title + '" ' + name + ' song', name) : ''
-    ]);
-    out.aboutArtist = bio; if (song && song !== bio) out.aboutSong = song;
-    if (!bio || !out.art) {
-      const d = await jget('https://www.theaudiodb.com/api/v1/json/2/search.php?s=' + encodeURIComponent(name)), ar = d && d.artists && d.artists[0];
-      if (ar) { if (!bio && ar.strBiographyEN) out.aboutArtist = ar.strBiographyEN.replace(/\s+/g, ' ').slice(0, 1000); if (!out.art && ar.strArtistThumb) out.art = ar.strArtistThumb; if (!out.genre && ar.strGenre) out.genre = ar.strGenre; }
-    }
-  }
+  const out = { sources: [] };
+  await fetchDeezer(title, artist, out);
+  const name = firstArtist(out.artist || artist);
+  const [, song] = await Promise.all([fetchBrainz(title, artist, out), name && title ? wiki('"' + title + '" ' + name + ' song', name) : '']);
+  if (song && song !== out.aboutArtist && song !== out.aboutAlbum) { out.aboutSong = song; if (out.sources.indexOf('Wikipedia') < 0) out.sources.push('Wikipedia'); }
   return out;
 }
 async function embeddedFor(t) {
@@ -366,9 +436,9 @@ function meta(t, source) {
   if (metaMem.has(id)) return Promise.resolve(metaMem.get(id));
   if (metaBusy.has(id)) return metaBusy.get(id);
   const job = (async () => {
-    const m = { title: t.title || '', artist: t.artist || '', album: t.album || '', year: '', genre: '', art: t.art || '', aboutArtist: '', aboutSong: '', sources: [] };
+    const m = { title: t.title || '', artist: t.artist || '', album: t.album || '', year: '', genre: '', art: t.art || '', aboutArtist: '', aboutSong: '', aboutAlbum: '', sources: [] };
     let emb = null;
-    if (source !== 'spotify' && t.id) {
+    if (t.id) {
       emb = await embeddedFor(t);
       if (emb) {
         ['title', 'artist', 'album', 'year', 'genre'].forEach(k => { if (emb[k] && (k === 'year' || k === 'genre' || !m[k])) m[k] = emb[k]; });
@@ -380,10 +450,10 @@ function meta(t, source) {
     const k = mkey(m.artist || t.artist, m.title || t.title), cached = metaLoad()[k];
     const on = cached || await fetchOnline(m.title || t.title, m.artist || t.artist);
     if (!cached && (on.art || on.aboutArtist || on.album)) metaSave(k, on);
-    if (on.art || on.aboutArtist || on.album || on.year) m.sources.push('iTunes / Wikipedia');
+    (on.sources || []).forEach(x => { if (m.sources.indexOf(x) < 0) m.sources.push(x); });
     if (!m.art || (!m.embedded && !t.art)) m.art = m.art || on.art || '';
     ['album', 'year', 'genre'].forEach(f => { if (!m[f]) m[f] = on[f] || ''; });
-    if (!m.artist) m.artist = on.artist || ''; m.aboutArtist = on.aboutArtist || ''; m.aboutSong = on.aboutSong || '';
+    if (!m.artist) m.artist = on.artist || ''; m.aboutArtist = on.aboutArtist || ''; m.aboutSong = on.aboutSong || ''; m.aboutAlbum = on.aboutAlbum || '';
     metaMem.set(id, m); if (metaMem.size > 40) metaMem.delete(metaMem.keys().next().value);
     try { if (cur && t.id === cur.id && 'mediaSession' in navigator && navigator.mediaSession.metadata && m.art && !/^blob:/.test(m.art)) navigator.mediaSession.metadata = new MediaMetadata({ title: t.title || '', artist: m.artist || '', album: m.album || '', artwork: [{ src: m.art, sizes: '600x600' }] }); } catch (e) { /* lock-screen art is a bonus */ }
     emit('meta'); return m;
@@ -392,11 +462,19 @@ function meta(t, source) {
 }
 const metaPeek = (t, source) => (t && metaMem.get((source || '') + '|' + (t.id || '') + '|' + mkey(t.artist, t.title))) || null;
 
+// Used by song identification (ember_audd.js): the audio of a library track, and a way to fix its title / artist / album once it is identified.
+async function audioBlob(id) { const t = get(id); if (!t) return null; try { return await blobFor(t); } catch (e) { return null; } }
+function updateTrack(id, f) {
+  const t = get(id); if (!t) return { ok: false, error: 'No such track.' };
+  ['title', 'artist', 'album'].forEach(k => { if (f && f[k]) t[k] = String(f[k]).slice(0, 200); });
+  dbPut('tracks', t); sortLib();
+  for (const k of [...metaMem.keys()]) if (k.split('|')[1] === id) metaMem.delete(k);
+  emit('library'); emit('track'); return { ok: true };
+}
 window.EmberPlayer = {
   init, list, get, brief, addFiles, remove, wipe, scanDevice, playlists, savePlaylist, deletePlaylist, playlistIds, playPlaylist,
-  playLocal, control, nowPlaying, snapshot, capabilities, seek, stop, meta, metaPeek,
+  playLocal, control, nowPlaying, snapshot, capabilities, seek, stop, meta, metaPeek, audioBlob, updateTrack,
   on: f => { subs.add(f); return () => subs.delete(f); },
-  position: () => (cur ? audio.currentTime || 0 : 0), count: () => lib.length, deviceOk, setActive: s => { active = s === 'spotify' ? 'spotify' : 'local'; emit('state'); },
-  pauseLocal: () => { try { audio.pause(); } catch (e) { /* not loaded */ } }
+  position: () => (cur ? audio.currentTime || 0 : 0), count: () => lib.length, deviceOk
 };
 })();

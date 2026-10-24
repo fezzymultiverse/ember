@@ -116,7 +116,7 @@ function block(S, conv) {
     '- Music Control is ' + on(S.musicAddon) + (S.musicAddon ? '' : ': you cannot touch his player until he switches it on in Settings > Music > Ember add-ons') + '.',
     '- YouTube and SoundCloud search, playlists and audio download are ' + on(S.youtubeAddon) + (S.youtubeAddon ? (native ? '' : ' but the native downloader is missing from this build') : ' (switch: Settings > Music > Ember add-ons)') + '.',
     '- Live web search is ' + (search ? 'ON' : 'OFF (needs the Agent switch and a Tavily key in Settings > Music > Agent & API Tools)') + '. Image links are ' + on(S.visionAddon) + '.',
-    '- Termux Mode is ' + on(S.termuxMode) + ' (the Termux button opens its tab). Ask Termux is in Settings > Hacking.',
+    '- Termux Mode is ' + on(S.termuxMode) + ' (the Termux button opens its tab). EMBER TERMUX (Terminal, Ask Ember, Setup) is docked at the bottom of Settings > Hacking.',
     'HOW TO USE THIS: he loses time hunting for things he saved (chats, keys, prompts, notes, ideas, documents). When he cannot find something or asks what he has, call find_in_app first instead of asking him questions. Keys come back masked; he copies the full ones in Settings > Keys. If a capability above is OFF, give him the exact switch to flip in one line instead of saying you have no access. For general knowledge, code, security, music, business and ideas, answer directly and fully from what you know; never hide behind tools, and when he wants ideas give several concrete ones.'
   ];
   const acts = conv && Array.isArray(conv.acts) ? conv.acts.slice(-8) : [];

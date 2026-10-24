@@ -211,10 +211,25 @@
 
   // ---------- native text-to-speech (Android WebView often has NO speechSynthesis voices) ----------
   const TTSP = plug('TextToSpeech'); // @capacitor-community/text-to-speech
+  let voiceCache = null;
   const tts = TTSP ? {
     isNative: true,
-    async speak(text, lang) {
-      const tryLang = async l => { await TTSP.speak({ text, lang: l, rate: 1.0, pitch: 1.0, volume: 1.0, category: 'playback', queueStrategy: 0 }); };
+    // V1.8.1: the voices the phone's speech engine actually has (the plugin returns them in an order its speak() indexes into)
+    async voices() {
+      if (voiceCache) return voiceCache;
+      try {
+        const r = await TTSP.getSupportedVoices();
+        voiceCache = ((r && r.voices) || []).map((v, i) => ({ i, uri: String(v.voiceURI || v.name || i), name: String(v.name || v.voiceURI || ('Voice ' + i)), lang: String(v.lang || ''), local: v.localService !== false }));
+      } catch (e) { voiceCache = []; }
+      return voiceCache;
+    },
+    // o = { voice: voiceURI, rate, pitch }; unknown or missing values fall back to the engine default
+    async speak(text, lang, o) {
+      o = o || {};
+      const rate = Math.min(2, Math.max(0.5, Number(o.rate) || 1)), pitch = Math.min(2, Math.max(0.5, Number(o.pitch) || 1));
+      let vi = -1;
+      if (o.voice) { const vs = await this.voices(); const f = vs.find(v => v.uri === o.voice); if (f) vi = f.i; }
+      const tryLang = async l => { const a = { text, lang: l, rate, pitch, volume: 1.0, category: 'playback', queueStrategy: 0 }; if (vi >= 0) a.voice = vi; await TTSP.speak(a); };
       try { await tryLang(lang || 'en-US'); return { ok: true }; }
       catch (e) {
         // an engine that lacks e.g. en-ZA still speaks en-US
@@ -271,8 +286,10 @@
     async requestWifiName() { try { const r = await Dev.requestWifiName(); return !!(r && r.granted); } catch (e) { return false; } }
   } : null;
 
+  const openTermux = Dev ? async () => { try { return await Dev.openApp({ package: 'com.termux' }); } catch (e) { return { ok: false, error: (e && e.message) || 'update the APK' }; } } : null;
+
   window.EmberNative = {
-    sys,
+    sys, openTermux,
     device, tts, keepAliveStart, keepAliveStop, keepAliveStatus, openAppSettings,
     speech, holdDuringReply, ensureNotifyPermission, notifyPermissionStatus, notifyReply, testNotify, ensureMicPermission, musicPermissionStatus,
     wakeLockAvailable, setWakeLock, wakeLockHeld, requestBatteryExemption, batteryExemptionStatus, fileAccessStatus, requestFileAccess,

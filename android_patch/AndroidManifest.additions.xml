@@ -21,6 +21,7 @@
 <!-- 2. Inside <manifest>, above <application>: Android 11+ package visibility so the
         native speech recogniser (voice input) is actually discoverable -->
 <queries>
+    <package android:name="com.termux" />
     <intent>
         <action android:name="android.speech.RecognitionService" />
     </intent>

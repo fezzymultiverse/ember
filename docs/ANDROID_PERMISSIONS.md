@@ -60,7 +60,7 @@ it. Treat it as a draft to build and fix, not a finished artifact.
 
 ## What's still not built
 
-- `get_current_track` / `control_player` / Spotify tools in `ai_music.js`:
+- `get_current_track` / `control_player` tools in `ai_music.js`:
   need Prodigy's real API (MediaSession, content provider, whatever it
   exposes). Nothing here guesses at that.
 - The keep-alive service above is written but unverified on a device.

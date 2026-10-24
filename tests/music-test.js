@@ -1,4 +1,4 @@
-// Ember V1.5.7 test: music player, widget, Spotify (mocked Spotify servers), and the AI music rules.
+// Ember V1.7.0 test: music player, widget and the AI music rules.
 // Run: node tests/music-test.js   (needs Playwright; set PW=/path/to/playwright if it is not resolvable)
 const { chromium } = require(process.env.PW || 'playwright');
 const http = require('http'), fs = require('fs'), path = require('path'), os = require('os');
@@ -50,46 +50,6 @@ function wav(sec, hz) {
     return J(200, { choices: [{ message: { content: text } }] });
   });
 
-  // ---------- mocked Spotify ----------
-  const SPY = { tokenBodies: [], authUrls: [], calls: [], noDevice: false, devicePlays: 0, playing: true, vol: 55 };
-  const TRACK = { id: 'TRACKID123456789012', uri: 'spotify:track:TRACKID123456789012', name: 'Mock Song', artists: [{ name: 'Mock Artist' }], album: { name: 'Mock Album', images: [{ url: 'https://i.scdn.co/big.jpg' }, { url: 'https://i.scdn.co/small.jpg' }] }, duration_ms: 200000 };
-  await pg.route('https://accounts.spotify.com/**', async route => {
-    const req = route.request(), u = new URL(req.url());
-    if (u.pathname === '/authorize') {
-      SPY.authUrls.push(u.searchParams);
-      const back = new URL(u.searchParams.get('redirect_uri')); back.searchParams.set('code', 'CODE123'); back.searchParams.set('state', u.searchParams.get('state'));
-      return route.fulfill({ status: 302, headers: { location: back.toString() } });
-    }
-    if (u.pathname === '/api/token') {
-      const p = new URLSearchParams(req.postData() || ''); SPY.tokenBodies.push(Object.fromEntries(p));
-      if (p.get('grant_type') === 'authorization_code' && (!p.get('code_verifier') || p.get('code') !== 'CODE123' || p.get('client_id') !== 'CLIENT123')) return route.fulfill({ status: 400, headers: cors, contentType: 'application/json', body: '{"error":"invalid_grant"}' });
-      return route.fulfill({ status: 200, headers: cors, contentType: 'application/json', body: JSON.stringify({ access_token: 'ACCESS' + SPY.tokenBodies.length, refresh_token: 'REFRESH1', expires_in: 3600 }) });
-    }
-    return route.fulfill({ status: 404, body: '' });
-  });
-  await pg.route('https://api.spotify.com/v1/**', async route => {
-    const req = route.request(), u = new URL(req.url()), m = req.method(), p = u.pathname.replace('/v1', '');
-    const body = req.postData() ? JSON.parse(req.postData()) : null;
-    if (m === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
-    SPY.calls.push({ m, p, q: Object.fromEntries(u.searchParams), body, auth: req.headers()['authorization'] });
-    const J = (st, o) => route.fulfill({ status: st, headers: cors, contentType: 'application/json', body: JSON.stringify(o) });
-    const N = () => route.fulfill({ status: 204, headers: cors, body: '' });
-    if (p === '/me') return J(200, { id: 'u1', display_name: 'Fezzy' });
-    if (p === '/me/player' && m === 'GET') return SPY.playing ? J(200, { is_playing: true, progress_ms: 61000, shuffle_state: false, device: { name: 'Honor X5b', volume_percent: SPY.vol }, item: TRACK }) : N();
-    if (p === '/me/player/devices') return J(200, { devices: [{ id: 'DEV1', type: 'Computer', is_restricted: false }, { id: 'DEV2', type: 'Smartphone', is_restricted: false }] });
-    if (p === '/me/player/play' && m === 'PUT') {
-      if (SPY.noDevice && !u.searchParams.get('device_id')) return J(404, { error: { status: 404, message: 'Player command failed: No active device found', reason: 'NO_ACTIVE_DEVICE' } });
-      if (u.searchParams.get('device_id')) SPY.devicePlays++;
-      return N();
-    }
-    if (p === '/me/player/pause' || p === '/me/player/next' || p === '/me/player/previous' || p === '/me/player/seek' || p === '/me/player/volume') return N();
-    if (p === '/search') return J(200, { tracks: { items: [TRACK] } });
-    if (p === '/me/playlists' && m === 'GET') return J(200, { items: [{ id: 'PLID123456789012345', uri: 'spotify:playlist:PLID123456789012345', name: 'Gym', items: { total: 12 } }] });
-    if (p === '/me/playlists' && m === 'POST') return J(201, { id: 'NEWPL123456789012345' });
-    if (p === '/playlists/NEWPL123456789012345/items') return J(201, { snapshot_id: 'x' });
-    return J(404, { error: { status: 404, message: 'unmocked ' + p } });
-  });
-
   await pg.addInitScript(() => {
     if (!localStorage.getItem('ember_keys')) localStorage.setItem('ember_keys', JSON.stringify({ groq: [{ key: 'gsk_TESTgroqKEY1234567890abcdefGHIJ', st: null }] }));
     if (!localStorage.getItem('ember_set')) localStorage.setItem('ember_set', JSON.stringify({ musicAddon: true, freeMode: false, name: 'Fezzy' }));
@@ -101,13 +61,13 @@ function wav(sec, hz) {
 
   // ---------- 1. load ----------
   ok('page loads without errors', errs.length === 0, errs);
-  ok('EmberPlayer, EmberSpotify, EmberMusicAddon exist', await ev(() => !!(window.EmberPlayer && window.EmberSpotify && window.EmberMusicAddon)));
-  ok('Music pill is in the composer row', await pg.locator('.tools #bMusic').count() === 1);
+  ok('EmberPlayer, EmberAudd, EmberMusicAddon exist', await ev(() => !!(window.EmberPlayer && window.EmberAudd && window.EmberMusicAddon)));
+  ok('Music lives in the left-panel Music Console (the composer pill was removed on purpose)', await pg.locator('#drawerMusic #dmOpenFull').count() === 1 && await pg.locator('.tools #bMusic').count() === 0);
   ok('widget is hidden when nothing is loaded', await pg.locator('#mw.hidden').count() === 1);
   ok('no leftover "bridge" wording in the music settings', !/bridge/i.test(await pg.locator('.card[data-tab="music"]').first().innerText() + await pg.locator('#settings').innerHTML().then(h => (h.match(/EmberMedia bridge|Prodigy/g) || []).join(''))));
 
   // ---------- 2. upload ----------
-  await pg.click('#bMusic');
+  await pg.click('#bHist'); await pg.waitForTimeout(250); await pg.click('#dmConsoleBtn'); await pg.click('#dmOpenFull'); await pg.waitForTimeout(250);
   ok('Music panel opens', await pg.locator('#music.show').count() === 1);
   await pg.setInputFiles('#mFile', files);
   await pg.waitForFunction(() => document.querySelectorAll('#mList .trk').length === 3, null, { timeout: 8000 });
@@ -182,10 +142,10 @@ function wav(sec, hz) {
   const cl = await tool('control_player', { action: 'play', songId: gl.tracks[0].id });
   ok('control_player play with songId plays that song and returns what is on', cl.ok && cl.now && cl.now.title === 'Second Song', cl);
   ok('every AI action is in the visible log', await ev(() => window.EmberMusicAddon.log().length) >= 3);
-  ok('Spotify tools are not offered while Spotify is disconnected', await ev(() => !window.EmberMusicAddon.TOOLS.some(t => /spotify/.test(t.name))));
-  ok('a Spotify tool call while disconnected says so', /not connected/.test((await tool('search_spotify', { query: 'x' })).error));
+  ok('identify_song is not offered without an Audd.io token', await ev(() => !window.EmberMusicAddon.TOOLS.some(t => t.name === 'identify_song')));
+  ok('identify_song without a token says so', /identification is off/.test((await tool('identify_song', {})).error));
   const sb = await ev(() => window.EmberMusicAddon.stateBlock());
-  ok('the prompt block states real facts and limits', /3 uploaded tracks/.test(sb) && /Spotify is NOT connected/.test(sb) && /YOU CANNOT/.test(sb) && /on his own/.test(sb) && !/bridge|Prodigy/i.test(sb.replace(/Never mention bridges, Prodigy or other apps\./, '')), sb);
+  ok('the prompt block states real facts and limits', /3 uploaded tracks/.test(sb) && /Audd\.io\) is OFF/.test(sb) && /YOU CANNOT/.test(sb) && /on his own/.test(sb) && !/bridge|Prodigy/i.test(sb.replace(/Never mention bridges, Prodigy or other apps\./, '')), sb);
 
   // ---------- 6. end to end through the chat (scripted model) ----------
   await pg.click('#bMx');
@@ -202,93 +162,6 @@ function wav(sec, hz) {
   LLM.first = '<tool_call>{"tool":"control_player","args":{"action":"pause"}}</tool_call>';
   await send('how is your day going?');
   ok('chat: a rogue pause on an unrelated message does NOT touch the player', await ev(() => window.EmberPlayer.snapshot().playing));
-
-  // ---------- 7. Spotify: connect (web redirect, PKCE) ----------
-  LLM.first = '';
-  await ev(() => window.EmberPlayer.control('stop'));
-  await pg.click('#bSet'); await pg.click('.stab[data-st="music"]');
-  ok('Spotify redirect defaults to the loopback address', (await pg.inputValue('#spRedir')) === url, await pg.inputValue('#spRedir'));
-  await pg.fill('#spClient', 'CLIENT123');
-  await Promise.all([pg.waitForURL(u => u.toString().startsWith(url) && /code=CODE123/.test(u.toString()), { timeout: 8000 }).catch(() => {}), pg.click('#spConnect')]);
-  await pg.waitForFunction(() => window.EmberSpotify && window.EmberSpotify.isConnected(), null, { timeout: 8000 });
-  const au = SPY.authUrls[0];
-  ok('authorize request is PKCE S256 with the right scopes and client', !!au && au.get('code_challenge_method') === 'S256' && au.get('client_id') === 'CLIENT123' && /user-modify-playback-state/.test(au.get('scope')) && au.get('response_type') === 'code' && au.get('code_challenge').length === 43);
-  const tb = SPY.tokenBodies[0];
-  ok('token exchange sends the verifier, no client secret', tb.grant_type === 'authorization_code' && tb.code_verifier.length === 64 && !('client_secret' in tb) && tb.redirect_uri === url, tb);
-  ok('after sign-in the app is connected and shows the name', await ev(() => window.EmberSpotify.status().name) === 'Fezzy');
-  ok('the code is removed from the address bar', !/code=/.test(pg.url()), pg.url());
-  ok('Spotify tools are offered once connected', await ev(() => window.EmberMusicAddon.TOOLS.some(t => t.name === 'play_spotify')));
-  ok('settings card says connected', /Connected as Fezzy/.test(await pg.locator('#spStat').innerText()));
-
-  // ---------- 8. Spotify: now playing + control ----------
-  await pg.waitForTimeout(300);
-  const np = await ev(() => window.EmberPlayer.nowPlaying());
-  ok('what is playing on Spotify is visible', np.source === 'spotify' && np.track.title === 'Mock Song' && np.positionSec === 61 && np.playing === true, np);
-  await pg.waitForTimeout(700); await ev(() => document.getElementById('bMx').click());
-  await pg.waitForFunction(() => !document.getElementById('mw').classList.contains('hidden'), null, { timeout: 8000 });
-  ok('widget shows the Spotify song', /Mock Song/.test(await pg.locator('#mwTitle').innerText()) && /Spotify/.test(await pg.locator('#mwSub').innerText()));
-  await intent('skip this song');
-  SPY.calls.length = 0;
-  const sk = await tool('control_player', { action: 'next' });
-  ok('"next" goes to Spotify when Spotify is what is playing', sk.ok && SPY.calls.some(c => c.m === 'POST' && c.p === '/me/player/next'), SPY.calls);
-  ok('Spotify calls carry the bearer token', SPY.calls.every(c => /^Bearer ACCESS/.test(c.auth || '')));
-  await intent('pause'); SPY.calls.length = 0;
-  await tool('control_player', { action: 'pause' });
-  ok('"pause" pauses Spotify', SPY.calls.some(c => c.m === 'PUT' && c.p === '/me/player/pause'));
-  await intent('set the volume to 30'); SPY.calls.length = 0;
-  await tool('control_player', { action: 'volume', value: 30 });
-  ok('volume goes to Spotify as a percent', SPY.calls.some(c => c.p === '/me/player/volume' && c.q.volume_percent === '30'), SPY.calls);
-  await intent('search spotify for a song');
-  const ss = await tool('search_spotify', { query: 'mock' });
-  ok('search_spotify returns tracks (limit capped at 10)', ss.results && ss.results[0].id === TRACK.id && SPY.calls.some(c => c.p === '/search' && +c.q.limit <= 10), ss);
-  await intent('play that song on spotify'); SPY.calls.length = 0;
-  const bad = await tool('play_spotify', { trackId: 'x" ; drop' });
-  ok('play_spotify rejects an id that is not a Spotify id', bad.ok === false && !SPY.calls.some(c => c.p === '/me/player/play'), bad);
-  const pl = await tool('play_spotify', { trackId: TRACK.id });
-  ok('play_spotify plays the track by uri', pl.ok && SPY.calls.some(c => c.p === '/me/player/play' && c.body && c.body.uris[0] === TRACK.uri), SPY.calls);
-  SPY.noDevice = true; SPY.devicePlays = 0;
-  const nd = await tool('play_spotify', { trackId: TRACK.id });
-  ok('no active device: Ember picks the phone and retries', nd.ok && SPY.devicePlays === 1 && SPY.calls.filter(c => c.p === '/me/player/play').pop().q.device_id === 'DEV2', SPY.calls.slice(-4));
-  SPY.noDevice = false;
-  const spl = await tool('get_spotify_playlists', {});
-  ok('Spotify playlists load (new "items" field)', spl.playlists && spl.playlists[0].name === 'Gym' && spl.playlists[0].tracks === 12, spl);
-  SPY.calls.length = 0;
-  const cpl = await tool('create_spotify_playlist', { name: 'From Ember', track_ids: [TRACK.id, 'bad id'] });
-  ok('create_spotify_playlist uses POST /me/playlists then /items', cpl.ok && cpl.count === 1 && SPY.calls[0].p === '/me/playlists' && SPY.calls[1].p === '/playlists/NEWPL123456789012345/items' && SPY.calls[1].body.uris[0] === TRACK.uri, SPY.calls);
-  await intent('what is playing');
-  const wp = await tool('get_current_track', {});
-  ok('get_current_track reports the Spotify song', wp.source === 'spotify' && wp.title === 'Mock Song', wp);
-
-  // ---------- 9. panel Spotify tab ----------
-  await pg.click('#bMusic'); await pg.click('.mtab[data-m="sp"]');
-  await pg.waitForFunction(() => document.querySelectorAll('#spPls .trk').length === 1, null, { timeout: 8000 });
-  ok('Spotify tab lists playlists', /Gym/.test(await pg.locator('#spPls').innerText()));
-  await pg.fill('#spQ', 'mock'); await pg.click('#spGo');
-  await pg.waitForFunction(() => document.querySelectorAll('#spRes .trk').length === 1, null, { timeout: 8000 });
-  SPY.calls.length = 0; await pg.click('#spRes .spgo'); await pg.waitForTimeout(500);
-  ok('tapping a Spotify result plays it', SPY.calls.some(c => c.p === '/me/player/play' && c.body.uris[0] === TRACK.uri));
-  await pg.click('.mtab[data-m="ai"]');
-  ok('Ember tab lists what Ember can do and what it did', /Spotify: see what is playing/.test(await pg.locator('#mCan').innerText()) && (await pg.locator('#mLog .lg').count()) >= 3);
-
-  // ---------- 10. app-link sign-in (APK path) + disconnect + wipe ----------
-  await pg.click('#bMx');
-  await ev(() => window.EmberSpotify.disconnect());
-  ok('disconnect clears the sign-in', await ev(() => !window.EmberSpotify.isConnected() && !localStorage.getItem('ember_spotify').includes('REFRESH')));
-  ok('Spotify tools disappear again', await ev(() => !window.EmberMusicAddon.TOOLS.some(t => /spotify/.test(t.name))));
-  SPY.tokenBodies.length = 0;
-  await ev(() => { localStorage.setItem('ember_spotify_pending', JSON.stringify({ verifier: 'v'.repeat(64), state: 'S1', redirect: 'com.fezzy.ember://spotify', t: Date.now() })); window.dispatchEvent(new CustomEvent('ember-deeplink', { detail: 'com.fezzy.ember://spotify?code=CODE123&state=WRONG' })); });
-  await pg.waitForTimeout(500);
-  ok('app link with the wrong state is rejected', await ev(() => !window.EmberSpotify.isConnected()) && SPY.tokenBodies.length === 0);
-  await ev(() => { localStorage.setItem('ember_spotify_pending', JSON.stringify({ verifier: 'v'.repeat(64), state: 'S1', redirect: 'com.fezzy.ember://spotify', t: Date.now() })); window.dispatchEvent(new CustomEvent('ember-deeplink', { detail: 'com.fezzy.ember://spotify?code=CODE123&state=S1' })); });
-  await pg.waitForFunction(() => window.EmberSpotify.isConnected(), null, { timeout: 8000 });
-  ok('app link with the right state signs in, using the app redirect URI', SPY.tokenBodies[0] && SPY.tokenBodies[0].redirect_uri === 'com.fezzy.ember://spotify');
-  await ev(() => window.dispatchEvent(new CustomEvent('ember-deeplink', { detail: 'com.fezzy.ember://spotify?code=CODE123&state=S1' }))); await pg.waitForTimeout(300);
-  ok('the repeated app link (cold start double send) is ignored', SPY.tokenBodies.length === 1);
-  await ev(() => window.EmberSpotify.disconnect());
-  await ev(() => window.EmberPlayer.wipe());
-  ok('wipe empties the library and playlists', await ev(() => window.EmberPlayer.count() === 0 && window.EmberPlayer.playlists().length === 0));
-  await pg.click('#bMusic');
-  ok('empty library message shows', /Nothing here yet/.test(await pg.locator('#mList').innerText()));
 
   ok('no page errors during the whole run', errs.length === 0, errs);
   console.log('\n' + pass + ' passed, ' + fail + ' failed');

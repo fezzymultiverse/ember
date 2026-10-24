@@ -86,7 +86,7 @@ When "Keep replying in the background" is on and you leave Ember mid-reply, the 
 
 ## V1.6.5 · Song info lookups
 
-When a song plays in the Music panel, Ember looks up artwork, album, year and a short bio. The song **title and artist name** (never audio, never the library) are sent to `itunes.apple.com` (Apple iTunes Search), `en.wikipedia.org` and `theaudiodb.com`. Embedded tags and cover art in an MP3 are read on the phone. Results are cached in localStorage (`ember_meta`, up to 150 songs). The `get_current_track` tool gives the AI the same artwork link and About text.
+When a song plays in the Music panel, Ember looks up artwork, album, year and a short bio. The song **title and artist name** (never audio, never the library) are sent to `api.deezer.com` (Deezer), `musicbrainz.org` (MusicBrainz) and `en.wikipedia.org` / `www.wikidata.org` (the page MusicBrainz links to). Embedded tags and cover art in an MP3 are read on the phone. Results are cached in localStorage (`ember_meta2`, up to 150 songs). The `get_current_track` tool gives the AI the same artwork link and About text.
 
 ## V1.6.6 · Device panel
 
@@ -95,3 +95,7 @@ When a song plays in the Music panel, Ember looks up artwork, album, year and a 
 - **Permissions added:** `ACCESS_NETWORK_STATE` and `ACCESS_WIFI_STATE` (normal, no prompt) and `ACCESS_FINE_LOCATION`, which is requested only when the person taps "Show Wi-Fi name". Android will not reveal a Wi-Fi network's name without it. Ember does not read the phone's location.
 - Added quotes are stored in localStorage (`ember_quotes`) and are not included in backups.
 - The rotating quotes are short credited excerpts from public interviews, not lyrics.
+
+
+## Song identification (Audd.io, optional)
+Off until you paste an Audd.io API token (stored on the phone as `ember_audd`, removed by Remove token or Delete everything). Only when you tap Identify, press Identify link, or ask Ember in chat, a clip of about 12 seconds of the song (small WAV) or the https link you typed is sent to `api.audd.io` with your token. Audd.io's own terms and retention apply.

@@ -2,7 +2,7 @@
 'use strict';
 (() => {
 const { $, esc, LS, uid } = U;
-const DEF = { name: '', about: '', pname: 'Ember', interests: 'how minds work, slang and language, music and how it gets made, strange history, ethics puzzles, space, why people do what they do, small design details', mode: 'sharp', learn: true, ctx: 'normal', summarize: true, persona: '', showEng: false, accent: '#00E5FF', warm: 'warm', direct: 'balanced', humor: 'dry', pace: 'normal', talk: '', musicAddon: false, docsAddon: false, agentAddon: false, youtubeAddon: false, visionAddon: false, autoRead: false, termuxMode: false, wakeLock: false, keepAlive: false, proactivePings: false, pingHours: 4, musicWidget: true, bgReplies: true };
+const DEF = { name: '', about: '', pname: 'Ember', interests: 'how minds work, slang and language, music and how it gets made, strange history, ethics puzzles, space, why people do what they do, small design details', mode: 'sharp', learn: true, ctx: 'normal', summarize: true, persona: '', showEng: false, accent: '#00E5FF', warm: 'warm', direct: 'balanced', humor: 'dry', pace: 'normal', talk: '', musicAddon: false, docsAddon: false, agentAddon: false, youtubeAddon: false, visionAddon: false, autoRead: false, ttsRate: 1, ttsPitch: 1, ttsLively: true, termuxMode: false, wakeLock: false, keepAlive: false, proactivePings: false, pingHours: 4, musicWidget: true, bgReplies: true };
 const WINS = { short: 1, normal: 1, long: 1 };
 const ACCENTS = ['#00E5FF', '#9D00FF', '#FF005F', '#2EE86B'];
 let S = Object.assign({}, DEF, LS.get('ember_set', {}));
@@ -102,9 +102,9 @@ function newConv(priv) { return { id: uid(), title: 'New chat', auto: true, crea
 function ensure() { if (!conv) conv = newConv(false); }
 async function persist() { if (conv && conv.msgs.length) { conv.updated = Date.now(); const ok = await Store.put(conv); if (!ok) toast('Could not save this chat (storage full?)'); } }
 function bub(x, last, i) {
-  const eng = x.eng ? ' · ' + Prov.label(x.eng.p) + (S.showEng && x.eng.ms ? ' ' + x.eng.ms + 'ms' : '') : '';
+  const eng = x.eng ? ' · ' + Prov.label(x.eng.p) + (S.showEng && x.eng.m ? ' ' + esc(String(x.eng.m).replace(/^.*\//, '').slice(0, 34)) : '') + (S.showEng && x.eng.ms ? ' ' + x.eng.ms + 'ms' : '') + (x.eng.pm ? ' · ' + Prov.label(x.eng.pm) + ' pin failed' : '') : '';
   const regen = last && x.r == 'a' ? '<button data-act="regen">↻ again</button>' : '';
-  const say = x.r == 'a' ? '<button data-act="say" data-i="' + i + '" aria-label="Read aloud" title="Read aloud">🔊</button>' : '';
+  const say = x.r == 'a' ? '<button data-act="say" data-i="' + i + '" aria-label="Read aloud" title="Read aloud"' + (sayIdx === i ? ' class="talking"' : '') + '>' + (sayIdx === i ? '■ Stop' : '🔊') + '</button>' : '';
   return '<div class="msg ' + x.r + '"><div>' + fmt(x.t) + '</div><div class="mt"><span>' + U.time(x.ts) + (x.deep ? ' · 💡' : '') + eng + '</span>' + say + regen + '</div></div>';
 }
 function renderLog() {
@@ -114,7 +114,7 @@ function renderLog() {
   $('log').innerHTML = m.map((x, i) => bub(x, i == m.length - 1, i)).join('') + (window.EmberAgentAddon ? window.EmberAgentAddon.cardsHtml() : '') +
     (lastErr ? '<div class="msg e"><div>' + esc(lastErr) + '</div><div class="mt"><button data-act="retry">Try again</button><button data-act="keys">Open Keys</button></div></div>' : '');
   if (Safety.lastLevel() >= 3 && m.length) $('log').insertAdjacentHTML('beforeend', Safety.crisisCard());
-  down(); renderTop();
+  down(); renderTop(); paintSay();
 }
 function down() { const l = $('log'); l.scrollTop = l.scrollHeight; }
 function typing(on) {
@@ -153,11 +153,32 @@ function parseCalls(text) {
   while ((m = re.exec(text)) !== null) { try { const p = JSON.parse(m[1].trim()); if (p && typeof p.tool == 'string') calls.push(p); } catch (e) { } }
   return calls;
 }
+// Every tool the AI can use right now (same switches as runTool below). The plan engine checks steps with it; the ReAct loop shows it to the model.
+function toolCatalog() {
+  const A = window, scrapeOn = !!(A.EmberScraper && A.EmberScraper.enabled());
+  const docsOn = S.docsAddon || !!(A.EmberDocs && A.EmberDocs.count && A.EmberDocs.count() > 0), sets = [];
+  if (S.musicAddon && A.EmberMusicAddon) sets.push(A.EmberMusicAddon.TOOLS);
+  if (A.EmberKnow) sets.push(A.EmberKnow.TOOLS);
+  if (A.EmberTasks) sets.push(A.EmberTasks.TOOLS);
+  if (docsOn && A.EmberDocsAddon) sets.push(A.EmberDocsAddon.TOOLS);
+  if (A.EmberAgentAddon) sets.push(A.EmberAgentAddon.toolsFor(S));
+  if (scrapeOn && A.EmberScraper) sets.push(A.EmberScraper.TOOLS);
+  if (scrapeOn && A.EmberSites) sets.push(A.EmberSites.TOOLS);
+  return [].concat(...sets.map(x => x || []));
+}
+const toolOn = tool => toolCatalog().some(t => t.name == tool);
 async function runTool(tool, args) {
   const A = window, scrapeOn = !!(A.EmberScraper && A.EmberScraper.enabled());
+  if (A.EmberSchema) { // typed binding: every call (chat, plan, ReAct) is checked against the tool's schema before anything runs
+    const def = toolCatalog().concat((A.EmberEngine && A.EmberEngine.TOOLS) || []).find(t => t.name == tool);
+    if (def) { const b = A.EmberSchema.bind(def, args); if (!b.ok) return b.result; args = b.value; }
+  }
   try {
+    if (A.EmberEngine && namesOf(A.EmberEngine).includes(tool)) return await A.EmberEngine.dispatch(tool, args);
+    if (A.EmberMusicAddon && A.EmberMusicAddon.setFree) A.EmberMusicAddon.setFree(!!(S.musicAddon && S.musicFree));
     if (S.musicAddon && A.EmberMusicAddon && namesOf(A.EmberMusicAddon).includes(tool)) return await A.EmberMusicAddon.dispatch(tool, args);
     if (A.EmberKnow && namesOf(A.EmberKnow).includes(tool)) return await A.EmberKnow.dispatch(tool, args);
+    if (A.EmberTasks && namesOf(A.EmberTasks).includes(tool)) return await A.EmberTasks.dispatch(tool, args);
     const docsOn = S.docsAddon || !!(A.EmberDocs && A.EmberDocs.count && A.EmberDocs.count() > 0);
     if (docsOn && A.EmberDocsAddon && namesOf(A.EmberDocsAddon).includes(tool)) return await A.EmberDocsAddon.dispatch(tool, args);
     if (A.EmberAgentAddon && A.EmberAgentAddon.toolsFor(S).some(t => t.name == tool)) return await A.EmberAgentAddon.dispatch(tool, args);
@@ -166,11 +187,19 @@ async function runTool(tool, args) {
   } catch (e) { return { error: e.message || 'Tool failed.' }; }
   return { error: 'That tool is not available (add-on off or unknown): ' + tool };
 }
+if (window.EmberEngine) window.EmberEngine.setHost({
+  run: runTool, has: toolOn, tools: toolCatalog,
+  llm: async (system, messages, lane) => { // one model call for the ReAct loop, through the same safety wrapper and engine router as chat
+    const r = await Prov.run(lane == 'fast' ? 'fast' : 'deep', { system: Safety.wrapSystem(system, Safety.lastLevel()), messages, temp: 0.4, max: 700 });
+    return String((r && r.text) || '');
+  }
+});
 async function resolveAddonCalls(text, L) {
   if (window.EmberMusicAddon && window.EmberMusicAddon.setIntent) {
     // the music tools only run if HIS latest message is about music (ai_music.js checks this), never because the AI wants to
     const us = conv.msgs.filter(m => m.r == 'u'); window.EmberMusicAddon.setIntent(us.length ? us[us.length - 1].t : '', us.length > 1 ? us[us.length - 2].t : '');
   }
+  if (window.EmberTasks && window.EmberTasks.setIntent) { const us = conv.msgs.filter(m => m.r == 'u'); window.EmberTasks.setIntent(us.length ? us[us.length - 1].t : '', us.length > 1 ? us[us.length - 2].t : ''); }
   if (window.EmberAgentAddon && window.EmberAgentAddon.setIntent) { // YouTube downloads only run if HIS latest message asks for one (ai_agent.js checks this)
     const us = conv.msgs.filter(m => m.r == 'u'); window.EmberAgentAddon.setIntent(us.length ? us[us.length - 1].t : '', us.length > 1 ? us[us.length - 2].t : '');
   }
@@ -214,7 +243,7 @@ async function reply(o) {
     if (bgWon()) finalText = '';
     else if (finalText) finalText = await resolveAddonCalls(finalText, L);
     if (finalText && !bgWon()) {
-      conv.msgs.push({ r: 'a', t: finalText, ts: Date.now(), turn: turnId, deep: L.deep || undefined, eng: { p: r.provider, m: r.model, ms: r.ms } });
+      conv.msgs.push({ r: 'a', t: finalText, ts: Date.now(), turn: turnId, deep: L.deep || undefined, eng: { p: r.provider, m: r.model, ms: r.ms, pm: r.pinMiss ? r.pinMiss.want : undefined } });
       if (window.EmberNative && window.EmberNative.aiAvailable) window.EmberNative.aiCancel(turnId);
       if (S.autoRead) speakText(finalText, conv.msgs.length - 1);
       if (window.EmberNative) window.EmberNative.notifyReply(finalText);
@@ -254,6 +283,7 @@ window.addEventListener('ember-bg-reply', e => {
   if (conv.auto && conv.title == 'New chat') conv.title = t.length > 38 ? t.slice(0, 38).trim() + '…' : t;
   persist(); renderLog(); reply();
 });
+window.addEventListener('ember-timer', e => { const t = e.detail && e.detail.text; if (!t) return; ensure(); conv.msgs.push({ r: 'a', t, ts: Date.now() }); persist(); renderLog(); toast(t.slice(0, 80)); });
 $('bSend').onclick = send;
 $('inp').addEventListener('keydown', e => { if (e.key == 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); } });
 // Save input text as user types
@@ -378,10 +408,28 @@ window.addEventListener('load', () => setTimeout(() => {
   else if (TTS) { try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch (e) {} }
 }, 800));
 let sayIdx = -1, speakTok = 0;
+// V1.8.1: the 🔊 of the reply being read turns red and says Stop; tap it to stop, and it goes back to 🔊 when the voice finishes or is stopped.
+function setSay(i) { sayIdx = i; paintSay(); }
+function paintSay() {
+  document.querySelectorAll('#log [data-act="say"]').forEach(b => {
+    const on = +b.dataset.i === sayIdx;
+    b.classList.toggle('talking', on); b.textContent = on ? '■ Stop' : '🔊';
+    b.setAttribute('aria-label', on ? 'Stop reading' : 'Read aloud'); b.title = on ? 'Stop reading' : 'Read aloud';
+  });
+}
+// V1.8.1: small, bounded pitch/speed changes per sentence so the voice is less flat: questions lift, exclamations speed up, short beats slow down.
+function livelyShape(c) {
+  const t = c.trim(); let r = 1, p = 1;
+  if (/\?$/.test(t)) { p += 0.12; }
+  else if (/!$/.test(t)) { r += 0.07; p += 0.1; }
+  else if (/(\.\.\.|…)$/.test(t)) { r -= 0.08; p -= 0.05; }
+  else if (t.length < 28) { r -= 0.04; }
+  return { r, p };
+}
 const plainSpeech = t => String(t || '').replace(/```[\s\S]*?```/g, ' ').replace(/https?:\/\/\S+/g, 'link').replace(/[*_`#>]+/g, '').replace(/\s+/g, ' ').trim();
 function stopSpeak() {
   speakTok++; const N = nativeTTS(); if (N) { try { N.stop(); } catch (e) { } }
-  if (TTS) { try { speechSynthesis.cancel(); } catch (e) { } } sayIdx = -1;
+  if (TTS) { try { speechSynthesis.cancel(); } catch (e) { } } setSay(-1);
 }
 function speakText(t, idx) {
   const N = nativeTTS();
@@ -389,25 +437,27 @@ function speakText(t, idx) {
   stopSpeak(); const s = plainSpeech(t); if (!s) return;
   const parts = s.match(/[^.!?]+[.!?]*\s*/g) || [s], chunks = [];
   parts.forEach(p => { while (p.length > 220) { chunks.push(p.slice(0, 220)); p = p.slice(220); } if (p.trim()) chunks.push(p); });
-  sayIdx = idx == null ? -1 : idx;
+  setSay(idx == null ? -1 : idx);
   const tok = ++speakTok, lang = navigator.language || 'en-US';
   const pickedVoice = () => { if (!TTS || !S.ttsVoice) return null; return speechSynthesis.getVoices().find(v => v.voiceURI === S.ttsVoice) || null; };
-  const webSpeak = () => { if (!TTS) { sayIdx = -1; return; } const vo = pickedVoice(); chunks.forEach((c, n) => { const u = new SpeechSynthesisUtterance(c); u.lang = vo ? vo.lang : lang; if (vo) u.voice = vo; if (n == chunks.length - 1) u.onend = u.onerror = () => { sayIdx = -1; }; speechSynthesis.speak(u); }); };
+  const webSpeak = () => { if (!TTS) { setSay(-1); return; } const vo = pickedVoice(); chunks.forEach((c, n) => { const u = new SpeechSynthesisUtterance(c); u.lang = vo ? vo.lang : lang; if (vo) u.voice = vo; const sh = S.ttsLively === false ? { r: 1, p: 1 } : livelyShape(c); u.rate = Math.min(2, Math.max(0.5, (S.ttsRate || 1) * sh.r)); u.pitch = Math.min(2, Math.max(0.5, (S.ttsPitch || 1) * sh.p)); if (n == chunks.length - 1) u.onend = u.onerror = () => { if (tok === speakTok) setSay(-1); }; speechSynthesis.speak(u); }); };
   if (N) {
     (async () => {
       for (const c of chunks) {
         if (tok !== speakTok) return;
-        const r = await N.speak(c, lang);
+        const sh = S.ttsLively === false ? { r: 1, p: 1 } : livelyShape(c);
+        const r = await N.speak(c, lang, { voice: S.ttsVoiceN || '', rate: (S.ttsRate || 1) * sh.r, pitch: (S.ttsPitch || 1) * sh.p });
         if (tok !== speakTok) return;
-        if (!r.ok) { if (TTS) { webSpeak(); } else { sayIdx = -1; toast(r.note || 'Could not read that aloud'); } return; }
+        if (!r.ok) { if (TTS) { webSpeak(); } else { setSay(-1); toast(r.note || 'Could not read that aloud'); } return; }
       }
-      if (tok === speakTok) sayIdx = -1;
+      if (tok === speakTok) setSay(-1);
     })();
     return;
   }
   webSpeak();
 }
 function speakMsg(i) { const m = conv && conv.msgs[i]; if (!m) return; if (sayIdx === i) { stopSpeak(); return; } speakText(m.t, i); }
+window.EmberSpeech = { stop: () => stopSpeak(), saying: () => sayIdx, speak: speakText, shape: livelyShape };
 window.addEventListener('pagehide', stopSpeak);
 
 // ---------- globe ----------
@@ -471,8 +521,35 @@ function paintEngPin() {
   const sel = $('engPin'); if (!sel) return;
   sel.innerHTML = '<option value="">Auto (fastest working key)</option>' + Prov.IDS.map(id => '<option value="' + id + '">' + Prov.CFG[id].name + '</option>').join('');
   sel.value = Prov.getPinned() || '';
+  paintEngModel();
 }
-$('engPin') && $('engPin').addEventListener('change', () => { Prov.setPinned($('engPin').value || null); toast($('engPin').value ? Prov.CFG[$('engPin').value].name + ' goes first now' : 'Back to auto'); });
+function paintEngModel(list) {
+  const ms = $('engModel'), id = Prov.getPinned(), pm = Prov.getPinnedModel();
+  if (!ms) return;
+  const note = $('engTruth'); if (note) note.textContent = Prov.pinNote();
+  ms.disabled = !id;
+  const l = (list || (id ? Prov.cachedModels(id) : [])).slice();
+  const cur = pm && pm.id == id ? pm.model : '';
+  if (cur && !l.includes(cur)) l.unshift(cur);
+  ms.innerHTML = '<option value="">' + (id ? "Auto (router picks from the engine's live list)" : 'Pin an engine first') + '</option>' + l.map(m => '<option value="' + esc(m) + '">' + esc(m) + (/:free$/.test(m) ? ' · free' : '') + '</option>').join('');
+  ms.value = cur;
+}
+$('engPin') && $('engPin').addEventListener('change', () => {
+  const v = $('engPin').value || null, pm = Prov.getPinnedModel();
+  Prov.setPinned(v); if (!v || (pm && pm.id != v)) Prov.setPinnedModel(null);
+  toast(v ? Prov.CFG[v].name + ' goes first now' : 'Back to auto'); paintEngModel(); renderTop();
+});
+$('engModel') && $('engModel').addEventListener('change', () => {
+  const id = Prov.getPinned(), m = $('engModel').value;
+  Prov.setPinnedModel(m ? id : null, m || null); toast(m ? 'Only ' + m + ' will be used on ' + Prov.CFG[id].name : 'Model back to auto'); paintEngModel();
+});
+$('bModels') && $('bModels').addEventListener('click', async () => {
+  const id = Prov.getPinned(), b = $('bModels'); if (!id) { toast('Pin an engine first'); return; }
+  b.disabled = true; b.textContent = 'Loading…';
+  try { const l = await Prov.modelsOf(id, true); paintEngModel(l); toast(l.length + ' models from your ' + Prov.CFG[id].name + ' key'); }
+  catch (e) { toast(Prov.CFG[id].name + ': ' + String(e.message || 'failed').slice(0, 120)); }
+  b.disabled = false; b.textContent = 'Load models from my key';
+});
 
 // ---------- V1.6.1: notepad (Keys tab) — save, and Extract pulls keys out the same way the notes box above does ----------
 const PAD_KEY = 'ember_pad';
@@ -485,8 +562,9 @@ $('padExtract') && ($('padExtract').onclick = async () => {
   try {
     const r = await Prov.ingest(t);
     const sc = window.EmberScraper ? window.EmberScraper.ingestKeys(t) : { added: [] };
-    const n = r.added.length + sc.added.length;
-    const bits = []; if (r.added.length) bits.push(r.added.length + ' chat engine key(s)'); if (sc.added.length) bits.push(sc.added.map(id => window.EmberScraper.LABEL[id]).join(', ') + ' (scraping)');
+    const tv = window.EmberAgentAddon && window.EmberAgentAddon.ingestTavily ? window.EmberAgentAddon.ingestTavily(t) : false;
+    const n = r.added.length + sc.added.length + (tv ? 1 : 0);
+    const bits = []; if (r.added.length) bits.push(r.added.length + ' chat engine key(s)'); if (sc.added.length) bits.push(sc.added.map(id => window.EmberScraper.LABEL[id]).join(', ') + ' (scraping)'); if (tv) bits.push('Tavily (web search)');
     $('padStatus').textContent = n ? ('Added: ' + bits.join(' · ') + '.') : 'No keys found in that text.';
   } catch (e) { $('padStatus').textContent = 'Failed: ' + e.message; }
   b.disabled = false; b.textContent = 'Extract keys'; renderKeys(); renderTop(); if (window.EmberScrapeUI) window.EmberScrapeUI.repaint();
@@ -505,13 +583,28 @@ $('txAsk') && ($('txAsk').onclick = async () => {
 });
 
 // ---------- V1.6.1: TTS voice picker + pre-warm (cuts the first-read delay) ----------
-function paintVoices() {
-  const sel = $('sVoice'); if (!sel || !TTS) return;
+async function paintVoices() {
+  const sel = $('sVoice'); if (!sel) return;
+  const N = nativeTTS();
+  if (N && N.voices) {
+    const vs = (await N.voices()).slice(), me = (navigator.language || 'en-US').toLowerCase().split(/[-_]/)[0];
+    vs.sort((a, b) => ((b.lang.toLowerCase().indexOf(me) == 0) - (a.lang.toLowerCase().indexOf(me) == 0)) || a.lang.localeCompare(b.lang) || a.name.localeCompare(b.name));
+    sel.innerHTML = '<option value="">Phone default</option>' + vs.map(v => '<option value="' + esc(v.uri) + '">' + esc(v.name) + ' (' + esc(v.lang) + (v.local ? '' : ', online') + ')</option>').join('');
+    sel.value = S.ttsVoiceN || ''; return;
+  }
+  if (!TTS) return;
   const vs = speechSynthesis.getVoices(); if (!vs.length) return;
   sel.innerHTML = '<option value="">Default</option>' + vs.map(v => '<option value="' + esc(v.voiceURI) + '">' + esc(v.name) + ' (' + v.lang + ')' + '</option>').join('');
   sel.value = S.ttsVoice || '';
 }
-$('sVoice') && $('sVoice').addEventListener('change', () => { S.ttsVoice = $('sVoice').value; saveS(); });
+$('sVoice') && $('sVoice').addEventListener('change', () => { if (nativeTTS() && nativeTTS().voices) S.ttsVoiceN = $('sVoice').value; else S.ttsVoice = $('sVoice').value; saveS(); });
+const paintVoiceTune = () => { if ($('sRate')) { $('sRate').value = S.ttsRate || 1; $('sPitch').value = S.ttsPitch || 1; $('vRate').textContent = (+(S.ttsRate || 1)).toFixed(2) + '×'; $('vPitch').textContent = (+(S.ttsPitch || 1)).toFixed(2); $('swLively').classList.toggle('on', S.ttsLively !== false); } };
+$('sRate') && ($('sRate').oninput = () => { S.ttsRate = +$('sRate').value; saveS(); paintVoiceTune(); });
+$('sPitch') && ($('sPitch').oninput = () => { S.ttsPitch = +$('sPitch').value; saveS(); paintVoiceTune(); });
+$('swLively') && ($('swLively').onclick = () => { S.ttsLively = S.ttsLively === false; saveS(); paintVoiceTune(); });
+$('bVoiceTest') && ($('bVoiceTest').onclick = () => { speakText("Hey, it's " + (S.pname || 'Ember') + ". Is this voice better? Because I can sound a lot less boring than that!", null); });
+paintVoiceTune();
+setTimeout(paintVoices, 1200);
 function renderMem() {
   const row = (k, a) => a.map((f, i) => '<div class="mi' + (S.learn ? '' : ' off') + '"><span>' + esc(f.t) + '</span><button class="ed" data-m="' + k + '" data-i="' + i + '" data-e="1">Edit</button><button data-m="' + k + '" data-i="' + i + '" title="Delete">✕</button></div>').join('') || '<p class="hint">Nothing yet.</p>';
   $('mFacts').innerHTML = row('facts', mem.facts); $('mThreads').innerHTML = row('threads', mem.threads);
@@ -522,7 +615,7 @@ function renderSet() {
   $('sWarm').value = S.warm; $('sDirect').value = S.direct; $('sHumor').value = S.humor; $('sPace').value = S.pace; $('sTalk').value = S.talk || '';
   $('sCtx').value = WINS[S.ctx] ? S.ctx : 'normal'; $('sPersona').value = S.persona || ''; $('swSum').classList.toggle('on', !!S.summarize); $('mPause').classList.toggle('hidden', !!S.learn);
   $('swLearn').classList.toggle('on', !!S.learn); $('swEng').classList.toggle('on', !!S.showEng); $('swBk').classList.toggle('on', backupKeys); $('swFree').classList.toggle('on', Prov.freeOn());
-  $('swRead').classList.toggle('on', !!S.autoRead); $('swMusic').classList.toggle('on', !!S.musicAddon); $('swDocs').classList.toggle('on', !!S.docsAddon);
+  $('swRead').classList.toggle('on', !!S.autoRead); $('swMusic').classList.toggle('on', !!S.musicAddon); $('swMusicFree').classList.toggle('on', !!S.musicFree); $('swDocs').classList.toggle('on', !!S.docsAddon);
   $('swAgent').classList.toggle('on', !!S.agentAddon); $('swYoutube').classList.toggle('on', !!S.youtubeAddon); $('swVision').classList.toggle('on', !!S.visionAddon);
   if (window.EmberAgentAddon) window.EmberAgentAddon.paint();
   $('swTermux').classList.toggle('on', !!S.termuxMode);
@@ -728,6 +821,7 @@ $('swEng').onclick = () => { S.showEng = !S.showEng; saveS(); renderSet(); };
 $('swBk').onclick = () => { backupKeys = !backupKeys; renderSet(); };
 $('swFree').onclick = () => { Prov.setFree(!Prov.freeOn()); S.freeMode = Prov.freeOn(); saveS(); renderSet(); renderTop(); toast(S.freeMode ? 'Free Mode on: chats go through Pollinations first' : 'Free Mode off: keys first, Pollinations only as a last resort'); };
 $('swRead').onclick = () => { S.autoRead = !S.autoRead; saveS(); renderSet(); if (!S.autoRead) stopSpeak(); toast(S.autoRead ? 'Auto-read on' : 'Auto-read off'); };
+$('swMusicFree').onclick = () => { S.musicFree = !S.musicFree; saveS(); renderSet(); toast(S.musicFree ? 'Small freedoms on: Ember may skip, nudge volume, pick another song' : 'Small freedoms off: Ember only touches music when you ask'); };
 $('swMusic').onclick = () => { S.musicAddon = !S.musicAddon; saveS(); renderSet(); toast(S.musicAddon ? 'Music Control on' : 'Music Control off'); };
 $('swDocs').onclick = () => { S.docsAddon = !S.docsAddon; saveS(); renderSet(); toast(S.docsAddon ? 'Document Reading on' : 'Document Reading off'); };
 $('swAgent').onclick = () => { S.agentAddon = !S.agentAddon; saveS(); renderSet(); toast(S.agentAddon ? 'Web Search on' : 'Web Search off'); };
@@ -751,13 +845,18 @@ $('bIngest').onclick = async () => {
   const t = $('notes').value; if (!t.trim()) { toast('Paste your notes first'); return; }
   const b = $('bIngest'); b.disabled = true; b.textContent = 'Checking keys…'; $('kRep').innerHTML = '';
   try {
-    const r = await Prov.ingest(t); $('notes').value = '';
+    const r = await Prov.ingest(t);
+    const sc = window.EmberScraper ? window.EmberScraper.ingestKeys(t) : { added: [] };
+    const tv = window.EmberAgentAddon && window.EmberAgentAddon.ingestTavily ? window.EmberAgentAddon.ingestTavily(t) : false;
+    $('notes').value = '';
     const f = r.found, nm = Prov.CFG;
     let h = 'Found <b>' + (f.groq + f.gemini + f.mistral + f.openrouter + f.huggingface + f.cohere + f.unknown) + '</b> possible key(s) in your notes.<br>';
     r.added.forEach(a => { h += (a.ok ? '<b>✓</b> ' : '<span class="w">✗</span> ') + nm[a.id].name + ' ' + esc(Prov.mask(a.key)) + (a.guess ? ' (no label, identified by testing it on Mistral)' : '') + '<br>'; });
+    if (sc.added.length) h += '<b>✓</b> Scraping keys saved: ' + sc.added.map(id => window.EmberScraper.LABEL[id]).join(', ') + ' (Settings > Scraping shows them; turn Web Scraping on to use them)<br>';
+    if (tv) h += '<b>✓</b> Tavily key saved (web search)<br>';
     if (r.dupes) h += r.dupes + ' already added.<br>';
     if (r.rejected) h += '<span class="w">' + r.rejected + ' unlabeled 32-character string(s) were not a valid Mistral key and were ignored.</span><br>';
-    if (!r.added.length && !r.dupes && !r.rejected) h = '<span class="w">No keys found. Groq keys start with gsk_, Gemini keys with AQ. (new) or AIza, OpenRouter with sk-or-v1-, HuggingFace with hf_. Mistral and Cohere keys have no prefix, so put the word Mistral or Cohere on the line above or beside them.</span>';
+    if (!r.added.length && !r.dupes && !r.rejected && !sc.added.length && !tv) h = '<span class="w">No keys found. Groq keys start with gsk_, Gemini keys with AQ. (new) or AIza, OpenRouter with sk-or-v1-, HuggingFace with hf_. Mistral and Cohere keys have no prefix, so put the word Mistral or Cohere on the line above or beside them.</span>';
     $('kRep').innerHTML = h;
   } catch (e) { $('kRep').innerHTML = '<span class="w">Failed: ' + esc(e.message) + '</span>'; }
   b.disabled = false; b.textContent = 'Extract + check keys'; renderKeys(); renderTop();
@@ -816,8 +915,8 @@ $('fImp').onchange = async e => {
   } catch (er) { toast('Import failed: ' + er.message); }
 };
 $('bWipe').onclick = async () => {
-  if (!(await sure('Delete everything?', 'All chats, memory, settings, keys, uploaded music, playlists and the Spotify sign-in on this device. This cannot be undone.'))) return;
-  try { if (window.EmberPlayer) await window.EmberPlayer.wipe(); if (window.EmberSpotify) window.EmberSpotify.wipe(); } catch (e) { /* storage already blocked */ }
+  if (!(await sure('Delete everything?', 'All chats, memory, settings, keys, uploaded music, playlists and the Audd.io token on this device. This cannot be undone.'))) return;
+  try { if (window.EmberPlayer) await window.EmberPlayer.wipe(); if (window.EmberAudd) window.EmberAudd.wipe(); } catch (e) { /* storage already blocked */ }
   await Store.wipe(); ['ember_set', 'ember_keys', 'ember_models'].forEach(k => LS.del(k)); location.reload();
 };
 

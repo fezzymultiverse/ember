@@ -85,25 +85,14 @@ if '.EmberKeepAliveService' not in m:
            '        <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Keeps the chat session alive while the user has Keep-alive switched on" />\n'
            '    </service>\n')
     m = m.replace('</application>', svc + '    </application>', 1)
-# Spotify sign-in comes back to the app as com.fezzy.ember://spotify?code=... : MainActivity needs an intent-filter for it and singleTask
-# (so the running app gets onNewIntent instead of a second copy of the activity).
-if 'android:scheme="com.fezzy.ember"' not in m:
-    link = ('        <intent-filter>\n'
-            '            <action android:name="android.intent.action.VIEW" />\n'
-            '            <category android:name="android.intent.category.DEFAULT" />\n'
-            '            <category android:name="android.intent.category.BROWSABLE" />\n'
-            '            <data android:scheme="com.fezzy.ember" android:host="spotify" />\n'
-            '        </intent-filter>\n')
-    if '</activity>' not in m:
-        sys.exit('manifest has no </activity>: cannot add the Spotify app link')
-    m = m.replace('</activity>', link + '    </activity>', 1)
+# singleTask: a tap on a notification (backgrounded reply) reaches the running app through onNewIntent instead of opening a second copy.
 act = re.search(r'<activity\b[^>]*>', m)
 if not act:
     sys.exit('manifest has no <activity> tag')
 if 'android:launchMode=' not in act.group(0):
     m = m.replace(act.group(0), act.group(0)[:-1] + ' android:launchMode="singleTask">', 1)
 manifest.write_text(m)
-for must in ('android:scheme="com.fezzy.ember"', 'launchMode','RECORD_AUDIO', 'MODIFY_AUDIO_SETTINGS', 'POST_NOTIFICATIONS', 'android.speech.RecognitionService', 'android.intent.action.TTS_SERVICE', '.ReplyReceiver', '.EmberKeepAliveService', 'REQUEST_IGNORE_BATTERY_OPTIMIZATIONS', 'FOREGROUND_SERVICE_SPECIAL_USE', 'FOREGROUND_SERVICE_DATA_SYNC', 'SystemForegroundService', 'INTERNET'):
+for must in ('launchMode','RECORD_AUDIO', 'MODIFY_AUDIO_SETTINGS', 'POST_NOTIFICATIONS', 'android.speech.RecognitionService', 'android.intent.action.TTS_SERVICE', '.ReplyReceiver', '.EmberKeepAliveService', 'REQUEST_IGNORE_BATTERY_OPTIMIZATIONS', 'FOREGROUND_SERVICE_SPECIAL_USE', 'FOREGROUND_SERVICE_DATA_SYNC', 'SystemForegroundService', 'INTERNET'):
     if must not in manifest.read_text():
         sys.exit('manifest merge failed: ' + must)
 print('manifest merged')

@@ -87,3 +87,9 @@ Run these on a phone or in a desktop browser with DevTools. They are **not autom
 - No test of real provider calls, real phones, or the Pollinations service.
 - No test of reply quality. Whether a model follows the crisis block is not measured.
 - No recall test: `Safety.detect` has not been measured against a labelled set of real messages.
+
+## V1.8.1 suites
+- `node tests/speaker-test.js`: red Stop speaker, native voice picker, speed/pitch, lively delivery, mic label, left-panel Music Console (native text-to-speech mocked, nothing is heard).
+- `node tests/music-test.js`: Music now lives in the left-panel Music Console, not the composer.
+- `node tests/app-test.js`: Settings is tabbed, so the test clicks the tab each control lives on.
+- `npm test` runs all of the above plus term, safety, voice-native, agent and context.

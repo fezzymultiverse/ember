@@ -1,17 +1,17 @@
-// Ember V1.6.5 - ember_music_ui.js: the Music panel, the now-playing widget above the message box, and the Spotify settings card.
-// Loaded last. Talks only to EmberPlayer / EmberSpotify / EmberMusicAddon. The chat code (app.js) is not involved.
+// Ember V1.7.0 - ember_music_ui.js: the Music panel, the now-playing widget above the message box, and the song-identification settings card.
+// Loaded last. Talks only to EmberPlayer / EmberAudd / EmberMusicAddon. The chat code (app.js) is not involved.
 'use strict';
 (() => {
 const $ = id => document.getElementById(id);
-const P = window.EmberPlayer, SP = window.EmberSpotify;
-if (!P || !SP || !$('music')) return;
+const P = window.EmberPlayer, AU = window.EmberAudd;
+if (!P || !AU || !$('music')) return;
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const toast = m => { const t = $('toast'); if (!t) return; t.textContent = m; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 3000); };
 const fmt = s => { s = Math.max(0, Math.round(+s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 const aiOn = () => { try { return !!JSON.parse(localStorage.getItem('ember_set') || '{}').musicAddon; } catch (e) { return false; } };
 const panelOpen = () => $('music').classList.contains('show');
 
-let np = { source: 'none', playing: false, track: null }, npAt = Date.now(), dragging = false, busy = false, spPlLoaded = 0;
+let np = { source: 'none', playing: false, track: null }, npAt = Date.now(), dragging = false, busy = false, idFor = null;
 
 // ---------- now playing: panel card + widget ----------
 function posNow() {
@@ -29,8 +29,8 @@ function paintPos() {
 function paint() {
   const t = np.track, playing = !!np.playing;
   $('npTitle').textContent = t ? t.title : 'Nothing playing';
-  $('npSub').textContent = t ? [t.artist, t.album].filter(Boolean).join(' · ') : (P.count() ? 'Pick a song from your library.' : 'Upload music or connect Spotify.');
-  $('npSrc').textContent = !t ? '' : np.source === 'spotify' ? 'Spotify' + (np.device ? ' · ' + np.device : '') : 'Ember player';
+  $('npSub').textContent = t ? [t.artist, t.album].filter(Boolean).join(' · ') : (P.count() ? 'Pick a song from your library.' : 'Upload music or scan the phone.');
+  $('npSrc').textContent = !t ? '' : 'Ember player';
   $('npPlay').textContent = playing ? '⏸' : '▶';
   $('npErr').textContent = np.error || '';
   if (np.volume != null && document.activeElement !== $('npVol')) $('npVol').value = String(np.volume);
@@ -38,7 +38,7 @@ function paint() {
   paintPos();
   $('mw').classList.toggle('hidden', !t);
   $('mwTitle').innerHTML = (playing ? '<span class="live"></span>' : '') + esc(t ? t.title : '');
-  $('mwSub').textContent = t ? [t.artist, np.source === 'spotify' ? 'Spotify' : ''].filter(Boolean).join(' · ') : '';
+  $('mwSub').textContent = t ? [t.artist].filter(Boolean).join(' · ') : '';
   $('mwPlay').textContent = playing ? '⏸' : '▶';
   $('npCard').classList.toggle('playing', playing && !!t); $('mw').classList.toggle('playing', playing && !!t);
   paintMeta();
@@ -64,8 +64,9 @@ function renderAbout(m) {
   chips.innerHTML = c.map(x => '<span class="chip2 c' + x[0] + '"><i>' + x[0] + '</i>' + esc(x[1]) + '</span>').join('');
   const parts = [];
   if (m.aboutSong) parts.push('<h4>The song</h4><p>' + esc(m.aboutSong) + '</p>');
+  if (m.aboutAlbum) parts.push('<h4>' + esc(m.album || 'The album') + '</h4><p>' + esc(m.aboutAlbum) + '</p>');
   if (m.aboutArtist) parts.push('<h4>' + esc(m.artist || 'The artist') + '</h4><p>' + esc(m.aboutArtist) + '</p>');
-  if (!parts.length) parts.push('<p class="hint">No bio found' + (navigator.onLine === false ? ' (you are offline)' : ' for this one') + '. Artwork and details come from the file tags, iTunes and Wikipedia when they have it.</p>');
+  if (!parts.length) parts.push('<p class="hint">No bio found' + (navigator.onLine === false ? ' (you are offline)' : ' for this one') + '. Artwork and details come from the file tags, Deezer and MusicBrainz when they have it. The Identify button can name a song that has no tags.</p>');
   box.classList.remove('hidden'); body.innerHTML = parts.join('') + (m.sources && m.sources.length ? '<small class="asrc">Source: ' + esc(m.sources.join(' + ')) + '</small>' : '');
   body.scrollTop = 0;
 }
@@ -91,7 +92,9 @@ async function act(a, o) {
 // ---------- open / close ----------
 function openMusic() { renderLib(); renderPls(); renderAi(); refresh(); $('music').classList.add('show'); }
 function closeMusic() { $('music').classList.remove('show'); }
-$('bMusic').onclick = openMusic; $('bMx').onclick = closeMusic; $('mwOpen').onclick = openMusic;
+window.EmberMusicUI = { open: openMusic, close: closeMusic }; // V1.8.1: the left-panel Music Console opens the full panel through this, so the lists are drawn
+if ($('bMusic')) $('bMusic').onclick = openMusic; // the header Music button no longer exists; an unguarded assignment here aborted the rest of this file
+$('bMx').onclick = closeMusic; $('mwOpen').onclick = openMusic;
 if ($('bOpenMusic')) $('bOpenMusic').onclick = () => { $('bSx').click(); openMusic(); };
 
 // ---------- transport ----------
@@ -107,7 +110,7 @@ $('npSeek').addEventListener('change', () => { dragging = false; act('seek', { v
 document.querySelectorAll('.mtab').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('.mtab').forEach(x => x.classList.toggle('on', x === b));
   document.querySelectorAll('.mpane').forEach(x => x.classList.toggle('hidden', x.id !== 'mp_' + b.dataset.m));
-  if (b.dataset.m === 'sp') renderSp(); if (b.dataset.m === 'ai') renderAi(); if (b.dataset.m === 'lib') { renderLib(); renderPls(); }
+  if (b.dataset.m === 'ai') renderAi(); if (b.dataset.m === 'lib') { renderLib(); renderPls(); }
 }));
 
 // ---------- library ----------
@@ -161,34 +164,6 @@ $('mPlSave').onclick = () => {
   $('mPlName').value = ''; renderPls(); toast('Saved "' + r.name + '" (' + r.count + ' songs)');
 };
 
-// ---------- Spotify tab ----------
-function renderSp() {
-  const s = SP.status();
-  $('spOff').classList.toggle('hidden', s.connected); $('spOn').classList.toggle('hidden', !s.connected);
-  $('spOffTxt').textContent = s.clientId ? 'Spotify is not connected yet. Open Settings, Music and tap Connect Spotify.' : 'Spotify is not set up yet. It takes a Client ID from developer.spotify.com (steps are in Settings, Music).';
-  $('spWho').textContent = 'Connected' + (s.name ? ' as ' + s.name : '') + '. Playback control needs Premium and the Spotify app open on a device.';
-  if (s.connected && Date.now() - spPlLoaded > 60000) loadSpPls();
-}
-async function loadSpPls() {
-  spPlLoaded = Date.now(); $('spPls').innerHTML = '<p class="hint">Loading…</p>';
-  const r = await SP.playlists();
-  $('spPls').innerHTML = r.error ? '<p class="hint">' + esc(r.error) + '</p>' : r.playlists.length ? r.playlists.map(p => '<div class="trk"><button class="sppl" data-id="' + esc(p.id) + '">' + esc(p.name) + '<small>' + (p.tracks != null ? p.tracks + ' tracks' : 'playlist') + '</small></button></div>').join('') : '<p class="hint">No playlists found.</p>';
-}
-async function spPlay(body) {
-  P.pauseLocal(); const r = await SP.control('play', body);
-  if (!r.ok) { toast(r.error); return; } P.setActive('spotify'); soon(700);
-}
-$('spToSet').onclick = () => { closeMusic(); $('bSet').click(); setTimeout(() => { const t = document.querySelector('.stab[data-st="music"]'); if (t) t.click(); }, 80); };
-$('spGo').onclick = async () => {
-  const q = $('spQ').value.trim(); if (!q) return;
-  $('spRes').innerHTML = '<p class="hint">Searching…</p>';
-  const r = await SP.search(q, 10);
-  $('spRes').innerHTML = r.error ? '<p class="hint">' + esc(r.error) + '</p>' : r.results.length ? r.results.map(t => '<div class="trk"><button class="spgo" data-id="' + esc(t.id) + '">' + esc(t.title) + '<small>' + esc(t.artist) + '</small></button></div>').join('') : '<p class="hint">Nothing found.</p>';
-};
-$('spQ').addEventListener('keydown', e => { if (e.key === 'Enter') $('spGo').click(); });
-$('spRes').addEventListener('click', e => { const b = e.target.closest('.spgo'); if (b) spPlay({ uri: 'spotify:track:' + b.dataset.id }); });
-$('spPls').addEventListener('click', e => { const b = e.target.closest('.sppl'); if (b) spPlay({ contextUri: 'spotify:playlist:' + b.dataset.id }); });
-
 // ---------- Ember tab: what the AI may do, and what it did ----------
 function renderAi() {
   const on = aiOn(), c = P.capabilities(), li = a => a.map(x => '<li>' + esc(x) + '</li>').join('');
@@ -202,30 +177,42 @@ $('mAiSw').onclick = () => { const s = $('swMusic'); if (s) s.click(); setTimeou
 if ($('swMusic')) $('swMusic').addEventListener('click', () => setTimeout(renderAi, 80));
 window.addEventListener('ember-music-ai', e => { toast(String(e.detail || '')); if (panelOpen()) renderAi(); soon(600); });
 
-// ---------- Spotify settings card ----------
-function renderSpSet() {
-  const s = SP.status();
-  $('spStat').textContent = s.connected ? 'Connected' + (s.name ? ' as ' + s.name : '') + '.' : s.clientId ? 'Not connected. Tap Connect Spotify.' : 'Not connected. Paste your Client ID first.';
-  if (document.activeElement !== $('spClient')) $('spClient').value = SP.getClientId();
-  if (document.activeElement !== $('spRedir')) $('spRedir').value = s.redirect;
-  $('spDisc').disabled = !s.connected; $('spConnect').textContent = s.connected ? 'Reconnect' : 'Connect Spotify';
+// ---------- song identification (Audd.io) ----------
+const goSettings = () => { closeMusic(); $('bSet').click(); setTimeout(() => { const t = document.querySelector('.stab[data-st="music"]'); if (t) t.click(); }, 80); };
+function showId(r, id) {
+  const box = $('npIdRes'); idFor = null;
+  if (!r || !r.ok) { box.textContent = (r && r.error) || 'That did not work.'; return; }
+  if (!r.found) { box.textContent = r.note || 'No match.'; return; }
+  idFor = { id, r };
+  box.innerHTML = '<b>' + esc(r.title) + '</b>' + (r.artist ? ' · ' + esc(r.artist) : '') + (r.album ? '<br>' + esc(r.album) + (r.year ? ' (' + esc(r.year) + ')' : '') : '') + (r.label ? '<br><small>' + esc(r.label) + '</small>' : '') +
+    (id ? '<div class="btnrow" style="margin-top:6px"><button class="btn" id="npIdUse">Use these tags</button></div>' : '') + '<br><small class="asrc">Best match from Audd.io. It gives no confidence score.</small>';
 }
-$('spClient').addEventListener('input', () => { SP.setClientId($('spClient').value); renderSpSet(); });
-$('spRedir').addEventListener('input', () => { const v = $('spRedir').value.trim(); SP.setRedirect(v === SP.defaultRedirect() ? '' : v); });
-$('spConnect').onclick = async () => { const r = await SP.connect(); if (!r.ok) toast(r.error); };
-$('spDisc').onclick = () => { SP.disconnect(); renderSpSet(); renderSp(); soon(); toast('Spotify disconnected on this phone'); };
-$('spCopy').onclick = async () => {
-  const v = $('spRedir').value;
-  try { await navigator.clipboard.writeText(v); toast('Copied'); } catch (e) { $('spRedir').focus(); $('spRedir').select(); toast('Select and copy the text'); }
+$('npId').onclick = async () => {
+  if (!AU.hasKey()) { toast('Paste your Audd.io token in Settings, Music first'); goSettings(); return; }
+  const t = np.track; if (!t || !t.id) { toast('Play a song first'); return; }
+  $('npId').disabled = true; $('npIdRes').textContent = 'Listening… sending a short clip to Audd.io';
+  const r = await AU.identifyTrack(t.id); $('npId').disabled = false; showId(r, t.id);
 };
-window.addEventListener('ember-spotify', e => {
-  const d = e.detail || {};
-  if (d.type === 'connected') toast('Spotify connected' + (d.name ? ' as ' + d.name : ''));
-  else if (d.type === 'failed') toast(d.error || 'Spotify sign-in failed');
-  else if (d.type === 'expired') toast('Spotify sign-in expired. Reconnect in Settings, Music.');
-  renderSpSet(); renderSp(); soon();
+$('npIdRes').addEventListener('click', e => {
+  if (!e.target.closest('#npIdUse') || !idFor) return;
+  const { id, r } = idFor, u = P.updateTrack(id, { title: r.title, artist: r.artist, album: r.album });
+  toast(u.ok ? 'Tags updated for this song' : u.error); if (u.ok) { $('npIdRes').textContent = 'Updated: ' + r.title + (r.artist ? ' · ' + r.artist : ''); idFor = null; renderLib(); soon(); }
 });
-new MutationObserver(renderSpSet).observe($('settings'), { attributes: true, attributeFilter: ['class'] });
+function renderAu() {
+  const s = AU.status();
+  $('auStat').textContent = s.hasKey ? 'Token saved (' + s.masked + '). Identify works from the Music panel and from chat.' : 'Off. Paste your Audd.io API token to turn it on.';
+  if (document.activeElement !== $('auToken')) $('auToken').value = '';
+  $('auToken').placeholder = s.hasKey ? 'Token saved. Paste a new one to replace it' : 'API token from dashboard.audd.io';
+  $('auClear').disabled = !s.hasKey; $('auUrlGo').disabled = !s.hasKey;
+}
+$('auSave').onclick = () => { const v = $('auToken').value.trim(); if (v.length < 8) { toast('That does not look like a token'); return; } AU.setKey(v); $('auToken').value = ''; renderAu(); renderAi(); toast('Audd.io token saved on this phone'); };
+$('auClear').onclick = () => { AU.setKey(''); renderAu(); renderAi(); toast('Audd.io token removed'); };
+$('auUrlGo').onclick = async () => {
+  const u = $('auUrl').value.trim(); if (!u) return;
+  $('auUrlRes').textContent = 'Asking Audd.io…'; const r = await AU.identifyUrl(u);
+  $('auUrlRes').textContent = !r.ok ? r.error : !r.found ? r.note : r.title + (r.artist ? ' · ' + r.artist : '') + (r.album ? ' · ' + r.album : '') + (r.year ? ' (' + r.year + ')' : '');
+};
+window.addEventListener('ember-audd', renderAu);
 
 // ---------- live updates ----------
 P.on(kind => { if (kind === 'library') { renderLib(); renderPls(); } if (kind === 'playlists') renderPls(); soon(kind === 'tick' ? 0 : 80); });
@@ -233,7 +220,6 @@ setInterval(() => { if (!document.hidden && !P.snapshot().playing) refresh(); },
 setInterval(() => { if (np.playing && !dragging && (panelOpen() || !$('mw').classList.contains('hidden'))) paintPos(); }, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 
-renderSpSet();
+renderAu();
 P.init().then(() => { renderLib(); renderPls(); refresh(); });
-SP.boot();
 })();

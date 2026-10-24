@@ -16,6 +16,8 @@ function cleanKey(v) {
   t = edge(t.replace(/^(authorization\s*:\s*)?bearer\s+/i, '').replace(/^(api[_-]?key|token|key)\s*[:=]\s*/i, ''));
   return t.replace(/\s+/g, '');
 }
+// V1.6.8: pull a Tavily key (tvly-...) out of pasted notes or a script.
+function ingestTavily(text) { const m = /tvly-[A-Za-z0-9_-]{16,}/.exec(String(text || '')); if (!m) return false; setTavilyKey(m[0]); return true; }
 const tavilyKey = () => cleanKey(load().tavily || '');
 const setTavilyKey = v => { const o = load(); v = cleanKey(v); if (v) o.tavily = v; else delete o.tavily; save(o); };
 
@@ -231,6 +233,6 @@ function wire() {
 }
 wire();
 
-window.EmberAgentAddon = { dispatch, setIntent, stateBlock, toolsFor, paint, setTavilyKey, hasTavilyKey: () => !!tavilyKey(), native: () => !!yt(), _VID: VID, cardHtml, cardsHtml };
+window.EmberAgentAddon = { ingestTavily, dispatch, setIntent, stateBlock, toolsFor, paint, setTavilyKey, hasTavilyKey: () => !!tavilyKey(), native: () => !!yt(), _VID: VID, cardHtml, cardsHtml };
 Object.defineProperty(window.EmberAgentAddon, 'TOOLS', { enumerable: true, get: () => ALL.slice() });
 })();

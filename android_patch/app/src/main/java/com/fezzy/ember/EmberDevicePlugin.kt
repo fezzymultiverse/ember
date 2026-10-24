@@ -44,6 +44,21 @@ class EmberDevicePlugin : Plugin() {
         call.resolve(r)
     }
 
+    // V1.6.7: one-tap "Open Termux" for the EMBER TERMUX panel. Launches the app's normal launcher activity; reads nothing from it.
+    @PluginMethod
+    fun openApp(call: PluginCall) {
+        val pkg = call.getString("package") ?: "com.termux"
+        val r = JSObject()
+        try {
+            val i = context.packageManager.getLaunchIntentForPackage(pkg)
+            if (i == null) { r.put("ok", false); r.put("error", "not installed"); call.resolve(r); return }
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(i)
+            r.put("ok", true)
+        } catch (e: Exception) { r.put("ok", false); r.put("error", e.message ?: "could not open") }
+        call.resolve(r)
+    }
+
     @PluginMethod
     fun requestWifiName(call: PluginCall) {
         if (getPermissionState("wifiname") == PermissionState.GRANTED) {

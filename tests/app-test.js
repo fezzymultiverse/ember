@@ -25,6 +25,15 @@ const NOTES = ['my stuff for the studio', 'groq: ' + GROQ, 'gemini ' + GEM, 'Mis
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, acceptDownloads: true });
   const pg = await ctx.newPage();
+  // V1.8.1: Settings is tabbed (General, Keys, Scraping, Hacking, Music, Perms). Before touching a Settings control, click the tab it lives on.
+  { const _fill = pg.fill.bind(pg), _click = pg.click.bind(pg);
+    const reveal = async sel => { try {
+      if (/^\.stab/.test(sel)) return;
+      const tab = await pg.evaluate(q => { const e = document.querySelector(q); const c = e && e.closest('#settings .card[data-tab]'); const s = document.getElementById('settings'); return c && s && s.classList.contains('show') && !c.classList.contains('stab-show') ? c.dataset.tab : ''; }, sel);
+      if (tab) await _click('.stab[data-st="' + tab + '"]');
+    } catch (e) { /* page busy */ } };
+    pg.fill = async (sel, v, o) => { await reveal(sel); return _fill(sel, v, o); };
+    pg.click = async (sel, o) => { await reveal(sel); return _click(sel, o); }; }
   const errs = []; pg.on('pageerror', e => errs.push(e.message)); pg.on('console', m => { if (m.type() == 'error' && !/Failed to load resource|net::|favicon/.test(m.text())) errs.push(m.text()); });
 
   const M = { calls: [], invalid: new Set([BADGROQ, MIS_BAD]), limit: { groq: false, mistral: false, gemini: false, pollinations: false }, echoFirst: false, n: 0 };
@@ -84,7 +93,7 @@ const NOTES = ['my stuff for the studio', 'groq: ' + GROQ, 'gemini ' + GEM, 'Mis
   await pg.click('#bHist'); await pg.waitForTimeout(300); await pg.click('#bNew'); await pg.waitForTimeout(200); // keep the main test chat clean
 
   // 2. notes -> keys
-  await pg.click('#bSet'); await pg.fill('#notes', NOTES); await pg.click('#bIngest');
+  await pg.click('#bSet'); await pg.click('.stab[data-st="keys"]'); await pg.fill('#notes', NOTES); await pg.click('#bIngest');
   await pg.waitForFunction(() => /Found/.test(document.getElementById('kRep').textContent), null, { timeout: 20000 });
   const rep = await pg.textContent('#kRep');
   ok('found 4 candidates (groq, gemini, mistral + 1 unlabeled)', /Found 4 possible/.test(rep), rep);
@@ -126,12 +135,12 @@ const NOTES = ['my stuff for the studio', 'groq: ' + GROQ, 'gemini ' + GEM, 'Mis
 
   // 5. engine tag
   await pg.click('#bSet'); await pg.click('#swEng'); await pg.click('#bSx');
-  ok('engine tag shows Groq + time', /Groq \d+ms/.test(await pg.textContent('#log')));
+  ok('engine tag shows Groq + time', /Groq\b.*\d+ms/.test(await pg.textContent('#log')));
 
   // 6. failover groq -> mistral
   M.limit.groq = true;
   await sendMsg('ok but seriously what do you think about midnight thoughts');
-  ok('failed over to Mistral', /Mistral \d+ms/.test(await pg.textContent('#log')));
+  ok('failed over to Mistral', /Mistral\b.*\d+ms/.test(await pg.textContent('#log')));
   ok('groq dot turned amber', await pg.locator('#engs i.limited').count() == 1);
   M.limit.groq = false;
 

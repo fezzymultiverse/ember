@@ -20,7 +20,9 @@ window.addEventListener('ember-switch', e => {
 const PK = 'ember_prompts';
 const nid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const normTags = v => [...new Set(String(Array.isArray(v) ? v.join(',') : v || '').split(',').map(x => x.trim().toLowerCase().replace(/\s+/g, '-').slice(0, 20)).filter(Boolean))].slice(0, 6);
-const loadP = () => { try { const a = JSON.parse(localStorage.getItem(PK) || '[]'); return Array.isArray(a) ? a.filter(x => x && x.n && x.t).map(x => ({ id: x.id || nid(), n: String(x.n).slice(0, 40), t: String(x.t).slice(0, 2000), tags: normTags(x.tags), pin: !!x.pin, used: +x.used || 0, last: +x.last || 0 })) : []; } catch (e) { return []; } };
+const loadP = () => { try { const a = JSON.parse(localStorage.getItem(PK) || '[]'); return Array.isArray(a) ? a.filter(x => x && x.n && x.t).map(x => ({ id: x.id || nid(), n: String(x.n).slice(0, 40), t: String(x.t).slice(0, 2000), tags: normTags(x.tags), pin: !!x.pin, used: +x.used || 0, last: +x.last || 0, no: String(x.no || '').slice(0, 600), rem: String(x.rem || '').slice(0, 160), task: String(x.task || '').slice(0, 200) })) : []; } catch (e) { return []; } };
+// V1.6.8: a prompt can carry what NOT to do, a reminder cue and a task. They are appended as labelled lines when the prompt is used or copied.
+const fullP = p => p.t + (p.no ? '\n\nDO NOT (hard constraints): ' + p.no : '') + (p.rem ? '\n\nREMIND ME: ' + p.rem : '') + (p.task ? '\n\nTASK TO CARRY OUT: ' + p.task : '');
 const saveP = a => { try { localStorage.setItem(PK, JSON.stringify(a.slice(0, 200))); return true; } catch (e) { toast('Could not save: storage is blocked'); return false; } };
 const STARTERS = [
   { n: 'Plan then build', tags: ['plan', 'build'], t: 'Before writing anything, give me a short plan of what you will change and why. Wait for my yes, then build the full production version with no placeholders and no skeletons.' },
@@ -49,11 +51,11 @@ function renderPrompts() {
   $('pTagList').innerHTML = Object.keys(tagCount).sort().map(t => '<option value="' + esc(t) + '">').join('');
   let a = all.filter(p => (!pTag || (pTag == '★' ? p.pin : p.tags.includes(pTag))) && (!q || (p.n + ' ' + p.t + ' ' + p.tags.join(' ')).toLowerCase().includes(q)));
   a.sort((x, y) => (y.pin - x.pin) || (y.last - x.last));
-  el.innerHTML = a.length ? a.map(p => '<div class="prm' + (p.pin ? ' pinned' : '') + '" data-id="' + esc(p.id) + '"><button class="btn g go"><b>' + esc(p.n) + '</b>' + (p.tags.length ? '<small class="tg">' + esc(p.tags.map(t => '#' + t).join(' ')) + '</small>' : '') + '<small>' + esc(p.t) + '</small></button><div class="pa"><button class="btn g pin" aria-label="Pin">' + (p.pin ? '★' : '☆') + '</button><button class="btn g ed" aria-label="Edit">✎</button><button class="btn g cp" aria-label="Copy">⧉</button><button class="btn g x" aria-label="Delete prompt">✕</button></div></div>').join('')
+  el.innerHTML = a.length ? a.map(p => '<div class="prm' + (p.pin ? ' pinned' : '') + '" data-id="' + esc(p.id) + '"><button class="btn g go"><b>' + esc(p.n) + '</b>' + (p.tags.length ? '<small class="tg">' + esc(p.tags.map(t => '#' + t).join(' ')) + '</small>' : '') + '<small>' + esc(p.t) + '</small>' + (p.no ? '<small class="pf">🚫 ' + esc(p.no) + '</small>' : '') + (p.rem ? '<small class="pf">⏰ ' + esc(p.rem) + '</small>' : '') + (p.task ? '<small class="pf">✅ ' + esc(p.task) + '</small>' : '') + '</button><div class="pa"><button class="btn g pin" aria-label="Pin">' + (p.pin ? '★' : '☆') + '</button><button class="btn g ed" aria-label="Edit">✎</button><button class="btn g cp" aria-label="Copy">⧉</button><button class="btn g x" aria-label="Delete prompt">✕</button></div></div>').join('')
     : '<p class="hint">' + (all.length ? 'Nothing matches.' : 'No saved prompts yet. Add one below, or tap Starter pack.') + '</p>';
   $('pStarter').classList.toggle('hidden', all.length > 0);
 }
-function resetForm() { pEdit = ''; $('pmName').value = ''; $('pmTags').value = ''; $('pText').value = ''; $('pAdd').textContent = 'Save prompt'; $('pCancel').classList.add('hidden'); }
+function resetForm() { pEdit = ''; $('pmName').value = ''; $('pmTags').value = ''; $('pText').value = ''; $('pNo').value = ''; $('pRem').value = ''; $('pTask').value = ''; $('pAdd').textContent = 'Save prompt'; $('pCancel').classList.add('hidden'); }
 document.querySelectorAll('.dtab').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('.dtab').forEach(x => x.classList.toggle('on', x == b));
   document.querySelectorAll('.dpane').forEach(x => x.classList.toggle('hidden', x.id != 'dp_' + b.dataset.d));
@@ -66,8 +68,9 @@ if ($('pAdd')) {
     const n = $('pmName').value.trim(), t = $('pText').value.trim();
     if (!n || !t) { toast('Give the prompt a name and some text'); return; }
     const a = loadP(), tags = normTags($('pmTags').value);
-    if (pEdit) { const p = a.find(x => x.id == pEdit); if (p) { p.n = n.slice(0, 40); p.t = t.slice(0, 2000); p.tags = tags; } }
-    else a.unshift({ id: nid(), n: n.slice(0, 40), t: t.slice(0, 2000), tags, pin: false, used: 0, last: 0 });
+    const ex = { no: $('pNo').value.trim().slice(0, 600), rem: $('pRem').value.trim().slice(0, 160), task: $('pTask').value.trim().slice(0, 200) };
+    if (pEdit) { const p = a.find(x => x.id == pEdit); if (p) { p.n = n.slice(0, 40); p.t = t.slice(0, 2000); p.tags = tags; Object.assign(p, ex); } }
+    else a.unshift(Object.assign({ id: nid(), n: n.slice(0, 40), t: t.slice(0, 2000), tags, pin: false, used: 0, last: 0 }, ex));
     if (saveP(a)) { toast(pEdit ? 'Prompt updated' : 'Prompt saved'); resetForm(); renderPrompts(); }
   };
   $('pCancel').onclick = resetForm;
@@ -79,22 +82,22 @@ if ($('pAdd')) {
       pDel = p.id; pDelT = Date.now(); e.target.closest('.x').textContent = 'Sure?'; setTimeout(() => { if (pDel == p.id) renderPrompts(); }, 3000); return;
     }
     if (e.target.closest('.pin')) { p.pin = !p.pin; saveP(a); renderPrompts(); return; }
-    if (e.target.closest('.cp')) { copyText(p.t); return; }
-    if (e.target.closest('.ed')) { pEdit = p.id; $('pmName').value = p.n; $('pmTags').value = p.tags.join(', '); $('pText').value = p.t; $('pAdd').textContent = 'Update prompt'; $('pCancel').classList.remove('hidden'); $('pText').focus(); return; }
+    if (e.target.closest('.cp')) { copyText(fullP(p)); return; }
+    if (e.target.closest('.ed')) { pEdit = p.id; $('pmName').value = p.n; $('pmTags').value = p.tags.join(', '); $('pText').value = p.t; $('pNo').value = p.no || ''; $('pRem').value = p.rem || ''; $('pTask').value = p.task || ''; $('pAdd').textContent = 'Update prompt'; $('pCancel').classList.remove('hidden'); $('pText').focus(); return; }
     if (e.target.closest('.go')) {
       const inp = $('inp'); if (!inp) return;
-      inp.value = inp.value.trim() ? inp.value.replace(/\s+$/, '') + '\n\n' + p.t : p.t; inp.dispatchEvent(new Event('input', { bubbles: true }));
+      inp.value = inp.value.trim() ? inp.value.replace(/\s+$/, '') + '\n\n' + fullP(p) : fullP(p); inp.dispatchEvent(new Event('input', { bubbles: true }));
       p.used++; p.last = Date.now(); saveP(a);
       const d = $('bDx'); if (d) d.click(); inp.focus();
     }
   });
-  $('pExport').onclick = () => { const a = loadP(); if (!a.length) { toast('Nothing to export yet'); return; } const j = JSON.stringify(a.map(p => ({ n: p.n, t: p.t, tags: p.tags, pin: p.pin })), null, 1); $('pIO').value = j; $('pIO').classList.remove('hidden'); $('pImportGo').classList.add('hidden'); copyText(j); };
+  $('pExport').onclick = () => { const a = loadP(); if (!a.length) { toast('Nothing to export yet'); return; } const j = JSON.stringify(a.map(p => ({ n: p.n, t: p.t, tags: p.tags, pin: p.pin, no: p.no, rem: p.rem, task: p.task })), null, 1); $('pIO').value = j; $('pIO').classList.remove('hidden'); $('pImportGo').classList.add('hidden'); copyText(j); };
   $('pImportBtn').onclick = () => { $('pIO').value = ''; $('pIO').classList.remove('hidden'); $('pImportGo').classList.remove('hidden'); $('pIO').focus(); };
   $('pImportGo').onclick = () => {
     let src; try { src = JSON.parse($('pIO').value); } catch (e) { toast('That is not valid JSON'); return; }
     if (!Array.isArray(src)) { toast('Expected a list of prompts'); return; }
     const a = loadP(); let n = 0;
-    src.forEach(x => { if (x && x.n && x.t && !a.some(y => y.n == String(x.n).slice(0, 40) && y.t == String(x.t).slice(0, 2000))) { a.push({ id: nid(), n: String(x.n).slice(0, 40), t: String(x.t).slice(0, 2000), tags: normTags(x.tags), pin: !!x.pin, used: 0, last: 0 }); n++; } });
+    src.forEach(x => { if (x && x.n && x.t && !a.some(y => y.n == String(x.n).slice(0, 40) && y.t == String(x.t).slice(0, 2000))) { a.push({ id: nid(), n: String(x.n).slice(0, 40), t: String(x.t).slice(0, 2000), tags: normTags(x.tags), pin: !!x.pin, used: 0, last: 0, no: String(x.no || '').slice(0, 600), rem: String(x.rem || '').slice(0, 160), task: String(x.task || '').slice(0, 200) }); n++; } });
     if (saveP(a)) { toast(n + ' prompt' + (n == 1 ? '' : 's') + ' imported'); $('pIO').classList.add('hidden'); $('pImportGo').classList.add('hidden'); renderPrompts(); }
   };
   $('pStarter').onclick = () => { const a = loadP(); STARTERS.forEach(s => a.push({ id: nid(), n: s.n, t: s.t, tags: s.tags, pin: false, used: 0, last: 0 })); if (saveP(a)) { renderPrompts(); toast('Starter pack added'); } };

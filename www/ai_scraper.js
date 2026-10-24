@@ -10,7 +10,7 @@ const KEY_IDS = ['firecrawl', 'browserless', 'scraperapi', 'scraperbee', 'sting'
 const MAX_CHARS = 8000;
 
 const TOOLS = [
-  { name: 'scrape_url', description: 'Fetches a web page and returns its content as clean Markdown. objective says what to look for (e.g. "find the error log"); the most relevant parts are kept when the page is long.', parameters: { url: 'string (a full url, or the name of a saved site)', objective: 'string?', format: '"text" for plain text with no Markdown (optional)' } }
+  { name: 'scrape_url', description: 'Fetches a web page and returns its content as clean Markdown. objective says what to look for (e.g. "find the error log"); the most relevant parts are kept when the page is long.', parameters: { url: 'string (a full url, or the name of a saved site)', objective: 'string?', format: '"text" for plain text with no Markdown (optional)', via: 'string? provider to force when he names one: firecrawl, browserless, scraperapi, scraperbee, zenrows, serpapi, reader. Only that provider runs and the result says so.' } }
 ];
 
 // ---------- settings ----------
@@ -43,7 +43,9 @@ function extractKeys(text) {
   String(text || '').split(/\r?\n/).forEach(line => {
     let hit = ''; for (const id of KEY_IDS) if ((ALIAS[id] || [id]).some(a => new RegExp(a, 'i').test(line))) { hit = id; break; }
     if (hit) { cur = hit; ttl = 2; }
-    if (cur && ttl > 0) (line.match(/[A-Za-z0-9_\-]{16,64}/g) || []).forEach(tok => { if (!KEYSTOP.test(tok) && !out[cur].includes(tok)) out[cur].push(tok); });
+    // V1.6.8: in a script the variable name (FIRECRAWL_API_KEY=) is 16+ characters and was being saved AS the key. Drop NAME= and ALL_CAPS_NAMES first.
+    const body = line.replace(/\b[A-Za-z_][A-Za-z0-9_]*\s*[:=]\s*/g, ' ');
+    if (cur && ttl > 0) (body.match(/[A-Za-z0-9_\-]{16,64}/g) || []).forEach(tok => { if (!KEYSTOP.test(tok) && !/^[A-Z][A-Z0-9]*_[A-Z0-9_]+$/.test(tok) && !out[cur].includes(tok)) out[cur].push(tok); });
     if (!hit && ttl > 0) ttl--;
   });
   return out;
@@ -219,10 +221,16 @@ function resolveSite(x) {
   const f = window.EmberSites && window.EmberSites.find ? window.EmberSites.find(x) : null;
   return f ? f.url : x;
 }
-async function scrape_url(url, objective, format) {
+async function scrape_url(url, objective, format, via) {
   const u = checkUrl(resolveSite(url));
   if (!u) return { error: 'Only public http(s) URLs can be scraped.' };
-  const list = available();
+  let list = available();
+  const want = String(via || '').toLowerCase().replace(/[^a-z]/g, '');
+  if (want) {
+    if (!ORDER.includes(want)) return { error: 'Unknown provider "' + via + '". Choose one of: ' + ORDER.join(', ') + '.' };
+    if (!list.includes(want)) return { error: LABEL[want] + ' is not usable: ' + (want == 'reader' ? 'the Free reader is switched off.' : 'no key saved for it in Settings > Web Scraping.') + ' Nothing was fetched.' };
+    list = [want];
+  }
   if (!list.length) return { error: 'No reader available. Turn on the Free reader or add a scraping key in Settings > Web Scraping.' };
   const errs = [];
   const cleanObj = String(objective || '').trim().slice(0, 300);
@@ -303,7 +311,7 @@ function selfTest() {
 
 async function dispatch(name, args) {
   args = args || {};
-  if (name == 'scrape_url') return scrape_url(args.url, args.objective, args.format);
+  if (name == 'scrape_url') return scrape_url(args.url, args.objective, args.format, args.via);
   return { error: 'Unknown scraper tool: ' + name };
 }
 
