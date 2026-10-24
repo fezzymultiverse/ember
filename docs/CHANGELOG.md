@@ -1,5 +1,8 @@
 # Changelog
 
+## V1.9.3
+- Default ElevenLabs key replaced with the real `sk_` key in `www/ember_eleven_key.js` (the V1.9.2 placeholder-style key was not in ElevenLabs format). Nothing else changed. Version bumped in `package.json`, `sw.js`, README. Still readable in the repo and the APK: keep the repo private. Mock tests pass (25); the real API has not been called from here.
+
 ## V1.9.2
 - **ElevenLabs voice.** Before this version Ember had no ElevenLabs code at all. New `www/ember_eleven.js`: when switched on and a key exists, the 🔊 button and "Read replies aloud" use ElevenLabs text-to-speech (`eleven_turbo_v2_5`, default voice `21m00Tcm4TlvDq8ikWAM`, mp3). Text is cut into pieces of up to 800 characters at sentence ends and the next piece is fetched while the current one plays. Inside the APK the request goes through CapacitorHttp (binary-safe, no CORS); in a browser it uses fetch. If ElevenLabs fails (bad key, no credits, rate limit, offline) Ember shows the reason and reads the reply with the phone voice instead. A key that answers 401/402/403 rests 10 minutes (429: 1 minute) so it is not retried on every tap.
 - **Default key.** The key lives in its own file, `www/ember_eleven_key.js`, as the default. A key saved in Settings > Perms > ElevenLabs voice (localStorage `ELEVENLABS_API_KEY`) overrides it, so nothing has to be typed or pasted in DevTools. **Anything in that file is readable in the repo and inside the APK: keep the repo private, and rotate the key in ElevenLabs if it was ever public.**

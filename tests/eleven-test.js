@@ -24,6 +24,7 @@ function env(opts) {
 }
 (async () => {
   // key order + switches
+  const kf = SRC('ember_eleven_key.js'); ok('default key is in the sk_ format', /EMBER_ELEVEN_DEFAULT_KEY = 'sk_[0-9a-f]{20,}'/.test(kf));
   let t = env(); ok('default key present -> ready', t.E.ready() && t.E.key());
   t = env({ ls: { ember_eleven_on: '0' } }); ok('switch off -> not ready', !t.E.ready());
   t = env({ ls: { ELEVENLABS_API_KEY: ' "mine123" ' } });
@@ -74,6 +75,6 @@ function env(opts) {
   const app = SRC('app.js'), html = SRC('index.html'), sw = SRC('sw.js');
   ok('app.js hook: tries ElevenLabs then falls back once', /EmberEleven\.ready\(\)/.test(app) && /__emberElevenSkip = true/.test(app) && /EmberEleven\.stop\(\)/.test(app));
   ok('index.html has the card and both scripts', ['swEleven', 'elKey', 'elCheck', 'ember_eleven_key.js', 'ember_eleven.js'].every(x => html.indexOf(x) >= 0));
-  ok('sw.js caches both files and is V1.9.2', /ember_eleven\.js/.test(sw) && /ember_eleven_key\.js/.test(sw) && /ember-v1\.9\.2/.test(sw));
+  ok('sw.js caches both files and is V1.9.3', /ember_eleven\.js/.test(sw) && /ember_eleven_key\.js/.test(sw) && /ember-v1\.9\.3/.test(sw));
   console.log(pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);
 })();
