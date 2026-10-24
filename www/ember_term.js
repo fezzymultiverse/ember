@@ -250,7 +250,8 @@ function genBase() {
 }
 const PORT_DEF = 7682;
 const cmdFor = (port, base) => 'termux-wake-lock; pkg install -y ttyd && ttyd -i lo -p ' + port + ' -b ' + base + ' -W bash';
-const wsUrl = (port, base) => 'ws://127.0.0.1:' + port + base + '/ws';
+const HOSTS = ['127.0.0.1', 'localhost'];
+const wsUrl = (port, base, h) => 'ws://' + (h || HOSTS[0]) + ':' + port + base + '/ws';
 const DEFAULT_PRESETS = [
   { n: 'update', c: 'pkg update -y && pkg upgrade -y' }, { n: 'ls', c: 'ls -la' }, { n: 'pwd', c: 'pwd' },
   { n: 'storage', c: 'df -h' }, { n: 'memory', c: 'free -h' }, { n: 'my IP', c: 'ip -br addr' },
@@ -405,7 +406,7 @@ function connect(manual) {
   if (manual) { wantOn = true; userDown = false; tries = 0; cfg.auto = true; save(); }
   setState('connecting');
   let opened = false, sock;
-  try { sock = new WebSocket(wsUrl(cfg.port, cfg.base), ['tty']); } catch (e) { setState('off', 'could not start'); return; }
+  try { sock = new WebSocket(wsUrl(cfg.port, cfg.base, HOSTS[tries % 2 && tries > 1 ? 1 : 0]), ['tty']); } catch (e) { setState('off', 'could not start'); return; }
   sock.binaryType = 'arraybuffer'; ws = sock; dec = new TextDecoder('utf-8');
   sock.onopen = () => {
     opened = true; tries = 0; setState('on');
@@ -428,6 +429,20 @@ function connect(manual) {
     tries++; if (wantOn && !userDown && !panel.classList.contains('hidden')) retryT = setTimeout(() => connect(false), Math.min(8000, 2000 + tries * 1000));
   };
   sock.onerror = () => { /* onclose follows and carries the state */ };
+}
+// V1.8.3: running a command no longer needs a manual Connect. If the bridge is up this connects and waits (up to 7 s) for the link; if Termux is not running it says so and the command is copied.
+function ensureOn(ms) {
+  if (state === 'on') return Promise.resolve(true);
+  if (state !== 'connecting') connect(true);
+  return new Promise(res => {
+    const t0 = Date.now();
+    const iv = setInterval(() => {
+      const dt = Date.now() - t0;
+      if (state === 'on') { clearInterval(iv); res(true); }
+      else if (state === 'off' && dt > 300) { clearInterval(iv); res(false); }
+      else if (dt > (ms || 7000)) { clearInterval(iv); res(false); }
+    }, 100);
+  });
 }
 function disconnect() { userDown = true; wantOn = false; cfg.auto = false; save(); clearTimeout(retryT); closeWs(); setState('off', 'disconnected'); }
 
@@ -486,7 +501,7 @@ $('etKeys').addEventListener('click', async e => {
     const t = sel || tc.getText(tc.rows).join('\n'); toast((await copyText(t)) ? (sel ? 'Selection copied' : 'Screen copied') : 'Copy blocked'); return;
   }
   if (k === 'paste') { try { const t = await navigator.clipboard.readText(); if (t) send(tc.bracketed ? '\x1b[200~' + t + '\x1b[201~' : t.replace(/\r?\n/g, '\r')); } catch (er) { toast('Long-press the terminal and paste'); } return; }
-  if (state !== 'on') { toast('Not connected'); return; }
+  if (state !== 'on') { toast('Connecting to Termux…'); if (!(await ensureOn())) { toast('Termux is not reachable. Start the bridge in Termux (Setup tab).'); return; } }
   const map = { esc: '\x1b', tab: '\t', 'c-c': '\x03', 'c-d': '\x04', left: arrow('D'), up: arrow('A'), down: arrow('B'), right: arrow('C') };
   let out = map[k] !== undefined ? map[k] : k;
   if (ctrl && out.length === 1) { out = ctrlOf(out); setCtrl(false); }
@@ -501,8 +516,8 @@ function paintPre() {
     cfg.presets.map((p, i) => '<button class="etpc' + (editPre ? ' ed' : '') + '" data-i="' + i + '" title="' + esc(p.c) + '">' + esc(p.n || p.c) + (editPre ? ' <i>✕</i>' : '') + '</button>').join('') +
     '<button class="etp0" data-a="add">＋</button><button class="etp0' + (editPre ? ' on' : '') + '" data-a="edit">✎</button>';
 }
-function runCmd(c, run) {
-  if (state !== 'on') { copyText(c); toast('Not connected. Command copied.'); return; }
+async function runCmd(c, run) {
+  if (state !== 'on') { toast('Connecting to Termux…'); if (!(await ensureOn())) { copyText(c); toast('Termux is not reachable. Command copied. Start the bridge (Setup tab).'); return; } }
   setView('term'); send(c + (run ? '\r' : ''));
   if (run === false) { try { inEl.focus({ preventScroll: true }); } catch (e) { /* no focus */ } }
 }
@@ -583,6 +598,22 @@ new MutationObserver(sync).observe(settings, { attributes: true, attributeFilter
 const stabs = $('stabs'); if (stabs) new MutationObserver(sync).observe(stabs, { attributes: true, subtree: true, attributeFilter: ['class'] });
 panel.addEventListener('transitionend', e => { if (e.propertyName === 'height') fit(); });
 
+
+// V1.9.0: after the command is copied, Ember keeps knocking on the bridge by itself (every 2.5 s for 5 minutes, and again when you come back from Termux)
+// and jumps to the terminal the moment it answers. No Connect tap needed.
+let watchT = 0, watchUntil = 0;
+function stopWatch() { clearInterval(watchT); watchT = 0; }
+function startWatch() {
+  stopWatch(); wantOn = true; userDown = false; watchUntil = Date.now() + 300000;
+  if (state === 'on') return;
+  connect(true);
+  watchT = setInterval(() => {
+    if (state === 'on') { stopWatch(); toast('Termux connected'); if (cfg.state === 'bar') setPanel('half'); setView('term'); return; }
+    if (Date.now() > watchUntil) { stopWatch(); return; }
+    if (state === 'off') connect(false);
+  }, 2500);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && state !== 'on' && watchUntil > Date.now() - 600000 && !userDown) startWatch(); });
 // ---- Setup view ----
 function paintSetup() {
   const el = $('etSetup'); if (!el || $('etvSetup').classList.contains('hidden')) return;
@@ -593,14 +624,15 @@ function paintSetup() {
     '<div class="etrow"><button class="etbtn" id="etCopy">Copy command</button><button class="etbtn" id="etOpen">Open Termux</button></div>' +
     '<div class="etstep">STEP 2</div>' +
     '<div class="etrow">' + (state === 'on' ? '<button class="etbtn red" id="etDis">Disconnect</button>' : '<button class="etbtn on" id="etCon">' + (state === 'connecting' ? 'Connecting…' : 'Connect') + '</button>') + '<button class="etbtn" id="etToTerm">Terminal</button></div>' +
-    '<p class="etnote ' + (state === 'on' ? 'ok' : '') + '">' + (state === 'on' ? 'Connected. Ember is talking to your own Termux over this phone only.' : 'Not connected yet. Paste the command in Termux, leave it running, then tap Connect.') + '</p>' +
+    '<p class="etnote ' + (state === 'on' ? 'ok' : '') + '">' + (state === 'on' ? 'Connected. Ember is talking to your own Termux over this phone only.' : 'Waiting for Termux. Paste the command there and press Enter. Ember connects by itself the moment it answers.') + '</p>' +
     '<div class="etstep">SETTINGS</div>' +
     '<div class="etrow"><label class="etlab">Port</label><input id="etPort" inputmode="numeric" value="' + cfg.port + '" maxlength="5"><button class="etbtn" id="etNew">New private path</button></div>' +
     '<p class="etnote">It only listens on this phone (127.0.0.1) behind a private random path. Press Ctrl+C in Termux to stop it. It starts a plain <b>bash</b>: Ember never runs or sources your scripts. <b>termux-wake-lock</b> keeps Termux alive while Ember is in front.</p>' +
     '<p class="etnote">If Termux is running and Connect still fails, this APK may be blocking local connections: set <b>allowMixedContent</b> to true in capacitor.config.json and rebuild (see docs/TERMUX_PANEL.md).</p>' +
     '<div class="etrow"><button class="etbtn" id="etPreReset">Reset presets</button></div>';
-  $('etCopy').onclick = async () => toast((await copyText(cmd)) ? 'Command copied' : 'Copy blocked');
-  $('etOpen').onclick = openTermux;
+  $('etGo').onclick = async () => { const okc = await copyText(cmd); toast(okc ? 'Command copied. Paste it in Termux.' : 'Copy blocked'); startWatch(); setTimeout(openTermux, 350); };
+  $('etCopy').onclick = async () => { toast((await copyText(cmd)) ? 'Command copied' : 'Copy blocked'); startWatch(); };
+  $('etOpen').onclick = () => { startWatch(); openTermux(); };
   if ($('etCon')) $('etCon').onclick = () => connect(true);
   if ($('etDis')) $('etDis').onclick = disconnect;
   $('etToTerm').onclick = () => setView('term');
@@ -611,7 +643,7 @@ function paintSetup() {
 async function openTermux() {
   const N = window.EmberNative;
   try { if (N && N.openTermux) { const r = await N.openTermux(); if (r && r.ok) return; } } catch (e) { /* fall back */ }
-  toast('Open Termux from your home screen (the APK needs the V1.6.7 build for one-tap open)');
+  toast('Could not open Termux. Open it from your home screen; Ember keeps trying to connect.');
 }
 
 // ---- Ask Ember (chat inside the panel) ----
@@ -642,7 +674,7 @@ $('etLog').addEventListener('click', async e => {
   const code = b.closest('.etcode').querySelector('pre').textContent, a = b.dataset.a;
   if (a === 'cp') { toast((await copyText(code)) ? 'Copied' : 'Copy blocked'); return; }
   if (a === 'run' && b.dataset.dg === '1' && !b.classList.contains('arm')) { b.classList.add('arm'); b.textContent = 'Tap again to run'; setTimeout(() => { b.classList.remove('arm'); b.textContent = 'Run ⏎'; }, 3000); return; }
-  if (state !== 'on') { copyText(code); toast('Not connected. Copied instead.'); return; }
+  if (state !== 'on') { toast('Connecting to Termux…'); if (!(await ensureOn())) { copyText(code); toast('Termux is not reachable. Copied instead.'); return; } }
   const oneLine = code.replace(/\n+$/, '');
   if (a === 'ins') { setView('term'); send(oneLine.replace(/\n/g, ' ')); try { inEl.focus({ preventScroll: true }); } catch (er) { /* no focus */ } }
   else { setView('term'); send(oneLine.split('\n').join('\r') + '\r'); }
@@ -672,5 +704,5 @@ $('etChips').addEventListener('click', e => {
 
 // ---- boot ----
 paintPre(); setView('term'); setState('off');
-window.EmberTerm = { connect: () => connect(true), disconnect, send, state: () => state, getText: n => tc.getText(n), setPanel, cfg, ask };
+window.EmberTerm = { ensureOn, startWatch, stopWatch, connect: () => connect(true), disconnect, send, state: () => state, getText: n => tc.getText(n), setPanel, cfg, ask };
 })();

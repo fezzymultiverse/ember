@@ -124,28 +124,18 @@ async function renderNet(d) {
   };
 }
 
+// V1.9.0: replaces the long "Engine Status" list. Everything that already lives in the left menu or Settings (keys per provider, persona,
+// add-ons, chat counts) is gone from here. Only a live check stays: who answered last and how fast, and whether anything can answer right now.
 async function renderAi() {
-  const S = lsGet('ember_set', {}) || {}, K = lsGet('ember_keys', {}) || {}, P = window.Prov;
-  const ids = (P && P.IDS) || Object.keys(K); let h = '';
+  const S = lsGet('ember_set', {}) || {}, P = window.Prov; let h = '';
+  const ids = (P && P.IDS) || [], st = P && P.status ? P.status() : {};
+  const ready = ids.filter(id => st[id] == 'ok').length, lim = ids.filter(id => st[id] == 'limited').length;
   const free = P && P.freeOn ? P.freeOn() : !!S.freeMode;
-  h += row('Engine mode', free ? pill('Free Mode (Pollinations)', 'a') : pill('Your keys', 'g'));
-  let total = 0;
-  ids.forEach(id => {
-    const a = Array.isArray(K[id]) ? K[id] : []; if (!a.length) return; total += a.length;
-    const ok = a.filter(x => x && x.st === 'ok').length, lim = a.filter(x => x && x.st === 'limited').length, bad = a.filter(x => x && x.st === 'bad').length;
-    const nm = (P && P.CFG && P.CFG[id] && (P.CFG[id].label || P.CFG[id].name)) || id;
-    h += row(nm, a.length + (a.length === 1 ? ' key ' : ' keys ') + (ok ? pill(ok + ' ok', 'g') + ' ' : '') + (lim ? pill(lim + ' limited', 'a') + ' ' : '') + (bad ? pill(bad + ' bad', 'r') : '') + (!ok && !lim && !bad ? pill('not checked', '') : ''));
-  });
-  if (!total) h += row('API keys', pill('None added', ''));
-  h += row('Persona', '<b>' + esc(S.pname || 'Ember') + '</b> · ' + esc(S.mode || 'sharp') + ' · context ' + esc(S.ctx || 'normal'));
-  const on = (v, n) => pill(n, v ? 'c' : '');
-  h += '<div class="dvrow"><span>Add-ons</span><span style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end">' +
-    on(S.musicAddon, 'Music') + on(S.docsAddon, 'Documents') + on(S.agentAddon, 'Web search') + on(S.youtubeAddon, 'YouTube') + on(S.visionAddon, 'Vision') + on((lsGet('ember_scrape', {}) || {}).on, 'Scraping') + on(S.termuxMode, 'Termux') + '</span></div>';
-  h += row('Learns from chats', S.learn === false ? pill('Off', '') : pill('On', 'g')) + row('Background replies', S.bgReplies === false ? pill('Off', '') : pill('On', 'g')) + row('Proactive pings', S.proactivePings ? pill('On', 'c') : pill('Off', ''));
-  try {
-    const cs = await window.Store.all(), msgs = cs.reduce((n, c) => n + ((c && c.messages && c.messages.length) || 0), 0), mem = await window.Store.getKV('mem', null);
-    h += row('Chats stored', cs.length + ' · ' + msgs + ' messages') + row('Memory facts', String((mem && mem.facts && mem.facts.length) || 0));
-  } catch (e) { /* store not ready */ }
+  let last = null;
+  try { const cs = (await window.Store.all()).filter(c => c && c.msgs && c.msgs.length).sort((a, b) => b.updated - a.updated); for (const c of cs) { for (let i = c.msgs.length - 1; i >= 0; i--) { const m = c.msgs[i]; if (m.r == 'a' && m.eng && m.eng.p) { last = m.eng; break; } } if (last) break; } } catch (e) { /* store not ready */ }
+  const nm = id => (P && P.label ? P.label(id) : id);
+  h += '<div class="dvhero ' + (ready ? 'ok' : free ? 'free' : 'bad') + '"><b>' + (ready ? 'Ready' : free ? 'Free Mode only' : 'Nothing can answer') + '</b><span>' + (ready ? ready + ' engine' + (ready > 1 ? 's' : '') + ' with a working key' + (lim ? ', ' + lim + ' rate limited' : '') : free ? 'No working key, Pollinations answers' : 'Add a key in Settings > Keys') + '</span></div>';
+  h += row('Last answer', last ? '<b>' + esc(nm(last.p)) + '</b>' + (last.m ? ' · ' + esc(String(last.m).replace(/^.*\//, '').slice(0, 28)) : '') + (last.ms ? ' · ' + last.ms + ' ms' : '') : '—');
   $('dvAi').innerHTML = h;
 }
 

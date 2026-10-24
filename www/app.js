@@ -2,12 +2,12 @@
 'use strict';
 (() => {
 const { $, esc, LS, uid } = U;
-const DEF = { name: '', about: '', pname: 'Ember', interests: 'how minds work, slang and language, music and how it gets made, strange history, ethics puzzles, space, why people do what they do, small design details', mode: 'sharp', learn: true, ctx: 'normal', summarize: true, persona: '', showEng: false, accent: '#00E5FF', warm: 'warm', direct: 'balanced', humor: 'dry', pace: 'normal', talk: '', musicAddon: false, docsAddon: false, agentAddon: false, youtubeAddon: false, visionAddon: false, autoRead: false, ttsRate: 1, ttsPitch: 1, ttsLively: true, termuxMode: false, wakeLock: false, keepAlive: false, proactivePings: false, pingHours: 4, musicWidget: true, bgReplies: true };
+const DEF = { name: '', about: '', pname: 'Ember', interests: 'how minds work, slang and language, music and how it gets made, strange history, ethics puzzles, space, why people do what they do, small design details', mode: 'sharp', learn: true, ctx: 'normal', summarize: true, persona: '', showEng: false, accent: '#FF6A00', warm: 'warm', direct: 'balanced', humor: 'dry', pace: 'normal', talk: '', musicAddon: false, docsAddon: false, agentAddon: false, youtubeAddon: false, visionAddon: false, autoRead: false, ttsRate: 1, ttsPitch: 1, ttsLively: true, termuxMode: false, wakeLock: false, keepAlive: false, proactivePings: false, pingHours: 4, musicWidget: true, bgReplies: true };
 const WINS = { short: 1, normal: 1, long: 1 };
-const ACCENTS = ['#00E5FF', '#9D00FF', '#FF005F', '#2EE86B'];
+const ACCENTS = ['#FF6A00', '#FF9500', '#FFFFFF', '#FF3D00'];
 let S = Object.assign({}, DEF, LS.get('ember_set', {}));
 // V1.6.6: the old default accent was pink. Anyone still on it moves to the new cyan once; a colour picked on purpose is kept.
-if (S.accentV !== 166) { if (!S.accent || S.accent === '#FF005F' || S.accent === '#AF5FFF') S.accent = '#00E5FF'; S.accentV = 166; LS.set('ember_set', S); }
+if (S.accentV !== 190) { if (!ACCENTS.includes(String(S.accent || '').toUpperCase())) S.accent = '#FF6A00'; S.accentV = 190; LS.set('ember_set', S); }
 const MEM_DEF = () => ({ facts: [], threads: [], callbacks: [], patterns: {}, moodLog: [], futureLetters: [], deck: [] });
 const migrateMem = m => {
   const base = MEM_DEF();
@@ -105,7 +105,8 @@ function bub(x, last, i) {
   const eng = x.eng ? ' · ' + Prov.label(x.eng.p) + (S.showEng && x.eng.m ? ' ' + esc(String(x.eng.m).replace(/^.*\//, '').slice(0, 34)) : '') + (S.showEng && x.eng.ms ? ' ' + x.eng.ms + 'ms' : '') + (x.eng.pm ? ' · ' + Prov.label(x.eng.pm) + ' pin failed' : '') : '';
   const regen = last && x.r == 'a' ? '<button data-act="regen">↻ again</button>' : '';
   const say = x.r == 'a' ? '<button data-act="say" data-i="' + i + '" aria-label="Read aloud" title="Read aloud"' + (sayIdx === i ? ' class="talking"' : '') + '>' + (sayIdx === i ? '■ Stop' : '🔊') + '</button>' : '';
-  return '<div class="msg ' + x.r + '"><div>' + fmt(x.t) + '</div><div class="mt"><span>' + U.time(x.ts) + (x.deep ? ' · 💡' : '') + eng + '</span>' + say + regen + '</div></div>';
+  const eggImg = x.egg == 'bojack' ? '<img src="ember-icon.svg" alt="" class="msg-egg-icon">' : '';
+  return '<div class="msg ' + x.r + (x.egg ? ' egg' : '') + '">' + eggImg + '<div>' + fmt(x.t) + '</div><div class="mt"><span>' + U.time(x.ts) + (x.deep ? ' · 💡' : '') + eng + '</span>' + say + regen + '</div></div>';
 }
 function renderLog() {
   const m = conv ? conv.msgs : [];
@@ -127,8 +128,12 @@ function renderTop() {
   $('fBadge').classList.toggle('hidden', !Prov.freeOn());
   const st = Prov.status();
   let lastEng = ''; if (conv) for (let k = conv.msgs.length - 1; k >= 0; k--) { const mm = conv.msgs[k]; if (mm.r == 'a' && mm.eng && mm.eng.p) { lastEng = mm.eng.p; break; } }
-  $('engs').innerHTML = Prov.IDS.map(id => '<i class="' + st[id] + (id == lastEng ? ' act' : '') + '" title="' + Prov.CFG[id].name + ': ' + st[id] + (id == lastEng ? ' (answered the last reply)' : '') + '">' + Prov.CFG[id].name.slice(0, 3).toUpperCase() + (Prov.CFG[id].status == 'prototype' ? '*' : '') + '</i>').join('') +
-    (lastEng == 'pollinations' ? '<i class="act" title="Free Mode answered the last reply">FREE</i>' : '');
+  // V1.9.0: one compact pill instead of a row of chips. Dot = health of your keys, text = who answered last (or the mode).
+  const okN = Prov.IDS.filter(id => st[id] == 'ok').length, limN = Prov.IDS.filter(id => st[id] == 'limited').length;
+  const dot = Prov.freeOn() && !okN ? 'free' : okN ? 'ok' : limN ? 'limited' : Prov.hasKeys() ? 'bad' : 'none';
+  const who = lastEng ? Prov.label(lastEng) : (Prov.getPinned() ? Prov.label(Prov.getPinned()) + ' (pinned)' : (Prov.freeOn() && !okN ? 'Free Mode' : okN ? 'Auto' : 'No key'));
+  $('engs').className = 'engpill ' + dot; $('engs').innerHTML = '<i></i><span>' + esc(who) + '</span>';
+  $('engs').title = (okN ? okN + ' engine(s) ready' : 'No engine ready') + (limN ? ', ' + limN + ' rate limited' : '') + '. Tap to open Keys.';
   document.querySelectorAll('#modes button').forEach(b => b.classList.toggle('on', b.dataset.m == S.mode));
   const p = conv && conv.priv; $('bPriv').textContent = p ? '🔒 Private' : '🔓 Normal'; $('bPriv').classList.toggle('on', !!p);
   const h = new Date().getHours();
@@ -160,6 +165,7 @@ function toolCatalog() {
   if (S.musicAddon && A.EmberMusicAddon) sets.push(A.EmberMusicAddon.TOOLS);
   if (A.EmberKnow) sets.push(A.EmberKnow.TOOLS);
   if (A.EmberTasks) sets.push(A.EmberTasks.TOOLS);
+  if (A.EmberKeys) sets.push(A.EmberKeys.TOOLS);
   if (docsOn && A.EmberDocsAddon) sets.push(A.EmberDocsAddon.TOOLS);
   if (A.EmberAgentAddon) sets.push(A.EmberAgentAddon.toolsFor(S));
   if (scrapeOn && A.EmberScraper) sets.push(A.EmberScraper.TOOLS);
@@ -179,6 +185,7 @@ async function runTool(tool, args) {
     if (S.musicAddon && A.EmberMusicAddon && namesOf(A.EmberMusicAddon).includes(tool)) return await A.EmberMusicAddon.dispatch(tool, args);
     if (A.EmberKnow && namesOf(A.EmberKnow).includes(tool)) return await A.EmberKnow.dispatch(tool, args);
     if (A.EmberTasks && namesOf(A.EmberTasks).includes(tool)) return await A.EmberTasks.dispatch(tool, args);
+    if (A.EmberKeys && namesOf(A.EmberKeys).includes(tool)) return await A.EmberKeys.dispatch(tool, args);
     const docsOn = S.docsAddon || !!(A.EmberDocs && A.EmberDocs.count && A.EmberDocs.count() > 0);
     if (docsOn && A.EmberDocsAddon && namesOf(A.EmberDocsAddon).includes(tool)) return await A.EmberDocsAddon.dispatch(tool, args);
     if (A.EmberAgentAddon && A.EmberAgentAddon.toolsFor(S).some(t => t.name == tool)) return await A.EmberAgentAddon.dispatch(tool, args);
@@ -249,7 +256,13 @@ async function reply(o) {
       if (window.EmberNative) window.EmberNative.notifyReply(finalText);
     }
     await persist();
-  } catch (e) { if (curTurn === turnId) lastErr = e.message || 'Something broke.'; }
+  } catch (e) {
+    if (e && e.code == 'handoff' && curTurn === turnId) { // V1.8.3: the native worker is answering this one; stay busy until its reply lands (applyBg clears it), with a safety net
+      const keep = turnId; setTimeout(() => { if (curTurn === keep && busy && !conv.msgs.some(m => m.turn === keep)) { lastErr = 'The background reply did not arrive. Tap resend.'; busy = false; $('bSend').disabled = false; typing(false); curTurn = null; renderLog(); } }, 180000);
+      return;
+    }
+    if (curTurn === turnId) lastErr = e.message || 'Something broke.';
+  }
   if (curTurn === turnId) { busy = false; $('bSend').disabled = false; typing(false); curTurn = null; }
   renderLog();
   saveSession(); // persist session state after every reply
@@ -272,10 +285,17 @@ async function send() {
   stopSpeak(); conv.msgs.push({ r: 'u', t, ts: Date.now() });
   Safety.mark(Safety.detect(t).level);
   if (conv.auto && conv.title == 'New chat') conv.title = t.length > 38 ? t.slice(0, 38).trim() + '…' : t;
-  $('inp').value = ''; grow(); await persist(); renderLog(); reply();
+  $('inp').value = ''; grow();
+  const egg = window.NineNine && window.NineNine.BOJACK_EGG && window.NineNine.BOJACK_EGG.test(t);
+  if (egg) {
+    conv.msgs.push({ r: 'a', t: window.NineNine.BOJACK_REPLY, ts: Date.now(), egg: 'bojack' });
+    await persist(); renderLog(); return;
+  }
+  await persist(); renderLog(); reply();
 }
 function needKeys() { return false; }
 // Fired by MainActivity when he replies from the notification while the app was backgrounded.
+window.addEventListener('ember-names', () => { try { renderTop(); renderKeys(); } catch (e) { /* not ready */ } });
 window.addEventListener('ember-bg-reply', e => {
   const t = String(e.detail || '').trim(); if (!t || busy) return;
   ensure(); conv.msgs.push({ r: 'u', t, ts: Date.now() });
@@ -329,9 +349,11 @@ async function renderHist() {
 }
 const H_KEY = 'ember_hist_open';
 const histOpen = () => LS.get(H_KEY, true) !== false;
-function applyHist() { const open = $('hq').value.trim() ? true : histOpen(); $('hwrap').classList.toggle('open', open); $('hHead').classList.toggle('closed', !open); $('hHead').setAttribute('aria-expanded', open ? 'true' : 'false'); }
-$('hHead').onclick = () => { LS.set(H_KEY, !histOpen()); applyHist(); };
-function drawer(on) { $('drawer').classList.toggle('show', on); $('scrim').classList.toggle('show', on); if (on) { $('hq').value = ''; renderHist(); } }
+function applyHist() { $('hwrap').classList.add('open'); }
+function chatsSheet(on) { $('chats').classList.toggle('show', on); if (on) { drawer(false); $('hq').value = ''; renderHist(); } }
+function openChats(sites) { chatsSheet(true); if (sites) { const b = $('sitesBox'); if (b.classList.contains('hidden')) toast('Turn on Web Scraping in Settings to use saved sites'); else setTimeout(() => b.scrollIntoView({ block: 'start' }), 80); } }
+$('hHead').onclick = () => openChats(false); $('bSitesOpen').onclick = () => openChats(true); $('chX').onclick = () => chatsSheet(false);
+function drawer(on) { $('drawer').classList.toggle('show', on); $('scrim').classList.toggle('show', on); if (on) renderHist(); }
 $('bHist').onclick = () => drawer(true); $('bDx').onclick = () => drawer(false); $('scrim').onclick = () => drawer(false);
 $('hq').addEventListener('input', renderHist);
 $('bNew').onclick = () => {
@@ -350,7 +372,7 @@ $('hlist').addEventListener('click', async e => {
   } else if (act == 'del') {
     if (!(await sure('Delete this chat?', 'It will be gone for good.'))) return;
     await Store.del(id); if (conv && conv.id == id) { conv = null; renderLog(); } renderHist();
-  } else if (!busy) { const c = await Store.get(id); if (c) { conv = c; lastErr = null; Safety.mark(0); renderLog(); drawer(false); } }
+  } else if (!busy) { const c = await Store.get(id); if (c) { conv = c; lastErr = null; Safety.mark(0); renderLog(); drawer(false); chatsSheet(false); } }
 });
 
 // ---------- voice input ----------
@@ -689,7 +711,7 @@ $('swPing') && ($('swPing').onclick = async () => {
   const N = window.EmberNative; if (!N) { toast('No native bridge loaded'); return; }
   const next = !S.proactivePings;
   if (next) {
-    if (!pingKey()) { toast('Add a Groq key first (Keys tab)'); return; }
+    if (!pingKey()) { toast('Add a ' + Prov.label('groq') + ' key first (Keys tab)'); return; }
     if (!(await N.ensureNotifyPermission())) { toast('Allow notifications first'); return; }
     S.proactivePings = true; await syncPing();
     const r = await N.setProactivePings(true, S.pingHours || 4);
@@ -702,7 +724,7 @@ $('swPing') && ($('swPing').onclick = async () => {
 });
 $('bPingNow') && ($('bPingNow').onclick = async () => {
   const N = window.EmberNative; if (!N) { toast('No native bridge loaded'); return; }
-  if (!pingKey()) { toast('Add a Groq key first (Keys tab)'); return; }
+  if (!pingKey()) { toast('Add a ' + Prov.label('groq') + ' key first (Keys tab)'); return; }
   if (!(await N.ensureNotifyPermission())) { toast('Allow notifications first'); return; }
   const was = S.proactivePings; S.proactivePings = true; await syncPing(); S.proactivePings = was;
   const r = await N.pingNow(); toast(r.ok ? 'Test ping on its way, give it a few seconds' : (r.note || 'Needs the V1.5.8 APK'));
@@ -740,11 +762,11 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 // Hand the request that is in flight to the native task the moment the app is backgrounded (or if a request starts while it already is).
 function handoff() {
   const N = window.EmberNative;
-  if (!N || !N.aiAvailable || S.bgReplies === false || !busy || !curTurn || handedTurn === curTurn || !conv) return;
-  const p = Prov.pending && Prov.pending(); if (!p || !p.o) return;
+  if (!N || !N.aiAvailable || S.bgReplies === false || !busy || !curTurn || handedTurn === curTurn || !conv) return null;
+  const p = Prov.pending && Prov.pending(); if (!p || !p.o) return null;
   handedTurn = curTurn;
-  N.aiAsk({ turnId: curTurn, convId: conv.id, system: p.o.system, messages: p.o.messages, temp: p.o.temp, max: p.o.max, plan: Prov.nativePlan(p.lane), freeFirst: Prov.freeOn() })
-    .then(r => { if (!r.ok) handedTurn = ''; });
+  return N.aiAsk({ turnId: curTurn, convId: conv.id, system: p.o.system, messages: p.o.messages, temp: p.o.temp, max: p.o.max, plan: Prov.nativePlan(p.lane), freeFirst: Prov.freeOn() })
+    .then(r => { if (!r.ok) { handedTurn = ''; return false; } if (Prov.stopInflight) Prov.stopInflight(); return true; }); // V1.8.3: the worker has it, so the page stops spending the same reply
 }
 // A reply finished by the native task: add it to its chat (the open one, or one loaded from storage) exactly once.
 async function applyBg(r) {
@@ -765,7 +787,7 @@ async function drainBg() {
   for (const r of a) { try { await applyBg(r); } catch (e) { /* one bad result must not block the rest */ } }
 }
 $('swBgReply') && ($('swBgReply').onclick = () => { S.bgReplies = S.bgReplies === false; saveS(); renderSet(); toast(S.bgReplies ? 'Background replies on' : 'Background replies off'); });
-window.addEventListener('ember-run-start', () => { if (document.hidden) handoff(); });
+window.addEventListener('ember-run-start', () => { if (document.hidden) { const h = handoff(); if (h && Prov.holdInflight) Prov.holdInflight(h); } });
 window.addEventListener('ember-bg-ready', () => { drainBg(); });
 document.addEventListener('visibilitychange', () => {
   const N = window.EmberNative; if (!N || !N.aiAvailable) return;
@@ -803,10 +825,10 @@ function openSettings(tab) { drawer(false); renderSet(); renderPerms(); showStab
 function closeSettings() { $('settings').classList.remove('show'); S.name = $('sName').value.trim(); S.about = $('sAbout').value; S.pname = $('sPname').value.trim() || 'Ember'; S.interests = $('sInt').value.trim() || DEF.interests; S.persona = $('sPersona').value.trim().slice(0, 2000); S.talk = $('sTalk').value.trim().slice(0, 300); saveS(); renderLog(); }
 $('bSet').onclick = openSettings; $('bSx').onclick = closeSettings; $('bGoKeys').onclick = openSettings;
 function accent(c) {
-  const r = document.documentElement.style, h = String(c || '#00E5FF').replace('#', ''), n = parseInt(h.length === 3 ? h.replace(/./g, '$&$&') : h, 16) || 0;
+  const r = document.documentElement.style, h = String(c || '#FF6A00').replace('#', ''), n = parseInt(h.length === 3 ? h.replace(/./g, '$&$&') : h, 16) || 0;
   const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
-  r.setProperty('--ac', c); r.setProperty('--on', lum > 0.55 ? '#021419' : '#ffffff');   // readable text on any accent
-  document.querySelector('meta[name=theme-color]').content = '#0a0a10';
+  r.setProperty('--ac', c); r.setProperty('--on', lum > 0.45 ? '#000000' : '#ffffff');   // readable text on any accent
+  document.querySelector('meta[name=theme-color]').content = '#000000';
 }
 $('acc').addEventListener('click', e => { const c = e.target.dataset.c; if (!c) return; S.accent = c; saveS(); accent(c); renderSet(); });
 $('swLearn').onclick = () => { S.learn = !S.learn; saveS(); renderSet(); toast(S.learn ? 'Persistent Memory on' : 'Persistent Memory off: Core Memory is paused'); };

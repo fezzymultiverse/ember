@@ -1,4 +1,4 @@
-:root{--bg:#0a0806;--p:#120c08;--p2:#1e1208;--b:#3d2010;--t:#fff5f0;--m:#b89080;--ac:#ff6a00;--ac2:color-mix(in srgb,var(--ac) 78%,#000);--on:#1a0800;--pu:#9d00ff;--cy:#ff9240;--bl:#3d8bff;--gr:#2ee86b;--am:#ffb800;--rd:#ff3b30;--or:#ff4500;--safe:env(safe-area-inset-bottom,0px)}
+:root{--bg:#060606;--p:#0f0f0f;--p2:#171717;--b:#2a2a2a;--t:#ffffff;--m:#a8a8a8;--ac:#ff6a00;--ac2:color-mix(in srgb,var(--ac) 78%,#000);--on:#1a0800;--pu:#9d00ff;--cy:#ffb020;--bl:#3d8bff;--gr:#2ee86b;--am:#ffb800;--rd:#ff3b30;--or:#ff4500;--safe:env(safe-area-inset-bottom,0px)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
 body{font-family:system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--t);overflow:hidden}
@@ -23,6 +23,8 @@ header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1
 .mt{font-size:10.5px;color:var(--m);margin-top:5px;display:flex;gap:8px;align-items:center}
 .mt button{background:none;border:none;color:var(--cy);font-size:11px;font-weight:700;cursor:pointer;padding:0}
 .msg.typing{display:flex;gap:5px;padding:14px}.typing i{width:7px;height:7px;border-radius:50%;background:var(--ac);animation:bn 1s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+.msg.egg{display:flex;flex-direction:column;align-items:center;text-align:center;background:var(--p);border:1px solid var(--ac);box-shadow:0 0 18px color-mix(in srgb,var(--ac) 25%,transparent)}
+.msg-egg-icon{width:54px;height:54px;margin-bottom:6px;filter:drop-shadow(0 0 10px color-mix(in srgb,var(--ac) 55%,transparent))}
 @keyframes bn{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
 .empty{position:absolute;left:0;right:0;top:90px;bottom:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;gap:12px;pointer-events:none}
 .empty>*{pointer-events:auto}
@@ -195,8 +197,9 @@ textarea.pad{min-height:92px;resize:vertical;margin:8px 0}
 .hwrap #hlist{flex:none;max-height:60vh;overflow-y:auto}
 
 /* ─── Settings tab bar (General/Keys/Scraping/Hacking/Music/Permissions) ──── */
-.stabs{display:flex;gap:6px;padding:10px 14px 0;overflow-x:auto;scrollbar-width:none;max-width:760px;width:100%;margin:0 auto;flex-shrink:0}
+.stabs{display:flex;gap:6px;padding:10px 14px;overflow-x:auto;scrollbar-width:none;max-width:760px;width:100%;margin:0 auto;flex-shrink:0}
 .stabs::-webkit-scrollbar{display:none}
+.stab{white-space:nowrap}
 .stab{flex-shrink:0;background:var(--p2);border:1px solid var(--b);color:var(--m);font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:99px;cursor:pointer}
 .stab.on{background:var(--ac);color:#fff;border-color:var(--ac)}
 .card[data-tab]{display:none}
@@ -436,7 +439,7 @@ header{border-bottom-color:color-mix(in srgb,var(--ac) 22%,var(--b))}
 .etp.col{border-color:color-mix(in srgb,var(--rd) 45%,var(--b))}
 .etbody{flex:1;min-height:0;display:flex;flex-direction:column}
 .ettabs{flex:0 0 auto;display:flex;gap:6px;padding:7px 10px 0}
-.ettabs button{flex:1;padding:8px 6px;border-radius:10px 10px 0 0;border:1px solid var(--b);border-bottom:none;background:var(--p);color:var(--m);font-weight:700;font-size:12.5px;cursor:pointer}
+.ettabs button{flex:1;padding:10px 6px;border-radius:10px 10px 0 0;border:1px solid var(--b);border-bottom:none;background:var(--p);color:var(--m);font-weight:700;font-size:14px;cursor:pointer}
 .ettabs button.on{background:#05060a;color:var(--gr);border-color:color-mix(in srgb,var(--gr) 50%,var(--b))}
 .etview{flex:1;min-height:0;display:flex;flex-direction:column;position:relative;border-top:1px solid color-mix(in srgb,var(--gr) 30%,var(--b))}.etview.hidden{display:none}
 .etv{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px 5px;font:12.5px/1.25 ui-monospace,"Roboto Mono",Menlo,Consolas,monospace;color:#d7e8ee;background:#05060a;-webkit-user-select:text;user-select:text;overscroll-behavior:contain}
@@ -483,8 +486,8 @@ header{border-bottom-color:color-mix(in srgb,var(--ac) 22%,var(--b))}
 /* ===== EMBER V1.6.9 — ORANGE/BLACK THEME & MUSIC CONSOLE ===== */
 
 /* Settings tabs: give them more breathing room so they dont look crammed */
-.stabs{gap:8px;padding:12px 14px 2px;border-bottom:1px solid var(--b);margin-bottom:2px}
-.stab{padding:9px 16px;font-size:12px;letter-spacing:.02em;border-radius:12px}
+.stabs{gap:8px;padding:12px 14px;border-bottom:1px solid var(--b);margin-bottom:2px}
+.stab{padding:9px 16px;font-size:14px;letter-spacing:.02em;border-radius:12px;white-space:nowrap}
 .stab.on{box-shadow:0 0 14px color-mix(in srgb,var(--ac) 40%,transparent)}
 
 /* Semantic action colors */
@@ -531,7 +534,15 @@ header{border-bottom-color:color-mix(in srgb,var(--ac) 22%,var(--b))}
 .dm-console-btn.open .dm-chevron{transform:rotate(180deg)}
 .dm-console{
   margin-top:8px;
-  background:color-mix(in srgb,var(--ac) 6%,var(--p));
+  position:relative;
+  overflow:hidden;
+  background:
+    linear-gradient(160deg,color-mix(in srgb,var(--p) 88%,transparent),color-mix(in srgb,var(--p) 97%,transparent)),
+    url('ember-icon.svg'),
+    color-mix(in srgb,var(--ac) 6%,var(--p));
+  background-repeat:no-repeat;
+  background-position:center,right -34px bottom -34px,center;
+  background-size:cover,150px 150px,cover;
   border:1px solid color-mix(in srgb,var(--ac) 30%,var(--b));
   border-radius:16px;
   padding:12px;
@@ -580,3 +591,116 @@ header{border-bottom-color:color-mix(in srgb,var(--ac) 22%,var(--b))}
 
 /* V1.8.1: the 🔊 of the reply being read goes red and becomes Stop */
 .mt button[data-act=say].talking{background:var(--rd);color:#fff;opacity:1;border-radius:99px;padding:3px 10px;font-size:11px;font-weight:800;animation:recpulse 1.1s infinite}
+
+/* ================= V1.9.0: orange / black / white ================= */
+:root{--bg:#000;--p:#0c0c0c;--p2:#171717;--b:#2c2c2c;--t:#fff;--m:#b5b5b5;--ac:#ff6a00;--ac2:#ff8a1f;--on:#000;--pu:#ff8a1f;--cy:#fff;--bl:#fff;--or:#ff6a00}
+html,body{background:#000}
+header,.comp{background:rgba(0,0,0,.94)}
+header{padding:6px 10px;gap:6px;border-bottom-color:#2a1a0c}
+.hb{width:36px;height:36px;border-radius:11px;font-size:15px;background:#141414}
+.who b{font-size:16px}
+#drawer{background:#050505}
+.sw{background:#333}
+.card,.card[data-tab]{--cc:var(--ac)!important;background:var(--p);border-top:2px solid var(--ac)}
+.card>.ct{color:var(--ac)}
+.msg.u{background:var(--ac);color:#000;border:none;border-bottom-right-radius:5px;font-weight:500}
+.msg.u a{color:#000;text-decoration:underline}
+.msg.a{background:#101010;border:1px solid #262626;border-left:3px solid var(--ac)}
+.card.np.playing,.mw.playing{background:linear-gradient(145deg,#1a0d02,#0a0a0a);border-color:var(--ac)}
+.qban,.dvhero{background:linear-gradient(135deg,#1a0d02,#0a0a0a);border:1px solid #3a2208}
+.msg.egg{padding:16px 18px;background:radial-gradient(circle at 50% 0%,#2a1404,#0a0a0a 70%);border:1px solid var(--ac)}
+.msg-egg-icon{width:96px;height:96px;border-radius:22px;margin-bottom:10px}
+
+/* chat screen: a bit smaller */
+#log{padding:10px 10px;gap:8px}
+.msg{font-size:14.5px;line-height:1.45;padding:8px 12px;max-width:88%;border-radius:16px}
+.msg .mt{font-size:10.5px}
+.empty h1{font-size:22px}.flame{width:44px;height:60px}
+
+/* header: single engine pill (replaces the row of chips) */
+.engpill{display:inline-flex;align-items:center;gap:6px;margin-top:2px;max-width:100%;background:#141414;border:1px solid var(--b);color:var(--t);border-radius:99px;padding:3px 10px 3px 8px;font:inherit;font-size:11px;font-weight:700;cursor:pointer}
+.engpill span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.engpill i{width:8px;height:8px;border-radius:50%;background:#555;flex-shrink:0}
+.engpill.ok i{background:var(--gr);box-shadow:0 0 6px var(--gr)}.engpill.limited i{background:var(--am)}.engpill.bad i{background:var(--rd)}.engpill.free i{background:var(--ac)}
+#bGlobe.hb{font-size:16px}#bTermux.hb{font-size:16px}
+#bGlobe:disabled{opacity:.4}
+
+/* composer: one wide horizontal box, send beside it, mic above the send button */
+.comp{padding:6px 10px calc(8px + var(--safe))}
+.mrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.mrow .modes{margin:0}
+.modes button{padding:6px 12px;font-size:12px}
+#bMic{width:auto;height:34px;padding:0 14px 0 11px;border-radius:99px;font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--b);background:#141414;color:var(--t);cursor:pointer;flex-shrink:0}
+#bMic span{font-size:12px}
+#bMic.rec{background:#ff2d2d;border-color:#ff2d2d;color:#fff;animation:recpulse 1.1s infinite}
+.tools{margin-bottom:6px}
+.tools button{padding:6px 11px;font-size:11.5px}
+.row{display:flex;align-items:center;gap:8px;background:#121212;border:1px solid var(--b);border-radius:26px;padding:4px 5px 4px 16px}
+.row:focus-within{border-color:var(--ac)}
+#inp{flex:1;min-width:0;background:transparent;border:none;border-radius:0;padding:10px 0;min-height:24px;font-size:15px}
+#inp:focus{border:none}
+.row .side{display:flex;align-items:center;flex-shrink:0}
+#bSend{width:42px;height:42px;background:var(--ac);color:#000;box-shadow:none;font-weight:900}
+
+/* tabs: big, readable, never truncated */
+.stabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 14px;overflow:visible}
+.stab{white-space:normal;text-align:center;font-size:14px;padding:11px 6px;border-radius:12px;line-height:1.2}
+.stab.on,.mtab.on,.dtab.on,.dvtab.on,.wtab.on{background:var(--ac);color:#000;border-color:var(--ac)}
+.wtab,.dvtab,.dtab{font-size:14px;padding:11px 6px;border-radius:12px}
+.ettabs{gap:8px;padding:8px 12px 0}.ettabs button{font-size:15px;padding:13px 6px;border-radius:12px 12px 0 0}
+.ettabs button.on{color:var(--ac);border-color:var(--ac)}
+.etbtn{padding:12px 16px;font-size:14px}.etbtn.big{width:100%;padding:15px;font-size:15px}
+.etbtn.on{background:var(--ac);color:#000;border-color:var(--ac)}
+
+/* music: sticky segmented control + appealing mini widget */
+.mtabs{position:sticky;top:-14px;z-index:6;display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:0 0 12px;padding:4px;background:#111;border:1px solid var(--b);border-radius:16px}
+.mtab{border:none;background:transparent;padding:12px 6px;font-size:14px;font-weight:800;border-radius:12px;color:var(--m)}
+.mw{margin:0 10px 6px;padding:8px 10px;gap:10px;border-radius:18px;border:1px solid #3a2208;background:linear-gradient(135deg,#1c0f03,#0a0a0a);box-shadow:0 6px 22px rgba(255,106,0,.12)}
+.mw .mwart{width:42px;height:42px;border-radius:12px}
+.mw .mwt b{font-size:13.5px}
+.mw button:not(.mwt){background:#171717;border:1px solid #333;color:#fff}
+.mw #mwPlay{background:var(--ac);border-color:var(--ac);color:#000;width:42px;height:42px}
+
+/* left menu: structure and order */
+.dtabs{margin:0}
+#dp_chats{display:flex;flex-direction:column;gap:10px}
+.dpane{overflow-y:auto;flex:1;min-height:0}
+.rcbtn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#121212;border:1px solid var(--b);border-radius:14px;padding:12px;color:var(--t);cursor:pointer;font:inherit}
+.rcbtn:active{border-color:var(--ac)}
+.rcbtn .rci{width:38px;height:38px;border-radius:11px;background:#1c1007;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.rcbtn .rct{flex:1;min-width:0}.rcbtn .rct b{display:block;font-size:14px}.rcbtn .rct small{display:block;color:var(--m);font-size:11.5px;margin-top:2px}
+.rcbtn .chev{font-size:22px;color:var(--ac)}
+.ptags{flex-wrap:wrap;overflow:visible;max-height:68px;overflow-y:auto}
+.fold{border:1px solid var(--b);border-radius:14px;background:#101010;padding:0 12px;margin:8px 0}
+.fold>summary{list-style:none;cursor:pointer;padding:12px 0;font-weight:800;font-size:13.5px;color:var(--ac);display:flex;justify-content:space-between;align-items:center}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::after{content:'▾';opacity:.7}.fold[open]>summary::after{content:'▴'}
+.fold[open]{padding-bottom:12px}
+#chats .sb{padding-top:10px}
+#chats #hq{width:100%;box-sizing:border-box;background:var(--p2);color:var(--t);border:1px solid var(--b);border-radius:14px;padding:13px 14px;font:inherit;font-size:15px;outline:none;margin-bottom:10px}
+#chats .hwrap{max-height:none;opacity:1;overflow:visible}
+#chats .hwrap #hlist{max-height:none;display:flex;flex-direction:column;gap:8px}
+#chats .hi{padding:13px 14px}#chats .hi b{font-size:15px}
+
+/* music console wallpaper (app icon / glow / your picture) */
+.dm-watermark{display:none}
+.dm-flame-logo{width:26px;height:26px;border-radius:7px;font-size:0}
+.drawer-music[data-wall] .dm-console{background-repeat:no-repeat;background-color:#0a0a0a}
+.drawer-music[data-wall=icon] .dm-console{background-image:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,.82)),url(ember-icon.svg);background-position:center,center;background-size:cover,150px 150px}
+.drawer-music[data-wall=glow] .dm-console{background-image:radial-gradient(circle at 20% 0%,rgba(255,106,0,.55),transparent 60%),radial-gradient(circle at 90% 100%,rgba(255,255,255,.14),transparent 55%);background-size:cover}
+.drawer-music[data-wall=custom] .dm-console{background-image:linear-gradient(180deg,rgba(0,0,0,.45),rgba(0,0,0,.8)),var(--dm-img);background-position:center;background-size:cover}
+.dm-console .dm-now-playing{background:rgba(0,0,0,.55);backdrop-filter:blur(6px)}
+.dm-console-btn{border-color:#3a2208}
+
+/* device */
+.dvhero{border-radius:14px;padding:12px 14px;margin-bottom:8px;display:flex;flex-direction:column;gap:2px}
+.dvhero b{font-size:16px}.dvhero span{font-size:12px;color:var(--m)}
+.dvhero.ok b{color:var(--gr)}.dvhero.bad b{color:var(--rd)}.dvhero.free b{color:var(--ac)}
+.pnrow{display:flex;align-items:center;gap:10px;margin-top:8px}.pnrow label{width:92px;font-size:12.5px;color:var(--m);flex-shrink:0}.pnrow input{flex:1;min-width:0}
+#bGlobe.hb{width:36px;height:36px;border-radius:11px;font-size:16px;border:1px solid var(--b);background:#141414;order:3}
+#bTermux{order:3}
+.msg.u .mt,.msg.u .mt span{color:rgba(0,0,0,.62)}
+.drawer-music[data-wall=icon] .dm-console{background-image:linear-gradient(180deg,rgba(0,0,0,.3),rgba(0,0,0,.72)),url(ember-icon.svg);background-size:cover,190px 190px;background-position:center,center 62%}
+.btn.g#siteAdd{color:var(--t);border-color:var(--b)}
+.msg.u .mt{color:rgba(0,0,0,.6)}
+.drawer-music[data-wall=icon] .dm-console{background-image:linear-gradient(180deg,rgba(0,0,0,.3),rgba(0,0,0,.7)),url(ember-icon.svg);background-size:cover,190px 190px;background-position:center,center 60%}

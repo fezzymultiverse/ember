@@ -33,8 +33,8 @@ function mdHtml(md, base) {
 const setNote = (t, bad) => { const n = $('brNote'); n.textContent = t || ''; n.style.color = bad ? 'var(--rd)' : ''; };
 const readerReady = () => { const s = SC(); return !!(s && s.enabled() && s.available().length); };
 function enablePanel() {
-  $('brView').innerHTML = '<p>Pages are read with the free reader: the link goes to a reader service that sends the page back as text.</p><button class="btn" id="brEnable">Turn on the free reader</button>';
-  $('brEnable').onclick = () => { const s = SC(); if (!s) { toast('Reader not loaded'); return; } s.setOn(true); s.setReader(true); try { if (window.EmberScrapeUI) window.EmberScrapeUI.repaint(); } catch (e) { /* settings not drawn */ } toast('Free reader on'); if (pending) go(pending); };
+  $('brView').innerHTML = '<p>Pages are fetched with your scraping keys (they take turns), then the free reader as a fallback. Web Scraping is off.</p><button class="btn" id="brEnable">Turn on Web Scraping</button>';
+  $('brEnable').onclick = () => { const s = SC(); if (!s) { toast('Reader not loaded'); return; } s.setOn(true); if (!s.available().length) s.setReader(true); try { if (window.EmberScrapeUI) window.EmberScrapeUI.repaint(); } catch (e) { /* settings not drawn */ } toast('Web Scraping on'); if (pending) go(pending); };
 }
 function title() { const m = /^#{1,3}\s+(.+)$/m.exec(cur.md); try { return (m ? m[1] : new URL(cur.url).hostname).slice(0, 80); } catch (e) { return 'Saved page'; } }
 function paint() {
@@ -42,10 +42,10 @@ function paint() {
   $('brUrl').value = cur.url;
   $('brView').innerHTML = cur.md.trim() ? mdHtml(cur.md.slice(0, 60000), cur.url) : '<p>The page came back empty.</p>';
   $('brView').scrollTop = 0;
-  setNote(cur.md.length + ' chars via ' + cur.provider + (cur.degraded ? ' · search snippets only, not the real page' : ''));
+  setNote(cur.md.length + ' chars via ' + cur.provider + (cur.degraded ? ' · search snippets only, not the real page' : '') + (cur.tried || ''));
   $('brBack').disabled = pos <= 0; $('brFwd').disabled = pos >= hist.length - 1;
 }
-async function go(input, noPush) {
+async function go(input, noPush, fresh) {
   input = String(input || '').trim(); if (!input) return;
   let url = '';
   if (/^https?:\/\//i.test(input)) url = input;
@@ -54,9 +54,9 @@ async function go(input, noPush) {
   if (!url) url = 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(input);
   if (!readerReady()) { pending = input; setNote(''); enablePanel(); return; }
   pending = ''; setNote('Loading…');
-  let r; try { r = await SC().scrape_url(url, 'the main text of this page'); } catch (e) { r = { error: e.message || 'Could not read the page.' }; }
-  if (!r || r.error) { setNote(String((r && r.error) || 'Could not read the page.').slice(0, 220), true); return; }
-  cur = { url: r.url || url, md: r.markdown || '', provider: r.provider, degraded: !!r.degraded };
+  let r; try { r = await SC().scrape_url(url, 'the main text of this page', undefined, undefined, { fresh: !!fresh }); } catch (e) { r = { error: e.message || 'Could not read the page.' }; }
+  if (!r || r.error) { setNote(String((r && r.error) || 'Could not read the page.').slice(0, 300) + ' · tap ↗ to open it outside', true); return; }
+  cur = { url: r.url || url, md: r.markdown || '', provider: r.provider + (r.cached ? ' (cached)' : ''), degraded: !!r.degraded, tried: (r.tried || []).length ? ' · skipped: ' + r.tried.join(' | ').slice(0, 160) : '' };
   if (!noPush) { hist = hist.slice(0, pos + 1); hist.push(cur); pos = hist.length - 1; }
   paint();
 }
@@ -64,14 +64,38 @@ function sitesChips() {
   const el = $('brSites'); if (!el) return;
   let a = []; try { a = (window.EmberSites && window.EmberSites.list()) || []; } catch (e) { a = []; }
   el.innerHTML = a.map((s, i) => '<button class="ptag" data-i="' + i + '">' + esc(s.name) + '</button>').join('');
-  el.onclick = e => { const b = e.target.closest('button'); if (b && a[+b.dataset.i]) go(a[+b.dataset.i].url); };
+  el.onclick = e => { const b = e.target.closest('button'); if (b && a[+b.dataset.i]) { if (!(realOn() && toReal(a[+b.dataset.i].url))) go(a[+b.dataset.i].url); } };
 }
 $('brView').addEventListener('click', e => { const a = e.target.closest('a[data-u]'); if (a) { e.preventDefault(); go(a.dataset.u); } });
-$('brGo').onclick = () => go($('brUrl').value);
-$('brUrl').addEventListener('keydown', e => { if (e.key == 'Enter') { e.preventDefault(); go($('brUrl').value); $('brUrl').blur(); } });
+// ---------- V1.8.3: real browser (native full-screen WebView). The reader view above stays, for clean text through the scraping keys. ----------
+const WEB = () => (window.EmberNative && window.EmberNative.web && window.EmberNative.web.available) ? window.EmberNative.web : null;
+const realOn = () => { let v = ''; try { v = localStorage.getItem('ember_br_real') || ''; } catch (e) { /* storage blocked */ } return !!WEB() && v !== '0'; };
+function paintReal() { const b = $('brReal'); if (!b) return; b.classList.toggle('hidden', !WEB()); b.textContent = realOn() ? 'Real browser: on' : 'Reader view'; b.title = realOn() ? 'Pages open in a full browser (JavaScript, logins). Tap for clean-text Reader view.' : 'Pages open as clean text through your scraping keys. Tap for the real browser.'; }
+function toReal(input) {
+  input = String(input || '').trim(); if (!input) return false;
+  let url = input;
+  if (!/^https?:\/\//i.test(input)) {
+    if (!/\s/.test(input) && /\.[a-z]{2,}(\/|$|:|\?)/i.test(input)) url = 'https://' + input;
+    else { const s = window.EmberSites && (window.EmberSites.list() || []).find(x => x.name.toLowerCase() == input.toLowerCase()); url = s ? s.url : 'https://duckduckgo.com/?q=' + encodeURIComponent(input); }
+  }
+  WEB().open(url).then(r => { if (!r.ok) { toast((r.error || 'Could not open the browser') + ' · using Reader view'); go(input); } });
+  return true;
+}
+if ($('brReal')) { $('brReal').onclick = () => { try { localStorage.setItem('ember_br_real', realOn() ? '0' : '1'); } catch (e) { /* storage blocked */ } paintReal(); toast(realOn() ? 'Real browser on' : 'Reader view on'); }; paintReal(); }
+const hookWeb = () => { const W = WEB(); if (!W || hookWeb.done) return; hookWeb.done = true; W.onPage(async ev => {
+  if (!ev || !String(ev.text || '').trim()) { toast('That page has no readable text'); return; }
+  const u = String(ev.url || ''), t = String(ev.title || '').slice(0, 80) || u, txt = String(ev.text);
+  if (ev.kind == 'save') { const D = DOCS(); if (!D) { toast('Documents not loaded'); return; } const r = await D.addText(t, u + '\n\n' + txt, 'browser'); toast(r.error ? r.error : (r.saved ? 'Saved to Documents' : 'Saved for this session only (storage blocked)')); return; }
+  const B = BR(); if (!B) { toast('Chat not ready'); return; }
+  const ok = await B.askAbout({ chip: '📎 ' + u + ' · ' + txt.length + ' chars (real browser)', ctx: txt.slice(0, 24000), q: $('brAsk') ? $('brAsk').value : '', title: t });
+  if (ok) { if ($('brAsk')) $('brAsk').value = ''; close(); }
+}); };
+hookWeb();
+$('brGo').onclick = () => { if (realOn() && toReal($('brUrl').value)) return; go($('brUrl').value); };
+$('brUrl').addEventListener('keydown', e => { if (e.key == 'Enter') { e.preventDefault(); if (!(realOn() && toReal($('brUrl').value))) go($('brUrl').value); $('brUrl').blur(); } });
 $('brBack').onclick = () => { if (pos > 0) { pos--; cur = hist[pos]; paint(); } };
 $('brFwd').onclick = () => { if (pos < hist.length - 1) { pos++; cur = hist[pos]; paint(); } };
-$('brReload').onclick = () => { if (cur) go(cur.url, true); };
+$('brReload').onclick = () => { if (cur) go(cur.url, true, true); };
 $('brExt').onclick = () => { if (!cur) { toast('Open a page first'); return; } const a = document.createElement('a'); a.href = cur.url; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); };
 $('brSave').onclick = async () => {
   if (!cur || !cur.md.trim()) { toast('Open a page first'); return; }
@@ -137,7 +161,7 @@ function tab(name) {
   if (name == 'docs') renderDocs(); else sitesChips();
 }
 $('brTabs').addEventListener('click', e => { const b = e.target.closest('.stab'); if (b) tab(b.dataset.bt); });
-function open(which) { sheet.classList.add('show'); tab(which == 'docs' ? 'docs' : 'web'); if (which != 'docs' && !cur) setTimeout(() => $('brUrl').focus(), 150); }
+function open(which) { paintReal(); hookWeb(); sheet.classList.add('show'); tab(which == 'docs' ? 'docs' : 'web'); if (which != 'docs' && !cur) setTimeout(() => $('brUrl').focus(), 150); }
 function close() { sheet.classList.remove('show'); }
 $('brX').onclick = close;
 window.EmberBrowser = { open, close, go };

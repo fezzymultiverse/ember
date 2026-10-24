@@ -113,7 +113,7 @@ function renderKeys() {
   if ($('swReader')) $('swReader').classList.toggle('on', SC.readerOn());
   SC.KEY_IDS.forEach(id => { const el = $('wk_' + id); if (el && document.activeElement !== el) el.value = (s.keys || {})[id] || ''; });
   if ($('wk_stingEp') && document.activeElement !== $('wk_stingEp')) $('wk_stingEp').value = s.stingEndpoint || '';
-  $('wkStatus').textContent = SC.available().length ? 'Order tried: ' + SC.available().map(id => SC.LABEL[id]).join(' → ') : 'Free reader is off and no scraping key is set yet.';
+  $('wkStatus').textContent = SC.available().length ? 'Keys take turns, then the free reader: ' + SC.plan(true).map(id => SC.LABEL[id]).join(' → ') : 'Free reader is off and no scraping key is set yet.';
 }
 function renderSites() {
   const on = SC.enabled(), a = ST.list();
@@ -166,7 +166,7 @@ $('tSelf').onclick = () => {
 
 $('swScrape').onclick = () => { SC.setOn(!SC.enabled()); renderAll(); toast(SC.enabled() ? 'Web Scraping on' : 'Web Scraping off'); };
 if ($('swReader')) $('swReader').onclick = () => { SC.setReader(!SC.readerOn()); renderAll(); toast(SC.readerOn() ? 'Free reader on (no key needed)' : 'Free reader off'); };
-SC.KEY_IDS.forEach(id => { const el = $('wk_' + id); if (el) el.addEventListener('input', () => { SC.setKey(id, el.value); $('wkStatus').textContent = SC.available().length ? 'Order tried: ' + SC.available().map(k => SC.LABEL[k]).join(' → ') : 'Free reader is off and no scraping key is set yet.'; }); });
+SC.KEY_IDS.forEach(id => { const el = $('wk_' + id); if (el) el.addEventListener('input', () => { SC.setKey(id, el.value); $('wkStatus').textContent = SC.available().length ? 'Keys take turns, then the free reader: ' + SC.plan(true).map(k => SC.LABEL[k]).join(' → ') : 'Free reader is off and no scraping key is set yet.'; }); });
 $('wk_stingEp').addEventListener('input', () => { SC.setStingEndpoint($('wk_stingEp').value); renderKeys(); });
 
 $('siteAdd').onclick = () => {

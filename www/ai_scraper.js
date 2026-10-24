@@ -30,7 +30,17 @@ function setOn(v) { const s = get(); s.on = !!v; save(s); }
 function setStingEndpoint(v) { const s = get(); s.stingEndpoint = String(v || '').trim(); save(s); }
 const enabled = () => !!get().on;
 const keyOf = id => cleanKey((get().keys || {})[id] || '');
+// V1.8.2: keyed providers go FIRST and take turns (round-robin) so every key's credits are used evenly; the Free reader is only the fallback.
+const FETCHERS = ['firecrawl', 'browserless', 'scraperapi', 'scraperbee', 'sting', 'zenrows'];
+const ROTK = 'ember_scrape_rot';
+function rotNext() { let n = 0; try { n = (parseInt(localStorage.getItem(ROTK) || '0', 10) || 0) + 1; localStorage.setItem(ROTK, String(n)); } catch (e) { n = (rotNext._m = (rotNext._m || 0) + 1); } return n; }
 const available = () => ORDER.filter(id => id == 'reader' ? readerOn() : (keyOf(id) && (id != 'sting' || /^https:\/\//i.test(get().stingEndpoint || ''))));
+function plan(peek) {
+  const av = available(), ready = FETCHERS.filter(id => av.includes(id));
+  const k = ready.length > 1 && !peek ? rotNext() % ready.length : 0;
+  const first = ready.slice(k).concat(ready.slice(0, k));
+  return first.concat(av.includes('reader') ? ['reader'] : [], av.includes('serpapi') ? ['serpapi'] : []);
+}
 
 // ---------- V1.6.1: pull scraping-provider keys out of pasted notes ----------
 // These providers don't have a fixed key prefix like gsk_/AIza, so this uses the same trick already used for
@@ -122,7 +132,7 @@ function focus(md, objective) {
 
 // ---------- providers ----------
 async function http(url, opt, tries) {
-  tries = tries == null ? 2 : tries;
+  tries = tries == null ? 1 : tries; // V1.8.2: was 2: a retry after a 5xx/network error is billed again by the provider. Rotation to the next provider replaces it.
   const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 45000);
   try {
     const r = await fetch(url, Object.assign({ signal: ctl.signal }, opt || {}));
@@ -177,16 +187,16 @@ const P = {
   async scraperapi(u) {
     const r = await http('https://api.scraperapi.com/?api_key=' + enc(keyOf('scraperapi')) + '&url=' + enc(u) + '&output_format=markdown'); return r.text();
   },
-  async scraperbee(u) {
-    const r = await http('https://app.scrapingbee.com/api/v1/?api_key=' + enc(keyOf('scraperbee')) + '&url=' + enc(u) + '&render_js=true'); return r.text();
+  async scraperbee(u, render) {
+    const r = await http('https://app.scrapingbee.com/api/v1/?api_key=' + enc(keyOf('scraperbee')) + '&url=' + enc(u) + (render === false ? '' : '&render_js=true')); return r.text();
   },
   async sting(u) {
     // Sting has no fixed public endpoint known to this app: set it in Settings > Web Scraping. {key} and {url} are filled in.
     const ep = get().stingEndpoint.replace('{key}', enc(keyOf('sting'))).replace('{url}', enc(u));
     const r = await http(ep, { headers: { authorization: 'Bearer ' + keyOf('sting') } }); return r.text();
   },
-  async zenrows(u) {
-    const r = await http('https://api.zenrows.com/v1/?apikey=' + enc(keyOf('zenrows')) + '&url=' + enc(u) + '&js_render=true&response_type=markdown'); return r.text();
+  async zenrows(u, render) {
+    const r = await http('https://api.zenrows.com/v1/?apikey=' + enc(keyOf('zenrows')) + '&url=' + enc(u) + (render === false ? '' : '&js_render=true') + '&response_type=markdown'); return r.text();
   },
   async serpapi(u) {
     // SerpApi is a search API, not a page fetcher: this only returns Google's snippets about the url. Last resort, labelled as such.
@@ -202,8 +212,11 @@ const P = {
 };
 
 async function tryProvider(id, u, objective) {
-  const raw = await P[id](u);
-  const md = toMd(raw || '');
+  let raw, md;
+  if (id == 'scraperbee' || id == 'zenrows') { // V1.8.2: JS rendering is billed several times over; only pay for it when the cheap pass came back thin
+    raw = await P[id](u, false); md = toMd(raw || '');
+    if (md.length < 400) { raw = await P[id](u, true); md = toMd(raw || ''); }
+  } else { raw = await P[id](u); md = toMd(raw || ''); }
   if (md.length < 40) throw new Error('empty page');
   if (md.length < 600 && /captcha|access denied|enable javascript|just a moment|verify you are human|cf-chl/i.test(md)) throw new Error('blocked by the site (bot check)');
   const f = focus(md, objective);
@@ -221,24 +234,29 @@ function resolveSite(x) {
   const f = window.EmberSites && window.EmberSites.find ? window.EmberSites.find(x) : null;
   return f ? f.url : x;
 }
-async function scrape_url(url, objective, format, via) {
+const CACHE = new Map();
+async function scrape_url(url, objective, format, via, opt) {
   const u = checkUrl(resolveSite(url));
   if (!u) return { error: 'Only public http(s) URLs can be scraped.' };
-  let list = available();
+  let list = plan();
   const want = String(via || '').toLowerCase().replace(/[^a-z]/g, '');
   if (want) {
     if (!ORDER.includes(want)) return { error: 'Unknown provider "' + via + '". Choose one of: ' + ORDER.join(', ') + '.' };
     if (!list.includes(want)) return { error: LABEL[want] + ' is not usable: ' + (want == 'reader' ? 'the Free reader is switched off.' : 'no key saved for it in Settings > Web Scraping.') + ' Nothing was fetched.' };
     list = [want];
   }
+  const ck = u + '|' + String(objective || '').slice(0, 80) + '|' + list.join(',') + '|' + String(format || '');
+  const hit = !(opt && opt.fresh) && CACHE.get(ck); // V1.8.2: the same page within 3 minutes is not bought twice
+  if (hit && Date.now() - hit.at < 180000) return Object.assign({}, hit.r, { cached: true });
   if (!list.length) return { error: 'No reader available. Turn on the Free reader or add a scraping key in Settings > Web Scraping.' };
   const errs = [];
   const cleanObj = String(objective || '').trim().slice(0, 300);
   for (const id of list) {
-    if (dead[id] && dead[id] > Date.now()) { errs.push(LABEL[id] + ': skipped (key rejected or out of credits a moment ago)'); continue; }
-    try { const r = await tryProvider(id, u, cleanObj); if (/^text$/i.test(String(format || ''))) { r.markdown = toPlain(r.markdown); r.format = 'text'; } return r; }
+    if (dead[id] && dead[id] > Date.now()) { errs.push(LABEL[id] + ': skipped (key rejected, out of credits or rate limited a moment ago)'); continue; }
+    try { const r = await tryProvider(id, u, cleanObj); if (/^text$/i.test(String(format || ''))) { r.markdown = toPlain(r.markdown); r.format = 'text'; } r.tried = errs.slice(); CACHE.set(ck, { at: Date.now(), r }); if (CACHE.size > 20) CACHE.delete(CACHE.keys().next().value); return r; }
     catch (e) {
       if (id != 'reader' && (e.status == 401 || e.status == 402 || e.status == 403)) dead[id] = Date.now() + 10 * 60 * 1000;
+      else if (id != 'reader' && e.status == 429) dead[id] = Date.now() + 60 * 1000;
       errs.push(LABEL[id] + ': ' + errMsg(e));
     }
   }
@@ -304,6 +322,7 @@ function selfTest() {
   chk('focus: trims long pages', f.trimmed && f.text.length <= MAX_CHARS);
   chk('focus: keeps the objective match', /NullPointer/.test(f.text));
   chk('provider order', ORDER.join(',') == 'reader,firecrawl,browserless,scraperapi,scraperbee,sting,zenrows,serpapi,octoparse');
+  const _rd = readerOn(); chk('plan: keyed providers first, reader after them', (() => { const a = plan(true); const ri = a.indexOf('reader'); return ri == -1 || a.slice(0, ri).every(id => id != 'reader') && a.slice(ri + 1).every(id => id == 'serpapi'); })() && _rd == readerOn());
   chk('key cleaner strips quotes, Bearer and spaces', cleanKey('  \"Bearer abc123 \" ,') == 'abc123');
   chk('plain text mode drops markdown marks', toPlain('# T\n\n[a](https://x.io) **b**') == 'T\n\na b');
   return t;
@@ -315,5 +334,5 @@ async function dispatch(name, args) {
   return { error: 'Unknown scraper tool: ' + name };
 }
 
-window.EmberScraper = { TOOLS, dispatch, scrape_url, test, healthCheck, healthAll, healthLocal, selfTest, ORDER, KEY_IDS, LABEL, get, setKey, setOn, setReader, readerOn, setStingEndpoint, enabled, available, htmlToMd, toPlain, checkUrl, focus, ingestKeys };
+window.EmberScraper = { TOOLS, dispatch, scrape_url, test, healthCheck, healthAll, healthLocal, selfTest, ORDER, KEY_IDS, LABEL, plan, get, setKey, setOn, setReader, readerOn, setStingEndpoint, enabled, available, htmlToMd, toPlain, checkUrl, focus, ingestKeys };
 })();

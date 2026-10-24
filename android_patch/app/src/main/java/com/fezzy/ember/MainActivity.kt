@@ -11,6 +11,7 @@ import com.getcapacitor.BridgeActivity
 //   2b. registerPlugin(EmberAiPlugin::class.java)   (V1.5.9, background replies)
 //   2c. registerPlugin(EmberYoutubePlugin::class.java)   (V1.6.0, YouTube search + audio download)
 //   2d. registerPlugin(EmberDevicePlugin::class.java)   (V1.6.6, Device panel: Wi-Fi, VPN, RAM, storage, uptime, battery)
+//   2e. registerPlugin(EmberWebPlugin::class.java)   (V1.8.3, real in-app browser)
 //   3. the onCreate / onNewIntent body below, which reads a backgrounded reply and pushes it into the WebView as a window event.
 class MainActivity : BridgeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -19,6 +20,7 @@ class MainActivity : BridgeActivity() {
         registerPlugin(EmberAiPlugin::class.java)
         registerPlugin(EmberYoutubePlugin::class.java)
         registerPlugin(EmberDevicePlugin::class.java)
+        registerPlugin(EmberWebPlugin::class.java)
         super.onCreate(savedInstanceState)
         handleBgReply(intent)
     }

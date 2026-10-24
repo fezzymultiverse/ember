@@ -113,6 +113,7 @@ function toolsBlock(S) {
   if (S.musicAddon && window.EmberMusicAddon) sets.push(['MUSIC', window.EmberMusicAddon.TOOLS]);
   if (window.EmberKnow) sets.push(['FIND IN HIS STUFF', window.EmberKnow.TOOLS]);
   if (window.EmberTasks) sets.push(['TIMERS AND REMINDERS', window.EmberTasks.TOOLS]);
+  if (window.EmberKeys) sets.push(['API KEYS (what is saved, what uses it)', window.EmberKeys.TOOLS]);
   if (window.EmberEngine) sets.push(['MULTI-STEP PLANS', window.EmberEngine.TOOLS]);
   const docsHave = !!(window.EmberDocs && window.EmberDocs.count && window.EmberDocs.count() > 0);
   if ((S.docsAddon || docsHave) && window.EmberDocsAddon) sets.push(['DOCUMENTS (his library)', window.EmberDocsAddon.TOOLS]);
@@ -123,7 +124,7 @@ function toolsBlock(S) {
   const SCR = window.EmberScraper;
   const keyed = SCR && SCR.KEY_IDS ? SCR.KEY_IDS.filter(id => SCR.get().keys && SCR.get().keys[id]).map(id => SCR.LABEL[id]) : [];
   const scrapeState = scrapeOn
-    ? 'SCRAPER STATE (true now): scrape_url is ON. Providers ready, in order: ' + SCR.available().map(id => SCR.LABEL[id]).join(' > ') + '. The Free reader runs first unless he names a provider: when he says "use Firecrawl" (or Browserless, ZenRows...), call scrape_url with via set to that provider. Every result says which provider fetched it; report that provider honestly.'
+    ? 'SCRAPER STATE (true now): scrape_url is ON. Providers ready: ' + SCR.plan(true).map(id => SCR.LABEL[id]).join(' > ') + '. His keyed providers run FIRST and take turns (the first one changes every call), the Free reader is only the fallback after them. Never say a provider fetched a page unless the result names it. If he names one: when he says "use Firecrawl" (or Browserless, ZenRows...), call scrape_url with via set to that provider. Every result says which provider fetched it; report that provider honestly.'
     : 'SCRAPER STATE (true now): scrape_url does NOT exist right now because the Web Scraping switch is OFF' + (keyed.length ? ', although these scraping keys are saved and waiting: ' + keyed.join(', ') + '. Tell him to turn on Settings > Scraping and they will be used' : '') + '. Do not claim you can scrape, and do not claim you used those keys.';
   const webOff = (scrapeOn || S.agentAddon) ? '' : 'WEB LOOKUP IS SWITCHED OFF: if he tells you to look something up online or scrape a page, say in one line that Web Scraping is off and he can switch it on in Settings > Scraping (the free reader needs no key). Never pretend you looked something up.';
   if (!sets.length) return scrapeState + (webOff ? '\n' + webOff : '');

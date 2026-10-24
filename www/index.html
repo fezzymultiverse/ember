@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <title>Ember</title>
-<meta name="theme-color" content="#0a0a10">
+<meta name="theme-color" content="#000000">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="ember-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -11,7 +11,8 @@
 <div id="app">
 <header>
 <button class="hb" id="bHist" aria-label="Chat history">☰</button>
-<div class="who"><b id="pName">Ember</b><div id="engs" class="engs"></div></div>
+<div class="who"><b id="pName">Ember</b><button id="engs" class="engpill" aria-label="Engine status. Tap to open the Keys tab"></button></div>
+<button id="bGlobe" class="hb" aria-label="Browser" title="Browser: read or open a web page">🌐</button>
 <button id="bTermux" title="Termux Mode" aria-label="Open the Termux tab" class="hb">💻</button>
 <button class="hb" id="bSet" aria-label="Settings">⚙</button>
 </header>
@@ -26,9 +27,9 @@
 </div>
 <div id="mw" class="mw hidden"><img id="mwArt" class="mwart hidden" alt=""><button id="mwOpen" class="mwt" aria-label="Open the music panel"><b id="mwTitle">—</b><small id="mwSub"></small></button><button id="mwPlay" aria-label="Play or pause">▶</button><button id="mwNext" aria-label="Next">⏭</button></div>
 <footer class="comp">
-<div class="modes" id="modes"><button data-m="chill">Chill</button><button data-m="sharp">Sharp</button><button data-m="deep">Deep</button></div>
+<div class="mrow"><div class="modes" id="modes"><button data-m="chill">Chill</button><button data-m="sharp">Sharp</button><button data-m="deep">Deep</button></div><button id="bMic" aria-label="Dictate: talk and your words are typed here" aria-pressed="false" title="Dictate: tap, talk, and your words are typed here. Tap again to stop.">🎤 <span>Dictate</span></button></div>
 <div class="tools"><button id="bDevice">📟 Device</button><button id="bReact">🧠 Reasoning</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
-<div class="row"><button id="bGlobe" aria-label="Read a web page" title="Read a web page">🌐</button><button id="bMic" aria-label="Dictate: talk and your words are typed here" aria-pressed="false" title="Dictate: tap, talk, and your words are typed here. Tap again to stop.">🎤</button><textarea id="inp" rows="1" placeholder="Say anything…" enterkeyhint="send"></textarea><button id="bSend" aria-label="Send">➤</button></div>
+<div class="row"><textarea id="inp" rows="1" placeholder="Say anything…" enterkeyhint="send"></textarea><div class="side"><button id="bSend" aria-label="Send">➤</button></div></div>
 </footer>
 </div>
 
@@ -36,16 +37,14 @@
 <div class="dtabs"><button class="dtab on" data-d="chats">Chats</button><button class="dtab" data-d="prompts">Prompts</button></div>
 <div class="dpane" id="dp_chats">
 <button class="btn" id="bNew">＋ New chat</button>
-<input type="text" id="hq" placeholder="Search all chats…" autocomplete="off">
-<button class="hhead" id="hHead" aria-expanded="true" aria-controls="hwrap"><span id="hTitle">Recent Chats (0)</span><span class="chev">▾</span></button>
-<div class="hwrap open" id="hwrap"><div id="hlist"></div></div>
-<div id="sitesBox" class="hidden"><div class="ct" style="margin:14px 0 8px">Saved Sites</div><div id="sitesList"></div>
-<input type="text" id="siteName" placeholder="Name (e.g. GitHub)" autocomplete="off"><input type="text" id="siteUrl" placeholder="https://github.com/you" autocomplete="off" style="margin-top:6px"><button class="btn g" id="siteAdd" style="margin-top:6px">Save site</button></div>
+<button class="rcbtn" id="hHead" aria-label="Open recent chats"><span class="rci">🕘</span><span class="rct"><b id="hTitle">Recent Chats (0)</b><small>Search, rename, delete</small></span><span class="chev">›</span></button>
+<button class="rcbtn" id="bSitesOpen" aria-label="Open saved sites"><span class="rci">🔖</span><span class="rct"><b>Saved Sites</b><small>Shortcuts the AI can read</small></span><span class="chev">›</span></button>
 </div>
 <div class="dpane hidden" id="dp_prompts">
 <input type="text" id="pQ" placeholder="Search prompts…" autocomplete="off">
 <div id="pTags" class="ptags"></div>
 <div id="plist"></div>
+<details id="pFormBox" class="fold"><summary>＋ New prompt</summary>
 <div id="pForm">
 <input type="text" id="pmName" placeholder="Name (e.g. Fix this script)" autocomplete="off" maxlength="40">
 <input type="text" id="pmTags" placeholder="Tags, comma separated (e.g. debug, termux)" autocomplete="off" maxlength="80" list="pTagList"><datalist id="pTagList"></datalist>
@@ -54,22 +53,24 @@
 <input type="text" id="pRem" placeholder="Remind me on / when (e.g. check the build at 6pm)" autocomplete="off" maxlength="160">
 <input type="text" id="pTask" placeholder="Task (e.g. play music for 1 hour, then remind me to stretch)" autocomplete="off" maxlength="200">
 <div class="prow"><button class="btn g" id="pAdd">Save prompt</button><button class="btn g hidden" id="pCancel">Cancel</button></div>
-</div>
+</div></details>
+<details class="fold"><summary>Export / import</summary>
 <div class="prow"><button class="btn g" id="pExport">Export</button><button class="btn g" id="pImportBtn">Import</button><button class="btn g hidden" id="pStarter">Starter pack</button></div>
 <textarea id="pIO" class="hidden" rows="4" placeholder="Paste exported prompts here, then tap Import now"></textarea><button class="btn g hidden" id="pImportGo">Import now</button>
+</details>
 </div>
 
 <!-- Music Console Widget — bottom of left panel -->
 <div id="drawerMusic" class="drawer-music">
   <button id="dmConsoleBtn" class="dm-console-btn" aria-label="Open Music Console">
-    <span class="dm-flame-logo">🔥</span>
+    <img class="dm-flame-logo" src="ember-icon.svg" alt="">
     <span class="dm-label">Music Console</span>
     <span class="dm-chevron">▲</span>
   </button>
   <div id="dmConsole" class="dm-console hidden">
     <div class="dm-console-header">
-      <span class="dm-console-title">🎵 Music Console</span>
-      <button id="dmClose" class="hb" style="width:30px;height:30px;font-size:13px">✕</button>
+      <span class="dm-console-title">Music Console</span>
+      <button id="dmWall" class="hb" aria-label="Change wallpaper" title="Wallpaper" style="width:30px;height:30px;font-size:13px">🖼</button><button id="dmClose" class="hb" style="width:30px;height:30px;font-size:13px">✕</button>
     </div>
     <div id="dmNowPlaying" class="dm-now-playing">
       <span id="dmTrackName" class="dm-track-name">Nothing playing</span>
@@ -83,13 +84,19 @@
     <button class="btn dm-open-full" id="dmOpenFull">Open Full Music Panel</button>
   </div>
   <!-- Watermark -->
-  <div class="dm-watermark" aria-hidden="true">
-    <img src="ember-icon.svg" alt="" class="dm-wm-img">
-  </div>
+  <div class="dm-watermark" aria-hidden="true"></div>
+  <input type="file" id="dmWallFile" accept="image/*" hidden>
 </div>
 </aside>
 <div id="scrim"></div>
 
+<section id="chats" class="sheet"><div class="sh"><b id="chTitle">Recent Chats</b><button class="hb" id="chX" aria-label="Close">✕</button></div>
+<div class="sb">
+<input type="text" id="hq" placeholder="Search all chats…" autocomplete="off">
+<div class="hwrap open" id="hwrap"><div id="hlist"></div></div>
+<div id="sitesBox" class="hidden"><div class="ct" style="margin:14px 0 8px">Saved Sites</div><div id="sitesList"></div>
+<input type="text" id="siteName" placeholder="Name (e.g. GitHub)" autocomplete="off"><input type="text" id="siteUrl" placeholder="https://github.com/you" autocomplete="off" style="margin-top:6px"><button class="btn g" id="siteAdd" style="margin-top:6px">Save site</button></div>
+</div></section>
 <section id="browser" class="sheet"><div class="sh"><b>Browser</b><button class="hb" id="brX" aria-label="Close">✕</button></div>
 <div class="stabs" id="brTabs"><button class="stab on" data-bt="web">Browser</button><button class="stab" data-bt="docs">Documents</button></div>
 <div class="brbody" id="brWeb">
@@ -97,7 +104,7 @@
 <div id="brSites" class="ptags"></div>
 <div id="brNote" class="hint"></div>
 <div id="brView" class="brview"><p class="hint">Search the web or paste a link. Pages open as clean text; tap a link to keep browsing. Send any page to Ember, or save it to Documents.</p></div>
-<div class="bract"><input type="text" id="brAsk" placeholder="Ask Ember about this page (optional)" autocomplete="off"><div class="brbtns"><button class="btn" id="brSend">Ask Ember</button><button class="btn g" id="brSave">Save to Documents</button><button class="btn g" id="brExt">Open externally</button></div></div>
+<div class="bract"><input type="text" id="brAsk" placeholder="Ask Ember about this page (optional)" autocomplete="off"><div class="brbtns"><button class="btn" id="brReal" title="Real browser: a full browser (JavaScript, logins) that opens full screen. Reader view: clean text read through your scraping keys.">Real browser: on</button><button class="btn" id="brSend">Ask Ember</button><button class="btn g" id="brSave">Save to Documents</button><button class="btn g" id="brExt">Open externally</button></div></div>
 </div>
 <div class="brbody hidden" id="brDocs">
 <div id="dcList"><div class="brbar"><input type="text" id="dcQ" placeholder="Search documents…" autocomplete="off"><button class="hb" id="dcAdd">＋ Files</button><button class="hb" id="dcNew">＋ Note</button></div>
@@ -115,7 +122,7 @@
 <button class="stab" data-st="scraping">Scraping</button>
 <button class="stab" data-st="hacking">Hacking</button>
 <button class="stab" data-st="music">Music</button>
-<button class="stab" data-st="permissions">Perms</button>
+<button class="stab" data-st="permissions">Permissions</button>
 </div>
 <div class="sb">
 <div class="card" data-tab="general"><div class="ct">Free Mode</div>
@@ -129,13 +136,13 @@
 <select id="engModel" disabled><option value="">Auto (router picks from the engine's live list)</option></select>
 <button class="btn g" id="bModels" style="margin-top:8px">Load models from my key</button>
 <p class="hint" id="engTruth"></p>
-<p class="hint">Auto tries Groq first because it's the fastest, then falls through the rest. Pin an engine to try it first. Pin a model to use only that exact model. If the pinned engine cannot answer, the next one does, and every reply says so. OpenRouter free models (:free) are listed first.</p></div>
+<p class="hint">Auto tries your engines in the router's order (fastest first) and falls through the rest. Pin an engine to try it first. Pin a model to use only that exact model. If the pinned engine cannot answer, the next one does, and every reply says so. OpenRouter free models (:free) are listed first.</p></div>
 
 <div class="card" data-tab="keys"><div class="ct">Get a key</div>
 <div class="btnrow" id="getKeyRow" style="flex-wrap:wrap"></div>
 <p class="hint">Opens the provider's signup page in your browser (these sites block being shown inside Ember). Come back and paste the key below.</p></div>
 
-<div class="card" data-tab="keys"><div class="ct">Optional faster engines · keys (Groq, Mistral, Gemini, plus OpenRouter, Cohere, HuggingFace as Prototypes)</div>
+<div class="card" data-tab="keys"><div class="ct">Engine keys <span id="provNames"></span></div>
 <p class="hint">Not needed for Free Mode. Paste your notes if you have keys. Only API keys are pulled out and checked, the notes themselves are never saved. Keys stay on this phone.</p>
 <textarea id="notes" class="pad" placeholder="Paste notes here…" spellcheck="false" autocomplete="off"></textarea>
 <button class="btn" id="bIngest">Extract + check keys</button>
@@ -206,7 +213,7 @@
 
 <div class="card" data-tab="permissions"><div class="ct">System integrations</div>
 <div class="cr"><span>Proactive AI pings</span><div class="sw" id="swPing"></div></div>
-<p class="hint">Needs the installed app and a Groq key. About every 4 hours Ember wakes in the background and sends one short check-in about your open threads. It stays quiet from 22:00 to 08:00 and right after you have used the app. Only a few topic words and your Groq key are handed to the background task, and both are wiped when you switch this off. The lock screen only shows "Ember pinged you".</p>
+<p class="hint">Needs the installed app and a key for the ping engine (<span class="pingname">Groq</span>). About every 4 hours Ember wakes in the background and sends one short check-in about your open threads. It stays quiet from 22:00 to 08:00 and right after you have used the app. Only a few topic words and that key are handed to the background task, and both are wiped when you switch this off. The lock screen only shows "Ember pinged you".</p>
 <div class="btnrow" style="margin-top:6px"><button class="btn g" id="bPingNow">Send test ping</button></div>
 <div class="cr" style="margin-top:10px"><span>Keep replying in the background</span><div class="sw on" id="swBgReply"></div></div>
 <p class="hint">If you leave Ember while it is still writing a reply, the unfinished request is handed to a background task on the phone, which finishes it and sends a notification with a reply box. It uses the same engines and keys as the app and is cancelled if the app finishes first. The request (including your keys) sits in the app's private storage until it completes, then is deleted. Add-on tools (music, documents, web) do not run in the background.</p>
@@ -284,7 +291,7 @@
 <div class="btnrow"><button class="btn" id="bExp">Export backup</button><button class="btn g" id="bImp">Import backup</button></div>
 <input type="file" id="fImp" accept="application/json,.json" hidden>
 <button class="btn g danger" id="bWipe" style="margin-top:10px">Delete everything</button>
-<p class="hint" id="ver">Ember V1.8.1 · S.O.I. × Bojack 999 · 🔥 Orange Build</p></div>
+<p class="hint" id="ver">Ember V1.8.3 · S.O.I. × Bojack 999 · 🔥 Orange Build</p></div>
 </div></section>
 
 <section id="react" class="sheet"><div class="sh"><b>Reasoning</b><button class="hb" id="bRx" aria-label="Close reasoning">✕</button></div>
@@ -307,7 +314,7 @@
 <div class="btnrow" style="margin-top:8px"><button class="btn g" id="npId">🎧 Identify this song</button></div><div class="hint" id="npIdRes"></div>
 <p class="hint" id="npErr"></p></div>
 <div class="card about hidden" id="npAbout"><div class="ct">About</div><div class="abody" id="npAboutBody"></div></div>
-<div class="mtabs"><button class="mtab on" data-m="lib">Library</button><button class="mtab" data-m="ai">Ember</button></div>
+<div class="mtabs" role="tablist"><button class="mtab on" data-m="lib" role="tab">🎵 Library</button><button class="mtab" data-m="ai" role="tab">✨ Ember control</button></div>
 <div class="mpane" id="mp_lib">
 <div class="btnrow"><button class="btn" id="mUp">＋ Upload music</button><button class="btn g" id="mScan">Scan phone</button></div>
 <input type="file" id="mFile" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac" multiple hidden>
@@ -335,7 +342,7 @@
 <div class="sb">
 <div class="dvpane" id="dv_dev">
 <div class="card" style="--cc:var(--bl)"><div class="ct">🌐 Network</div><div id="dvNet"><p class="hint">Reading…</p></div></div>
-<div class="card" style="--cc:var(--ac)"><div class="ct">🔥 Engine Status</div><div id="dvAi"></div></div>
+<div class="card" style="--cc:var(--ac)"><div class="ct">⚡ Live check</div><div id="dvAi"></div></div>
 <div class="card" style="--cc:var(--ac)"><div class="ct">💾 Storage and RAM</div><div id="dvMem"></div></div>
 <div class="card" style="--cc:var(--am)"><div class="ct">⏱ Uptime</div><div id="dvUp"></div></div>
 <div class="card" style="--cc:var(--gr)"><div class="ct">🔋 Battery integrity</div><div id="dvBat"></div></div>
@@ -433,9 +440,10 @@
 <div id="toast"></div>
 <script src="store.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js"></script><script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script><script src="ember_react_ui.js"></script><script src="ember_device.js"></script>
 <script src="ember_docs_lib.js"></script>
-<script src="ember_find.js"></script><script src="ember_tasks.js"></script>
+<script src="ember_find.js"></script><script src="ember_tasks.js"></script><script src="ember_keys.js"></script>
 <script src="ember_browser.js"></script>
 <script src="ember_term.js"></script>
+<script src="ember_ui.js"></script>
 <script>
 // Apply termux-mode-on class to body when S is available, for CSS theming
 (function pollTermux(){

@@ -30,7 +30,7 @@ for old in list((app / 'src/main/java').rglob('MainActivity.java')) + list((app 
 src = PATCH / 'app/src/main/java/com/fezzy/ember'
 kts = sorted(src.glob('*.kt'))
 need_kt = {'EmberMediaPlugin.kt', 'EmberNotifyPlugin.kt', 'EmberMediaSession.kt', 'EmberPingWorker.kt', 'EmberAiPlugin.kt', 'EmberAiWorker.kt', 'MainActivity.kt', 'ReplyReceiver.kt', 'EmberKeepAliveService.kt',
-           'EmberYoutubePlugin.kt', 'EmberYtCore.kt', 'DownloadWorker.kt', 'EmberDevicePlugin.kt'}
+           'EmberYoutubePlugin.kt', 'EmberYtCore.kt', 'DownloadWorker.kt', 'EmberDevicePlugin.kt', 'EmberWebPlugin.kt'}
 if not need_kt.issubset({f.name for f in kts}):
     sys.exit('missing Kotlin files in ' + str(src) + ': ' + ', '.join(sorted(need_kt - {f.name for f in kts})))
 for f in kts:
@@ -96,6 +96,21 @@ for must in ('launchMode','RECORD_AUDIO', 'MODIFY_AUDIO_SETTINGS', 'POST_NOTIFIC
     if must not in manifest.read_text():
         sys.exit('manifest merge failed: ' + must)
 print('manifest merged')
+
+# V1.9.0: Termux bridge. The page is https://localhost and the bridge is ws://127.0.0.1, so Android must allow cleartext to loopback only.
+nsc = app / 'src/main/res/xml/network_security_config.xml'
+nsc.parent.mkdir(parents=True, exist_ok=True)
+nsc.write_text('<?xml version="1.0" encoding="utf-8"?>\n<network-security-config>\n    <domain-config cleartextTrafficPermitted="true">\n        <domain includeSubdomains="false">127.0.0.1</domain>\n        <domain includeSubdomains="false">localhost</domain>\n    </domain-config>\n</network-security-config>\n')
+m = manifest.read_text()
+appm = re.search(r'<application\b[^>]*>', m)
+if appm and 'networkSecurityConfig' not in appm.group(0):
+    tag = appm.group(0)
+    new = tag[:-1] + ' android:networkSecurityConfig="@xml/network_security_config">'
+    if 'usesCleartextTraffic' in tag:
+        new = re.sub(r'android:usesCleartextTraffic="[^"]*"', 'android:usesCleartextTraffic="true"', new)
+    m = m.replace(tag, new, 1)
+    manifest.write_text(m)
+print('network security config added (loopback cleartext for the Termux bridge)')
 
 # ---------- 2b. Launcher icon (adaptive, flame mark) ----------
 res_src = PATCH / 'res'

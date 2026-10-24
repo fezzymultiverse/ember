@@ -20,6 +20,7 @@
   const Media = plug('EmberMedia');   // local plugin
   const Notify = plug('EmberNotify'); // local plugin
   const AiP = plug('EmberAi');        // local plugin (V1.5.9: background replies)
+  const WebP = plug('EmberWeb');      // local plugin (V1.8.3: real in-app browser)
   const Dev = plug('EmberDevice');   // local plugin (V1.6.6: Device panel)
   const WL = plug('KeepAwake');       // @capacitor-community/keep-awake
 
@@ -288,8 +289,17 @@
 
   const openTermux = Dev ? async () => { try { return await Dev.openApp({ package: 'com.termux' }); } catch (e) { return { ok: false, error: (e && e.message) || 'update the APK' }; } } : null;
 
+  // V1.8.3: real browser. open(url) shows a full-screen WebView; its Ask / Save buttons come back as onPage(cb) with {kind, url, title, text}.
+  const web = (WebP && typeof WebP.open == 'function') ? {
+    available: true,
+    async open(url) { try { const r = await WebP.open({ url: String(url || '') }); return { ok: !!(r && r.ok) }; } catch (e) { return { ok: false, error: (e && e.message) || 'update the APK' }; } },
+    async close() { try { await WebP.close(); } catch (e) { /* not open */ } },
+    onPage(cb) { try { return WebP.addListener('page', cb); } catch (e) { return null; } },
+    onClosed(cb) { try { return WebP.addListener('closed', cb); } catch (e) { return null; } }
+  } : { available: false };
+
   window.EmberNative = {
-    sys, openTermux,
+    web, sys, openTermux,
     device, tts, keepAliveStart, keepAliveStop, keepAliveStatus, openAppSettings,
     speech, holdDuringReply, ensureNotifyPermission, notifyPermissionStatus, notifyReply, testNotify, ensureMicPermission, musicPermissionStatus,
     wakeLockAvailable, setWakeLock, wakeLockHeld, requestBatteryExemption, batteryExemptionStatus, fileAccessStatus, requestFileAccess,

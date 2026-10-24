@@ -5,13 +5,13 @@
 (() => {
 const { LS } = U;
 const CFG = {
-  groq: { name: 'Groq', base: 'https://api.groq.com/openai/v1', kind: 'oai' },
-  mistral: { name: 'Mistral', base: 'https://api.mistral.ai/v1', kind: 'oai' },
-  gemini: { name: 'Gemini', base: 'https://generativelanguage.googleapis.com/v1beta', kind: 'gem' },
+  groq: { name: 'Groq', base: 'https://api.groq.com/openai/v1', kind: 'oai', color: '#ff6a00' },
+  mistral: { name: 'Mistral', base: 'https://api.mistral.ai/v1', kind: 'oai', color: '#ffb020' },
+  gemini: { name: 'Gemini', base: 'https://generativelanguage.googleapis.com/v1beta', kind: 'gem', color: '#ffffff' },
   // prototypes: written from the providers' public docs, never run against a live account yet. Always last in every lane.
-  openrouter: { name: 'OpenRouter', base: 'https://openrouter.ai/api/v1', kind: 'oai', status: 'prototype' },
-  cohere: { name: 'Cohere', base: 'https://api.cohere.com', kind: 'cohere', status: 'prototype' },
-  huggingface: { name: 'HuggingFace', base: 'https://router.huggingface.co/v1', kind: 'oai', status: 'prototype' }
+  openrouter: { name: 'OpenRouter', base: 'https://openrouter.ai/api/v1', kind: 'oai', status: 'prototype', color: '#ff8c1a' },
+  cohere: { name: 'Cohere', base: 'https://api.cohere.com', kind: 'cohere', status: 'prototype', color: '#d9d9d9' },
+  huggingface: { name: 'HuggingFace', base: 'https://router.huggingface.co/v1', kind: 'oai', status: 'prototype', color: '#ffb800' }
 };
 const IDS = Object.keys(CFG);
 // fast = quick everyday replies. deep = slow, careful turns. util = background jobs (memory, titles).
@@ -362,6 +362,7 @@ function factsBlock(id, model, failed) {
   } else L.push('- No engine is pinned: Auto mode.');
   L.push('- You are only the model named above. You are not GPT-4, ChatGPT, Qwen or any other name unless that model id says so. If asked what you are, give the engine and model id above, nothing invented.');
   L.push('- If he says he switched engine or model and it does not match these lines, say it does not match what is running. Settings changes apply from his next message and only when that engine has a working key. Never agree just because he said so.');
+  try { const km = window.EmberKeys && window.EmberKeys.line(); if (km) L.push('- ' + km); } catch (e) { /* key map unavailable */ }
   L.push('- Never say you searched, scraped or looked something up, and never show a table of "results", unless a [TOOL RESULTS] block is in this turn. No tool block means you did not look. Call the tool or say you have not looked yet.');
   return L.join('\n');
 }
@@ -384,11 +385,14 @@ const cachedModels = id => { const c = LS.get('ember_models', {}); return c[id] 
 // ---------- the router ----------
 // Free Mode ON: Pollinations goes first, then the keys. OFF: keys first. Either way Pollinations is the last resort,
 // so a chat is never blocked just because keys are missing or rested. Util jobs skip it entirely.
-async function runInner(lane, o) {
+const HANDOFF = () => Object.assign(new Error('The background task has this reply.'), { code: 'handoff' });
+async function runInner(lane, o, tok) {
   const pl = lane != 'util', errs = [], failed = [];
+  const halted = () => { if (tok && tok.stop) throw HANDOFF(); }; // V1.8.3: once the native worker took the request, the page makes no further paid calls
   // when an engine failed and a different one answered, tell the UI (ai.js shows a toast). Background jobs stay silent.
   const done = r => { if (pinnedEngine && r.provider != pinnedEngine) { const p0 = failed.find(x => x.id == pinnedEngine); r.pinMiss = { want: pinnedEngine, why: p0 ? (p0.why || '') : 'no usable key' }; } const f = failed.find(x => x.id != r.provider); if (f && pl) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
   let tried = false;
+  halted();
   if (pl && freeOn()) {
     tried = true;
     try { const o2 = withFacts(o, lane, 'pollinations', 'openai', failed); const r = await callPollinations(flat(o2), o2); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
@@ -397,6 +401,7 @@ async function runInner(lane, o) {
   for (const id of orderFor(lane)) {
     for (const e of keys[id]) {
       if (e.bad || isCool(e.key)) continue;
+      halted();
       let models;
       try { models = await modelsFor(id, e.key, lane); }
       catch (er) {
@@ -405,6 +410,7 @@ async function runInner(lane, o) {
       }
       const pm = pinnedModel && pinnedModel.id == id ? pinnedModel.model : null;
       for (const m of (pm ? [pm] : models.slice(0, 3))) {
+        halted();
         try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
         catch (er) {
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
@@ -417,6 +423,7 @@ async function runInner(lane, o) {
     }
   }
   if (pl && !tried) {
+    halted();
     try { const o2 = withFacts(o, lane, 'pollinations', 'openai', failed); const r = await callPollinations(flat(o2), o2); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
     catch (er) { errs.push('Free Mode: ' + er.message); failed.push({ id: 'pollinations', status: er.status, why: er.message }); }
   }
@@ -429,9 +436,14 @@ let inflight = null;
 async function run(lane, o) {
   const tok = { lane, o };
   if (lane != 'util') { inflight = tok; try { window.dispatchEvent(new Event('ember-run-start')); } catch (e) { /* no listener */ } }
-  try { return await runInner(lane, o); }
+  try {
+    if (tok.hold) { try { await tok.hold; } catch (e) { /* handoff failed: carry on here */ } } // V1.8.3: app.js may hold the first call until the native worker answers
+    return await runInner(lane, o, tok);
+  }
   finally { if (inflight === tok) inflight = null; }
 }
+function holdInflight(p) { if (inflight) inflight.hold = p; }
+function stopInflight() { if (inflight) inflight.stop = true; }
 const pending = () => inflight ? { lane: inflight.lane, o: Object.assign({}, inflight.o, { system: inflight.lane == 'util' || inflight.o.json ? inflight.o.system : String(inflight.o.system || '') + '\n\n' + factsBlock(null, null, []) }) } : null;
 // The engines the router would try for this lane, from the cached model lists only (no network), OpenAI-style providers only.
 function nativePlan(lane) {
@@ -458,5 +470,5 @@ function status() {
   });
   return o;
 }
-window.Prov = { pending, nativePlan, CFG, IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
+window.Prov = { holdInflight, stopInflight, pending, nativePlan, CFG, IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
 })();

@@ -88,6 +88,13 @@ Run these on a phone or in a desktop browser with DevTools. They are **not autom
 - No test of reply quality. Whether a model follows the crisis block is not measured.
 - No recall test: `Safety.detect` has not been measured against a labelled set of real messages.
 
+## V1.8.3 suites
+- `node tests/handoff-test.js`: the page makes no paid call once the native worker owns the reply (mocked fetch).
+- `node tests/v183-test.js`: Browser sheet drives the real browser (native plugin mocked), Ask/Save events, Reader fallback, Termux `ensureOn` and preset auto-connect (WebSocket mocked).
+
+## V1.8.2 suites
+- `node tests/scrape-test.js`: scraper router with mocked fetch (keyed providers first and rotating, rejected-key skip, no retry on a paid key, cheap-first rendering, cache, reload bypass, forced provider).
+
 ## V1.8.1 suites
 - `node tests/speaker-test.js`: red Stop speaker, native voice picker, speed/pitch, lively delivery, mic label, left-panel Music Console (native text-to-speech mocked, nothing is heard).
 - `node tests/music-test.js`: Music now lives in the left-panel Music Console, not the composer.
