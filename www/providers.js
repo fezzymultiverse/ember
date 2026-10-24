@@ -17,9 +17,18 @@ const IDS = Object.keys(CFG);
 // fast = quick everyday replies. deep = slow, careful turns. util = background jobs (memory, titles).
 const ORDER = { fast: ['groq', 'mistral', 'gemini', 'openrouter', 'cohere', 'huggingface'], deep: ['gemini', 'mistral', 'groq', 'openrouter', 'cohere', 'huggingface'], util: ['groq', 'mistral', 'gemini', 'openrouter', 'cohere', 'huggingface'] };
 
+// V1.5.6: pasted keys often carry invisible junk (zero-width chars, quotes, "Bearer ", "key=", a trailing comma). Any of it makes
+// the provider answer 401/403 even though the key itself is fine, so every key is cleaned before it is stored or sent.
+function clean(k) {
+  let t = String(k == null ? '' : k);
+  t = t.replace(/[\u200B-\u200D\u2060\uFEFF\u00A0]/g, '').replace(/\s+/g, ' ').trim();
+  t = t.replace(/^(authorization\s*:\s*)?bearer\s+/i, '').replace(/^(x-goog-api-key|api[_-]?key|key)\s*[:=]\s*/i, '');
+  t = t.replace(/^[\s"'`<([]+|[\s"'`>)\],;]+$/g, '').trim();
+  return t.replace(/\s+/g, '');
+}
 function load() {
   const k = LS.get('ember_keys', {}), o = {};
-  IDS.forEach(id => { o[id] = (Array.isArray(k[id]) ? k[id] : []).filter(e => e && typeof e.key === 'string' && e.key); });
+  IDS.forEach(id => { o[id] = (Array.isArray(k[id]) ? k[id] : []).filter(e => e && typeof e.key === 'string' && e.key).map(e => { e.key = clean(e.key); return e; }).filter(e => e.key); });
   return o;
 }
 let keys = load();
@@ -55,6 +64,35 @@ async function jfetch(url, opt, timeout) {
   return r.json();
 }
 
+// ---------- Gemini auth ----------
+// Google now issues keys that start with AQ. (AI Studio no longer makes AIza keys). Normal accounts send them in the
+// x-goog-api-key header like before. A few accounts get 401/403 on that route, so a rejected call is retried once with the
+// key as a ?key= query parameter before the key is declared bad. The real reason Google gave is kept and a plain-English hint added.
+const isAQ = k => /^AQ\./.test(String(k || ''));
+function gemHint(er, key) {
+  const m = String(er && er.message || '');
+  if (er.status == 401 && /ACCESS_TOKEN_TYPE_UNSUPPORTED|OAuth 2 access token/i.test(m)) return ' Google rejected this ' + (isAQ(key) ? 'AQ. ' : '') + 'key type for the REST API. Make an AIza key in Google Cloud Console (APIs & Services > Credentials) with the Generative Language API enabled and add that one.';
+  if (er.status == 403 && /not been used|disabled|enable/i.test(m)) return ' Turn on the Generative Language API for this key\'s project in Google Cloud Console.';
+  if (er.status == 403) return ' The key may be restricted (app / API restriction) or the Generative Language API is off for its project.';
+  if (er.status == 400 && /API key not valid/i.test(m)) return ' Google says the key text is not valid: re-copy it without spaces or quotes.';
+  if (er.status == 401) return ' Google did not accept the key: re-copy it, or make a fresh one in AI Studio.';
+  return '';
+}
+async function gemFetch(url, key, opt, timeout) {
+  opt = Object.assign({}, opt); opt.headers = Object.assign({}, opt.headers, { 'x-goog-api-key': key });
+  try { return await jfetch(url, opt, timeout); }
+  catch (er) {
+    if (er.status != 401 && er.status != 403) throw er;
+    let er2 = er;
+    try {
+      const o2 = Object.assign({}, opt); o2.headers = Object.assign({}, opt.headers); delete o2.headers['x-goog-api-key'];
+      return await jfetch(url + (url.indexOf('?') < 0 ? '?' : '&') + 'key=' + encodeURIComponent(key), o2, timeout);
+    } catch (e2) { er2 = e2; if (e2.status != 401 && e2.status != 403) throw e2; }
+    const h = gemHint(er2, key);
+    throw Object.assign(new Error(String(er2.message || 'rejected').slice(0, 160) + h), { status: er2.status, retryAfter: er2.retryAfter });
+  }
+}
+
 // ---------- models ----------
 async function listModels(id, key) {
   const c = CFG[id];
@@ -66,7 +104,7 @@ async function listModels(id, key) {
     const j = await jfetch(c.base + '/v1/models?endpoint=chat&page_size=100', { headers: { Authorization: 'Bearer ' + key, Accept: 'application/json' } }, 15000);
     return (j.models || []).map(m => m.name).filter(Boolean);
   }
-  const j = await jfetch(c.base + '/models?pageSize=200', { headers: { 'x-goog-api-key': key } }, 15000);
+  const j = await gemFetch(c.base + '/models?pageSize=200', key, {}, 15000);
   return (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => String(m.name).replace(/^models\//, ''));
 }
 const ver = m => { const x = /(\d+(?:\.\d+)?)/.exec(m); return x ? parseFloat(x[1]) : 0; };
@@ -147,7 +185,7 @@ async function call(id, key, model, o) {
     });
     const gc = { temperature: o.temp == null ? 0.8 : o.temp, maxOutputTokens: (o.max || 400) * 4 }; // headroom: some Gemini models spend output tokens on thinking
     if (o.json) gc.responseMimeType = 'application/json';
-    const j = await jfetch(c.base + '/models/' + model + ':generateContent', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify({ systemInstruction: { parts: [{ text: o.system }] }, contents, generationConfig: gc }) }, 60000);
+    const j = await gemFetch(c.base + '/models/' + model + ':generateContent', key, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ systemInstruction: { parts: [{ text: o.system }] }, contents, generationConfig: gc }) }, 60000);
     const cand = j.candidates && j.candidates[0];
     text = cand && cand.content && cand.content.parts ? cand.content.parts.map(p => p.text || '').join('') : '';
   }
@@ -172,7 +210,7 @@ async function health(id, e) {
   } catch (er) {
     st.code = er.status || 0;
     if (er.status == 429) { st.ok = true; st.limited = true; st.msg = 'rate limited right now (key is valid)'; }
-    else if (er.status == 401 || er.status == 403) st.msg = 'key rejected (' + er.status + ')';
+    else if (er.status == 401 || er.status == 403) st.msg = 'key rejected (' + er.status + '): ' + String(er.message || '').slice(0, 170);
     else st.msg = String(er.message || 'failed').slice(0, 120);
   }
   st.ms = Math.round(performance.now() - t0); e.st = st; e.bad = !st.ok && (st.code == 401 || st.code == 403);
@@ -181,7 +219,7 @@ async function health(id, e) {
 }
 async function healthAll() { for (const id of IDS) for (const e of keys[id]) await health(id, e); }
 async function addKey(id, key) {
-  key = String(key || '').trim();
+  key = clean(key);
   if (!key || !keys[id]) return { ok: false, why: 'empty' };
   if (has(key)) return { ok: false, why: 'already added' };
   const e = { key, st: null }; keys[id].push(e); save(); await health(id, e); return { ok: true, e };
@@ -196,7 +234,7 @@ function extract(text) {
   t = t.replace(/gsk_[A-Za-z0-9]{20,}/g, m => { put('groq', m); return ' '; });
   t = t.replace(/sk-or-v1-[A-Za-z0-9]{20,}/g, m => { put('openrouter', m); return ' '; });
   t = t.replace(/hf_[A-Za-z0-9]{20,}/g, m => { put('huggingface', m); return ' '; });
-  t = t.replace(/AQ\.Ab8RN6LW[0-9A-Za-z_\-.]{10,}/g, m => { put('gemini', m); return ' '; }); // new Gemini key format
+  t = t.replace(/AQ\.[0-9A-Za-z_\-.]{20,}/g, m => { put('gemini', m.replace(/[.]+$/, '')); return ' '; }); // new Gemini key format (AQ.Ab8…, any AQ. key)
   t = t.replace(/AIza[0-9A-Za-z_\-]{30,}/g, m => { put('gemini', m); return ' '; });
   // Cohere keys have no prefix: a 40-character token on a line that says "cohere"
   t = t.split(/\r?\n/).map(line => /cohere/i.test(line) ? line.replace(/(?<![A-Za-z0-9_\-])[A-Za-z0-9]{40}(?![A-Za-z0-9_\-])/g, m => { put('cohere', m); return ' '; }) : line).join('\n');
@@ -284,7 +322,7 @@ const label = id => CFG[id] ? CFG[id].name : id == 'pollinations' ? 'Free' : id;
 // ---------- the router ----------
 // Free Mode ON: Pollinations goes first, then the keys. OFF: keys first. Either way Pollinations is the last resort,
 // so a chat is never blocked just because keys are missing or rested. Util jobs skip it entirely.
-async function run(lane, o) {
+async function runInner(lane, o) {
   const pl = lane != 'util', errs = [], failed = [];
   // when an engine failed and a different one answered, tell the UI (ai.js shows a toast). Background jobs stay silent.
   const done = r => { const f = failed.find(x => x.id != r.provider); if (f && pl) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
@@ -301,12 +339,12 @@ async function run(lane, o) {
       try { models = await modelsFor(id, e.key, lane); }
       catch (er) {
         if (er.status == 401 || er.status == 403) { e.bad = true; save(); } else if (er.status == 429) cool.set(e.key, Date.now() + (er.retryAfter || 60) * 1000);
-        errs.push(CFG[id].name + ': ' + er.message); failed.push({ id, status: er.status, why: er.message }); continue;
+        errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message }); continue;
       }
       for (const m of models.slice(0, 3)) {
         try { const r = await call(id, e.key, m, o); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
         catch (er) {
-          errs.push(CFG[id].name + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
+          errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
           if (er.status == 429) { cool.set(e.key, Date.now() + (er.retryAfter || 60) * 1000); break; }
           if (er.status == 401 || er.status == 403) { e.bad = true; save(); break; }
           if (er.status == 404 || (er.status == 400 && /model/i.test(er.message))) continue;
@@ -323,6 +361,28 @@ async function run(lane, o) {
   if (!hasKeys()) throw Object.assign(new Error('Add an API key in Settings first.'), { code: 'nokeys' });
   throw Object.assign(new Error('No engine answered. ' + (errs.slice(-2).join(' | ') || 'All keys are resting or rejected. Open Settings > Keys and tap Check all.')), { code: 'fail' });
 }
+// V1.5.9: remember the chat request that is in flight so app.js can hand it to the native background task if the app is backgrounded.
+let inflight = null;
+async function run(lane, o) {
+  const tok = { lane, o };
+  if (lane != 'util') { inflight = tok; try { window.dispatchEvent(new Event('ember-run-start')); } catch (e) { /* no listener */ } }
+  try { return await runInner(lane, o); }
+  finally { if (inflight === tok) inflight = null; }
+}
+const pending = () => inflight;
+// The engines the router would try for this lane, from the cached model lists only (no network), OpenAI-style providers only.
+function nativePlan(lane) {
+  const out = [], cache = LS.get('ember_models', {});
+  for (const id of ORDER[lane] || ORDER.fast) {
+    if (CFG[id].kind != 'oai') continue;
+    for (const e of keys[id]) {
+      if (e.bad || isCool(e.key)) continue;
+      const c = cache[id]; if (!c || !c.list || !c.list.length) continue;
+      const m = rank(id, c.list, lane)[0]; if (m) out.push({ id, base: CFG[id].base, key: e.key, model: m });
+    }
+  }
+  return out.slice(0, 4);
+}
 function status() {
   const o = {};
   IDS.forEach(id => {
@@ -335,5 +395,5 @@ function status() {
   });
   return o;
 }
-window.Prov = { CFG, IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations };
+window.Prov = { pending, nativePlan, CFG, IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations };
 })();

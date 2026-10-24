@@ -1,4 +1,4 @@
-<!-- android_patch/AndroidManifest.additions.xml  (V1.5.1)
+<!-- android_patch/AndroidManifest.additions.xml  (V1.5.6)
      Applied automatically by scripts/apply_android_patch.py (idempotent). Reference copy of what it inserts.
 
      1. Inside <manifest>, above <application> -->
@@ -9,6 +9,9 @@
 <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+<uses-permission android:name="android.permission.WAKE_LOCK" />
+<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 <!-- WAKE_LOCK is added automatically by @capacitor-community/keep-awake during `cap sync` -->
 
 <!-- 2. Inside <manifest>, above <application>: Android 11+ package visibility so the
@@ -17,9 +20,23 @@
     <intent>
         <action android:name="android.speech.RecognitionService" />
     </intent>
+    <intent>
+        <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+    </intent>
+    <intent>
+        <action android:name="android.intent.action.TTS_SERVICE" />
+    </intent>
 </queries>
 
 <!-- 3. Inside <application>, alongside <activity android:name=".MainActivity"> -->
 <receiver
     android:name=".ReplyReceiver"
     android:exported="false" />
+<service
+    android:name=".EmberKeepAliveService"
+    android:exported="false"
+    android:foregroundServiceType="specialUse">
+    <property
+        android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+        android:value="Keeps the chat session alive while the user has Keep-alive switched on" />
+</service>

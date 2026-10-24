@@ -1,5 +1,5 @@
 // Ember Add-On: native bridge (www/ember_native.js)
-// Talks to android_patch/.../EmberMediaPlugin.kt and EmberNotifyPlugin.kt (registered
+// Talks to android_patch/.../EmberMediaPlugin.kt (phone music files) and EmberNotifyPlugin.kt (registered
 // manually in MainActivity -- these are local plugins, not npm packages, so `cap sync`
 // alone will NOT pull them in; they must be copied into android/app/src/main/java/...).
 // Needs @capacitor-community/keep-awake synced for holdDuringReply to do anything.
@@ -8,28 +8,99 @@
 (() => {
   const cap = window.Capacitor;
   const P = (cap && cap.Plugins) || {};
-  const Media = P.EmberMedia;   // local plugin
-  const Notify = P.EmberNotify; // local plugin
-  const WL = P.KeepAwake;        // @capacitor-community/keep-awake
-
-  // Bridge EmberMedia/EmberNotify onto window so ai_music.js's existing
-  // window.EmberMedia.* checks pick them up without rewriting that file.
-  if (Media) {
-    window.EmberMedia = {
-      getLibrary: () => Media.getLibrary(),
-      hasPermission: () => Media.hasPermission(),
-      requestPermission: () => Media.requestMusicPermission(),
-      // Not implemented: needs Prodigy's actual API, not guessed here.
-      getCurrentTrack: async () => ({ track: null, playing: false, note: 'Needs a Prodigy bridge -- not built.' }),
-      controlPlayer: async () => ({ error: 'Needs a Prodigy bridge -- not built.' })
-    };
+  // V1.5.6: Capacitor.Plugins.X only exists for plugins whose JS side registered itself, and this app has no bundler to do that.
+  // Inside the APK every native plugin is still reachable, so ask Capacitor for it by name. In a plain browser this stays undefined
+  // (so everything keeps no-oping gracefully there).
+  function plug(name) {
+    if (!cap) return undefined;
+    if (P[name]) return P[name];
+    try { if (cap.isNativePlatform && cap.isNativePlatform() && cap.isPluginAvailable && cap.isPluginAvailable(name) && cap.registerPlugin) return cap.registerPlugin(name); } catch (e) { /* not available */ }
+    return undefined;
   }
+  const Media = plug('EmberMedia');   // local plugin
+  const Notify = plug('EmberNotify'); // local plugin
+  const AiP = plug('EmberAi');        // local plugin (V1.5.9: background replies)
+  const WL = plug('KeepAwake');       // @capacitor-community/keep-awake
 
-  // ---------- keep-awake: hold while a reply is streaming in ----------
+  // V1.5.7: phone music access for Ember's own player (ember_player.js). Lists the audio files Android has indexed and reads one
+  // in small chunks so the WebView can play it (a content:// file cannot be handed to the WebView directly). Needs the updated EmberMediaPlugin.
+  const device = Media ? {
+    async has() { const r = await Media.hasPermission(); return !!(r && r.granted); },
+    async request() { const r = await Media.requestMusicPermission(); return !!(r && r.granted); },
+    async list() { const r = await Media.getLibrary(); return (r && r.tracks) || []; },
+    async read(id, size, mime) {
+      if (size && size > 250 * 1024 * 1024) throw new Error('That file is over 250 MB.');
+      const parts = []; let off = 0;
+      for (;;) {
+        const r = await Media.readChunk({ id: String(id), offset: off, length: 786432 });
+        const bin = atob((r && r.data) || ''), u8 = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+        if (u8.length) parts.push(u8);
+        off += u8.length;
+        if (!u8.length || (r && r.eof)) break;
+      }
+      return new Blob(parts, { type: mime || 'audio/mpeg' });
+    }
+  } : null;
+
+  // ---------- keep-awake: hold while a reply is streaming in, or persistently when the user turns it on ----------
+  let wakeHeld = false; // true while the persistent toggle is ON (not just a per-reply hold)
   async function holdDuringReply(promise) {
+    // When the persistent toggle is already on, the lock is already held -- don't release it after.
+    if (wakeHeld) { try { return await promise; } finally { /* leave it held */ } }
     try { if (WL) await WL.keepAwake(); } catch (e) { /* no-op outside Capacitor, or isSupported() is false */ }
     try { return await promise; }
     finally { try { if (WL) await WL.allowSleep(); } catch (e) {} }
+  }
+  async function wakeLockAvailable() {
+    if (!WL) return false;
+    try { if (WL.isSupported) { const r = await WL.isSupported(); return r == null ? true : !!(r.isSupported != null ? r.isSupported : r); } return true; }
+    catch (e) { return false; }
+  }
+  async function setWakeLock(on) {
+    if (!WL) return { ok: false, note: 'KeepAwake plugin not loaded (needs `cap sync android` with @capacitor-community/keep-awake).' };
+    try { if (on) await WL.keepAwake(); else await WL.allowSleep(); wakeHeld = !!on; return { ok: true }; }
+    catch (e) { return { ok: false, note: e.message || 'Could not change the wake lock.' }; }
+  }
+  function wakeLockHeld() { return wakeHeld; }
+  // Battery-optimization exemption and raw storage access need a tiny native call this build doesn't ship yet
+  // (see android_patch/ -- EmberNotifyPlugin.kt gets a requestBatteryExemption/hasBatteryExemption pair).
+  // Calling it here is future-proof: once that native method exists this "just works", and until then it reports clearly.
+  async function requestBatteryExemption() {
+    if (!Notify || typeof Notify.requestBatteryExemption != 'function') return { ok: false, note: 'Needs the updated android_patch (requestBatteryExemption) built in -- see docs/ANDROID_PERMISSIONS.md.' };
+    try { const r = await Notify.requestBatteryExemption(); return { ok: !!(r && r.granted), note: r && r.note }; }
+    catch (e) { return { ok: false, note: e.message || 'Could not open the battery settings.' }; }
+  }
+  async function batteryExemptionStatus() {
+    if (!Notify || typeof Notify.hasBatteryExemption != 'function') return { granted: false, note: 'unknown (native call not built yet)' };
+    try { return await Notify.hasBatteryExemption(); } catch (e) { return { granted: false, note: e.message }; }
+  }
+  // ---------- background keep-alive: a real foreground service + CPU wake lock (stops Android killing/restarting the app) ----------
+  async function keepAliveStart() {
+    if (!Notify || typeof Notify.startKeepAlive != 'function') return { ok: false, note: 'Needs the updated android_patch (keep-alive service) built into this APK -- see docs/ANDROID_PERMISSIONS.md.' };
+    try { const r = await Notify.startKeepAlive(); return { ok: !!(r && r.running), note: r && r.note }; }
+    catch (e) { return { ok: false, note: e.message || 'Could not start the keep-alive service.' }; }
+  }
+  async function keepAliveStop() {
+    if (!Notify || typeof Notify.stopKeepAlive != 'function') return { ok: true };
+    try { await Notify.stopKeepAlive(); return { ok: true }; } catch (e) { return { ok: false, note: e.message }; }
+  }
+  async function keepAliveStatus() {
+    if (!Notify || typeof Notify.isKeepAliveRunning != 'function') return { running: false, native: false, note: 'native service not built into this APK' };
+    try { const r = await Notify.isKeepAliveRunning(); return { running: !!(r && r.running), native: true }; } catch (e) { return { running: false, native: true, note: e.message }; }
+  }
+  async function openAppSettings() {
+    if (!Notify || typeof Notify.openAppSettings != 'function') return { ok: false, note: 'Needs the updated android_patch (openAppSettings) built in.' };
+    try { await Notify.openAppSettings(); return { ok: true }; } catch (e) { return { ok: false, note: e.message || 'Could not open the app settings.' }; }
+  }
+  async function fileAccessStatus() {
+    // Proxy: the only storage-ish permission this build actually tracks today is EmberMedia's (music library) grant.
+    if (!Media) return { granted: false, note: 'EmberMediaPlugin not registered in MainActivity.' };
+    try { return await Media.hasPermission(); } catch (e) { return { granted: false, note: e.message }; }
+  }
+  async function requestFileAccess() {
+    if (!Media) return { granted: false, note: 'EmberMediaPlugin not registered in MainActivity.' };
+    try { return await Media.requestMusicPermission(); } catch (e) { return { granted: false, note: e.message }; }
   }
 
   // ---------- real notification + real reply box ----------
@@ -53,7 +124,7 @@
   }
 
   // ---------- native speech recognition (Android WebView has NO webkitSpeechRecognition) ----------
-  const SRP = P.SpeechRecognition; // @capacitor-community/speech-recognition
+  const SRP = plug('SpeechRecognition'); // @capacitor-community/speech-recognition
   const speech = SRP ? (() => {
     let guard = null;
     const clearGuard = () => { if (guard) { clearTimeout(guard); guard = null; } };
@@ -66,6 +137,16 @@
           if (p && p.speechRecognition === 'granted') return true;
           p = await SRP.requestPermissions();
           return !!(p && p.speechRecognition === 'granted');
+        } catch (e) { return false; }
+      },
+      // Popup route: Android's own "Speak now" dialog (RecognizerIntent). Used when the silent recogniser cannot start,
+      // e.g. on phones where the quiet recogniser service is missing but the dialog still works.
+      async startPopup(opts) {
+        try {
+          const r = await SRP.start({ language: opts.lang || 'en-US', maxResults: 1, prompt: 'Say anything', partialResults: false, popup: true });
+          const m = (r && (r.matches || r.value)) || []; const t = String(m[0] || '');
+          if (t) { opts.onText(t); return true; }
+          return false;
         } catch (e) { return false; }
       },
       // opts: { lang, onText(text), onState(bool), onError(msg) }
@@ -84,7 +165,12 @@
           guard = setTimeout(() => { try { SRP.stop(); } catch (e) {} }, 60000);
         } catch (e) {
           clearGuard(); opts.onState(false);
-          opts.onError(String((e && (e.message || e.errorMessage)) || 'Could not start the microphone'));
+          // the silent recogniser failed to start: try the system dialog once before giving up
+          const was = String((e && (e.message || e.errorMessage)) || 'Could not start the microphone');
+          opts.onState(true);
+          const ok = await this.startPopup(opts);
+          opts.onState(false);
+          if (!ok) opts.onError(was);
         }
       },
       async stop() { clearGuard(); try { await SRP.stop(); } catch (e) {} }
@@ -106,5 +192,67 @@
     try { return await Media.hasPermission(); } catch (e) { return { granted: false, note: e.message }; }
   }
 
-  window.EmberNative = { speech, holdDuringReply, ensureNotifyPermission, notifyReply, ensureMicPermission, musicPermissionStatus };
+  // ---------- native text-to-speech (Android WebView often has NO speechSynthesis voices) ----------
+  const TTSP = plug('TextToSpeech'); // @capacitor-community/text-to-speech
+  const tts = TTSP ? {
+    isNative: true,
+    async speak(text, lang) {
+      const tryLang = async l => { await TTSP.speak({ text, lang: l, rate: 1.0, pitch: 1.0, volume: 1.0, category: 'playback', queueStrategy: 0 }); };
+      try { await tryLang(lang || 'en-US'); return { ok: true }; }
+      catch (e) {
+        // an engine that lacks e.g. en-ZA still speaks en-US
+        if (lang && lang != 'en-US') { try { await tryLang('en-US'); return { ok: true }; } catch (e2) { e = e2; } }
+        return { ok: false, note: String((e && (e.message || e.errorMessage)) || 'Text-to-speech failed. Check that a speech engine (Google Speech Services) is installed.').slice(0, 140) };
+      }
+    },
+    async stop() { try { await TTSP.stop(); } catch (e) { /* nothing speaking */ } }
+  } : null;
+
+  // ---------- V1.5.8: native music notification + proactive AI pings ----------
+  // Every call is a quiet no-op in a plain browser or on an APK built before V1.5.8 (the native method is missing).
+  const hasM = (o, n) => !!o && typeof o[n] == 'function';
+  async function mediaNotify(title, artist, isPlaying) {
+    if (!hasM(Media, 'updateNotification')) return { ok: false, note: 'Needs the V1.5.8 APK (updateNotification).' };
+    try { await Media.updateNotification({ title: String(title || 'Unknown track'), artist: String(artist || ''), isPlaying: !!isPlaying }); return { ok: true }; }
+    catch (e) { return { ok: false, note: (e && e.message) || 'Could not update the music notification.' }; }
+  }
+  async function mediaClear() {
+    if (!hasM(Media, 'clearNotification')) return { ok: true };
+    try { await Media.clearNotification(); return { ok: true }; } catch (e) { return { ok: false, note: e && e.message }; }
+  }
+  async function syncNativeConfig(cfg) {
+    if (!hasM(Notify, 'saveNativeConfig')) return { ok: false, note: 'Needs the V1.5.8 APK (saveNativeConfig).' };
+    try { await Notify.saveNativeConfig({ groqKey: cfg.groqKey || '', summary: cfg.summary || '', model: cfg.model || '', lastActive: cfg.lastActive || Date.now() }); return { ok: true }; }
+    catch (e) { return { ok: false, note: (e && e.message) || 'Could not save the ping settings.' }; }
+  }
+  async function setProactivePings(enabled, hours) {
+    if (!hasM(Notify, 'setProactivePings')) return { ok: false, note: 'Needs the V1.5.8 APK (setProactivePings).' };
+    try { await Notify.setProactivePings({ enabled: !!enabled, hours: hours || 4 }); return { ok: true }; }
+    catch (e) { return { ok: false, note: (e && e.message) || 'Could not change the ping schedule.' }; }
+  }
+  async function pingNow() {
+    if (!hasM(Notify, 'pingNow')) return { ok: false, note: 'Needs the V1.5.8 APK (pingNow).' };
+    try { await Notify.pingNow(); return { ok: true }; } catch (e) { return { ok: false, note: (e && e.message) || 'Could not start a test ping.' }; }
+  }
+
+  // ---------- V1.5.9: background chat replies ----------
+  const aiAvailable = !!AiP && typeof AiP.askInBackground == 'function';
+  async function aiAsk(req) {
+    if (!aiAvailable) return { ok: false, note: 'Needs the V1.5.9 APK (EmberAi).' };
+    try { await AiP.askInBackground(req); return { ok: true }; } catch (e) { return { ok: false, note: (e && e.message) || 'Could not start the background reply.' }; }
+  }
+  async function aiCancel(turnId) { if (!aiAvailable) return; try { await AiP.cancel({ turnId }); } catch (e) { /* nothing queued */ } }
+  async function aiSetVisible(v) { if (!aiAvailable) return; try { await AiP.setVisible({ visible: !!v }); } catch (e) { /* older APK */ } }
+  async function aiTakeResults() {
+    if (!aiAvailable) return [];
+    try { const r = await AiP.takeResults(); return (r && Array.isArray(r.results)) ? r.results : []; } catch (e) { return []; }
+  }
+
+  window.EmberNative = {
+    device, tts, keepAliveStart, keepAliveStop, keepAliveStatus, openAppSettings,
+    speech, holdDuringReply, ensureNotifyPermission, notifyReply, ensureMicPermission, musicPermissionStatus,
+    wakeLockAvailable, setWakeLock, wakeLockHeld, requestBatteryExemption, batteryExemptionStatus, fileAccessStatus, requestFileAccess,
+    mediaNotify, mediaClear, syncNativeConfig, setProactivePings, pingNow,
+    aiAvailable, aiAsk, aiCancel, aiSetVisible, aiTakeResults
+  };
 })();

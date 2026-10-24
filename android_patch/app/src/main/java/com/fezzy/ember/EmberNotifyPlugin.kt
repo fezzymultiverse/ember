@@ -49,6 +49,78 @@ class EmberNotifyPlugin : Plugin() {
         hasPermission(call)
     }
 
+    // ---- V1.5.6: battery exemption, keep-alive service, app settings ----
+    @PluginMethod
+    fun hasBatteryExemption(call: PluginCall) {
+        val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        val r = JSObject()
+        r.put("granted", pm.isIgnoringBatteryOptimizations(context.packageName))
+        call.resolve(r)
+    }
+
+    @PluginMethod
+    fun requestBatteryExemption(call: PluginCall) {
+        val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        val r = JSObject()
+        if (pm.isIgnoringBatteryOptimizations(context.packageName)) {
+            r.put("granted", true); r.put("note", "Already exempt")
+            call.resolve(r); return
+        }
+        try {
+            val i = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                .setData(android.net.Uri.parse("package:" + context.packageName))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(i)
+            r.put("granted", true); r.put("note", "Confirm the system dialog")
+        } catch (e: Exception) {
+            try {
+                val i2 = Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(i2)
+                r.put("granted", true); r.put("note", "Pick Ember in the list and set it to Don't optimize")
+            } catch (e2: Exception) {
+                r.put("granted", false); r.put("note", e2.message ?: "Could not open battery settings")
+            }
+        }
+        call.resolve(r)
+    }
+
+    @PluginMethod
+    fun startKeepAlive(call: PluginCall) {
+        val r = JSObject()
+        try {
+            val i = Intent(context, EmberKeepAliveService::class.java)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) context.startForegroundService(i) else context.startService(i)
+            r.put("running", true)
+        } catch (e: Exception) {
+            r.put("running", false); r.put("note", e.message ?: "Could not start the keep-alive service")
+        }
+        call.resolve(r)
+    }
+
+    @PluginMethod
+    fun stopKeepAlive(call: PluginCall) {
+        try { context.stopService(Intent(context, EmberKeepAliveService::class.java)) } catch (e: Exception) { }
+        val r = JSObject(); r.put("running", false)
+        call.resolve(r)
+    }
+
+    @PluginMethod
+    fun isKeepAliveRunning(call: PluginCall) {
+        val r = JSObject(); r.put("running", EmberKeepAliveService.running)
+        call.resolve(r)
+    }
+
+    @PluginMethod
+    fun openAppSettings(call: PluginCall) {
+        try {
+            val i = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                .setData(android.net.Uri.parse("package:" + context.packageName))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(i)
+            call.resolve()
+        } catch (e: Exception) { call.reject(e.message ?: "Could not open the app settings") }
+    }
+
     // Posts a notification with a real inline reply box (RemoteInput).
     // Typing a reply and tapping send fires ReplyReceiver, which hands the text
     // back into the WebView as a window event — no app open required.
@@ -91,6 +163,49 @@ class EmberNotifyPlugin : Plugin() {
 
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(id, n)
+        call.resolve()
+    }
+
+    // ---- V1.5.8: proactive AI pings (see EmberPingWorker.kt) ----
+    // The page saves what the background worker needs. An empty groqKey switches the worker off in practice and wipes the stored key.
+    @PluginMethod
+    fun saveNativeConfig(call: PluginCall) {
+        val e = context.getSharedPreferences("EmberPrefs", Context.MODE_PRIVATE).edit()
+        e.putString("groq_key", call.getString("groqKey") ?: "")
+        e.putString("last_chat_summary", (call.getString("summary") ?: "").take(600))
+        e.putString("ping_model", call.getString("model") ?: "")
+        e.putLong("last_active", call.data.optLong("lastActive", 0L))
+        e.apply()
+        call.resolve()
+    }
+
+    @PluginMethod
+    fun setProactivePings(call: PluginCall) {
+        val enabled = call.getBoolean("enabled") ?: false
+        val hours = (call.getInt("hours") ?: 4).coerceIn(1, 48).toLong()
+        val wm = androidx.work.WorkManager.getInstance(context)
+        if (enabled) {
+            val req = androidx.work.PeriodicWorkRequestBuilder<EmberPingWorker>(hours, java.util.concurrent.TimeUnit.HOURS)
+                .setInitialDelay(hours, java.util.concurrent.TimeUnit.HOURS)
+                .setConstraints(androidx.work.Constraints.Builder().setRequiredNetworkType(androidx.work.NetworkType.CONNECTED).build())
+                .build()
+            wm.enqueueUniquePeriodicWork("EmberPing", androidx.work.ExistingPeriodicWorkPolicy.UPDATE, req)
+        } else {
+            wm.cancelUniqueWork("EmberPing")
+            context.getSharedPreferences("EmberPrefs", Context.MODE_PRIVATE).edit().remove("groq_key").remove("last_chat_summary").apply()
+        }
+        val r = JSObject(); r.put("enabled", enabled); r.put("hours", hours)
+        call.resolve(r)
+    }
+
+    // Runs one ping right now, ignoring quiet hours and recent use. Used by the "Send test ping" button.
+    @PluginMethod
+    fun pingNow(call: PluginCall) {
+        val req = androidx.work.OneTimeWorkRequestBuilder<EmberPingWorker>()
+            .setInputData(androidx.work.Data.Builder().putBoolean("force", true).build())
+            .setConstraints(androidx.work.Constraints.Builder().setRequiredNetworkType(androidx.work.NetworkType.CONNECTED).build())
+            .build()
+        androidx.work.WorkManager.getInstance(context).enqueue(req)
         call.resolve()
     }
 }

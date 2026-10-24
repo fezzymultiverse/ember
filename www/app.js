@@ -1,8 +1,8 @@
-// Ember V1.5.4 - app.js: UI, state, persistent session restore, Termux Mode toggle.
+// Ember V1.6.0 - app.js: UI, state, persistent session restore, Termux Mode toggle.
 'use strict';
 (() => {
 const { $, esc, LS, uid } = U;
-const DEF = { name: '', about: '', pname: 'Ember', interests: 'how minds work, slang and language, music and how it gets made, strange history, ethics puzzles, space, why people do what they do, small design details', mode: 'sharp', learn: true, ctx: 'normal', summarize: true, persona: '', showEng: false, accent: '#FF005F', warm: 'warm', direct: 'balanced', humor: 'dry', pace: 'normal', talk: '', musicAddon: false, docsAddon: false, autoRead: false, termuxMode: false };
+const DEF = { name: '', about: '', pname: 'Ember', interests: 'how minds work, slang and language, music and how it gets made, strange history, ethics puzzles, space, why people do what they do, small design details', mode: 'sharp', learn: true, ctx: 'normal', summarize: true, persona: '', showEng: false, accent: '#FF005F', warm: 'warm', direct: 'balanced', humor: 'dry', pace: 'normal', talk: '', musicAddon: false, docsAddon: false, agentAddon: false, youtubeAddon: false, visionAddon: false, autoRead: false, termuxMode: false, wakeLock: false, keepAlive: false, proactivePings: false, pingHours: 4, musicWidget: true, bgReplies: true };
 const WINS = { short: 1, normal: 1, long: 1 };
 const ACCENTS = ['#FF005F', '#AF5FFF', '#00E5FF', '#5FFF00'];
 let S = Object.assign({}, DEF, LS.get('ember_set', {}));
@@ -14,7 +14,7 @@ const migrateMem = m => {
   return Object.assign(base, m, { facts: arr('facts'), threads: arr('threads'), callbacks: arr('callbacks'), patterns: (m.patterns && typeof m.patterns === 'object' && !Array.isArray(m.patterns)) ? m.patterns : {}, moodLog: arr('moodLog'), futureLetters: arr('futureLetters'), deck: arr('deck') });
 };
 let mem = MEM_DEF();
-let conv = null, busy = false, lastErr = null, backupKeys = false;
+let conv = null, busy = false, lastErr = null, backupKeys = false, curTurn = null, handedTurn = '';
 const saveS = () => LS.set('ember_set', S);
 const saveMem = () => Store.setKV('mem', mem);
 const SPARK = '[Start the conversation yourself. Bring something fresh: pull one of the open threads or one of your own curiosities, or pose a sharp thought experiment. No generic greeting, no "how can I help". One specific idea or question, kept short.]';
@@ -154,15 +154,23 @@ async function runTool(tool, args) {
   try {
     if (S.musicAddon && A.EmberMusicAddon && namesOf(A.EmberMusicAddon).includes(tool)) return await A.EmberMusicAddon.dispatch(tool, args);
     if (S.docsAddon && A.EmberDocsAddon && namesOf(A.EmberDocsAddon).includes(tool)) return await A.EmberDocsAddon.dispatch(tool, args);
+    if (A.EmberAgentAddon && A.EmberAgentAddon.toolsFor(S).some(t => t.name == tool)) return await A.EmberAgentAddon.dispatch(tool, args);
     if (scrapeOn && namesOf(A.EmberScraper).includes(tool)) return await A.EmberScraper.dispatch(tool, args);
     if (scrapeOn && A.EmberSites && namesOf(A.EmberSites).includes(tool)) return await A.EmberSites.dispatch(tool, args);
   } catch (e) { return { error: e.message || 'Tool failed.' }; }
   return { error: 'That tool is not available (add-on off or unknown): ' + tool };
 }
 async function resolveAddonCalls(text, L) {
+  if (window.EmberMusicAddon && window.EmberMusicAddon.setIntent) {
+    // the music tools only run if HIS latest message is about music (ai_music.js checks this), never because the AI wants to
+    const us = conv.msgs.filter(m => m.r == 'u'); window.EmberMusicAddon.setIntent(us.length ? us[us.length - 1].t : '', us.length > 1 ? us[us.length - 2].t : '');
+  }
+  if (window.EmberAgentAddon && window.EmberAgentAddon.setIntent) { // YouTube downloads only run if HIS latest message asks for one (ai_agent.js checks this)
+    const us = conv.msgs.filter(m => m.r == 'u'); window.EmberAgentAddon.setIntent(us.length ? us[us.length - 1].t : '', us.length > 1 ? us[us.length - 2].t : '');
+  }
   let cur = text, calls = parseCalls(cur);
   if (!calls.length) return stripTags(cur) || text;
-  const anyOn = S.musicAddon || S.docsAddon || (window.EmberScraper && window.EmberScraper.enabled());
+  const anyOn = S.musicAddon || S.docsAddon || S.agentAddon || S.youtubeAddon || S.visionAddon || (window.EmberScraper && window.EmberScraper.enabled());
   if (Safety.lastLevel() >= 2 || !anyOn) return stripTags(cur);
   const msgs = Persona.sentMsgs(conv, S).map(x => ({ role: x.r == 'u' ? 'user' : 'assistant', content: Persona.body(x) }));
   if (msgs.length && msgs[0].role == 'assistant') msgs.unshift({ role: 'user', content: '(we are picking the conversation back up)' });
@@ -188,18 +196,25 @@ async function resolveAddonCalls(text, L) {
 async function reply(o) {
   o = o || {}; if (busy) return;
   busy = true; lastErr = null; $('bSend').disabled = true; typing(true);
+  const turnId = conv.id + ':' + conv.msgs.length; curTurn = turnId;
   const L = o.force ? { lane: 'deep', deep: true } : laneFor();
   try {
     const call = Persona.respond(conv, { S, mem, directive: o.directive, lane: L.lane, deep: L.deep });
     const r = window.EmberNative ? await window.EmberNative.holdDuringReply(call) : await call;
     let finalText = r.text;
-    if (finalText) finalText = await resolveAddonCalls(finalText, L);
-    conv.msgs.push({ r: 'a', t: finalText, ts: Date.now(), deep: L.deep || undefined, eng: { p: r.provider, m: r.model, ms: r.ms } });
-    if (S.autoRead && finalText) speakText(finalText, conv.msgs.length - 1);
-    if (window.EmberNative && finalText) window.EmberNative.notifyReply(finalText);
+    const bgWon = () => conv.msgs.some(m => m.turn === turnId); // the background task already delivered this turn's reply
+    if (bgWon()) finalText = '';
+    else if (finalText) finalText = await resolveAddonCalls(finalText, L);
+    if (finalText && !bgWon()) {
+      conv.msgs.push({ r: 'a', t: finalText, ts: Date.now(), turn: turnId, deep: L.deep || undefined, eng: { p: r.provider, m: r.model, ms: r.ms } });
+      if (window.EmberNative && window.EmberNative.aiAvailable) window.EmberNative.aiCancel(turnId);
+      if (S.autoRead) speakText(finalText, conv.msgs.length - 1);
+      if (window.EmberNative) window.EmberNative.notifyReply(finalText);
+    }
     await persist();
-  } catch (e) { lastErr = e.message || 'Something broke.'; }
-  busy = false; $('bSend').disabled = false; typing(false); renderLog();
+  } catch (e) { if (curTurn === turnId) lastErr = e.message || 'Something broke.'; }
+  if (curTurn === turnId) { busy = false; $('bSend').disabled = false; typing(false); curTurn = null; }
+  renderLog();
   saveSession(); // persist session state after every reply
   after();
 }
@@ -319,7 +334,12 @@ $('bMic').onclick = async () => {
   const lang = navigator.language || 'en-US';
   if (NSR) {
     stopSpeak();
-    if (!(await NSR.available())) { toast('No speech service on this phone. Install or enable the Google app / Speech Services'); return; }
+    if (!(await NSR.available())) {
+      // the quiet recogniser is missing: try Android's own "Speak now" dialog before giving up
+      micUI(true); const got = NSR.startPopup ? await NSR.startPopup({ lang, onText: t => { $('inp').value = base + t.trim(); grow(); } }) : false; micUI(false);
+      if (!got) toast('No speech service on this phone. Install or enable the Google app / Speech Services');
+      return;
+    }
     if (!(await NSR.ensurePermission())) { toast('Microphone permission denied. Allow it in Settings > Permissions'); return; }
     await NSR.start({ lang, onText: t => { $('inp').value = base + t.trim(); grow(); }, onState: micUI, onError: m => { micUI(false); toast(m.slice(0, 120)); } });
     return;
@@ -336,15 +356,35 @@ $('bMic').onclick = async () => {
 
 // ---------- read aloud ----------
 const TTS = 'speechSynthesis' in window && typeof SpeechSynthesisUtterance != 'undefined';
-let sayIdx = -1;
+// V1.5.6: inside the APK the native text-to-speech plugin is used first (WebView speechSynthesis often has no voices); the browser one is the fallback.
+const nativeTTS = () => (window.EmberNative && window.EmberNative.tts) || null;
+let sayIdx = -1, speakTok = 0;
 const plainSpeech = t => String(t || '').replace(/```[\s\S]*?```/g, ' ').replace(/https?:\/\/\S+/g, 'link').replace(/[*_`#>]+/g, '').replace(/\s+/g, ' ').trim();
-function stopSpeak() { if (TTS) { try { speechSynthesis.cancel(); } catch (e) { } } sayIdx = -1; }
+function stopSpeak() {
+  speakTok++; const N = nativeTTS(); if (N) { try { N.stop(); } catch (e) { } }
+  if (TTS) { try { speechSynthesis.cancel(); } catch (e) { } } sayIdx = -1;
+}
 function speakText(t, idx) {
-  if (!TTS) { toast('Read-aloud is not supported in this browser or app view'); return; }
+  const N = nativeTTS();
+  if (!N && !TTS) { toast('Read-aloud is not supported in this browser or app view'); return; }
   stopSpeak(); const s = plainSpeech(t); if (!s) return;
   const parts = s.match(/[^.!?]+[.!?]*\s*/g) || [s], chunks = [];
   parts.forEach(p => { while (p.length > 220) { chunks.push(p.slice(0, 220)); p = p.slice(220); } if (p.trim()) chunks.push(p); });
   sayIdx = idx == null ? -1 : idx;
+  const tok = ++speakTok, lang = navigator.language || 'en-US';
+  const webSpeak = () => { if (!TTS) { sayIdx = -1; return; } chunks.forEach((c, n) => { const u = new SpeechSynthesisUtterance(c); u.lang = lang; if (n == chunks.length - 1) u.onend = u.onerror = () => { sayIdx = -1; }; speechSynthesis.speak(u); }); };
+  if (N) {
+    (async () => {
+      for (const c of chunks) {
+        if (tok !== speakTok) return;
+        const r = await N.speak(c, lang);
+        if (tok !== speakTok) return;
+        if (!r.ok) { if (TTS) { webSpeak(); } else { sayIdx = -1; toast(r.note || 'Could not read that aloud'); } return; }
+      }
+      if (tok === speakTok) sayIdx = -1;
+    })();
+    return;
+  }
   chunks.forEach((c, n) => { const u = new SpeechSynthesisUtterance(c); u.lang = navigator.language || 'en-US'; if (n == chunks.length - 1) u.onend = u.onerror = () => { sayIdx = -1; }; speechSynthesis.speak(u); });
 }
 function speakMsg(i) { const m = conv && conv.msgs[i]; if (!m) return; if (sayIdx === i) { stopSpeak(); return; } speakText(m.t, i); }
@@ -355,7 +395,7 @@ $('bGlobe').onclick = async () => {
   if (busy) return;
   const SCR = window.EmberScraper;
   if (!SCR || !SCR.enabled()) { toast('Turn on Web Scraping in Settings first'); return; }
-  if (!SCR.available().length) { toast('Add a scraping key in Settings > Web Scraping'); return; }
+  if (!SCR.available().length) { toast('Turn on the Free reader or add a key in Settings > Web Scraping'); return; }
   const raw = await dlg({ title: 'Read a web page', text: 'Paste a link (or the name of a saved site). Anything you typed in the message box is used as what to look for.', input: '' });
   if (!raw || !raw.trim()) return;
   let target = raw.trim(); if (!/^[a-z]+:\/\//i.test(target) && !/\s/.test(target) && /\.[a-z]{2,}/i.test(target)) target = 'https://' + target;
@@ -395,25 +435,186 @@ function renderSet() {
   $('sCtx').value = WINS[S.ctx] ? S.ctx : 'normal'; $('sPersona').value = S.persona || ''; $('swSum').classList.toggle('on', !!S.summarize); $('mPause').classList.toggle('hidden', !!S.learn);
   $('swLearn').classList.toggle('on', !!S.learn); $('swEng').classList.toggle('on', !!S.showEng); $('swBk').classList.toggle('on', backupKeys); $('swFree').classList.toggle('on', Prov.freeOn());
   $('swRead').classList.toggle('on', !!S.autoRead); $('swMusic').classList.toggle('on', !!S.musicAddon); $('swDocs').classList.toggle('on', !!S.docsAddon);
+  $('swAgent').classList.toggle('on', !!S.agentAddon); $('swYoutube').classList.toggle('on', !!S.youtubeAddon); $('swVision').classList.toggle('on', !!S.visionAddon);
+  if (window.EmberAgentAddon) window.EmberAgentAddon.paint();
   $('swTermux').classList.toggle('on', !!S.termuxMode);
+  $('swPing') && $('swPing').classList.toggle('on', !!S.proactivePings);
+  $('swBgReply') && $('swBgReply').classList.toggle('on', S.bgReplies !== false);
+  $('swMusicWidget') && $('swMusicWidget').classList.toggle('on', S.musicWidget !== false);
   $('swLucid').classList.toggle('on', !!S.lucidMode);
   $('acc').innerHTML = ACCENTS.map(c => '<div class="chip' + (c == S.accent ? ' on' : '') + '" data-c="' + c + '" style="background:' + c + '"></div>').join('');
 }
+function pset(id, ok, label) { const el = $(id); if (!el) return; el.textContent = label; el.className = 'pstatus ' + (ok === true ? 'ok' : ok === false ? 'bad' : 'warn'); }
 async function renderPerms() {
   const el = $('permStatus'); if (!el) return;
-  if (!window.EmberNative) { el.textContent = 'No native bridge loaded.'; return; }
-  const mus = await window.EmberNative.musicPermissionStatus();
-  el.textContent = 'Music: ' + (mus.granted ? 'granted' : (mus.note || 'not granted')) + '. Mic and notifications: tap to check/request.';
+  const N = window.EmberNative;
+  if (!N) { el.textContent = 'No native bridge loaded (running as a plain web page -- permissions below are browser-only).'; return; }
+  el.textContent = 'Tap Request/Exempt on anything not granted yet.';
+  try { const mus = await N.musicPermissionStatus(); pset('pstFiles', !!mus.granted, mus.granted ? 'granted' : (mus.note || 'not granted')); } catch (e) { pset('pstFiles', null, 'unknown'); }
+  try { const a = await N.wakeLockAvailable(); $('swWake') && $('swWake').classList.toggle('on', !!S.wakeLock); pset('pstWake', a ? (S.wakeLock ? true : null) : false, a ? (S.wakeLock ? 'held' : 'off') : 'plugin not synced'); } catch (e) { pset('pstWake', null, 'unknown'); }
+  try { const k = await N.keepAliveStatus(); $('swKeep') && $('swKeep').classList.toggle('on', !!S.keepAlive); pset('pstKeep', !k.native ? false : (k.running ? true : (S.keepAlive ? false : null)), !k.native ? 'service not built in' : (k.running ? 'running' : (S.keepAlive ? 'not running' : 'off'))); } catch (e) { pset('pstKeep', null, 'unknown'); }
+  try { const b = await N.batteryExemptionStatus(); pset('pstBatt', b.granted === true ? true : b.granted === false ? false : null, b.granted ? 'exempt' : (b.note || 'not exempt')); } catch (e) { pset('pstBatt', null, 'unknown'); }
+  pset('pstNotify', null, 'tap to check'); pset('pstMic', null, 'tap to check');
 }
 $('bPermNotify') && ($('bPermNotify').onclick = async () => {
   const ok = window.EmberNative && await window.EmberNative.ensureNotifyPermission();
-  toast(ok ? 'Notifications: granted' : 'Notifications: not granted');
+  pset('pstNotify', !!ok, ok ? 'granted' : 'not granted'); toast(ok ? 'Notifications: granted' : 'Notifications: not granted');
 });
 $('bPermMic') && ($('bPermMic').onclick = async () => {
   const ok = window.EmberNative && await window.EmberNative.ensureMicPermission();
-  toast(ok ? 'Microphone: granted' : 'Microphone: not granted');
+  pset('pstMic', !!ok, ok ? 'granted' : 'not granted'); toast(ok ? 'Microphone: granted' : 'Microphone: not granted');
 });
-function openSettings() { drawer(false); renderSet(); renderPerms(); $('settings').classList.add('show'); }
+$('swWake') && ($('swWake').onclick = async () => {
+  const N = window.EmberNative; if (!N) { toast('No native bridge loaded'); return; }
+  const next = !S.wakeLock; const r = await N.setWakeLock(next);
+  if (!r.ok) { toast(r.note || 'Could not change the wake lock'); return; }
+  S.wakeLock = next; saveS(); renderPerms(); toast(next ? 'Screen will stay awake while Ember is open' : 'Wake lock released');
+});
+$('swKeep') && ($('swKeep').onclick = async () => {
+  const N = window.EmberNative; if (!N) { toast('No native bridge loaded'); return; }
+  const next = !S.keepAlive; const r = next ? await N.keepAliveStart() : await N.keepAliveStop();
+  if (!r.ok) { toast(r.note || 'Could not change keep-alive'); return; }
+  S.keepAlive = next; saveS(); renderPerms();
+  toast(next ? 'Keep-alive on. Also exempt Ember from battery optimization below' : 'Keep-alive off');
+});
+$('bPermApp') && ($('bPermApp').onclick = async () => {
+  const N = window.EmberNative; if (!N) { toast('No native bridge loaded'); return; }
+  const r = await N.openAppSettings(); if (!r.ok) toast(r.note || 'Could not open the app settings'); else pset('pstApp', null, 'opened');
+});
+// put the saved wake lock / keep-alive back after the app is reopened (the plugins forget between launches)
+window.addEventListener('load', () => setTimeout(async () => {
+  const N = window.EmberNative; if (!N) return;
+  try { if (S.wakeLock) await N.setWakeLock(true); } catch (e) { /* plugin missing */ }
+  try { if (S.keepAlive) await N.keepAliveStart(); } catch (e) { /* service missing */ }
+}, 600));
+// ---------- V1.5.8: native music notification + proactive AI pings ----------
+function pingKey() { try { const e = (Prov.entries('groq') || []).find(x => x && x.key && !(x.st && x.st.ok === false)); return e ? e.key : ''; } catch (e) { return ''; } }
+function pingSummary() {
+  try {
+    const t = (mem.threads || []).slice(-4).map(x => String((x && x.t) || '').trim()).filter(Boolean).join('; ');
+    return (t || String(S.interests || '')).slice(0, 400);
+  } catch (e) { return ''; }
+}
+// Hands the background worker what it needs. With pings off it sends an empty key, which wipes the stored one.
+async function syncPing() {
+  const N = window.EmberNative; if (!N) return;
+  await N.syncNativeConfig(S.proactivePings ? { groqKey: pingKey(), summary: pingSummary(), lastActive: Date.now() } : { groqKey: '', summary: '', lastActive: Date.now() });
+}
+$('swPing') && ($('swPing').onclick = async () => {
+  const N = window.EmberNative; if (!N) { toast('No native bridge loaded'); return; }
+  const next = !S.proactivePings;
+  if (next) {
+    if (!pingKey()) { toast('Add a Groq key first (Keys tab)'); return; }
+    if (!(await N.ensureNotifyPermission())) { toast('Allow notifications first'); return; }
+    S.proactivePings = true; await syncPing();
+    const r = await N.setProactivePings(true, S.pingHours || 4);
+    if (!r.ok) { S.proactivePings = false; await syncPing(); saveS(); renderSet(); toast(r.note || 'Pings need the V1.5.8 APK'); return; }
+    toast('Pings on: about every ' + (S.pingHours || 4) + ' hours, quiet 22:00 to 08:00');
+  } else {
+    S.proactivePings = false; await N.setProactivePings(false); await syncPing(); toast('Pings off, key wiped from the background task');
+  }
+  saveS(); renderSet();
+});
+$('bPingNow') && ($('bPingNow').onclick = async () => {
+  const N = window.EmberNative; if (!N) { toast('No native bridge loaded'); return; }
+  if (!pingKey()) { toast('Add a Groq key first (Keys tab)'); return; }
+  if (!(await N.ensureNotifyPermission())) { toast('Allow notifications first'); return; }
+  const was = S.proactivePings; S.proactivePings = true; await syncPing(); S.proactivePings = was;
+  const r = await N.pingNow(); toast(r.ok ? 'Test ping on its way, give it a few seconds' : (r.note || 'Needs the V1.5.8 APK'));
+  if (!was) setTimeout(() => { syncPing(); }, 30000);
+});
+$('swMusicWidget') && ($('swMusicWidget').onclick = async () => {
+  S.musicWidget = S.musicWidget === false; saveS(); renderSet();
+  const N = window.EmberNative; if (!N) return;
+  if (S.musicWidget) { lastNp = ''; pushNowPlaying(); } else await N.mediaClear();
+  toast(S.musicWidget ? 'Music widget on' : 'Music widget off');
+});
+let lastNp = '';
+async function pushNowPlaying() {
+  const N = window.EmberNative, P = window.EmberPlayer; if (!N || !P || S.musicWidget === false) return;
+  const sn = P.snapshot();
+  if (!sn.loaded || !sn.track) { if (lastNp) { lastNp = ''; await N.mediaClear(); } return; }
+  const key = sn.track.id + '|' + sn.playing;
+  if (key === lastNp) return;
+  if (sn.playing && !(await N.ensureNotifyPermission())) { /* the lock-screen session still works without the shade card */ }
+  lastNp = key;
+  await N.mediaNotify(sn.track.title, sn.track.artist, sn.playing);
+}
+// Notification, lock screen and headset buttons land here as 'ember-media-cmd'.
+window.addEventListener('ember-media-cmd', e => {
+  const c = String(e.detail || ''), P = window.EmberPlayer; if (!P || !['play', 'pause', 'next', 'prev'].includes(c)) return;
+  P.control(c).catch(() => { /* nothing to play */ });
+});
+window.addEventListener('load', () => setTimeout(() => {
+  if (window.EmberNative) window.EmberNative.mediaClear(); // a card left behind by a closed app has dead buttons
+  const P = window.EmberPlayer; if (P && P.on) P.on(kind => { if (kind === 'track' || kind === 'state' || kind === 'library') pushNowPlaying(); });
+  syncPing();
+}, 900));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') syncPing(); });
+// ---------- V1.5.9: background chat replies ----------
+// Hand the request that is in flight to the native task the moment the app is backgrounded (or if a request starts while it already is).
+function handoff() {
+  const N = window.EmberNative;
+  if (!N || !N.aiAvailable || S.bgReplies === false || !busy || !curTurn || handedTurn === curTurn || !conv) return;
+  const p = Prov.pending && Prov.pending(); if (!p || !p.o) return;
+  handedTurn = curTurn;
+  N.aiAsk({ turnId: curTurn, convId: conv.id, system: p.o.system, messages: p.o.messages, temp: p.o.temp, max: p.o.max, plan: Prov.nativePlan(p.lane), freeFirst: Prov.freeOn() })
+    .then(r => { if (!r.ok) handedTurn = ''; });
+}
+// A reply finished by the native task: add it to its chat (the open one, or one loaded from storage) exactly once.
+async function applyBg(r) {
+  const turn = String((r && r.turnId) || ''), text = stripTags((r && r.text) || ''); if (!turn || !text) return;
+  const isCur = !!conv && conv.id === r.convId;
+  const c = isCur ? conv : await Store.get(r.convId); if (!c) return;
+  if (c.msgs.some(m => m.turn === turn)) return;
+  c.msgs.push({ r: 'a', t: text, ts: Date.now(), turn, bg: true, eng: { p: r.provider, m: r.model, ms: 0 } });
+  c.updated = Date.now(); await Store.put(c);
+  if (isCur) {
+    if (curTurn === turn) { busy = false; $('bSend').disabled = false; typing(false); curTurn = null; }
+    renderLog(); saveSession();
+  }
+}
+async function drainBg() {
+  const N = window.EmberNative; if (!N || !N.aiAvailable) return;
+  const a = await N.aiTakeResults();
+  for (const r of a) { try { await applyBg(r); } catch (e) { /* one bad result must not block the rest */ } }
+}
+$('swBgReply') && ($('swBgReply').onclick = () => { S.bgReplies = S.bgReplies === false; saveS(); renderSet(); toast(S.bgReplies ? 'Background replies on' : 'Background replies off'); });
+window.addEventListener('ember-run-start', () => { if (document.hidden) handoff(); });
+window.addEventListener('ember-bg-ready', () => { drainBg(); });
+document.addEventListener('visibilitychange', () => {
+  const N = window.EmberNative; if (!N || !N.aiAvailable) return;
+  if (document.visibilityState === 'hidden') { N.aiSetVisible(false); handoff(); }
+  else { N.aiSetVisible(true); drainBg(); }
+});
+window.addEventListener('load', () => setTimeout(() => {
+  const N = window.EmberNative; if (!N || !N.aiAvailable) return;
+  N.aiSetVisible(!document.hidden); drainBg();
+}, 1500));
+$('bPermBatt') && ($('bPermBatt').onclick = async () => {
+  const N = window.EmberNative; if (!N) { toast('No native bridge loaded'); return; }
+  const r = await N.requestBatteryExemption();
+  toast(r.ok ? 'Battery exemption requested -- confirm the system dialog' : (r.note || 'Not available yet')); renderPerms();
+});
+$('bPermFiles') && ($('bPermFiles').onclick = async () => {
+  const N = window.EmberNative; if (!N) { toast('No native bridge loaded'); return; }
+  const r = await N.requestFileAccess();
+  pset('pstFiles', !!r.granted, r.granted ? 'granted' : (r.note || 'not granted')); toast(r.granted ? 'File/media access granted' : (r.note || 'Not granted'));
+});
+
+// ---------- settings tabs ----------
+function showStab(name) {
+  document.querySelectorAll('#stabs .stab').forEach(b => b.classList.toggle('on', b.dataset.st == name));
+  document.querySelectorAll('#settings .card[data-tab]').forEach(c => c.classList.toggle('stab-show', c.dataset.tab == name));
+  $('settings').scrollTop = 0; const sb = document.querySelector('#settings .sb'); if (sb) sb.scrollTop = 0;
+}
+$('stabs') && $('stabs').addEventListener('click', e => { const b = e.target.closest('.stab'); if (b) showStab(b.dataset.st); });
+// collapsible cards: tap the .ct header to fold/unfold everything else in that card
+document.querySelector('#settings .sb').addEventListener('click', e => {
+  const ct = e.target.closest('.card>.ct'); if (!ct) return;
+  ct.parentElement.classList.toggle('collapsed');
+});
+function openSettings() { drawer(false); renderSet(); renderPerms(); showStab('general'); $('settings').classList.add('show'); }
 function closeSettings() { $('settings').classList.remove('show'); S.name = $('sName').value.trim(); S.about = $('sAbout').value; S.pname = $('sPname').value.trim() || 'Ember'; S.interests = $('sInt').value.trim() || DEF.interests; S.persona = $('sPersona').value.trim().slice(0, 2000); S.talk = $('sTalk').value.trim().slice(0, 300); saveS(); renderLog(); }
 $('bSet').onclick = openSettings; $('bSx').onclick = closeSettings; $('bGoKeys').onclick = openSettings;
 function accent(c) { document.documentElement.style.setProperty('--ac', c); document.querySelector('meta[name=theme-color]').content = '#07060b'; }
@@ -432,6 +633,9 @@ $('swFree').onclick = () => { Prov.setFree(!Prov.freeOn()); S.freeMode = Prov.fr
 $('swRead').onclick = () => { S.autoRead = !S.autoRead; saveS(); renderSet(); if (!S.autoRead) stopSpeak(); toast(S.autoRead ? 'Auto-read on' : 'Auto-read off'); };
 $('swMusic').onclick = () => { S.musicAddon = !S.musicAddon; saveS(); renderSet(); toast(S.musicAddon ? 'Music Control on' : 'Music Control off'); };
 $('swDocs').onclick = () => { S.docsAddon = !S.docsAddon; saveS(); renderSet(); toast(S.docsAddon ? 'Document Reading on' : 'Document Reading off'); };
+$('swAgent').onclick = () => { S.agentAddon = !S.agentAddon; saveS(); renderSet(); toast(S.agentAddon ? 'Web Search on' : 'Web Search off'); };
+$('swYoutube').onclick = () => { S.youtubeAddon = !S.youtubeAddon; saveS(); renderSet(); toast(S.youtubeAddon ? 'YouTube tools on' : 'YouTube tools off'); };
+$('swVision').onclick = () => { S.visionAddon = !S.visionAddon; saveS(); renderSet(); toast(S.visionAddon ? 'Vision on' : 'Vision off'); };
 $('swTermux').onclick = () => { S.termuxMode = !S.termuxMode; saveS(); renderSet(); renderTop(); toast(S.termuxMode ? '💻 Termux Mode ON — Pen-Test persona active' : 'Termux Mode OFF'); };
 $('swLucid').onclick = () => { S.lucidMode = !S.lucidMode; saveS(); renderSet(); toast(S.lucidMode ? '🔥 Lucid Dreams Mode ON' : 'Lucid Dreams Mode OFF'); };
 
@@ -456,7 +660,7 @@ $('bIngest').onclick = async () => {
     r.added.forEach(a => { h += (a.ok ? '<b>✓</b> ' : '<span class="w">✗</span> ') + nm[a.id].name + ' ' + esc(Prov.mask(a.key)) + (a.guess ? ' (no label, identified by testing it on Mistral)' : '') + '<br>'; });
     if (r.dupes) h += r.dupes + ' already added.<br>';
     if (r.rejected) h += '<span class="w">' + r.rejected + ' unlabeled 32-character string(s) were not a valid Mistral key and were ignored.</span><br>';
-    if (!r.added.length && !r.dupes && !r.rejected) h = '<span class="w">No keys found. Groq keys start with gsk_, Gemini keys with AIza or AQ.Ab8RN6LW, OpenRouter with sk-or-v1-, HuggingFace with hf_. Mistral and Cohere keys have no prefix, so put the word Mistral or Cohere on the line above or beside them.</span>';
+    if (!r.added.length && !r.dupes && !r.rejected) h = '<span class="w">No keys found. Groq keys start with gsk_, Gemini keys with AQ. (new) or AIza, OpenRouter with sk-or-v1-, HuggingFace with hf_. Mistral and Cohere keys have no prefix, so put the word Mistral or Cohere on the line above or beside them.</span>';
     $('kRep').innerHTML = h;
   } catch (e) { $('kRep').innerHTML = '<span class="w">Failed: ' + esc(e.message) + '</span>'; }
   b.disabled = false; b.textContent = 'Extract + check keys'; renderKeys(); renderTop();
@@ -515,7 +719,8 @@ $('fImp').onchange = async e => {
   } catch (er) { toast('Import failed: ' + er.message); }
 };
 $('bWipe').onclick = async () => {
-  if (!(await sure('Delete everything?', 'All chats, memory, settings and keys on this device. This cannot be undone.'))) return;
+  if (!(await sure('Delete everything?', 'All chats, memory, settings, keys, uploaded music, playlists and the Spotify sign-in on this device. This cannot be undone.'))) return;
+  try { if (window.EmberPlayer) await window.EmberPlayer.wipe(); if (window.EmberSpotify) window.EmberSpotify.wipe(); } catch (e) { /* storage already blocked */ }
   await Store.wipe(); ['ember_set', 'ember_keys', 'ember_models'].forEach(k => LS.del(k)); location.reload();
 };
 

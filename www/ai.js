@@ -16,15 +16,49 @@ window.addEventListener('ember-switch', e => {
   toast('Switched to ' + nm(d.to) + ' (' + nm(d.from) + ' ' + why + ')');
 });
 
+// ---------- drawer tabs + saved AI prompts (V1.5.6) ----------
+const PK = 'ember_prompts';
+const loadP = () => { try { const a = JSON.parse(localStorage.getItem(PK) || '[]'); return Array.isArray(a) ? a.filter(x => x && x.n && x.t) : []; } catch (e) { return []; } };
+const saveP = a => { try { localStorage.setItem(PK, JSON.stringify(a.slice(0, 40))); } catch (e) { toast('Could not save: storage is blocked'); } };
+function renderPrompts() {
+  const a = loadP(), el = $('plist'); if (!el) return;
+  el.innerHTML = a.length ? a.map((x, i) => '<div class="prm"><button class="btn g go" data-i="' + i + '">' + esc(x.n) + '<small>' + esc(x.t) + '</small></button><button class="btn g x" data-i="' + i + '" aria-label="Delete prompt">✕</button></div>').join('') : '<p class="hint">No saved prompts yet. Add one below.</p>';
+}
+document.querySelectorAll('.dtab').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.dtab').forEach(x => x.classList.toggle('on', x == b));
+  document.querySelectorAll('.dpane').forEach(x => x.classList.toggle('hidden', x.id != 'dp_' + b.dataset.d));
+  if (b.dataset.d == 'prompts') renderPrompts();
+}));
+if ($('pAdd')) {
+  $('pAdd').onclick = () => {
+    const n = $('pName').value.trim(), t = $('pText').value.trim();
+    if (!n || !t) { toast('Give the prompt a name and some text'); return; }
+    const a = loadP(); a.unshift({ n: n.slice(0, 40), t: t.slice(0, 1200) }); saveP(a);
+    $('pName').value = ''; $('pText').value = ''; renderPrompts(); toast('Prompt saved');
+  };
+  $('plist').addEventListener('click', e => {
+    const a = loadP();
+    const del = e.target.closest('.x'), go = e.target.closest('.go');
+    if (del) { a.splice(+del.dataset.i, 1); saveP(a); renderPrompts(); return; }
+    if (go && a[+go.dataset.i]) {
+      const inp = $('inp'); if (!inp) return;
+      inp.value = a[+go.dataset.i].t; inp.dispatchEvent(new Event('input', { bubbles: true }));
+      const d = $('bDx'); if (d) d.click(); inp.focus();
+    }
+  });
+  renderPrompts();
+}
+
 const SC = window.EmberScraper, ST = window.EmberSites;
 if (!SC || !ST || !$('swScrape')) return;
 
 function renderKeys() {
   const s = SC.get();
   $('swScrape').classList.toggle('on', !!s.on);
+  if ($('swReader')) $('swReader').classList.toggle('on', SC.readerOn());
   SC.KEY_IDS.forEach(id => { const el = $('wk_' + id); if (el && document.activeElement !== el) el.value = (s.keys || {})[id] || ''; });
   if ($('wk_stingEp') && document.activeElement !== $('wk_stingEp')) $('wk_stingEp').value = s.stingEndpoint || '';
-  $('wkStatus').textContent = SC.available().length ? 'Order tried: ' + SC.available().map(id => SC.LABEL[id]).join(' → ') : 'No scraping key set yet.';
+  $('wkStatus').textContent = SC.available().length ? 'Order tried: ' + SC.available().map(id => SC.LABEL[id]).join(' → ') : 'Free reader is off and no scraping key is set yet.';
 }
 function renderSites() {
   const on = SC.enabled(), a = ST.list();
@@ -48,10 +82,10 @@ function renderLocal() {
 }
 function provRow(r) { return '<div class="hrow"><div class="l"><span class="dot" style="background:' + COL[r.state] + '"></span><div>' + esc(r.label) + '<small>' + esc(r.msg) + (r.state == 'ok' || r.state == 'fail' ? ' · ' + r.ms + ' ms' : '') + '</small></div></div>' + (r.state == 'none' || r.state == 'info' ? '' : '<button class="btn g hOne" data-id="' + r.id + '" style="width:auto;padding:6px 12px;font-size:12px">Retry</button>') + '</div>'; }
 const hRows = {};
-function drawProv() { $('hProv').innerHTML = SC.KEY_IDS.map(id => provRow(hRows[id] || { id, label: SC.LABEL[id], state: SC.get().keys[id] ? 'info' : 'none', msg: SC.get().keys[id] ? 'Not checked yet' : 'No key set', ms: 0 })).join(''); }
+function drawProv() { $('hProv').innerHTML = ['reader'].concat(SC.KEY_IDS).map(id => provRow(hRows[id] || { id, label: SC.LABEL[id], state: id == 'reader' ? 'info' : SC.get().keys[id] ? 'info' : 'none', msg: id == 'reader' ? 'Not checked yet (no key needed)' : SC.get().keys[id] ? 'Not checked yet' : 'No key set', ms: 0 })).join(''); }
 $('hRun').onclick = async () => {
   const b = $('hRun'); b.disabled = true; b.textContent = 'Checking…';
-  for (const id of SC.KEY_IDS) { hRows[id] = { id, label: SC.LABEL[id], state: 'info', msg: 'Checking…', ms: 0 }; drawProv(); hRows[id] = await SC.healthCheck(id); drawProv(); }
+  for (const id of ['reader'].concat(SC.KEY_IDS)) { hRows[id] = { id, label: SC.LABEL[id], state: 'info', msg: 'Checking…', ms: 0 }; drawProv(); hRows[id] = await SC.healthCheck(id); drawProv(); }
   b.disabled = false; b.textContent = 'Check all providers'; $('hWhen').textContent = 'Last checked ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 $('hProv').addEventListener('click', async e => {
@@ -75,7 +109,8 @@ $('tSelf').onclick = () => {
 
 
 $('swScrape').onclick = () => { SC.setOn(!SC.enabled()); renderAll(); toast(SC.enabled() ? 'Web Scraping on' : 'Web Scraping off'); };
-SC.KEY_IDS.forEach(id => { const el = $('wk_' + id); if (el) el.addEventListener('input', () => { SC.setKey(id, el.value); $('wkStatus').textContent = SC.available().length ? 'Order tried: ' + SC.available().map(k => SC.LABEL[k]).join(' → ') : 'No scraping key set yet.'; }); });
+if ($('swReader')) $('swReader').onclick = () => { SC.setReader(!SC.readerOn()); renderAll(); toast(SC.readerOn() ? 'Free reader on (no key needed)' : 'Free reader off'); };
+SC.KEY_IDS.forEach(id => { const el = $('wk_' + id); if (el) el.addEventListener('input', () => { SC.setKey(id, el.value); $('wkStatus').textContent = SC.available().length ? 'Order tried: ' + SC.available().map(k => SC.LABEL[k]).join(' → ') : 'Free reader is off and no scraping key is set yet.'; }); });
 $('wk_stingEp').addEventListener('input', () => { SC.setStingEndpoint($('wk_stingEp').value); renderKeys(); });
 
 $('siteAdd').onclick = () => {

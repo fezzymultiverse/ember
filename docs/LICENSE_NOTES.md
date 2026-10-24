@@ -19,6 +19,12 @@ Ember calls these services from the person's device. Each has its own terms and 
 
 Capacitor (`@capacitor/core`, `@capacitor/android`, `@capacitor/cli`) is used only for the optional APK build, under its own license.
 
+## NewPipe Extractor (V1.6.0)
+
+The YouTube downloader links against **NewPipe Extractor** (`com.github.TeamNewPipe:NewPipeExtractor`), which is licensed **GPL-3.0**. An APK that includes it is a combined work that has to be distributed under GPL-compatible terms (source offered to recipients). That clashes with `"license": "UNLICENSED"` in `package.json`. **Owner decision needed before the APK is shared with anyone:** pick a GPL-3.0-compatible licence, or drop the YouTube switch and the three `Ember*Yt*` / `DownloadWorker` Kotlin files from the build. (This is a note for maintainers, not legal advice.)
+
+Third-party services added in V1.6.0: Tavily (`api.tavily.com`, web search, with the person's key), Pollinations (`text.pollinations.ai/openai`, image reading), YouTube (through NewPipe). Terms links are still **TBD**. YouTube's Terms of Service do not allow downloading content unless YouTube offers a download button or link for it.
+
 ## Provenance
 
 The code was written for this project. No code was copied from any therapeutic app or clinical source. The helpline numbers are public numbers of SADAG and Lifeline South Africa.

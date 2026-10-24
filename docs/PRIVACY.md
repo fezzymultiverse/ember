@@ -67,3 +67,19 @@ Free Mode sends the chat to **Pollinations.ai** (`text.pollinations.ai`), a free
 ## Third parties
 
 Each provider has its own terms and retention. This project controls none of them. See [LICENSE_NOTES.md](LICENSE_NOTES.md) and [LIMITATIONS.md](LIMITATIONS.md).
+
+## V1.5.8 · Proactive AI pings and music notification
+
+- **Proactive AI pings (off by default).** When switched on, the app stores your Groq key and up to 600 characters of open-thread topics in the app's private Android SharedPreferences (`EmberPrefs`) so a background task can run while the app is closed. Every few hours the task sends those topics to Groq (api.groq.com) and shows the one-line reply as a notification. Switching pings off cancels the task and deletes the key and topics from that store. The lock screen shows only a generic line.
+- **Music notification.** Track title and artist from Ember's own player are shown in the Android notification and lock screen. Nothing is sent anywhere.
+
+## V1.5.9 · Background replies
+
+When "Keep replying in the background" is on and you leave Ember mid-reply, the request (system prompt, recent messages, and the API keys of the engines to try) is written to a file in the app's private storage (`files/ember_bg/`) and run by a background task. The file is deleted as soon as the task finishes or is cancelled. The finished reply is kept in private SharedPreferences (`EmberBg`) until the page collects it. The request goes only to the same engine providers the app would have used. The notification's lock-screen version only says "New reply".
+
+## V1.6.0 · Agent & API tools
+
+- **Web Search (Tavily):** when on, the words the AI searches for are sent to Tavily (`api.tavily.com`) with your Tavily key. Results come back into the chat. The key is stored in this phone's `localStorage` (`ember_agent`) and is not included in backups.
+- **YouTube:** searching and downloading go from the phone straight to YouTube/Google servers, like any browser or app would. Nothing goes through an Ember server. The last download's title and result are kept in the app's private storage. Saved audio lands in `Music/Ember`, where other music apps can see it.
+- **Vision:** the image link you paste (and your question about it) is sent to Pollinations (`text.pollinations.ai`), which fetches the picture. Leave it off for private images.
+- Search results and image descriptions are passed to whichever chat engine answers (including Free Mode), like other tool results.

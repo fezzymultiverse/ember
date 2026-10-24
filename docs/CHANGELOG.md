@@ -2,6 +2,114 @@
 
 *For everyone.* Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [V1.6.0] - 2026-10-24
+
+### Added (not tested on a phone, the Kotlin and Gradle parts never compiled; the web part has a Playwright test, `tests/agent-test.js`)
+- **Agent & API Tools card** (Settings > Music): three switches, each off by default.
+  - **Web Search (Tavily)** (`www/ai_agent.js`): tool `web_search` returns Tavily's short answer plus the top results (title, url, snippet). The key is stored in `localStorage` `ember_agent`, never in backups. A Check key button spends 1 credit.
+  - **YouTube search + audio download** (`EmberYoutubePlugin.kt`, `EmberYtCore.kt`, `DownloadWorker.kt`): tools `youtube_search` and `youtube_download`. NewPipe Extractor finds the audio stream, a WorkManager task downloads it in 4 MB ranged chunks with a progress notification, and the file is saved to `Music/Ember` through MediaStore (app music folder on failure). Needs an APK rebuild.
+  - **Vision** (`see_image`): describes an https image link through Pollinations' free OpenAI-style endpoint.
+- `apply_android_patch.py` adds NewPipe Extractor (version from `scripts/newpipe.version`, `v0.26.5`), OkHttp, `desugar_jdk_libs_nio` 2.1.5, a `META-INF` packaging exclude, the JitPack repository, the `FOREGROUND_SERVICE_DATA_SYNC` permission and a `dataSync` type on WorkManager's foreground service (needed on Android 14). Checked against a mock Capacitor project, twice, to confirm it is safe to re-run.
+
+### Taken from Prodigy Syncing (it already builds and downloads)
+- NewPipe version `v0.26.5` (the plan named `v0.24.1`), `desugar_jdk_libs_nio:2.1.5`, the `META-INF` packaging excludes, the `en`/`US` locale in `NewPipe.init`, the search call chain, 1 MB ranged chunks, 416 as end-of-file, and the weekly `newpipe-update.yml`. A `.gitlab-ci.yml` mirrors `build.yml` (untested).
+
+### Changed from the plan this was built from
+- **NewPipe was never initialised.** `NewPipe.init(downloader)` must run first or every lookup throws, and the plan had no `Downloader`. Added `EmberYtCore` (OkHttp).
+- **Download worker:** the plan saved every stream as `.m4a` (it could be WebM), called `setForeground` on every 8 KB, deleted the progress notification when the job ended (so "complete" was never visible), used the raw video title as a filename, and never handled Android 14's foreground-service type. Now: M4A preferred and the real extension used, updates throttled, a separate result notification, sanitised names, `dataSync` type, and a fallback to a plain notification if foreground is refused.
+- **`see_image` was a stub** that returned "Image analyzed" without looking at anything. It now makes a real request and returns an error (never an invented description) when the service fails.
+- **Tavily:** the plan read `window.S`, which does not exist (`S` is private to `app.js`), and put the key in `S.keys` (the engine key store). The key now has its own store. It also crashed if Tavily returned no `results`.
+- **Tool routing:** the plan's `resolveAddonCalls` snippet overwrote the result of every tool with the agent dispatch, checked a `window.EmberYoutubePlugin` that never exists, and tied YouTube to the Music switch. Tools are now listed and run per switch, like the other add-ons.
+- **Guard rails:** `youtube_download` only runs if your latest message asks to download or save, and only for a link you pasted or that `youtube_search` returned (the AI cannot invent a video id).
+- The plan's hint promised "camera upload" for vision; there is no image upload in the chat, so vision works on pasted https links only.
+
+### Limits
+- NewPipe breaks when YouTube changes. `.github/workflows/newpipe-update.yml` builds with the newest release every Monday and commits `scripts/newpipe.version` only if the build passes; you can also set `NEWPIPE_VERSION` for one build.
+- Audio only, progressive streams only (no DASH/HLS manifests), no playlists.
+- Like the other add-ons, these tools do not run in the background reply task.
+- Pollinations' free image endpoint may change or start requiring a token; the tool then reports an error.
+- Downloading from YouTube is against YouTube's Terms of Service, and copyright can apply to what you save. See `LICENSE_NOTES.md` for the NewPipe licence.
+
+## [V1.5.9] - 2026-10-24
+
+### Added (not tested on a phone, never compiled)
+- **Background chat replies** (`EmberAiPlugin.kt`, `EmberAiWorker.kt`, `ember_native.js`, `app.js`, `providers.js`): if you leave Ember while a reply is still being written, the request the page already built (persona, memory, safety wrapper, history, the engines it would try) is handed to a WorkManager task. It finishes the reply even if the WebView is frozen or the process is killed, stores it, and posts a notification with the inline reply box (the existing `ReplyReceiver`). The page picks the stored reply up on return and adds it to its chat once. If the app finishes first, the background copy is cancelled. Settings > Permissions > System integrations > Keep replying in the background (on by default). Needs an APK rebuild.
+- `Prov.pending()` / `Prov.nativePlan(lane)`: expose the in-flight request and the OpenAI-style engines to try (cached model lists only, no extra network).
+
+### Limits
+- Add-on tools (music, documents, web) do not run in the background; tool tags are removed from the reply. The same-opener rewrite check (`flaw` / `echoScore`) only runs in the page.
+- Only OpenAI-style engines (Groq, Mistral, OpenRouter, HuggingFace) and the free engine run natively; Gemini and Cohere do not.
+- The request file holds the API keys in app-private storage until the task finishes, then is deleted.
+
+### Changed from the plan this was built from
+- The plan pushed the AI's answer through `ember-bg-reply`, which the app treats as something *you* typed (it would have started a second reply). Results now go through a separate stored-results queue.
+- The plan replaced `reply()` with a stub and sent only the last prompt (no persona, history or safety). The real request is now handed over unchanged.
+- The plan called a `showBackgroundNotification` method on the plugin instance and used the retired `llama3-8b-8192`; the worker posts the notification itself and uses the page's own model choice.
+- Plain thread replaced by WorkManager, so the work survives the process dying.
+
+## [V1.5.8] - 2026-10-24
+
+### Added (not tested on a phone, never compiled)
+- **Native music notification** (`EmberMediaSession.kt`, `EmberMediaPlugin.updateNotification` / `clearNotification`): Ember's own player now owns a real Android MediaSession and media notification with previous, play/pause, next, on the shade and lock screen. Buttons are real PendingIntents and come back into the page as the `ember-media-cmd` event. Follows the local player only, not Spotify. Settings > Permissions > System integrations > Native music widget. Needs an APK rebuild.
+- **Proactive AI pings** (`EmberPingWorker.kt`, `EmberNotifyPlugin.saveNativeConfig` / `setProactivePings` / `pingNow`): opt-in WorkManager task, about every 4 hours, asks Groq for one short check-in about your open threads. Off by default. Quiet 22:00 to 08:00 and for 30 minutes after you last used the app. Lock screen shows only "Ember pinged you". Switching it off cancels the task and wipes the Groq key and topics held by the native side. Includes a Send test ping button. Needs an APK rebuild.
+- `apply_android_patch.py` adds `androidx.work:work-runtime-ktx:2.9.0` and checks all 7 Kotlin files.
+
+### Changed from the plan this was built from
+- Notification buttons were `null` actions (dead); now real broadcasts. The WebView was reached through a `context as MainActivity` cast that always failed; now a weak WebView reference set by the plugin. The shade style used a framework token with a compat style (would not compile); now framework `Notification.MediaStyle` throughout, so no extra media dependency.
+- The Groq key was only written to `localStorage`, which the background worker cannot read; now saved natively via `saveNativeConfig`. Model changed from the retired `llama3-8b-8192` to `llama-3.1-8b-instant`. Added timeouts, quiet hours, retry cap, and a private lock-screen version.
+
+## [V1.5.7] - 2026-10-24
+
+### Added (not fully tested)
+- **Ember's own music player** (`ember_player.js`): upload songs (stored in the app) or scan the phone (APK only), playlists, shuffle/repeat, lock-screen controls. No bridge, no other app.
+- **Now-playing widget** above the message box and a **Music panel** (🎵 pill): Library, Spotify, Ember tabs.
+- **Spotify connect** (`ember_spotify.js`): PKCE sign-in with your own Client ID (Settings > Music), what is playing, play/pause/skip/seek/volume, search, playlists. Needs Premium for control.
+- **AI music rules** (`ai_music.js`): real tools only, told live state and limits, code refuses any music tool unless your latest message is about music, every AI action is logged in the Ember tab. If web lookup is off the AI says so.
+- Native: `readChunk` in `EmberMediaPlugin.kt`, app link `com.fezzy.ember://spotify` in `MainActivity.kt` and the patch script. Needs APK rebuild, never compiled.
+
+### Known
+- `tests/music-test.js`: 74 pass, 4 fail (get_current_track after pause, rogue-pause chat case, Spotify get_current_track, one prompt-text check). Not investigated yet. `tests/app-test.js` was already failing before this version.
+
+## [V1.5.6] - 2026-10-24
+
+Batch 2 of 3. Status labels: **implemented** = written into this zip; **not tested** = nothing here has been run on a phone or built with Gradle; **needs APK rebuild** = needs `npm install`, `cap sync`, the patch script and a new APK.
+
+### Fixed
+- **Gemini AQ. keys.** The key finder only matched one literal prefix (`AQ.Ab8RN6LW`). It now matches any `AQ.` key as well as `AIza`. (implemented, not tested)
+- **401/403 on keys.** Pasted keys are cleaned before they are stored or sent: zero-width characters, quotes, a leading `Bearer ` / `key=`, trailing commas. Stored keys are cleaned on load. (implemented, not tested)
+- **Gemini rejections now explain themselves.** A 401/403 is retried once with the key as a `?key=` query parameter before the key is marked bad, and the real Google reason is kept with a plain hint (for example `ACCESS_TOKEN_TYPE_UNSUPPORTED`: some accounts get AQ. keys that the REST API refuses, and an AIza key made in Google Cloud Console is the workaround). Engine-switch errors and Check all now show the provider and HTTP code. (implemented, not tested)
+- **Browserless 401/403.** The token is tried against the sfo, lon and ams regions in turn. (implemented, not tested)
+- **Plugins not found inside the APK.** `ember_native.js` read plugins from `Capacitor.Plugins.X`, which is empty for plugins this no-bundler app never registered in JS. It now asks Capacitor for the native plugin by name. This is the most likely reason the mic, wake lock and notifications did nothing. (implemented, needs APK rebuild, not tested)
+- **Saved wake lock was not re-applied** after reopening the app. It is now restored on launch. (implemented, not tested)
+
+### Added
+- **Free reader (no key).** New first provider in Web Scraping: fetches the page straight from the phone, then r.jina.ai, then allorigins. Own on/off switch, health row and Test option. `scrape_url` accepts `format: "text"` for plain text with no Markdown. (implemented, not tested)
+- **Voice playback.** Native text-to-speech via `@capacitor-community/text-to-speech` (^5.0.0, the Capacitor 6 line), used first inside the APK, with the browser voice as fallback and an en-US retry. The patch script adds the Android 11+ `TTS_SERVICE` query that the engine needs to be visible. (implemented, needs APK rebuild, not tested)
+- **Mic fallback.** If the quiet recogniser cannot start, Android's "Speak now" dialog is tried before an error is shown. Adds the `RECOGNIZE_SPEECH` query. (implemented, needs APK rebuild, not tested)
+- **Background keep-alive.** New Permissions row backed by `EmberKeepAliveService` (foreground service, `specialUse` type for Android 14, CPU wake lock, ongoing notification with a Turn off action). New permissions: `WAKE_LOCK`, `FOREGROUND_SERVICE_SPECIAL_USE`, `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`. (implemented, needs APK rebuild, not tested)
+- **Battery exemption** is now a real native call (`hasBatteryExemption`, `requestBatteryExemption`) and an **Open app battery & launch settings** button was added, because Honor/MagicOS has its own battery manager on top of the Android one. (implemented, needs APK rebuild, not tested)
+- **App icon.** `www/ember-icon.svg` (the file `index.html` already pointed at) plus the manifest and service-worker entries, and an adaptive launcher icon (`android_patch/res/`) that the patch script copies in. (implemented, needs APK rebuild, not tested)
+- **Termux Mode label.** The header button reads `💻 Termux Mode` instead of `💻 TX`. (implemented)
+- **Chat menu tabs.** The ☰ menu has Chats and Prompts tabs; Prompts is a saved-prompt list (add, tap to put it in the message box, delete), stored on the phone. (implemented, not tested)
+
+### Not done yet (Batch 3)
+- Tests were not run or updated for this batch; `tests/voice-native-test.js` still expects the old behaviour when no speech service exists and `tests/app-test.js` may reference the old drawer title.
+- Wake lock and keep-alive behaviour on the real phone, and whether the AQ. key works against your Google account.
+
+### Files touched
+`www/providers.js`, `www/ai_scraper.js`, `www/ai.js`, `www/app.js`, `www/ember_native.js`, `www/index.html`, `www/style.css`, `www/sw.js`, `www/manifest.webmanifest`, `www/ember-icon.svg` (new), `package.json`, `README.md`, `scripts/apply_android_patch.py`, `android_patch/` (new `EmberKeepAliveService.kt`, `res/`, updated plugin and manifest additions).
+
+## [V1.5.5] - 2026-10-24
+
+### Changed (Batch 1 of 3 — UI declutter + Settings restructure)
+- **Header decluttered.** Chill/Sharp/Deep mode switcher moved out of the header and down into the composer footer, above the Spark/Go deeper/Normal row. The header now only has History, Termux toggle, title/engine dots, and Settings.
+- **999 moved out of the header.** The `🔥 999` button is gone from the top bar; 999 (Quote/Playlist/Lyrics) now opens from a "🔥 Open 999" button next to Lucid Dreams Mode in Settings → General → Voice & pacing, where it's thematically grouped.
+- **Settings is now tabbed.** Instead of one 13-card scroll, Settings opens with a tab bar: **General, Keys, Scraping, Hacking, Music, Permissions.** Each existing card moved under the tab it belongs to with no content changes. Every card's header (`.ct`) is now also a collapse/expand toggle, so any section can be folded to save scroll space.
+- **Permissions tab rebuilt.** Was two buttons (Notifications, Microphone) and a "Checking…" label. Now five rows with live status: Notifications, Microphone, **Keep screen awake (wake lock)** — a real toggle, not just a during-reply hold — **Battery optimization** exemption request, and **File/media access**. The wake-lock toggle is wired end to end in `ember_native.js` (`setWakeLock`/`wakeLockAvailable`); battery exemption and the native file-access prompt call into `EmberNotify`/`EmberMedia` and report plainly when the native method isn't built into this APK yet (that native half lands in V1.5.6, see docs/ANDROID_PERMISSIONS.md).
+
+### Files touched
+`www/index.html`, `www/style.css`, `www/app.js`, `www/ember_native.js`, `www/sw.js` (cache bump), `package.json`, `README.md`, `scripts/apply_android_patch.py`.
+
 ## [V1.5.4] - 2026-10-23
 
 ### Fixed

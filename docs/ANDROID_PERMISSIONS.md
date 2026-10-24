@@ -34,6 +34,10 @@ it. Treat it as a draft to build and fix, not a finished artifact.
 - **Notifications with an inline reply box** (`RemoteInput`): typing a reply
   from the lock screen or notification shade sends it into the chat exactly
   like a typed message, app open or not.
+- **Music notification and lock-screen controls** (V1.5.8, `EmberMediaSession`): a real `MediaSession` plus media notification for Ember's own player. Uses `POST_NOTIFICATIONS` for the shade card.
+- **Proactive pings** (V1.5.8, `EmberPingWorker`): opt-in WorkManager task that calls Groq in the background and posts a notification. Needs a Groq key and `POST_NOTIFICATIONS`.
+- **Background replies** (V1.5.9, `EmberAiWorker`): WorkManager task that finishes a chat reply when the app is backgrounded. Uses `INTERNET` and `POST_NOTIFICATIONS`.
+- **YouTube audio download** (V1.6.0, `DownloadWorker`): WorkManager foreground task (`FOREGROUND_SERVICE_DATA_SYNC`, shown as a progress notification) that writes to `Music/Ember` through MediaStore on Android 10+ (no storage permission needed). Uses `INTERNET` and `POST_NOTIFICATIONS`.
 - **On-device music library** (`EmberMedia.getLibrary()`): real
   `MediaStore.Audio` query, actual device tracks.
 - **Keep-awake during a reply** (`@capacitor-community/keep-awake`): CPU
@@ -46,13 +50,20 @@ it. Treat it as a draft to build and fix, not a finished artifact.
   (the Google app / Speech Services). Without one, the app says so in a toast.
 - **Read aloud**: `speechSynthesis` (WebView text-to-speech), no permission needed.
 
+## V1.5.6 additions (written, never built or run)
+
+- `EmberKeepAliveService` (foreground service, `specialUse`): the real fix for the app being killed and restarted. Toggle: Settings > Permissions > Background keep-alive.
+- Battery exemption (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`) and an Open app settings button. On Honor/MagicOS also set Battery > App launch > Ember to Manage manually (names vary by version).
+- Native text-to-speech (`@capacitor-community/text-to-speech`) and the `TTS_SERVICE` / `RECOGNIZE_SPEECH` queries.
+- Adaptive launcher icon from `android_patch/res/`.
+- After pulling this version run `npm install`, `cap sync android`, then `npm run patch:android`, then build.
+
 ## What's still not built
 
 - `get_current_track` / `control_player` / Spotify tools in `ai_music.js`:
   need Prodigy's real API (MediaSession, content provider, whatever it
   exposes). Nothing here guesses at that.
-- A persistent background service (app survives the OS killing the process
-  between messages). Current keep-awake hold is reply-duration only.
+- The keep-alive service above is written but unverified on a device.
 
 ## Permission table (V1.5.1)
 

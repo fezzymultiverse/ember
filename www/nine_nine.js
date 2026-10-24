@@ -22,10 +22,11 @@ const BOJACK_REPLY = "Bojack's on watch. He's crashed out on your bed, but his d
 // ---------- playlist ----------
 async function playPlaylist() {
   try {
-    if (window.EmberMedia && typeof window.EmberMedia.controlPlayer === 'function') {
-      return await window.EmberMedia.controlPlayer({ action: 'play', playlist: '999' });
-    }
-    return { ok: false, note: 'EmberMedia bridge not connected.' };
+    const P = window.EmberPlayer;
+    if (!P) return { ok: false, error: 'The music player did not load. Reload the app.' };
+    const r = await P.playPlaylist('999');
+    if (r && r.ok) return r;
+    return { ok: false, error: (r && r.error) || 'Could not play.', note: 'Make a playlist named 999 in the Music panel (Library, Save as playlist) and it plays from here.' };
   } catch (e) { return { error: e.message || 'Playback failed.' }; }
 }
 
@@ -58,11 +59,9 @@ function startLyricSync(lrcText) {
   const lrc = parseLRC(lrcText);
   const el = document.getElementById('nineLyrics');
   if (!el || !lrc.length) return;
-  lyricTimer = setInterval(async () => {
-    if (!(window.EmberMedia && window.EmberMedia.getCurrentTrack)) return;
-    const t = await window.EmberMedia.getCurrentTrack();
-    const pos = t && t.progress ? t.progress : 0;
-    el.textContent = currentLine(lrc, pos) || '…';
+  lyricTimer = setInterval(() => {
+    if (!window.EmberPlayer) return;
+    el.textContent = currentLine(lrc, window.EmberPlayer.position()) || '…';
   }, 500);
 }
 function stopLyricSync() { if (lyricTimer) { clearInterval(lyricTimer); lyricTimer = null; } }
