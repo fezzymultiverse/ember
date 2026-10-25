@@ -7,6 +7,30 @@
 
 # Changelog
 
+## V1.9.18
+- **Wiring audit, no app code changed.** Checked the three layers for the document tools, `scrape_url`, the router and the ReAct loop, and locked each one in with tests so a future edit cannot silently disconnect them: schema shown to the model (`persona.js` toolsBlock), dispatcher (`app.js` runTool), the ReAct host (`setHost({ run: runTool ... })`), and strict engine pin (a pinned Gemini calls only the Gemini API; if Google rejects it you see Gemini's error, never a Groq answer). The ReAct test drives a scripted model through `run_react` and checks every Action reached the real document tools in order and that the model saw the real result.
+- Tests: `tests/v1915-test.js` now 45 checks, all passing. Not run on a device; Playwright suites not run here. Version 1.9.18.
+
+## V1.9.17
+- **Document tools checked end to end (tested in Node).** `get_document_outline(fileId)`, `search_in_document(query, fileId?, page?, limit?)` and `read_document_chunk(fileId, chunk, span?)` were already in the tool list the model is shown (via `ai_docs.js`) and already routed to `ember_context.js` by the dispatcher in `app.js`; a new test proves the model sees the real argument names and that each tool really runs. The chunk argument is `chunk`, not `chunkId` (renaming would break the schema and 63 context tests).
+- **Hard rule added to the persona (implemented):** with documents in the library, Ember must look in them (use the FROM HIS DOCUMENTS block, else `search_in_document`), never say it cannot read his local files, never guess, and never claim to have read a document it only saw part of. Added only when the library has files and the tool is in the prompt, so it can never promise what is not there.
+- Tests: `tests/v1915-test.js` now 34 checks. Not run on a device; Playwright suites not run here. Version 1.9.17.
+
+## V1.9.16
+- **Ember knows how it thinks (implemented, tested in Node).** The "about the app" block (`ember_find.js`) now tells every engine, live, what it can do on big jobs: `run_react` (Thought/Action/Observation, 8 default / 10 hard steps, 4 minutes, exact repeats blocked, the 🧠 Reasoning panel with "Approve each action first" and "Edit what it sees"), `run_plan` (up to 12 steps, validated first, 3 read-only steps in parallel, 45 s per step / 120 s total), schema-checked tool calls, the three long-document tools, the 8000-character cut on `read_document` (never claim to have read the rest), automatic document retrieval and the strict engine pin. A test reads the real limits out of the source files so the text cannot drift from the code.
+- Tests: `tests/v1915-test.js` now 27 checks. Not run on a device. Playwright suites not run here. Version 1.9.16.
+
+## V1.9.15
+- **Strict pin (implemented, tested in Node).** With an engine pinned, a failure now shows the real reason (for example the HuggingFace 403 text) and Ember does NOT silently answer from another engine. Before, the default order put Groq first, so every failed pin landed on Groq. Auto mode and background jobs (titles, memory) still fail over. Unpin = Auto. `Prov.setStrict(false)` turns it off (no Settings switch yet).
+- **Free Mode no longer goes first when an engine is pinned** (it failed, cost seconds and fired a "Switched to Groq" toast while already on Groq). The background task (`handoff`) obeys the same rule.
+- **"Switched to X" toast** is not shown when the pinned engine itself answered; when it does show, it carries the real reason and stays 6 s.
+- **HuggingFace / OpenRouter prototypes:** a 400/402/403/422 on one model tries the next model (5 instead of 3) and no longer marks the key rejected. Only a 401 does.
+- **One Ember on every engine (implemented; NOT checked against live replies).** The "you are only the model named above" line is replaced by an IDENTITY line (always Ember, same voice) and each engine gets a one-line voice note (Groq: not terse; Gemini: no assistant prose, headings or bullets; Mistral: casual).
+- **Long answers on request (implemented; not run on a device).** If he asks to explain, write, script, break down, or pastes 600+ characters, the sentence limits are lifted for that reply and the cap goes from 350/650 to 1600 tokens.
+- **Documents are searched automatically (implemented, tested in Node).** `EmberContext.autoBlock(message)` ranks chunks of his library for every message and puts the best 2-3 into the system prompt for every engine, labelled as data. Nothing is added for greetings, no match, or safety level 2+. Before, the model had to choose to call a tool, so engines that did not call it showed no document knowledge. Plain-text documents only (PDF/Word still unsupported). Keyword ranking, not embeddings.
+- **Engine and model name shown under every reply** (Settings > show engine is switched on once; he can switch it off again).
+- Tests: new `tests/v1915-test.js` (24 checks). Router, context, handoff, keyscan, scrape, agent, safety, term re-run: pass. Playwright suites (app, v198...) NOT run in this build environment. Version 1.9.15.
+
 ## V1.9.13
 - **Web search fails over through your scraper keys.** `web_search` order: Tavily (if a key is saved) -> SerpApi -> Firecrawl -> ScraperAPI -> ScrapingBee (each only if its key is saved) -> DuckDuckGo. An engine that errors or returns nothing is skipped and named in the result's `tried` list; `source` says which one answered. A rejected or out-of-credit key is not retried for 10 minutes. With no extra scraper keys it behaves exactly as V1.9.12.
 - **New tool `search_and_read(query, objective?, count?)`.** Searches, then opens the top 1-3 distinct pages and returns their text trimmed to a 6000-character budget (whole result stays under the 9000-character tool-result cap). Needs Web Search and Web Scraping both on. A page that only came back as SerpApi snippets is flagged `degraded`; a page that cannot be opened is an error entry.

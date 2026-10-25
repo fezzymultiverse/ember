@@ -137,7 +137,10 @@ async function react(a) {
   emit({ type: 'start' });
   const lastUser = () => msgs[msgs.length - 1];
   const system0 = systemFor(goal, max, tools) + (docMode ? DOC_RULES : ''), names = new Set(tools.map(t => t.name).filter(n => !BANNED.includes(n)));
-  const sysNow = () => system0 + (ledger.length ? '\n\nEVIDENCE SO FAR (kept for you, newest last):\n' + ledger.map(x => '- ' + x).join('\n') : '');
+    // V1.9.19: an explicit "last 3 steps" working-memory line, on top of the full message history already sent — so the
+  // model cannot lose track of what it just tried a couple of steps ago, even on a long run.
+  const recentSteps = () => { const done = R.entries.filter(x => x.type === 'step' && x.tool); const last3 = done.slice(-3); if (!last3.length) return ''; return '\n\nYOUR LAST ' + last3.length + ' STEP(S) (newest last — do not repeat one of these blindly; if one failed, change tool or approach, do not just retry it):\n' + last3.map(x => (x.n) + '. ' + x.tool + '(' + clipS(asText(x.args), 100) + ') -> ' + (x.status === 'done' ? 'worked: ' + clipS(x.observation, 140) : x.status + ': ' + clipS(x.observation, 140))).join('\n'); };
+const sysNow = () => system0 + (ledger.length ? '\n\nEVIDENCE SO FAR (kept for you, newest last):\n' + ledger.map(x => '- ' + x).join('\n') : '') + recentSteps();
   const addLedger = (tool, args, res) => {
     if (!docMode || !res || typeof res !== 'object') return;
     let line = '';

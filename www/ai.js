@@ -4,7 +4,7 @@
 (() => {
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const toast = m => { const t = $('toast'); if (!t) return; t.textContent = m; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 3200); };
+const toast = (m, ms) => { const t = $('toast'); if (!t) return; t.textContent = m; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), ms || 3200); };
 
 // ---------- universal router: toast when the engine switches (the routing itself is Prov.run in providers.js) ----------
 let lastSw = { k: '', t: 0 };
@@ -13,7 +13,7 @@ window.addEventListener('ember-switch', e => {
   const why = d.status == 429 ? 'rate limited' : (d.status == 401 || d.status == 403) ? 'key rejected' : 'unavailable';
   const k = d.from + '>' + d.to; if (k == lastSw.k && Date.now() - lastSw.t < 60000) return;
   lastSw = { k, t: Date.now() };
-  toast('Switched to ' + nm(d.to) + ' (' + nm(d.from) + ' ' + why + ')');
+  toast('Switched to ' + nm(d.to) + ' (' + nm(d.from) + ' ' + why + (d.why ? ': ' + String(d.why).slice(0, 80) : '') + ')', 6000); // V1.9.15: the real reason, and it stays long enough to read
 });
 
 // ---------- drawer tabs + saved AI prompts (V1.6.4: search, tags, pin, edit, copy, export/import, starter pack) ----------

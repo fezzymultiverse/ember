@@ -40,6 +40,11 @@ function setPinned(id) { pinnedEngine = (id && CFG[id]) ? id : null; LS.set('emb
 let pinnedModel = LS.get('ember_pin_model', null);
 if (pinnedModel && !(pinnedModel.id && pinnedModel.model && CFG[pinnedModel.id])) pinnedModel = null;
 function setPinnedModel(id, model) { pinnedModel = (id && CFG[id] && model) ? { id, model: String(model) } : null; LS.set('ember_pin_model', pinnedModel); }
+// V1.9.15: strict pin. With an engine pinned, a failure is shown plainly (real reason) instead of silently answering from another engine.
+// That silent swap, always landing on Groq first in the default order, is what kept pushing him back to Groq. Background jobs (util) still fail over.
+let strictPin = LS.get('ember_pin_strict', true) !== false;
+function setStrict(v) { strictPin = !!v; LS.set('ember_pin_strict', strictPin); }
+const onlyPinned = lane => !!(strictPin && pinnedEngine && lane != 'util');
 function orderFor(lane) { const base = ORDER[lane] || ORDER.fast; if (!pinnedEngine) return base; return [pinnedEngine].concat(base.filter(id => id != pinnedEngine)); }
 const save = () => LS.set('ember_keys', keys);
 const cool = new Map(); // key -> timestamp until which it is resting after a 429
@@ -322,7 +327,17 @@ function pinNote() {
   const st = status()[pinnedEngine], nm = CFG[pinnedEngine].name;
   const pm = pinnedModel && pinnedModel.id == pinnedEngine ? ' · model ' + pinnedModel.model : '';
   if (st == 'ok' || st == 'unknown') return 'Pinned: ' + nm + pm + (st == 'ok' ? ' (ready)' : ' (key saved, not checked yet)') + '. It answers first on every message.';
-  return 'Pinned: ' + nm + pm + ' but it ' + (st == 'none' ? 'has no key saved' : st == 'bad' ? 'has only rejected keys' : 'is rate limited right now') + ', so the next working engine answers instead. Every reply shows which one. Fix the ' + nm + ' key in Keys, or pick Auto.';
+  return 'Pinned: ' + nm + pm + ' but it ' + (st == 'none' ? 'has no key saved' : st == 'bad' ? 'has only rejected keys' : 'is rate limited right now') + (strictPin ? ', so you will see the real error instead of a silent swap to another engine. Fix the ' + nm + ' key in Keys, or pick Auto.' : ', so the next working engine answers instead. Every reply shows which one. Fix the ' + nm + ' key in Keys, or pick Auto.');
+}
+// V1.9.15: one Ember voice on every engine. Each engine has its own default habit, so each gets a one-line correction. Written from how these engines
+// usually behave; NOT yet checked against live replies from each engine.
+function engineVoice(id) {
+  const base = 'Same Ember voice and same length habits as on every other engine.';
+  if (id == 'groq') return 'ENGINE NOTE: this engine tends to clip its answers and sound generic. Do not be terse: give real substance, a concrete command or example, and a callback to something earlier. When he asks for depth, an explanation, code or a long answer, write it out long and complete. ' + base;
+  if (id == 'gemini') return 'ENGINE NOTE: this engine tends toward polished assistant prose (headings, bullets, "Certainly!", "Great question"). Do not. No headings, no bullet lists unless a command list needs one, no pleasantries, plain street-smart words. ' + base;
+  if (id == 'mistral') return 'ENGINE NOTE: this engine tends toward formal phrasing. Keep it casual and dry. ' + base;
+  if (id) return 'ENGINE NOTE: ignore this engine\'s default assistant style and stay in the Ember voice. ' + base;
+  return '';
 }
 // Text added to the system prompt at send time, after the router has chosen the engine, so the model is told what is really running.
 // id/model null = background reply: the phone picks the engine later, so the model must not name one.
@@ -340,7 +355,8 @@ function factsBlock(id, model, failed) {
     const miss = id && id != pinnedEngine, why = (failed || []).find(f => f.id == pinnedEngine);
     L.push('- Pinned engine in Settings: ' + CFG[pinnedEngine].name + (pinnedModel && pinnedModel.id == pinnedEngine ? ' (model ' + pinnedModel.model + ')' : '') + ' [' + STATE_TXT[st[pinnedEngine]] + ']' + (miss ? '. It could not answer this message' + (why ? ' (' + String(why.why || '').slice(0, 120) + ')' : '') + ', so ' + (id == 'pollinations' ? 'Free Mode' : CFG[id].name) + ' answered instead. Tell him that plainly if he asks.' : '.'));
   } else L.push('- No engine is pinned: Auto mode.');
-  L.push('- You are only the model named above. You are not Gemini, GPT-4, ChatGPT, Qwen or any other name unless that engine and model id above say so. If asked what you are, give the engine and model id above, nothing invented.');
+  L.push('- IDENTITY: you are always Ember, the same character on every engine, with the same voice, humour and memory. The engine and model id above matter only when he asks what is running: then give exactly those, nothing invented, and never claim to be a different model than the one named. Never introduce yourself as the model, never slip into a generic assistant voice, and never change your habits because the engine changed.');
+  const ev = engineVoice(id); if (ev) L.push('- ' + ev);
   L.push('- If he says he switched engine or model and it does not match these lines, say it does not match what is running. Settings changes apply from his next message and only when that engine has a working key. Never agree just because he said so.');
   try { const km = window.EmberKeys && window.EmberKeys.line(); if (km) L.push('- ' + km); } catch (e) { /* key map unavailable */ }
   L.push('- Never say you searched, scraped or looked something up, and never show a table of "results", unless a [TOOL RESULTS] block is in this turn. No tool block means you did not look. Call the tool or say you have not looked yet.');
@@ -370,15 +386,17 @@ async function runInner(lane, o, tok) {
   const pl = lane != 'util', errs = [], failed = [];
   const halted = () => { if (tok && tok.stop) throw HANDOFF(); }; // V1.8.3: once the native worker took the request, the page makes no further paid calls
   // when an engine failed and a different one answered, tell the UI (ai.js shows a toast). Background jobs stay silent.
-  const done = r => { if (pinnedEngine && r.provider != pinnedEngine) { const p0 = failed.find(x => x.id == pinnedEngine); r.pinMiss = { want: pinnedEngine, why: p0 ? (p0.why || '') : 'no usable key' }; } const f = failed.find(x => x.id != r.provider); if (f && pl) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
+  const done = r => { if (pinnedEngine && r.provider != pinnedEngine) { const p0 = failed.find(x => x.id == pinnedEngine); r.pinMiss = { want: pinnedEngine, why: p0 ? (p0.why || '') : 'no usable key' }; } const f = failed.find(x => x.id != r.provider); if (f && pl && !(pinnedEngine && r.provider == pinnedEngine)) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
   let tried = false;
   halted();
-  if (pl && freeOn()) {
+  if (pl && freeOn() && !pinnedEngine) { // V1.9.15: with an engine pinned, Free Mode no longer goes first (it was failing, costing seconds and showing a 'Switched to' toast)
     tried = true;
     try { const o2 = withFacts(o, lane, 'pollinations', 'openai', failed); const r = await callPollinations(flat(o2), o2); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
     catch (er) { errs.push('Free Mode: ' + er.message); failed.push({ id: 'pollinations', status: er.status, why: er.message }); }
   }
   for (const id of orderFor(lane)) {
+    if (onlyPinned(lane) && id != pinnedEngine) break; // V1.9.15: strict pin
+    const soft = id == 'huggingface' || id == 'openrouter'; // prototypes: a 400/402/403/422 on one model must not kill the key or the engine
     for (const e of keys[id]) {
       if (e.bad || isCool(e.key)) continue;
       halted();
@@ -389,11 +407,12 @@ async function runInner(lane, o, tok) {
         errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message }); continue;
       }
       const pm = pinnedModel && pinnedModel.id == id ? pinnedModel.model : null;
-      for (const m of (pm ? [pm] : models.slice(0, 3))) {
+      for (const m of (pm ? [pm] : models.slice(0, soft ? 5 : 3))) {
         halted();
         try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '' }); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
         catch (er) {
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
+          if (soft && (er.status == 400 || er.status == 402 || er.status == 403 || er.status == 422) && !pm) continue; // V1.9.15: try the next model, keep the key, the reason stays in failed[]
           if (er.status == 429) { cool.set(e.key, Date.now() + (er.retryAfter || 60) * 1000); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: true, code: 429 }); break; }
           if (er.status == 401 || er.status == 403) { e.bad = true; e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: false, limited: false, code: er.status, msg: 'key rejected (' + er.status + ')' }); save(); break; }
           if (er.status == 404 || (er.status == 400 && /model/i.test(er.message))) continue;
@@ -402,10 +421,15 @@ async function runInner(lane, o, tok) {
       }
     }
   }
-  if (pl && !tried) {
+  if (pl && !tried && !onlyPinned(lane)) {
     halted();
     try { const o2 = withFacts(o, lane, 'pollinations', 'openai', failed); const r = await callPollinations(flat(o2), o2); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
     catch (er) { errs.push('Free Mode: ' + er.message); failed.push({ id: 'pollinations', status: er.status, why: er.message }); }
+  }
+  if (onlyPinned(lane)) { // V1.9.15: say what really happened instead of answering from someone else
+    const nm = CFG[pinnedEngine].name, w = failed.filter(f => f.id == pinnedEngine).slice(-1)[0];
+    const why = w ? String(w.why || 'failed').slice(0, 170) + (w.status ? ' (' + w.status + ')' : '') : (keys[pinnedEngine].length ? 'every ' + nm + ' key is resting or rejected' : 'no ' + nm + ' key is saved');
+    throw Object.assign(new Error(nm + ' is pinned and did not answer: ' + why + '. Not switching engines because it is pinned. Fix it in Settings > Keys, or set the engine to Auto.'), { code: 'fail' });
   }
   if (!hasKeys() && pl) throw Object.assign(new Error(FREE_BUSY), { code: 'fail' });
   if (!hasKeys()) throw Object.assign(new Error('Add an API key in Settings first.'), { code: 'nokeys' });
@@ -429,6 +453,7 @@ const pending = () => inflight ? { lane: inflight.lane, o: Object.assign({}, inf
 function nativePlan(lane) {
   const out = [], cache = LS.get('ember_models', {});
   for (const id of orderFor(lane)) {
+    if (onlyPinned(lane) && id != pinnedEngine) break;
     if (CFG[id].kind != 'oai') continue;
     for (const e of keys[id]) {
       if (e.bad || isCool(e.key)) continue;
@@ -473,5 +498,5 @@ async function ping(id) {
 }
 async function pingAll() { await Promise.all(IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); }
 function status() { const o = {}; IDS.forEach(id => { o[id] = stateOf(id); }); return o; }
-window.Prov = { stateOf, ping, pingAll, holdInflight, stopInflight, pending, nativePlan, CFG, IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
+window.Prov = { stateOf, ping, pingAll, holdInflight, stopInflight, pending, nativePlan, CFG, IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
 })();
