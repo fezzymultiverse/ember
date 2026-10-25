@@ -766,4 +766,29 @@ header{padding:6px 10px;gap:6px;border-bottom-color:#2a1a0c}
 .lyr .lbody{font-size:15px;line-height:1.55;color:var(--m);min-height:24px}
 .lyr .ly{padding:1px 0;transition:color .2s}.lyr .ly.now{color:var(--t);font-weight:600}
 .lyr .asrc{display:block;color:var(--m);font-size:10.5px;margin-top:6px}
-#bMic{padding:0 12px}
+header{position:relative;z-index:50}
+header .hl,header .hr{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:6px}
+header .hr{justify-content:flex-end}
+header .hl .hb,header .hr .hb{order:0!important}
+header .who{flex:0 1 auto;order:0!important;text-align:center;display:flex;flex-direction:column;align-items:center;min-width:0;max-width:46%}
+header .who b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+#bProv{display:inline-flex;align-items:center;justify-content:center;padding:0;color:var(--ac)}
+#bProv svg{display:block}
+#bProv.on{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 16%,#141414)}
+.provdrop{position:absolute;left:8px;right:8px;top:calc(100% + 6px);z-index:60;max-width:430px;background:#0a0a0a;border:1px solid color-mix(in srgb,var(--ac) 45%,var(--b));border-radius:16px;box-shadow:0 14px 40px rgba(0,0,0,.75);padding:6px 6px 8px;transform-origin:top left;animation:pdin .16s ease-out}
+.provdrop.hidden{display:none}
+
+/* ===== V1.9.11 ===== */
+/* Ember keyboard inside the Termux panel */
+.etkb{display:none;flex:0 0 auto;padding:5px 5px 6px;background:#080a12;border-top:1px solid var(--b)}
+.etkb.show{display:block}
+.etkr{display:flex;gap:4px;margin-bottom:4px;justify-content:center}.etkr:last-child{margin-bottom:0}
+.etkk{flex:1 1 0;min-width:0;height:38px;padding:0;border-radius:8px;border:1px solid var(--b);background:var(--p2);color:var(--t);font:600 16px ui-monospace,monospace;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.etkk:active{background:var(--ac);color:#000}
+.etkk.fn{flex:1.5 1 0;font-size:13px;color:var(--gr)}.etkk.sp{flex:4 1 0;font-size:12px;color:var(--m)}.etkk.on{background:var(--cy);color:#001418;border-color:var(--cy)}
+#etKbT.on{border-color:var(--gr);color:var(--gr)}
+.etp[data-st=half]{height:58%}
+/* mic lives in the message box, next to Send */
+.row .side{gap:6px}
+#bMic{width:40px;height:40px;padding:0;border-radius:50%;font-size:18px;display:inline-flex;align-items:center;justify-content:center;gap:0;border:1px solid var(--b);background:#1a1a1a}
+.mrow{justify-content:space-between}

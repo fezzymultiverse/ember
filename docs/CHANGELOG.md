@@ -1,10 +1,18 @@
 # Changelog
 
 ## V1.9.11
-- **Header back to the V1.9.2 layout.** The Providers chip and its dropdown are gone (`ember_prov_ui.js` deleted, its CSS and markup removed). Header is again: history, Ember name with the engine pill, browser, Termux, settings.
+- **Header unchanged from V1.9.10.** The Providers chip (the chip icon that drops down every AI engine with live dots) stays.
 - **Mic is back, and it no longer needs the phone's speech service.** The 🎤 button sits left of 📎 Docs. Tap, talk, tap again: the phone records, the audio is sent to Gemini (your saved Gemini key) and the words are typed into the message box. Only the recording is sent, only when you tap the mic. Without a Gemini key the old route (Android speech recogniser, then the "Speak now" dialog) is used. Not run on a device: the first tap asks for the microphone permission; if it is refused the toast says where to allow it.
 - **ElevenLabs removed** from Ember Voice (settings rows, code, stored key is ignored). Engines are now Gemini voice and Phone voice only.
 - **All 30 Gemini prebuilt voices** in the picker (was 18).
+- **Termux "process exited with code 254" fixed.** ttyd could not find `bash` in its own PATH (exit 254 is "no such file"). The Setup command now starts `/data/data/com.termux/files/usr/bin/bash`. **Copy the new command from Setup and run it again in Termux** (Ctrl+C the old one first).
+- **Ember keyboard for Termux.** ⌨ button in the panel header. The terminal no longer opens the phone keyboard (the hidden input is `inputmode=none`); Ember's own keys (letters, ?123 symbols, shift, backspace with hold-repeat, space, enter, plus the Ctrl/Esc/Tab/arrow row) sit inside the panel, so nothing is pushed up or cut in half. Shown in the full panel; tapping ⌨ in half opens full. Turn it off to get the phone keyboard back. The command line box still uses the phone keyboard.
+- **Hacking-tab cards fold by themselves** when the Termux panel is half or full and open again when you minimise it to the bar (only the ones it folded).
+- **Termux panel is taller at half** (58% of the screen, was 50%).
+- **Screen locked to portrait** (`screenOrientation` added in `scripts/apply_android_patch.py`; needs a rebuild).
+- **EasyVoice as a third voice** (Settings > Perms > Voice > Ember Voice > EasyVoice). Paste your free EasyVoice key (easyvoice.ae/account/keys), tap **Test key** (shows plan and characters left) and **Load my voices** (fills the picker with the voices your key may use). Free key: 12 voices, 5,000 characters a day. Uses its MCP endpoint `text_to_speech`, then downloads the mp3. A failure (bad key, daily limit, offline) falls back to the phone voice like the others. Tested against a mock server only: the real service has not been called yet.
+- **Mic moved into the message box**, left of Send, round.
+- **Settings > Scraping: its own "Paste & extract scraping keys" box** (Paste, Extract keys, Clear), the same idea as the Keys notepad but for the scraping providers.
 
 ## V1.9.10
 - **Lyrics preview (3 lines).** New `ember_lyrics.js`. A Lyrics card under the now-playing card shows at most 3 lines from LRCLIB (free, no key). With timed lyrics the first line is the one being sung and the next two follow it as the song plays; with plain lyrics the opening lines show. Long-press or hover the song title to see the same lines as a tooltip. The lookup tries exact (artist, title, album, length), then a search, and cleans tags like "(Official Video)" and "- Topic" first. Settings > Music has a **Lyrics preview** switch (on by default).

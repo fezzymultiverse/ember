@@ -4,7 +4,7 @@ Settings > Hacking > bottom panel. Bridge: `ttyd` in your own Termux, plain bash
 
 ## First run
 1. Setup tab > Copy command, paste in Termux, leave it running:
-   `termux-wake-lock; pkg install -y ttyd && ttyd -i lo -p 7682 -b /<private path> -W bash`
+   `termux-wake-lock; pkg install -y ttyd && ttyd -i lo -p 7682 -b /<private path> -W /data/data/com.termux/files/usr/bin/bash`
 2. Tap Connect. The light turns green. It reconnects on its own if Termux restarts (re-run the command).
 
 ## Notes

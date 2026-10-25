@@ -34,7 +34,7 @@ ok('safe cmds', !T.isDanger('ls -la') && !T.isDanger('rm file.txt') && !T.isDang
 const sp = T.splitReply('Fix:\n```bash\npkg install nmap\n```\nthen\n```\nnmap -sn 192.168.0.0/24\n```');
 ok('splitReply', sp.length === 4 && sp[1].k === 'c' && sp[1].v === 'pkg install nmap' && sp[3].v.startsWith('nmap'));
 ok('genBase', /^\/[a-z0-9]{10}$/.test(T.genBase()) && T.genBase() !== T.genBase());
-ok('command', T.cmdFor(7682, '/eabc') === 'termux-wake-lock; pkg install -y ttyd && ttyd -i lo -p 7682 -b /eabc -W bash');
+ok('command', T.cmdFor(7682, '/eabc') === 'termux-wake-lock; pkg install -y ttyd && ttyd -i lo -p 7682 -b /eabc -W /data/data/com.termux/files/usr/bin/bash');
 
 // ---- UI against a mock ttyd ----
 let wsPort = 0, wsClients = [], wsLog = [];
@@ -72,7 +72,7 @@ const web = http.createServer((q, r) => { const p = q.url.split('?')[0] === '/' 
   await pg.goto('http://127.0.0.1:' + wp + '/'); await pg.waitForTimeout(500);
   await pg.click('#bTermux'); await pg.waitForTimeout(500);
   ok('panel visible on Hacking tab', await pg.isVisible('#etPanel'));
-  ok('half height', Math.abs((await pg.locator('#etPanel').boundingBox()).height - 430) < 12, JSON.stringify(await pg.locator('#etPanel').boundingBox()));
+  ok('half height', Math.abs((await pg.locator('#etPanel').boundingBox()).height - 499) < 12, JSON.stringify(await pg.locator('#etPanel').boundingBox()));
   ok('red light when disconnected', await pg.evaluate(() => document.getElementById('etLed').className.includes('off')));
   ok('collapsed beacon on', await pg.evaluate(() => document.getElementById('etPanel').classList.contains('col')));
   await pg.click('#etOffGo'); await pg.waitForTimeout(800);
@@ -93,13 +93,13 @@ const web = http.createServer((q, r) => { const p = q.url.split('?')[0] === '/' 
   ok('beacon off when full', await pg.evaluate(() => !document.getElementById('etPanel').classList.contains('col')));
   ok('resize sent to ttyd', wsLog.some(l => l.resize && l.resize.rows > 15), JSON.stringify(wsLog.filter(l => l.resize)));
   await pg.click('#etExp'); await pg.waitForTimeout(700);
-  ok('collapse stops at half', Math.abs((await pg.locator('#etPanel').boundingBox()).height - 430) < 12);
+  ok('collapse stops at half', Math.abs((await pg.locator('#etPanel').boundingBox()).height - 499) < 12);
   await pg.click('#etMin'); await pg.waitForTimeout(700);
   ok('bar state', (await pg.locator('#etPanel').boundingBox()).height < 90);
   await pg.click('#etHead'); await pg.waitForTimeout(600);
   ok('header tap reopens to half', (await pg.locator('#etPanel').boundingBox()).height > 300);
   await pg.click('#etTabs [data-v="setup"]'); await pg.waitForTimeout(200);
-  ok('setup shows command', /ttyd -i lo -p \d+ -b \/etest123456 -W bash/.test(await pg.innerText('#etCmd')));
+  ok('setup shows command', /ttyd -i lo -p \d+ -b \/etest123456 -W \/data\/data\/com\.termux\/files\/usr\/bin\/bash/.test(await pg.innerText('#etCmd')));
   // Ask Ember: mock engine via Free Mode is not available here, so stub Prov.run
   await pg.evaluate(() => { window.__sent = null; window.Prov.run = async (l, o) => { window.__sent = o; return { text: 'Looks like a missing package.\n```bash\npkg install nmap\n```\n```bash\nrm -rf ~\n```' }; }; });
   await pg.click('#etTabs [data-v="chat"]'); await pg.fill('#etQ', 'why did it fail?'); await pg.click('#etSend'); await pg.waitForTimeout(500);

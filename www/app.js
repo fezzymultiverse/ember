@@ -619,6 +619,21 @@ $('bModels') && $('bModels').addEventListener('click', async () => {
   b.disabled = false; b.textContent = 'Load models from my key';
 });
 
+// ---------- V1.9.11: Web Scraping tab has its own paste + extract ----------
+$('swPaste') && ($('swPaste').onclick = async () => {
+  try { const t = await navigator.clipboard.readText(); if (!t) { toast('Clipboard is empty'); return; } $('swPad').value = ($('swPad').value ? $('swPad').value + '\n' : '') + t; toast('Pasted'); }
+  catch (e) { $('swPad').focus(); toast('The phone blocked auto-paste. Long-press the box and tap Paste'); }
+});
+$('swPadClear') && ($('swPadClear').onclick = () => { $('swPad').value = ''; $('swPadStatus').textContent = ''; });
+$('swExtract') && ($('swExtract').onclick = () => {
+  const t = $('swPad').value; if (!t.trim()) { toast('Nothing to extract from'); return; }
+  const E = window.EmberScraper; if (!E || !E.ingestKeys) { $('swPadStatus').textContent = 'Scraper not loaded.'; return; }
+  let r; try { r = E.ingestKeys(t); } catch (e) { $('swPadStatus').textContent = 'Failed: ' + e.message; return; }
+  const a = (r && r.added) || [];
+  $('swPadStatus').textContent = a.length ? ('Added: ' + a.map(id => E.LABEL[id] || id).join(', ') + '.') : 'No scraping keys found in that text.';
+  if (a.length) { $('swPad').value = ''; if (window.EmberScrapeUI) window.EmberScrapeUI.repaint(); }
+});
+
 // ---------- V1.6.1: notepad (Keys tab) — save, and Extract pulls keys out the same way the notes box above does ----------
 const PAD_KEY = 'ember_pad';
 function paintPad() { const v = LS.get(PAD_KEY, ''); if ($('padText')) $('padText').value = v; }

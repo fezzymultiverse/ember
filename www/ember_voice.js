@@ -18,8 +18,10 @@ const GEM_VOICES = [
 ];
 // tried in this order; the one that works is remembered
 const MODELS = ['gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts', 'gemini-3.8-flash-tts'];
-const DEF = { engine: 'gemini', gem: 'Puck', gemModel: '' };
-const cfg = () => { const c = Object.assign({}, DEF, lsGet(KEY, {})); if (c.engine !== 'device') c.engine = 'gemini'; return c; };
+const DEF = { engine: 'gemini', gem: 'Puck', gemModel: '', ezKey: '', ezVoice: 'af_aoede' };
+const EZ_URL = 'https://easyvoice.ae/api/mcp';
+const EZ_VOICES = [['af_aoede', 'Aoede (default)'], ['af_heart', 'Heart'], ['af_bella', 'Bella'], ['af_nicole', 'Nicole'], ['af_sarah', 'Sarah'], ['af_sky', 'Sky'], ['am_adam', 'Adam'], ['am_michael', 'Michael'], ['bf_emma', 'Emma'], ['bm_george', 'George'], ['bm_lewis', 'Lewis']];
+const cfg = () => { const c = Object.assign({}, DEF, lsGet(KEY, {})); if (c.engine !== 'device' && c.engine !== 'easyvoice') c.engine = 'gemini'; return c; };
 const setCfg = p => { const c = Object.assign(cfg(), p); lsSet(KEY, c); return c; };
 
 const gemKeys = () => { try { return ((window.Prov && window.Prov.entries && window.Prov.entries('gemini')) || []).filter(e => e && e.key && !e.bad).map(e => e.key); } catch (e) { return []; } };
@@ -27,6 +29,7 @@ const gemKeys = () => { try { return ((window.Prov && window.Prov.entries && win
 function active() {
   const c = cfg();
   if (c.engine === 'gemini') return gemKeys().length > 0;
+  if (c.engine === 'easyvoice') return !!String(c.ezKey || '').trim();
   return false;
 }
 
@@ -97,6 +100,45 @@ async function gemBuffer(text, tone, c) {
   return cx.decodeAudioData(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
 }
 
+// ---------- EasyVoice (free key: 12 voices, 5,000 characters a day; https://easyvoice.ae) ----------
+let ezId = 0;
+const ezHint = (s, m) => s === 401 ? 'EasyVoice rejected the key' : s === 403 ? 'EasyVoice: that voice needs the Pro plan' : s === 429 ? 'EasyVoice: daily characters used up or too many requests' : (m || ('EasyVoice error ' + s));
+// one MCP tools/call; resolves to the tool’s JSON result
+async function ezCall(key, name, args) {
+  key = String(key || '').trim(); if (!key) throw err('No EasyVoice key saved', 0);
+  const ac = new AbortController(), t = setTimeout(() => ac.abort(), 45000);
+  try {
+    let r;
+    try {
+      r = await fetch(EZ_URL, { method: 'POST', signal: ac.signal, headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', authorization: 'Bearer ' + key },
+        body: JSON.stringify({ jsonrpc: '2.0', id: ++ezId, method: 'tools/call', params: { name, arguments: args || {} } }) });
+    } catch (e) { throw err(e && e.name === 'AbortError' ? 'The voice took too long' : 'Could not reach EasyVoice', 0); }
+    let raw = ''; try { raw = await r.text(); } catch (e) { }
+    if (!r.ok) { let m = ''; try { const j = JSON.parse(raw); m = (j.error && j.error.message) || j.message || ''; } catch (e) { } throw err(ezHint(r.status, m), r.status); }
+    let j = null;
+    try { j = JSON.parse(raw); } catch (e) { const ln = raw.split(/\r?\n/).filter(l => /^data:/.test(l)).pop(); if (ln) { try { j = JSON.parse(ln.replace(/^data:\s*/, '')); } catch (e2) { } } }
+    if (!j) throw err('EasyVoice sent a reply Ember could not read', 0);
+    if (j.error) throw err(String(j.error.message || 'EasyVoice error').slice(0, 160), 0);
+    const res = j.result || {};
+    let out = res.structuredContent || null;
+    if (!out) { const tx = (res.content || []).map(c => (c && c.text) || '').join(''); try { out = JSON.parse(tx); } catch (e) { out = { text: tx }; } }
+    if (res.isError) throw err(String((out && (out.text || out.error || out.message)) || 'EasyVoice refused the request').slice(0, 160), 0);
+    return out;
+  } finally { clearTimeout(t); }
+}
+async function ezBuffer(text, c) {
+  const cx = audioCtx(); if (!cx) throw err('No audio engine in this view', 0);
+  const out = await ezCall(c.ezKey, 'text_to_speech', { text, voice: String(c.ezVoice || DEF.ezVoice).trim(), speed: 1, format: 'mp3' });
+  const url = out && (out.audio_url || out.url); if (!url) throw err('EasyVoice returned no audio', 0);
+  const ac = new AbortController(), t = setTimeout(() => ac.abort(), 45000);
+  try {
+    let r;
+    try { r = await fetch(url, { signal: ac.signal }); } catch (e) { throw err(e && e.name === 'AbortError' ? 'The voice took too long' : 'Could not download the EasyVoice audio', 0); }
+    if (!r.ok) throw err('EasyVoice audio download failed (HTTP ' + r.status + ')', r.status);
+    return await cx.decodeAudioData(await r.arrayBuffer());
+  } finally { clearTimeout(t); }
+}
+
 // ---------- speaking ----------
 // whole sentences, never longer than max characters
 function split(text, max) {
@@ -136,9 +178,9 @@ async function speak(text, o) {
   if (!cx) return { ok: false, note: 'No audio engine in this view, using the phone voice', rest: all };
   try { if (cx.state !== 'running') await Promise.race([cx.resume(), sleep(900)]); } catch (e) { }
   if (cx.state !== 'running') return { ok: false, note: 'Tap the screen once to allow Ember Voice, using the phone voice for now', rest: all };
-  const max = 700, chunks = split(all, max), cap = 6, use = chunks.slice(0, cap), leftover = chunks.slice(cap).join(' ').trim();
+  const max = c.engine === 'easyvoice' ? 900 : 700, chunks = split(all, max), cap = 6, use = chunks.slice(0, cap), leftover = chunks.slice(cap).join(' ').trim();
   const tone = o.calm ? 'calm' : 'warm';
-  const fetchN = i => { const p = gemBuffer(use[i].trim(), tone, c); p.catch(() => { }); return p; };
+  const fetchN = i => { const p = c.engine === 'easyvoice' ? ezBuffer(use[i].trim(), c) : gemBuffer(use[i].trim(), tone, c); p.catch(() => { }); return p; };
   let next = fetchN(0);
   for (let i = 0; i < use.length; i++) {
     let buf;
@@ -218,19 +260,27 @@ async function listen() {
 // ---------- Settings UI (Settings > Perms > Voice) ----------
 function bindUI() {
   const $ = id => document.getElementById(id), eng = $('sEngine'); if (!eng) return;
-  const c = cfg(), gv = $('sGemV');
+  const c = cfg(), gv = $('sGemV'), ezv = $('sEzVoice');
   eng.value = c.engine;
   gv.innerHTML = GEM_VOICES.map(v => '<option value="' + v[0] + '">' + v[0] + ' · ' + v[1] + '</option>').join(''); gv.value = c.gem;
+  const fillEz = list => { const cur = cfg().ezVoice; ezv.innerHTML = list.map(v => '<option value="' + v[0] + '">' + v[1] + '</option>').join(''); if (!list.some(v => v[0] === cur)) ezv.insertAdjacentHTML('afterbegin', '<option value="' + cur + '">' + cur + '</option>'); ezv.value = cur; };
+  fillEz(EZ_VOICES); $('sEzKey').value = c.ezKey || '';
   const paint = () => {
-    const e = eng.value; $('rowGem').style.display = e === 'gemini' ? '' : 'none';
+    const e = eng.value; $('rowGem').style.display = e === 'gemini' ? '' : 'none'; $('rowEz').style.display = e === 'easyvoice' ? '' : 'none';
     $('voiceNote').textContent = e === 'gemini' ? (gemKeys().length ? 'Ember Voice is on. It uses your Gemini key; the reply text is sent to Google when you read it aloud. If it fails, the phone voice takes over.' : 'No Gemini key saved yet, so the phone voice is used. Add a Gemini key in Settings > Keys.')
+      : e === 'easyvoice' ? (cfg().ezKey ? 'Ember Voice is on through EasyVoice. The reply text is sent to EasyVoice when you read it aloud. If it fails, the phone voice takes over.' : 'Paste your EasyVoice key below. Until then the phone voice is used.')
       : 'Using the phone voice only. Nothing leaves the device.';
   };
   eng.onchange = () => { setCfg({ engine: eng.value }); paint(); };
   gv.onchange = () => setCfg({ gem: gv.value });
+  ezv.onchange = () => setCfg({ ezVoice: ezv.value });
+  $('sEzKey').oninput = () => { setCfg({ ezKey: $('sEzKey').value.trim() }); paint(); };
+  const note = m => { $('ezNote').textContent = m; };
+  $('ezTest').onclick = async () => { note('Checkingâ¦'); try { const u = await ezCall(cfg().ezKey, 'get_usage', {}); note('Key works. Plan: ' + (u.plan || '?') + (u.remaining != null ? ', ' + u.remaining + ' characters left today.' : '.')); } catch (e) { note('Failed: ' + e.message); } };
+  $('ezLoad').onclick = async () => { note('Loadingâ¦'); try { const r = await ezCall(cfg().ezKey, 'list_voices', {}); const vs = ((r && r.voices) || []).filter(v => v.available !== false).map(v => [v.id, v.name + (v.language ? ' Â· ' + v.language : '')]).concat(((r && r.cloned) || []).filter(v => v.status === 'ready').map(v => [v.id, v.name + ' (cloned)'])); if (!vs.length) { note('No voices came back.'); return; } fillEz(vs); note(vs.length + ' voices you can use.'); } catch (e) { note('Failed: ' + e.message); } };
   paint(); window.addEventListener('focus', paint);
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindUI); else bindUI();
 
-window.EmberVoice = { active, speak, stop, cfg, setCfg, split, GEM_VOICES, MODELS, canListen, listen };
+window.EmberVoice = { active, speak, stop, cfg, setCfg, split, GEM_VOICES, MODELS, canListen, listen, ezCall, EZ_VOICES };
 })();

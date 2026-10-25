@@ -10,11 +10,12 @@
 </head><body>
 <div id="app">
 <header>
-<button class="hb" id="bHist" aria-label="Chat history">☰</button>
+<div class="hl"><button class="hb" id="bHist" aria-label="Chat history">☰</button><button class="hb" id="bProv" aria-label="Providers" aria-expanded="false" title="Providers: live engine status"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 2.5v3M12 2.5v3M15 2.5v3M9 18.5v3M12 18.5v3M15 18.5v3M2.5 9h3M2.5 12h3M2.5 15h3M18.5 9h3M18.5 12h3M18.5 15h3"/></svg></button></div>
 <div class="who"><b id="pName">Ember</b><button id="engs" class="engpill" aria-label="Engine status. Tap to open the Keys tab"></button></div>
-<button id="bGlobe" class="hb" aria-label="Browser" title="Browser: read or open a web page">🌐</button>
+<div class="hr"><button id="bGlobe" class="hb" aria-label="Browser" title="Browser: read or open a web page">🌐</button>
 <button id="bTermux" title="Termux Mode" aria-label="Open the Termux tab" class="hb">💻</button>
-<button class="hb" id="bSet" aria-label="Settings">⚙</button>
+<button class="hb" id="bSet" aria-label="Settings">⚙</button></div>
+<div id="provDrop" class="provdrop hidden" role="menu" aria-label="Providers"></div>
 </header>
 <div id="fBadge" class="fbadge hidden">Free Mode: no key needed. Replies can be slower.</div>
 <main id="log"></main>
@@ -27,9 +28,9 @@
 </div>
 <div id="mw" class="mw hidden"><img id="mwArt" class="mwart hidden" alt=""><button id="mwOpen" class="mwt" aria-label="Open the music panel"><b id="mwTitle">—</b><small id="mwSub"></small></button><button id="mwPlay" aria-label="Play or pause">▶</button><button id="mwNext" aria-label="Next">⏭</button></div>
 <footer class="comp">
-<div class="mrow"><div class="modes" id="modes"><button data-m="chill">Chill</button><button data-m="sharp">Sharp</button><button data-m="deep">Deep</button></div><button id="bMic" aria-label="Dictate: talk and your words are typed here" aria-pressed="false" title="Dictate: tap, talk, tap again. Your words are typed into the message box.">🎤</button><button id="bDocsQuick" aria-label="Open Documents: attach a file or note" title="Documents: attach a file or note">📎 <span>Docs</span></button></div>
+<div class="mrow"><div class="modes" id="modes"><button data-m="chill">Chill</button><button data-m="sharp">Sharp</button><button data-m="deep">Deep</button></div><button id="bDocsQuick" aria-label="Open Documents: attach a file or note" title="Documents: attach a file or note">📎 <span>Docs</span></button></div>
 <div class="tools"><button id="bDevice">📟 Device</button><button id="bReact">🧠 Reasoning</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
-<div class="row"><textarea id="inp" rows="1" spellcheck="false" autocorrect="off" placeholder="Say anything…" enterkeyhint="send"></textarea><div class="side"><button id="bSend" aria-label="Send">➤</button></div></div>
+<div class="row"><textarea id="inp" rows="1" spellcheck="false" autocorrect="off" placeholder="Say anything…" enterkeyhint="send"></textarea><div class="side"><button id="bMic" aria-label="Dictate: talk and your words are typed here" aria-pressed="false" title="Dictate: tap, talk, tap again. Your words are typed into the message box.">🎤</button><button id="bSend" aria-label="Send">➤</button></div></div>
 </footer>
 </div>
 
@@ -225,8 +226,12 @@
 <div class="card" data-tab="permissions"><div class="ct">Voice</div>
 <div class="cr"><span>Read replies aloud automatically</span><div class="sw" id="swRead"></div></div>
 <p class="hint" id="ttsNote">Every reply also has a 🔊 button to read just that one. While it is reading, that button turns red and says Stop: tap it to stop, and it goes back to 🔊 when the voice is done. The 🎤 button is dictation: tap, talk, tap again, and your words are typed into the message box (it uses your Gemini key to turn speech into text). Replies are read with Ember Voice (below) when it is on, and with the native Android text-to-speech as the fallback.</p>
-<label class="lb">Ember Voice</label><select id="sEngine"><option value="gemini">Gemini voice (uses your Gemini key)</option><option value="device">Phone voice only</option></select>
+<label class="lb">Ember Voice</label><select id="sEngine"><option value="gemini">Gemini voice (uses your Gemini key)</option><option value="easyvoice">EasyVoice (free key, 12 voices)</option><option value="device">Phone voice only</option></select>
 <div id="rowGem"><label class="lb">Gemini voice</label><select id="sGemV"></select></div>
+<div id="rowEz" style="display:none"><label class="lb">EasyVoice key</label><input type="password" id="sEzKey" placeholder="ev_... from easyvoice.ae/account/keys" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%">
+<label class="lb">EasyVoice voice</label><select id="sEzVoice"></select>
+<div class="btnrow"><button class="btn g" id="ezLoad">Load my voices</button><button class="btn g" id="ezTest">Test key</button></div>
+<p class="hint" id="ezNote"></p></div>
 <p class="hint" id="voiceNote"></p>
 <label class="lb">Phone voice (fallback)</label><select id="sVoice"><option value="">Default</option></select>
 <label class="lb">Speed <span id="vRate" class="hint">1.00×</span></label><input type="range" id="sRate" min="0.6" max="1.6" step="0.05" value="1" style="width:100%">
@@ -272,6 +277,10 @@
 <div class="cr" style="margin-top:10px"><span>Vision (read image links)</span><div class="sw" id="swVision"></div></div>
 <p class="hint">Ember can describe an image when you paste an https link to it. The link goes to Pollinations' free image reader, which fetches the picture. Ember cannot see photos you have not linked, and there is no camera or upload here.</p></div>
 
+<div class="card" data-tab="scraping"><div class="ct">Paste &amp; extract scraping keys</div>
+<textarea id="swPad" rows="4" placeholder="Paste anything here: emails, notes, a whole page of keys. Extract finds the scraping keys (Firecrawl, Browserless, ScraperAPI, ZenRows and the rest) and saves them below." spellcheck="false" autocomplete="off" style="width:100%"></textarea>
+<div class="btnrow"><button class="btn g" id="swPaste">Paste</button><button class="btn" id="swExtract">Extract keys</button><button class="btn g danger" id="swPadClear">Clear</button></div>
+<p class="hint" id="swPadStatus"></p></div>
 <div class="card" data-tab="scraping"><div class="ct">Web Scraping</div>
 <div class="cr"><span>Enable Web Scraping &amp; Saved Sites</span><div class="sw" id="swScrape"></div></div>
 <div class="cr"><span>Free reader · plain text, no key needed</span><div class="sw on" id="swReader"></div></div>
@@ -449,7 +458,7 @@
 <script src="ember_find.js"></script><script src="ember_tasks.js"></script><script src="ember_keys.js"></script>
 <script src="ember_browser.js"></script>
 <script src="ember_term.js"></script>
-<script src="ember_voice.js"></script><script src="ember_lyrics.js"></script>
+<script src="ember_voice.js"></script><script src="ember_lyrics.js"></script><script src="ember_prov_ui.js"></script>
 
 <script src="ember_ui.js"></script>
 <script>

@@ -249,7 +249,7 @@ function genBase() {
   const cs = '0123456789abcdefghijklmnopqrstuvwxyz'; let s = ''; a.forEach(b => { s += cs[b % cs.length]; }); return '/e' + s;
 }
 const PORT_DEF = 7682;
-const cmdFor = (port, base) => 'termux-wake-lock; pkg install -y ttyd && ttyd -i lo -p ' + port + ' -b ' + base + ' -W bash';
+const cmdFor = (port, base) => 'termux-wake-lock; pkg install -y ttyd && ttyd -i lo -p ' + port + ' -b ' + base + ' -W /data/data/com.termux/files/usr/bin/bash';
 const HOSTS = ['127.0.0.1', 'localhost'];
 const wsUrl = (port, base, h) => 'ws://' + (h || HOSTS[0]) + ':' + port + base + '/ws';
 const DEFAULT_PRESETS = [
@@ -281,6 +281,7 @@ const cfg = Object.assign({ port: PORT_DEF, base: '', enter: true, share: true, 
 if (!cfg.base || !/^\/[a-z0-9]{6,}$/.test(cfg.base)) cfg.base = genBase();
 if (!Array.isArray(cfg.presets) || !cfg.presets.length) cfg.presets = DEFAULT_PRESETS.map(p => Object.assign({}, p));
 if (['full', 'half', 'bar'].indexOf(cfg.state) < 0) cfg.state = 'bar';
+if (typeof cfg.kb !== 'boolean') cfg.kb = true;
 cfg.fs = Math.max(8, Math.min(16, +cfg.fs || 10.5)); if (!Array.isArray(cfg.hist)) cfg.hist = [];
 cfg.port = parseInt(cfg.port, 10) || PORT_DEF;
 const save = () => LSset('ember_term', cfg);
@@ -294,6 +295,7 @@ panel.innerHTML =
     '<img class="etlogo" src="ember-icon.svg" alt="Ember">' +
     '<div class="ettt"><span class="etname"><b>EMBER</b> <b class="ettx">TERMUX</b></span><small id="etSub">disconnected</small></div>' +
     '<span class="etled off" id="etLed" title="Connection light"></span>' +
+    '<button class="etib" id="etKbT" aria-label="Ember keyboard on or off" title="Ember keyboard">⌨</button>' +
     '<button class="etib" id="etExp" aria-label="Expand or collapse the terminal">⤢</button>' +
     '<button class="etib" id="etMin" aria-label="Collapse to the bar">▾</button>' +
   '</div>' +
@@ -312,6 +314,7 @@ panel.innerHTML =
     '</div>' +
     '<div class="etview hidden" id="etvSetup"><div class="etsetup" id="etSetup"></div></div>' +
     '<div class="etkeys" id="etKeys"></div>' +
+    '<div class="etkb" id="etKb"></div>' +
     '<div class="etpre" id="etPre"></div>' +
   '</div>';
 settings.appendChild(panel);
@@ -572,15 +575,69 @@ function setView(v) {
   $('etKeys').classList.toggle('hidden', v !== 'term'); $('etCl').classList.toggle('hidden', v !== 'term');
   if (v === 'term') { fit(); schedule(); } if (v === 'chat') { paintChat(); setTimeout(() => { const l = $('etLog'); l.scrollTop = l.scrollHeight; }, 30); }
   if (v === 'setup') paintSetup();
+  applyKb();
 }
 $('etTabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setView(b.dataset.v); });
 $('etOffGo').onclick = () => connect(true);
 $('etOffSet').onclick = () => setView('setup');
 
+// ---- V1.9.11: Ember's own keyboard (the phone keyboard no longer pops up and no longer eats half the terminal) ----
+const KB_ABC = [['q','w','e','r','t','y','u','i','o','p'], ['a','s','d','f','g','h','j','k','l'], ['\u21e7','z','x','c','v','b','n','m','\u232b'], ['?123','-','/','SPACE','.','\u23ce']];
+const KB_SYM = [['1','2','3','4','5','6','7','8','9','0'], ['!','@','#','$','%','^','&','*','(',')'], ['_','=','+','[',']','{','}','\\','|','\u232b'], ['abc','~','`',';',':','SPACE','"',"'",'\u23ce']];
+let kbLayer = 'abc', kbShift = false, kbRep = 0, kbRepT = 0;
+const kbEl = $('etKb');
+function paintKb() {
+  const rows = kbLayer === 'abc' ? KB_ABC : KB_SYM;
+  kbEl.innerHTML = rows.map(r => '<div class="etkr">' + r.map(k => {
+    const lab = k === 'SPACE' ? 'space' : (kbLayer === 'abc' && kbShift && k.length === 1 && /[a-z]/.test(k) ? k.toUpperCase() : k);
+    const cls = (k === 'SPACE' ? ' sp' : '') + (k === '\u21e7' && kbShift ? ' on' : '') + (k.length > 1 && k !== 'SPACE' ? ' fn' : '');
+    return '<button class="etkk' + cls + '" data-c="' + esc(k) + '">' + esc(lab) + '</button>';
+  }).join('') + '</div>').join('');
+}
+function kbPress(k) {
+  if (k === '?123') { kbLayer = 'sym'; paintKb(); return; }
+  if (k === 'abc') { kbLayer = 'abc'; paintKb(); return; }
+  if (k === '\u21e7') { kbShift = !kbShift; paintKb(); return; }
+  if (k === '\u232b') { send('\x7f'); return; }
+  if (k === '\u23ce') { send('\r'); resetIn(); return; }
+  let ch = k === 'SPACE' ? ' ' : k;
+  if (kbShift && /^[a-z]$/.test(ch)) { ch = ch.toUpperCase(); kbShift = false; paintKb(); }
+  if (ctrl) { send(ctrlOf(ch)); setCtrl(false); return; }
+  send(ch);
+}
+function kbStop() { clearTimeout(kbRep); clearInterval(kbRepT); kbRep = 0; kbRepT = 0; }
+kbEl.addEventListener('pointerdown', e => {
+  const b = e.target.closest('.etkk'); if (!b) return; e.preventDefault();
+  const k = b.dataset.c; kbPress(k);
+  if (k === '\u232b') { kbStop(); kbRep = setTimeout(() => { kbRepT = setInterval(() => kbPress('\u232b'), 55); }, 380); }
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => kbEl.addEventListener(ev, kbStop));
+kbEl.addEventListener('contextmenu', e => e.preventDefault());
+kbEl.addEventListener('mousedown', e => e.preventDefault());
+function applyKb() {
+  inEl.setAttribute('inputmode', cfg.kb ? 'none' : 'text');
+  const show = !!cfg.kb && cfg.state === 'full' && view === 'term';
+  kbEl.classList.toggle('show', show); $('etKbT').classList.toggle('on', !!cfg.kb);
+  if (show && !kbEl.firstChild) paintKb();
+  setTimeout(fit, 60);
+}
+$('etKbT').onclick = e => {
+  e.stopPropagation(); cfg.kb = !cfg.kb; save();
+  if (cfg.kb && cfg.state !== 'full') setPanel('full'); else applyKb();
+  toast(cfg.kb ? 'Ember keyboard on' : 'Phone keyboard on: tap the terminal to type');
+};
+
 // ---- panel states: full / half / bar ----
 const S_CLASSES = ['et-full', 'et-half', 'et-bar'];
+let autoCol = [];
+function foldCards(on) {
+  const cs = Array.from(document.querySelectorAll('#settings .card[data-tab="hacking"]'));
+  if (on) cs.forEach(c => { if (!c.classList.contains('collapsed')) { c.classList.add('collapsed'); autoCol.push(c); } });
+  else { autoCol.forEach(c => c.classList.remove('collapsed')); autoCol = []; }
+}
 function applyState(noFit) {
   const s = cfg.state;
+  foldCards(s !== 'bar'); applyKb();
   panel.dataset.st = s; panel.classList.toggle('col', s !== 'full');
   S_CLASSES.forEach(c => settings.classList.toggle(c, c === 'et-' + s));
   $('etExp').textContent = s === 'full' ? '⤡' : '⤢'; $('etExp').title = s === 'full' ? 'Collapse to half' : 'Expand';
@@ -613,7 +670,7 @@ function sync() {
   const key = vis + '|' + cfg.state; if (key === lastKey) return; lastKey = key;
   panel.classList.toggle('hidden', !vis); settings.classList.toggle('hk', vis);
   if (vis) { applyState(); fit(); if (wantOn && state === 'off' && !userDown) connect(false); }
-  else { clearTimeout(retryT); }
+  else { clearTimeout(retryT); foldCards(false); }
 }
 new MutationObserver(sync).observe(settings, { attributes: true, attributeFilter: ['class'] });
 const stabs = $('stabs'); if (stabs) new MutationObserver(sync).observe(stabs, { attributes: true, subtree: true, attributeFilter: ['class'] });
