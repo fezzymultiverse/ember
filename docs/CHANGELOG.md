@@ -1,3 +1,10 @@
+## V1.9.14
+- **One key finder for every paste box** (`www/ember_keyscan.js`, loads before `providers.js`). Replaces the two old extractors. Fixes: `Name: key  Name2: key2` on one line, blank lines after a label, Cohere key under its label, `CO_API_KEY`, key before its name, hex-only labelled Mistral keys, Audd.io and EasyVoice keys, Bright Data key and zones.
+- **Several keys per provider** (`ai_scraper.js`): first = primary, rest = extras (max 8), never overwritten. Extras take turns and cover for a key that is rejected, out of credits or rate limited (401/402/403/429/432/433). A 5xx stops at once (no double billing). Tavily extras also cover web search (`ai_agent.js`). Health checks every key.
+- **Bright Data** (10th provider, after SerpApi): SERP search backup; Web Unlocker zone makes it a page fetcher, with only a SERP zone it returns snippets flagged degraded. NOT tested against the live service.
+- UI: Bright key, SERP zone, Web Unlocker zone, extra-keys list with remove (Settings > Scraping). All three paste handlers use `EmberKeyScan.ingestAll`.
+- Tests: new `tests/keyscan-test.js` (44 checks), `scrape-test.js` and `v168-test.js` updated. Version 1.9.14.
+
 # Changelog
 
 ## V1.9.13

@@ -15,7 +15,7 @@ const run = (c, f) => vm.runInContext(W(f), c);
   // 1. providers.extract on a shell script
   const mem = {}; const LS = { get: (k, d) => (k in mem ? mem[k] : d), set: (k, v) => { mem[k] = v; } };
   let evs; let { c, win } = ctxWith({ U: { LS }, performance: { now: Date.now }, AbortController, fetch: async () => { throw new Error('no net'); } });
-  run(c, 'providers.js');
+  run(c, 'ember_keyscan.js'); run(c, 'providers.js');
   const M1 = 'Mk3Jd9Qw2LmN8vB5cR7tY1uP4oZ6aS0e', M2 = 'Qa3Jd9Qw2LmN8vB5cR7tY1uP4oZ6aS9z', G = 'gsk_' + 'A'.repeat(30), AQ = 'AQ.' + 'b'.repeat(40);
   const script = '#!/bin/bash\nGROQ_API_KEY="' + G + '"\nexport MISTRAL_KEYS=("' + M1 + '" "' + M2 + '")\nGEMINI_KEY=' + AQ + '\nFIRECRAWL_API_KEY="fc-0123456789abcdef0123456789abcdef"\n';
   const ex = win.Prov.extract(script);
@@ -26,7 +26,7 @@ const run = (c, f) => vm.runInContext(W(f), c);
 
   // 2. scraper ingest from the same script
   ({ c, win } = ctxWith({ fetch: async () => { throw new Error('no net'); }, AbortController }));
-  run(c, 'ai_scraper.js');
+  run(c, 'ember_keyscan.js'); run(c, 'ai_scraper.js');
   const bl = 'a1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6';
   const r = win.EmberScraper.ingestKeys(script + 'BROWSERLESS_TOKEN="' + bl + '"\nZENROWS_API_KEY=zr0123456789abcdef0123456789abcdef0123\n');
   const s = win.EmberScraper.get();

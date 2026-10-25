@@ -107,6 +107,12 @@ if ($('pAdd')) {
 const SC = window.EmberScraper, ST = window.EmberSites;
 if (!SC || !ST || !$('swScrape')) return;
 
+// V1.9.14: extra keys per provider (found by Extract, or the first key kept when a second one is pasted). Masked, each with a remove button.
+function renderExtras(s) {
+  const box = $('wkExtras'); if (!box) return; s = s || SC.get();
+  const rows = []; SC.KEY_IDS.forEach(id => SC.keysOf(id).slice(1).forEach((k, i) => rows.push('<div class="cr"><span>' + esc(SC.LABEL[id]) + ' extra key ' + esc(SC.mask(k)) + '</span><button class="hb wkDrop" data-id="' + id + '" data-i="' + (i + 1) + '" aria-label="Remove this extra key">✕</button></div>')));
+  box.innerHTML = rows.length ? '<div class="ct">Extra keys (they take turns with the first and cover for it when it runs out)</div>' + rows.join('') : '';
+}
 function renderKeys() {
   const s = SC.get();
   $('swScrape').classList.toggle('on', !!s.on);
@@ -114,6 +120,9 @@ function renderKeys() {
   SC.KEY_IDS.forEach(id => { const el = $('wk_' + id); if (el && document.activeElement !== el) el.value = (s.keys || {})[id] || ''; });
   if ($('wk_stingEp') && document.activeElement !== $('wk_stingEp')) $('wk_stingEp').value = s.stingEndpoint || '';
   if ($('wk_octoTask') && document.activeElement !== $('wk_octoTask')) $('wk_octoTask').value = s.octoTask || '';
+  if ($('wk_brightZone') && document.activeElement !== $('wk_brightZone')) $('wk_brightZone').value = s.brightZone || '';
+  if ($('wk_brightUnlock') && document.activeElement !== $('wk_brightUnlock')) $('wk_brightUnlock').value = s.brightUnlock || '';
+  renderExtras(s);
   $('wkStatus').textContent = SC.available().length ? 'Keys take turns, then the free reader: ' + SC.plan(true).map(id => SC.LABEL[id]).join(' → ') : 'Free reader is off and no scraping key is set yet.';
 }
 function renderSites() {
@@ -165,6 +174,9 @@ $('tSelf').onclick = () => {
 };
 
 
+if ($('wkExtras')) $('wkExtras').addEventListener('click', e => { const b = e.target.closest('.wkDrop'); if (!b) return; const k = SC.keysOf(b.dataset.id)[+b.dataset.i]; if (k && SC.dropKey(b.dataset.id, k)) { renderAll(); toast('Extra key removed'); } });
+if ($('wk_brightZone')) $('wk_brightZone').addEventListener('input', () => SC.setBrightZone($('wk_brightZone').value));
+if ($('wk_brightUnlock')) $('wk_brightUnlock').addEventListener('input', () => { SC.setBrightUnlock($('wk_brightUnlock').value); $('wkStatus').textContent = SC.available().length ? 'Keys take turns, then the free reader: ' + SC.plan(true).map(k => SC.LABEL[k]).join(' → ') : 'Free reader is off and no scraping key is set yet.'; });
 $('swScrape').onclick = () => { SC.setOn(!SC.enabled()); renderAll(); toast(SC.enabled() ? 'Web Scraping on' : 'Web Scraping off'); };
 if ($('swReader')) $('swReader').onclick = () => { SC.setReader(!SC.readerOn()); renderAll(); toast(SC.readerOn() ? 'Free reader on (no key needed)' : 'Free reader off'); };
 SC.KEY_IDS.forEach(id => { const el = $('wk_' + id); if (el) el.addEventListener('input', () => { SC.setKey(id, el.value); $('wkStatus').textContent = SC.available().length ? 'Keys take turns, then the free reader: ' + SC.plan(true).map(k => SC.LABEL[k]).join(' → ') : 'Free reader is off and no scraping key is set yet.'; }); });

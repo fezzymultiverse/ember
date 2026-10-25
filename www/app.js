@@ -579,7 +579,7 @@ $('kList').addEventListener('click', e => { const b = e.target.closest('[data-fo
 
 // ---------- V1.6.1: Get Key buttons ----------
 const KEY_LINKS = { groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', openrouter: 'https://openrouter.ai/settings/keys', cohere: 'https://dashboard.cohere.com/api-keys', huggingface: 'https://huggingface.co/settings/tokens' };
-const SCRAPE_LINKS = { firecrawl: 'https://www.firecrawl.dev/app/api-keys', browserless: 'https://www.browserless.io/', scraperapi: 'https://www.scraperapi.com/', scraperbee: 'https://app.scrapingbee.com/account/manage', zenrows: 'https://app.zenrows.com/builder', tavily: 'https://app.tavily.com/home', serpapi: 'https://serpapi.com/manage-api-key', sting: '', octoparse: 'https://www.octoparse.com/' };
+const SCRAPE_LINKS = { firecrawl: 'https://www.firecrawl.dev/app/api-keys', browserless: 'https://www.browserless.io/', scraperapi: 'https://www.scraperapi.com/', scraperbee: 'https://app.scrapingbee.com/account/manage', zenrows: 'https://app.zenrows.com/builder', tavily: 'https://app.tavily.com/home', serpapi: 'https://serpapi.com/manage-api-key', brightdata: 'https://brightdata.com/cp', sting: '', octoparse: 'https://www.octoparse.com/' };
 function paintGetKeyRow(el, links) { if (!el) return; el.innerHTML = Object.keys(links).filter(k => links[k]).map(k => '<button class="btn g" data-link="' + esc(links[k]) + '" style="width:auto;padding:7px 12px;font-size:12px">' + (Prov.CFG[k] ? Prov.CFG[k].name : (window.EmberScraper && window.EmberScraper.LABEL[k]) || k) + ' ↗</button>').join(''); }
 document.addEventListener('click', e => { const b = e.target.closest('[data-link]'); if (b) window.open(b.dataset.link, '_blank', 'noopener'); });
 
@@ -619,19 +619,31 @@ $('bModels') && $('bModels').addEventListener('click', async () => {
   b.disabled = false; b.textContent = 'Load models from my key';
 });
 
+// ---------- V1.9.14: one key finder for every paste box (EmberKeyScan) ----------
+// Renders the report lines the finder returns (plain text, escaped here; key values only ever appear masked)
+function keyRepHtml(rep) {
+  return ((rep && rep.lines) || []).map(l => l.t == 'ok' ? '<b>✓</b> ' + esc(l.text) : l.t == 'warn' ? '<span class="w">' + esc(l.text) + '</span>' : esc(l.text)).join('<br>');
+}
+async function runIngestAll(t) {
+  if (!window.EmberKeyScan) throw new Error('Key finder not loaded');
+  return window.EmberKeyScan.ingestAll(t);
+}
+
 // ---------- V1.9.11: Web Scraping tab has its own paste + extract ----------
 $('swPaste') && ($('swPaste').onclick = async () => {
   try { const t = await navigator.clipboard.readText(); if (!t) { toast('Clipboard is empty'); return; } $('swPad').value = ($('swPad').value ? $('swPad').value + '\n' : '') + t; toast('Pasted'); }
   catch (e) { $('swPad').focus(); toast('The phone blocked auto-paste. Long-press the box and tap Paste'); }
 });
 $('swPadClear') && ($('swPadClear').onclick = () => { $('swPad').value = ''; $('swPadStatus').textContent = ''; });
-$('swExtract') && ($('swExtract').onclick = () => {
+$('swExtract') && ($('swExtract').onclick = async () => {
   const t = $('swPad').value; if (!t.trim()) { toast('Nothing to extract from'); return; }
-  const E = window.EmberScraper; if (!E || !E.ingestKeys) { $('swPadStatus').textContent = 'Scraper not loaded.'; return; }
-  let r; try { r = E.ingestKeys(t); } catch (e) { $('swPadStatus').textContent = 'Failed: ' + e.message; return; }
-  const a = (r && r.added) || [];
-  $('swPadStatus').textContent = a.length ? ('Added: ' + a.map(id => E.LABEL[id] || id).join(', ') + '.') : 'No scraping keys found in that text.';
-  if (a.length) { $('swPad').value = ''; if (window.EmberScrapeUI) window.EmberScrapeUI.repaint(); }
+  const b = $('swExtract'), lbl = b.textContent; b.disabled = true; b.textContent = 'Extracting…';
+  try {
+    const r = await runIngestAll(t);
+    $('swPadStatus').innerHTML = keyRepHtml(r);
+    if (r.total) $('swPad').value = '';
+  } catch (e) { $('swPadStatus').textContent = 'Failed: ' + e.message; }
+  b.disabled = false; b.textContent = lbl; renderKeys(); renderTop(); if (window.EmberScrapeUI) window.EmberScrapeUI.repaint();
 });
 
 // ---------- V1.6.1: notepad (Keys tab) — save, and Extract pulls keys out the same way the notes box above does ----------
@@ -643,13 +655,8 @@ $('padExtract') && ($('padExtract').onclick = async () => {
   const t = $('padText').value; if (!t.trim()) { toast('Nothing to extract from'); return; }
   const b = $('padExtract'); b.disabled = true; b.textContent = 'Extracting…';
   try {
-    const r = await Prov.ingest(t);
-    const sc = window.EmberScraper ? window.EmberScraper.ingestKeys(t) : { added: [] };
-    const tv = window.EmberAgentAddon && window.EmberAgentAddon.ingestTavily ? window.EmberAgentAddon.ingestTavily(t) : false;
-    const scIds = sc.added.filter(id => id != 'tavily'), tav = tv || sc.added.includes('tavily');
-    const n = r.added.length + scIds.length + (tav ? 1 : 0);
-    const bits = []; if (r.added.length) bits.push(r.added.length + ' chat engine key(s)'); if (scIds.length) bits.push(scIds.map(id => window.EmberScraper.LABEL[id]).join(', ') + ' (scraping)'); if (tav) bits.push('Tavily (web search and page reading)'); if ((sc.endpointAdded || []).length) bits.push('Sting endpoint');
-    $('padStatus').textContent = n ? ('Added: ' + bits.join(' · ') + '.') : 'No keys found in that text.';
+    const r = await runIngestAll(t);
+    $('padStatus').innerHTML = keyRepHtml(r);
   } catch (e) { $('padStatus').textContent = 'Failed: ' + e.message; }
   b.disabled = false; b.textContent = 'Extract keys'; renderKeys(); renderTop(); if (window.EmberScrapeUI) window.EmberScrapeUI.repaint();
 });
@@ -929,21 +936,9 @@ $('bIngest').onclick = async () => {
   const t = $('notes').value; if (!t.trim()) { toast('Paste your notes first'); return; }
   const b = $('bIngest'); b.disabled = true; b.textContent = 'Checking keys…'; $('kRep').innerHTML = '';
   try {
-    const r = await Prov.ingest(t);
-    const sc = window.EmberScraper ? window.EmberScraper.ingestKeys(t) : { added: [] };
-    const tv = window.EmberAgentAddon && window.EmberAgentAddon.ingestTavily ? window.EmberAgentAddon.ingestTavily(t) : false;
+    const r = await runIngestAll(t);
     $('notes').value = '';
-    const f = r.found, nm = Prov.CFG;
-    let h = 'Found <b>' + (f.groq + f.gemini + f.mistral + f.openrouter + f.huggingface + f.cohere + f.unknown) + '</b> possible key(s) in your notes.<br>';
-    r.added.forEach(a => { h += (a.ok ? '<b>✓</b> ' : '<span class="w">✗</span> ') + nm[a.id].name + ' ' + esc(Prov.mask(a.key)) + (a.guess ? ' (no label, identified by testing it on Mistral)' : '') + '<br>'; });
-    const scIds = sc.added.filter(id => id != 'tavily'), tav = tv || sc.added.includes('tavily');
-    if (scIds.length) h += '<b>✓</b> Scraping keys saved: ' + scIds.map(id => window.EmberScraper.LABEL[id]).join(', ') + ' (Settings > Scraping shows them; turn Web Scraping on to use them)<br>';
-    if ((sc.endpointAdded || []).length) h += '<b>✓</b> Sting endpoint saved (https, with {key} and {url})<br>';
-    if (tav) h += '<b>✓</b> Tavily key saved (web search and page reading)<br>';
-    if (r.dupes) h += r.dupes + ' already added.<br>';
-    if (r.rejected) h += '<span class="w">' + r.rejected + ' unlabeled 32-character string(s) were not a valid Mistral key and were ignored.</span><br>';
-    if (!r.added.length && !r.dupes && !r.rejected && !sc.added.length && !tv && !(sc.endpointAdded || []).length) h = '<span class="w">No keys found. Groq keys start with gsk_, Gemini keys with AQ. (new) or AIza, OpenRouter with sk-or-v1-, HuggingFace with hf_. Mistral and Cohere keys have no prefix, so put the word Mistral or Cohere on the line above or beside them.</span>';
-    $('kRep').innerHTML = h;
+    $('kRep').innerHTML = (r.foundCount ? 'Found <b>' + r.foundCount + '</b> possible key(s) in your notes.<br>' : '') + keyRepHtml(r);
   } catch (e) { $('kRep').innerHTML = '<span class="w">Failed: ' + esc(e.message) + '</span>'; }
   b.disabled = false; b.textContent = 'Extract + check keys'; renderKeys(); renderTop();
 };

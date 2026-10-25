@@ -235,53 +235,31 @@ async function addKey(id, key) {
 function removeKey(id, key) { keys[id] = keys[id].filter(e => e.key !== key); cool.delete(key); save(); }
 
 // ---------- pull keys out of messy notes ----------
-function extract(text) {
-  const out = { groq: [], gemini: [], mistral: [], openrouter: [], huggingface: [], cohere: [], unknown: [] };
-  const put = (k, v) => { if (!out[k].includes(v)) out[k].push(v); };
-  let t = String(text || '');
-  // V1.6.8: shell/env style lines (GROQ_API_KEY="...", export MISTRAL_KEYS=("a" "b")): the variable name says whose key it is.
-  const NAMED = [['groq', /groq/i], ['mistral', /mistral/i], ['gemini', /gemini|google|genai/i], ['openrouter', /openrouter/i], ['huggingface', /hugging|(^|_)hf(_|$)/i], ['cohere', /cohere/i]];
-  t = t.split(/\r?\n/).map(line => {
-    const m = /^\s*(?:export\s+|set\s+|\$env:)?([A-Za-z_][A-Za-z0-9_]*)\s*[=:]\s*(.*)$/.exec(line);
-    if (!m) return line;
-    const hit = NAMED.find(n => n[1].test(m[1])); if (!hit) return line;
-    m[2].split(/[\s,"'()\[\];]+/).filter(v => v.length >= 20 && !/:\/\//.test(v) && !/^[A-Z][A-Z0-9]*_[A-Z0-9_]+$/.test(v)).forEach(v => put(hit[0], v.replace(/[.]+$/, '')));
-    return ' ';
-  }).join('\n');
-  t = t.replace(/gsk_[A-Za-z0-9]{20,}/g, m => { put('groq', m); return ' '; });
-  t = t.replace(/sk-or-v1-[A-Za-z0-9]{20,}/g, m => { put('openrouter', m); return ' '; });
-  t = t.replace(/hf_[A-Za-z0-9]{20,}/g, m => { put('huggingface', m); return ' '; });
-  t = t.replace(/AQ\.[0-9A-Za-z_\-.]{20,}/g, m => { put('gemini', m.replace(/[.]+$/, '')); return ' '; }); // new Gemini key format (AQ.Ab8…, any AQ. key)
-  t = t.replace(/AIza[0-9A-Za-z_\-]{30,}/g, m => { put('gemini', m); return ' '; });
-  // Cohere keys have no prefix: a 40-character token on a line that says "cohere"
-  t = t.split(/\r?\n/).map(line => /cohere/i.test(line) ? line.replace(/(?<![A-Za-z0-9_\-])[A-Za-z0-9]{40}(?![A-Za-z0-9_\-])/g, m => { put('cohere', m); return ' '; }) : line).join('\n');
-  // Mistral keys have no prefix: take 32-char tokens near the word "mistral"; other 32-char tokens are tested against Mistral later
-  let cur = '', ttl = 0;
-  for (const line of t.split(/\r?\n/)) {
-    const ms = /mistral/i.test(line), ot = /groq|gemini|google|openrouter|openai|deepseek|anthropic|claude|cohere|huggingface/i.test(line);
-    if (ms) { cur = 'mistral'; ttl = 2; } else if (ot) { cur = 'other'; ttl = 2; }
-    for (const m of line.matchAll(/(?<![A-Za-z0-9_\-])[A-Za-z0-9]{32}(?![A-Za-z0-9_\-])/g)) {
-      const v = m[0];
-      if (!/[A-Za-z]/.test(v) || !/\d/.test(v) || /^[0-9a-f]{32}$/i.test(v)) continue;
-      if (cur == 'mistral' && ttl > 0) put('mistral', v); else if (cur == 'other' && ttl > 0) continue; else put('unknown', v);
-    }
-    if (!ms && !ot && ttl > 0) ttl--;
-  }
+// V1.9.14: the finder lives in ember_keyscan.js (one for every paste box). extract() keeps its old shape so callers and tests keep working.
+const KS = () => window.EmberKeyScan;
+function extract(text, pre) {
+  const out = { groq: [], gemini: [], mistral: [], openrouter: [], huggingface: [], cohere: [], unknown: [], unknownCohere: [] };
+  const ks = KS(); if (!ks) return out;
+  const sc = pre || ks.scan(text);
+  for (const id of ['groq', 'gemini', 'mistral', 'openrouter', 'huggingface', 'cohere']) out[id] = (sc.keys[id] || []).slice();
+  out.unknown = (sc.probes && sc.probes.mistral || []).slice();
+  out.unknownCohere = (sc.probes && sc.probes.cohere || []).slice();
   return out;
 }
-async function ingest(text) {
-  const f = extract(text);
-  const rep = { found: { groq: f.groq.length, gemini: f.gemini.length, mistral: f.mistral.length, openrouter: f.openrouter.length, huggingface: f.huggingface.length, cohere: f.cohere.length, unknown: f.unknown.length }, added: [], dupes: 0, rejected: 0 };
+async function ingest(text, pre) {
+  const f = extract(text, pre);
+  const rep = { found: { groq: f.groq.length, gemini: f.gemini.length, mistral: f.mistral.length, openrouter: f.openrouter.length, huggingface: f.huggingface.length, cohere: f.cohere.length, unknown: f.unknown.length + f.unknownCohere.length }, added: [], dupes: 0, rejected: 0, rejectedBy: { mistral: 0, cohere: 0 } };
   for (const id of ['groq', 'gemini', 'mistral', 'openrouter', 'huggingface', 'cohere']) for (const k of f[id]) {
     const r = await addKey(id, k);
     if (!r.ok) { rep.dupes++; continue; }
     rep.added.push({ id, key: k, ok: !!(r.e.st && r.e.st.ok), guess: false });
   }
-  for (const k of f.unknown) {
+  // unlabelled 32 / 40 character strings: only a live test can say whose they are (a rejected one is never saved)
+  for (const [list, id] of [[f.unknown, 'mistral'], [f.unknownCohere, 'cohere']]) for (const k of list) {
     if (has(k)) { rep.dupes++; continue; }
-    try { await listModels('mistral', k); } catch (er) { rep.rejected++; continue; }
-    const r = await addKey('mistral', k);
-    if (r.ok) rep.added.push({ id: 'mistral', key: k, ok: !!(r.e.st && r.e.st.ok), guess: true });
+    try { await listModels(id, k); } catch (er) { rep.rejected++; rep.rejectedBy[id]++; continue; }
+    const r = await addKey(id, k);
+    if (r.ok) rep.added.push({ id, key: k, ok: !!(r.e.st && r.e.st.ok), guess: id });
   }
   return rep;
 }

@@ -17,7 +17,14 @@ function cleanKey(v) {
   return t.replace(/\s+/g, '');
 }
 // V1.6.8: pull a Tavily key (tvly-...) out of pasted notes or a script.
-function ingestTavily(text) { const m = /tvly-[A-Za-z0-9_-]{16,}/.exec(String(text || '')); if (!m) return false; setTavilyKey(m[0]); return true; }
+// V1.9.14: takes EVERY tvly- key in the text. The first becomes the key when none is saved, the rest are saved as extras (web search and page reading
+// switch to them when the first is rejected or out of credits). A saved key is never replaced.
+function ingestTavily(text) {
+  const all = Array.from(new Set(String(text || '').match(/(?<![A-Za-z0-9_-])tvly-[A-Za-z0-9_-]{16,}/g) || [])); if (!all.length) return false;
+  const S = window.EmberScraper;
+  if (S && S.addKey) { all.forEach(k => S.addKey('tavily', k)); return true; }
+  setTavilyKey(all[0]); return true;
+}
 const tavilyKey = () => cleanKey(load().tavily || '');
 const setTavilyKey = v => { const o = load(); v = cleanKey(v); if (v) o.tavily = v; else delete o.tavily; save(o); };
 
@@ -78,9 +85,16 @@ async function web_search_tavily(a) {
   const q = str(a.query, 300); if (!q) return { error: 'query is empty.' };
   const key = tavilyKey(); if (!key) return { error: 'No Tavily key. He adds one in Settings > Music > Agent & API Tools (free keys at tavily.com).' };
   const n = clamp(a.max_results, 1, 6, 4);
-  const r = await net('https://api.tavily.com/search', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, body: JSON.stringify({ query: q, search_depth: 'basic', include_answer: true, max_results: n }) }, 15000);
-  if (r.status == 401 || r.status == 403) return { error: 'Tavily rejected the key (HTTP ' + r.status + '). He should check it in Settings.' };
-  if (r.status == 429 || r.status == 432 || r.status == 433) return { error: 'Tavily says the plan or rate limit is used up (HTTP ' + r.status + ').' };
+  // V1.9.14: extra Tavily keys cover for the first one when it is rejected (401/403) or out of credits / rate limited (429/432/433)
+  let keys = [key]; try { if (SCR() && SCR().keysOf) keys = Array.from(new Set([key].concat(SCR().keysOf('tavily')))); } catch (e) { keys = [key]; }
+  let r = null, lastErr = '';
+  for (let i = 0; i < keys.length; i++) {
+    r = await net('https://api.tavily.com/search', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keys[i] }, body: JSON.stringify({ query: q, search_depth: 'basic', include_answer: true, max_results: n }) }, 15000);
+    if (r.status == 401 || r.status == 403) { lastErr = 'Tavily rejected the key (HTTP ' + r.status + '). He should check it in Settings.'; continue; }
+    if (r.status == 429 || r.status == 432 || r.status == 433) { lastErr = 'Tavily says the plan or rate limit is used up (HTTP ' + r.status + ').'; continue; }
+    lastErr = ''; break;
+  }
+  if (lastErr) return { error: lastErr + (keys.length > 1 ? ' All ' + keys.length + ' saved Tavily keys were tried.' : '') };
   if (!r.ok) return { error: 'Tavily answered HTTP ' + r.status + '.' };
   let j; try { j = await r.json(); } catch (e) { return { error: 'Tavily sent something that is not JSON.' }; }
   const results = (Array.isArray(j.results) ? j.results : []).slice(0, n).map(x => ({ title: str(x.title, 140), url: str(x.url, 300), snippet: str(x.content, 420) }));

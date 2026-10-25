@@ -4,13 +4,14 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 let pass = 0, fail = 0;
 const ok = (n, c, x) => { c ? pass++ : fail++; console.log(c ? 'PASS' : 'FAIL', n, c ? '' : (x || '')); };
 const src = fs.readFileSync(path.join(__dirname, '..', 'www', 'ai_scraper.js'), 'utf8');
+const ksrc = fs.readFileSync(path.join(__dirname, '..', 'www', 'ember_keyscan.js'), 'utf8'); // V1.9.14: the one key finder loads first, as in index.html
 const BODY = '# Page\n\n' + 'Real page text that is long enough to count as a page. '.repeat(20);
 function boot(keys, handler, reader, extra, cfg) {
   const mem = Object.assign({ ember_scrape: JSON.stringify(Object.assign({ on: true, reader: reader !== false, keys }, cfg || {})) }, extra || {}), sent = [], opts = [];
   const localStorage = { getItem: k => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = String(v); }, removeItem: k => { delete mem[k]; } };
   const ctx = { localStorage, window: {}, console, setTimeout, clearTimeout, AbortController, URL, encodeURIComponent,
     fetch: async (url, opt) => { sent.push(url); opts.push(opt || {}); return handler(url, opt); } };
-  vm.createContext(ctx); vm.runInContext(src, ctx);
+  vm.createContext(ctx); vm.runInContext(ksrc, ctx); vm.runInContext(src, ctx);
   return { S: ctx.window.EmberScraper, sent, opts, mem };
 }
 const res = (status, text) => ({ ok: status < 300, status, headers: { get: () => 'text/html' }, json: async () => JSON.parse(text), text: async () => text });
@@ -64,7 +65,7 @@ const okHandler = (url, opt) => /firecrawl/.test(url) ? res(200, JSON.stringify(
 
   // nine providers take a key; seven of them fetch urls and all seven take turns
   t = boot({ firecrawl: 'k1111111', browserless: 'k2222222', scraperapi: 'k3333333', scraperbee: 'k4444444', sting: 'k5555555', zenrows: 'k6666666' }, okHandler, true, { ember_agent: JSON.stringify({ tavily: TV }) }, { stingEndpoint: 'https://sting.example/f?k={key}&u={url}' });
-  ok('nine providers take a key', t.S.KEY_IDS.length == 9 && t.S.KEY_IDS.includes('tavily') && t.S.KEY_IDS.includes('octoparse'), t.S.KEY_IDS.join(','));
+  ok('ten providers take a key', t.S.KEY_IDS.length == 10 && t.S.KEY_IDS.includes('tavily') && t.S.KEY_IDS.includes('octoparse'), t.S.KEY_IDS.join(','));
   ok('plan: Tavily joins the fetchers, Octoparse is never in the url rotation', JSON.stringify(t.S.plan(true)) == '["firecrawl","browserless","scraperapi","scraperbee","sting","zenrows","tavily","reader"]', JSON.stringify(t.S.plan(true)));
   const tvOk = (url, opt) => /api\.tavily\.com\/extract/.test(url) ? res(200, JSON.stringify({ results: [{ url: 'https://example.com/', raw_content: BODY }], failed_results: [] })) : okHandler(url, opt);
   t = boot({}, tvOk, false, { ember_agent: JSON.stringify({ tavily: TV }) });
@@ -160,7 +161,7 @@ const okHandler = (url, opt) => /firecrawl/.test(url) ? res(200, JSON.stringify(
   ok('a page that echoes the key back is scrubbed before the AI sees it', !/FIRESECRET-0123456789abcdef/.test(r.markdown || '') && /key hidden/.test(r.markdown), (r.markdown || '').slice(-120));
 
   // the key extractor: every awkward way people paste keys
-  const ex = txt => { const o = boot({}, okHandler).S.extractKeys(txt), g = {}; Object.keys(o).forEach(k => { if (k != '_endpoints' && o[k].length) g[k] = o[k].slice().sort(); }); return JSON.stringify(Object.keys(g).sort().map(k => [k, g[k]])); };
+  const ex = txt => { const o = boot({}, okHandler).S.extractKeys(txt), g = {}; Object.keys(o).forEach(k => { if (k[0] != '_' && o[k].length) g[k] = o[k].slice().sort(); }); return JSON.stringify(Object.keys(g).sort().map(k => [k, g[k]])); };
   const want = o => JSON.stringify(Object.keys(o).sort().map(k => [k, o[k].slice().sort()]));
   ok('extractor: JSON dump, nested key', ex(JSON.stringify({ firecrawl: FC, zenrows_api_key: ZR, tavily: { key: TV } })) == want({ firecrawl: [FC], zenrows: [ZR], tavily: [TV] }), ex(JSON.stringify({ firecrawl: FC, zenrows_api_key: ZR, tavily: { key: TV } })));
   ok('extractor: a JSON string that is itself escaped inside JSON', ex(JSON.stringify(JSON.stringify({ firecrawl_key: FC, scraperapi: SA }))) == want({ firecrawl: [FC], scraperapi: [SA] }));
@@ -186,11 +187,13 @@ const okHandler = (url, opt) => /firecrawl/.test(url) ? res(200, JSON.stringify(
   const ing = t.S.ingestKeys('Sting\nkey: ' + SA + '\nhttps://api.sting.example/v1/get?token=' + SA + '&url=https%3A%2F%2Fexample.com\nTavily: ' + TV + '\nOctoparse ' + OP);
   ok('ingest: saves each key once, the Sting endpoint, and Tavily in its shared home', ing.added.sort().join() == 'octoparse,sting,tavily' && ing.endpointAdded[0] == 'sting' && t.S.get().stingEndpoint == 'https://api.sting.example/v1/get?token={key}&url={url}' && JSON.parse(t.mem.ember_agent).tavily == TV && !/tvly/.test(t.mem.ember_scrape), JSON.stringify({ ing, mem: t.mem }));
   const again2 = t.S.ingestKeys('ZenRows ' + ZR + '\nTavily ' + TV.replace('Ab', 'Zz') + '\nOctoparse ' + OP.replace('9f8e', '1a2b'));
-  ok('ingest never overwrites a key that is already saved', again2.added.join() == 'zenrows' && t.S.get().keys.octoparse == OP && JSON.parse(t.mem.ember_agent).tavily == TV, JSON.stringify(again2));
+  ok('ingest never overwrites a saved key: a different key becomes an extra, the first stays primary', again2.added.sort().join() == 'octoparse,tavily,zenrows' && t.S.get().keys.octoparse == OP && JSON.parse(t.mem.ember_agent).tavily == TV && t.S.keysOf('octoparse').length == 2 && t.S.keysOf('tavily').length == 2 && t.S.keysOf('zenrows').length == 1, JSON.stringify(again2));
+  const again3 = t.S.ingestKeys('ZenRows ' + ZR + '\nOctoparse ' + OP.replace('9f8e', '1a2b'));
+  ok('the same keys pasted again are counted as already saved, nothing is added', again3.added.length == 0 && again3.dupes == 2 && t.S.keysOf('octoparse').length == 2, JSON.stringify(again3));
 
   // built-in self test passes completely except the two checks that need a browser DOM
   const st2 = boot({ firecrawl: 'k1' }, okHandler).S.selfTest();
-  ok('self test: order, nine providers, mask, scrub and extractor checks pass', st2.filter(x => /^(provider order|nine providers|mask|scrub|extractor|focus: honours)/.test(x.name)).every(x => x.ok) && st2.filter(x => /^(provider order|nine providers|mask|scrub|extractor|focus: honours)/.test(x.name)).length >= 6, JSON.stringify(st2.filter(x => !x.ok)));
+  ok('self test: order, ten providers, mask, scrub and extractor checks pass', st2.filter(x => /^(provider order|ten providers|mask|scrub|extractor|focus: honours)/.test(x.name)).every(x => x.ok) && st2.filter(x => /^(provider order|ten providers|mask|scrub|extractor|focus: honours)/.test(x.name)).length >= 6, JSON.stringify(st2.filter(x => !x.ok)));
 
   const st = boot({ firecrawl: 'k1' }, okHandler).S.selfTest();
   // the html and key-cleaner checks need a browser DOM (DOMParser) and already fail in plain Node before V1.8.2; they run in app-test (Chromium)
