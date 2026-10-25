@@ -10,11 +10,12 @@
 </head><body>
 <div id="app">
 <header>
-<button class="hb" id="bHist" aria-label="Chat history">☰</button>
+<div class="hl"><button class="hb" id="bHist" aria-label="Chat history">☰</button><button class="hb" id="bProv" aria-label="Providers" aria-expanded="false" title="Providers: live engine status"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 2.5v3M12 2.5v3M15 2.5v3M9 18.5v3M12 18.5v3M15 18.5v3M2.5 9h3M2.5 12h3M2.5 15h3M18.5 9h3M18.5 12h3M18.5 15h3"/></svg></button></div>
 <div class="who"><b id="pName">Ember</b><button id="engs" class="engpill" aria-label="Engine status. Tap to open the Keys tab"></button></div>
-<button id="bGlobe" class="hb" aria-label="Browser" title="Browser: read or open a web page">🌐</button>
+<div class="hr"><button id="bGlobe" class="hb" aria-label="Browser" title="Browser: read or open a web page">🌐</button>
 <button id="bTermux" title="Termux Mode" aria-label="Open the Termux tab" class="hb">💻</button>
-<button class="hb" id="bSet" aria-label="Settings">⚙</button>
+<button class="hb" id="bSet" aria-label="Settings">⚙</button></div>
+<div id="provDrop" class="provdrop hidden" role="menu" aria-label="Providers"></div>
 </header>
 <div id="fBadge" class="fbadge hidden">Free Mode: no key needed. Replies can be slower.</div>
 <main id="log"></main>
@@ -27,9 +28,9 @@
 </div>
 <div id="mw" class="mw hidden"><img id="mwArt" class="mwart hidden" alt=""><button id="mwOpen" class="mwt" aria-label="Open the music panel"><b id="mwTitle">—</b><small id="mwSub"></small></button><button id="mwPlay" aria-label="Play or pause">▶</button><button id="mwNext" aria-label="Next">⏭</button></div>
 <footer class="comp">
-<div class="mrow"><div class="modes" id="modes"><button data-m="chill">Chill</button><button data-m="sharp">Sharp</button><button data-m="deep">Deep</button></div><button id="bMic" aria-label="Dictate: talk and your words are typed here" aria-pressed="false" title="Dictate: tap, talk, and your words are typed here. Tap again to stop.">🎤 <span>Dictate</span></button></div>
+<div class="mrow"><div class="modes" id="modes"><button data-m="chill">Chill</button><button data-m="sharp">Sharp</button><button data-m="deep">Deep</button></div><button id="bDocsQuick" aria-label="Open Documents: attach a file or note" title="Documents: attach a file or note">📎 <span>Docs</span></button></div>
 <div class="tools"><button id="bDevice">📟 Device</button><button id="bReact">🧠 Reasoning</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
-<div class="row"><textarea id="inp" rows="1" placeholder="Say anything…" enterkeyhint="send"></textarea><div class="side"><button id="bSend" aria-label="Send">➤</button></div></div>
+<div class="row"><textarea id="inp" rows="1" spellcheck="false" autocorrect="off" placeholder="Say anything…" enterkeyhint="send"></textarea><div class="side"><button id="bSend" aria-label="Send">➤</button></div></div>
 </footer>
 </div>
 
@@ -107,7 +108,7 @@
 <div class="bract"><input type="text" id="brAsk" placeholder="Ask Ember about this page (optional)" autocomplete="off"><div class="brbtns"><button class="btn" id="brReal" title="Real browser: a full browser (JavaScript, logins) that opens full screen. Reader view: clean text read through your scraping keys.">Real browser: on</button><button class="btn" id="brSend">Ask Ember</button><button class="btn g" id="brSave">Save to Documents</button><button class="btn g" id="brExt">Open externally</button></div></div>
 </div>
 <div class="brbody hidden" id="brDocs">
-<div id="dcList"><div class="brbar"><input type="text" id="dcQ" placeholder="Search documents…" autocomplete="off"><button class="hb" id="dcAdd">＋ Files</button><button class="hb" id="dcNew">＋ Note</button></div>
+<div id="dcList"><div class="brbar"><input type="text" id="dcQ" placeholder="Search documents…" autocomplete="off"><button class="hb" id="dcAttach" aria-label="Attach a file or a note" aria-expanded="false" title="Attach">📎</button><div id="dcMenu" class="dcmenu hidden"><button class="hb" id="dcAdd" aria-label="Attach files" title="Files">📄</button><button class="hb" id="dcNew" aria-label="New note" title="Note">📝</button></div></div>
 <input type="file" id="dcFile" class="hidden" multiple>
 <div id="dcItems"></div></div>
 <div id="dcView" class="hidden"><input type="text" id="dcName" maxlength="120" placeholder="Name"><textarea id="dcText" rows="14" placeholder="Document text"></textarea>
@@ -217,28 +218,26 @@
 <div class="btnrow" style="margin-top:6px"><button class="btn g" id="bPingNow">Send test ping</button></div>
 <div class="cr" style="margin-top:10px"><span>Keep replying in the background</span><div class="sw on" id="swBgReply"></div></div>
 <p class="hint">If you leave Ember while it is still writing a reply, the unfinished request is handed to a background task on the phone, which finishes it and sends a notification with a reply box. It uses the same engines and keys as the app and is cancelled if the app finishes first. The request (including your keys) sits in the app's private storage until it completes, then is deleted. Add-on tools (music, documents, web) do not run in the background.</p>
+<div class="cr" style="margin-top:10px"><span>Lyrics preview (3 lines, LRCLIB)</span><div class="sw on" id="swLyr"></div></div>
+<p class="hint">Under the now-playing card, the current line and the next two follow the song when timed lyrics exist; otherwise the opening lines show. The song title, artist, album and length are sent to lrclib.net to find them. Switch off to send nothing.</p>
 <div class="cr" style="margin-top:10px"><span>Native music widget</span><div class="sw on" id="swMusicWidget"></div></div>
 <p class="hint">Shows the track playing in Ember's own player in the Android notification shade and on the lock screen, with previous, play/pause and next. It follows Ember's player.</p></div>
 
 <div class="card" data-tab="permissions"><div class="ct">Voice</div>
 <div class="cr"><span>Read replies aloud automatically</span><div class="sw" id="swRead"></div></div>
-<p class="hint" id="ttsNote">Every reply also has a 🔊 button to read just that one. While it is reading, that button turns red and says Stop: tap it to stop, and it goes back to 🔊 when the voice is done. The 🎤 next to the message box is dictation, not a call: tap it, talk, and your words are typed into the message box; tap it again to stop. Dictation uses the phone's speech service (Google, on most Android phones), which can send the audio to Google. It needs microphone permission. In the installed app it uses the native Android recogniser and native text-to-speech; in a browser it uses the browser's own.</p>
-<label class="lb">Voice</label><select id="sVoice"><option value="">Default</option></select>
+<p class="hint" id="ttsNote">Every reply also has a 🔊 button to read just that one. While it is reading, that button turns red and says Stop: tap it to stop, and it goes back to 🔊 when the voice is done. The dictation button was removed in V1.9.8 (it did not work on this phone); the 📎 Docs button sits in its place. Replies are read with Ember Voice (below) when it is on, and with the native Android text-to-speech as the fallback.</p>
+<label class="lb">Ember Voice</label><select id="sEngine"><option value="gemini">Gemini voice (uses your Gemini key)</option><option value="eleven">ElevenLabs (your own key)</option><option value="device">Phone voice only</option></select>
+<div id="rowGem"><label class="lb">Gemini voice</label><select id="sGemV"></select></div>
+<div id="rowEl" style="display:none"><label class="lb">ElevenLabs key</label><input type="password" id="sElKey" placeholder="paste your ElevenLabs key" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%">
+<label class="lb">ElevenLabs voice</label><select id="sElVoice"></select><input type="text" id="sElCustom" placeholder="voice ID" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;display:none;margin-top:6px"></div>
+<p class="hint" id="voiceNote"></p>
+<label class="lb">Phone voice (fallback)</label><select id="sVoice"><option value="">Default</option></select>
 <label class="lb">Speed <span id="vRate" class="hint">1.00×</span></label><input type="range" id="sRate" min="0.6" max="1.6" step="0.05" value="1" style="width:100%">
 <label class="lb">Pitch <span id="vPitch" class="hint">1.00</span></label><input type="range" id="sPitch" min="0.6" max="1.6" step="0.05" value="1" style="width:100%">
 <div class="cr"><span>Lively delivery (questions lift, exclamations speed up)</span><div class="sw on" id="swLively"></div></div>
 <button class="btn g" id="bVoiceTest">▶ Test this voice</button>
 <p class="hint">The default Android voice is basic. For better ones, install voice data for your language in your phone's text-to-speech settings (Google Speech Services), then pick one here. Voices marked "online" need internet.</p>
 <p class="hint">First read-aloud of a session can take a few seconds while the engine spins up — it's warming in the background on app open now, so it should be instant after that.</p></div>
-
-<div class="card" data-tab="permissions"><div class="ct">ElevenLabs voice</div>
-<div class="cr"><span>Use ElevenLabs to read aloud (online, uses your ElevenLabs credits)</span><div class="sw on" id="swEleven"></div></div>
-<label class="lb">API key</label><input type="password" id="elKey" placeholder="Using the built-in default key" autocomplete="off" spellcheck="false">
-<label class="lb">Voice ID (optional)</label><input type="text" id="elVoice" placeholder="21m00Tcm4TlvDq8ikWAM" autocomplete="off" spellcheck="false">
-<label class="lb">Model (optional)</label><input type="text" id="elModel" placeholder="eleven_turbo_v2_5" autocomplete="off" spellcheck="false">
-<div class="btnrow"><button class="btn" id="elSave">Save</button><button class="btn g" id="elCheck">Test key</button><button class="btn g" id="elClear">Remove saved key</button></div>
-<p class="hint" id="elNote"></p>
-<p class="hint">When this is on and the key works, 🔊 and automatic read-aloud use ElevenLabs. If it fails (bad key, no credits, no internet) Ember tells you why and uses the phone voice instead. A failing key rests for 10 minutes so it is not retried on every tap; Test key or Save clears the rest. Speed from the Voice card applies; Pitch and Lively delivery do not.</p></div>
 
 <div class="card" data-tab="general"><div class="ct">Look</div>
 <div class="cr"><span>Show which engine answered</span><div class="sw" id="swEng"></div></div>
@@ -322,6 +321,7 @@
 <div class="npv"><span>🔈</span><input type="range" id="npVol" min="0" max="100" value="100" aria-label="Volume"></div>
 <div class="btnrow" style="margin-top:8px"><button class="btn g" id="npId">🎧 Identify this song</button></div><div class="hint" id="npIdRes"></div>
 <p class="hint" id="npErr"></p></div>
+<div class="card lyr hidden" id="npLyr"><div class="ct">Lyrics</div><div class="lbody" id="npLyrBody"></div><small class="asrc">Preview, 3 lines. Lyrics: LRCLIB</small></div>
 <div class="card about hidden" id="npAbout"><div class="ct">About</div><div class="abody" id="npAboutBody"></div></div>
 <div class="mtabs" role="tablist"><button class="mtab on" data-m="lib" role="tab">🎵 Library</button><button class="mtab" data-m="ai" role="tab">✨ Ember control</button></div>
 <div class="mpane" id="mp_lib">
@@ -449,9 +449,11 @@
 <div id="toast"></div>
 <script src="store.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js"></script><script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script><script src="ember_react_ui.js"></script><script src="ember_device.js"></script>
 <script src="ember_docs_lib.js"></script>
-<script src="ember_find.js"></script><script src="ember_tasks.js"></script><script src="ember_keys.js"></script><script src="ember_eleven_key.js"></script><script src="ember_eleven.js"></script>
+<script src="ember_find.js"></script><script src="ember_tasks.js"></script><script src="ember_keys.js"></script>
 <script src="ember_browser.js"></script>
 <script src="ember_term.js"></script>
+<script src="ember_voice.js"></script><script src="ember_lyrics.js"></script>
+<script src="ember_prov_ui.js"></script>
 <script src="ember_ui.js"></script>
 <script>
 // Apply termux-mode-on class to body when S is available, for CSS theming

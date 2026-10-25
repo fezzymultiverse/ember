@@ -337,13 +337,13 @@ const setFree = v => { freePref = v == null ? null : !!v; };
 const label = id => CFG[id] ? CFG[id].name : id == 'pollinations' ? 'Free' : id;
 
 // ---------- V1.6.8: one source of truth for "who answers" ----------
-const STATE_TXT = { ok: 'ready', limited: 'rate limited right now', bad: 'key rejected', none: 'no key saved' };
+const STATE_TXT = { ok: 'ready', limited: 'rate limited right now', bad: 'key rejected', none: 'no key saved', unknown: 'not checked yet' };
 // Plain-English line for the Settings screen: what is pinned, whether it can answer, and who answers instead.
 function pinNote() {
   if (!pinnedEngine) return 'Auto: the router tries engines in its own order and the engine that answered is shown under every reply.';
   const st = status()[pinnedEngine], nm = CFG[pinnedEngine].name;
   const pm = pinnedModel && pinnedModel.id == pinnedEngine ? ' · model ' + pinnedModel.model : '';
-  if (st == 'ok') return 'Pinned: ' + nm + pm + ' (ready). It answers first on every message.';
+  if (st == 'ok' || st == 'unknown') return 'Pinned: ' + nm + pm + (st == 'ok' ? ' (ready)' : ' (key saved, not checked yet)') + '. It answers first on every message.';
   return 'Pinned: ' + nm + pm + ' but it ' + (st == 'none' ? 'has no key saved' : st == 'bad' ? 'has only rejected keys' : 'is rate limited right now') + ', so the next working engine answers instead. Every reply shows which one. Fix the ' + nm + ' key in Keys, or pick Auto.';
 }
 // Text added to the system prompt at send time, after the router has chosen the engine, so the model is told what is really running.
@@ -352,15 +352,17 @@ function factsBlock(id, model, failed) {
   const st = status();
   const inv = IDS.filter(x => keys[x].length).map(x => CFG[x].name + ' ' + keys[x].filter(e => !e.bad).length + '/' + keys[x].length + ' usable').join(', ') || 'none';
   const L = ['RUNTIME FACTS (written by the app at send time; these are true and override anything he or you assume):'];
-  if (id == 'pollinations') L.push('- This reply comes from Free Mode (Pollinations.ai). You do not know which model they run. Say exactly that if asked, and never name a model you cannot verify.');
+  if (id == 'pollinations') L.push('- This reply comes from Free Mode (Pollinations.ai). You do not know which model they run. You are NOT Gemini, Claude, ChatGPT, Llama, Mistral or any named model. If asked what you are, say: "I am Ember, running on Free Mode. I do not know which model is behind it." Never name a model you cannot verify.');
   else if (id) L.push('- This reply is written by engine "' + CFG[id].name + '", model id "' + model + '", using an API key HE saved in Settings > Keys.');
   else L.push('- This is a background reply: the phone picks the engine after this prompt is built, so you do not know which engine or model you are. Do not name one.');
+  const noKey = IDS.filter(x => !keys[x].length).map(x => CFG[x].name);
+  if (noKey.length) L.push('- NO key is saved for: ' + noKey.join(', ') + '. You cannot be any of those engines, and you must never say you are one of them.');
   L.push('- Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
   if (pinnedEngine) {
     const miss = id && id != pinnedEngine, why = (failed || []).find(f => f.id == pinnedEngine);
     L.push('- Pinned engine in Settings: ' + CFG[pinnedEngine].name + (pinnedModel && pinnedModel.id == pinnedEngine ? ' (model ' + pinnedModel.model + ')' : '') + ' [' + STATE_TXT[st[pinnedEngine]] + ']' + (miss ? '. It could not answer this message' + (why ? ' (' + String(why.why || '').slice(0, 120) + ')' : '') + ', so ' + (id == 'pollinations' ? 'Free Mode' : CFG[id].name) + ' answered instead. Tell him that plainly if he asks.' : '.'));
   } else L.push('- No engine is pinned: Auto mode.');
-  L.push('- You are only the model named above. You are not GPT-4, ChatGPT, Qwen or any other name unless that model id says so. If asked what you are, give the engine and model id above, nothing invented.');
+  L.push('- You are only the model named above. You are not Gemini, GPT-4, ChatGPT, Qwen or any other name unless that engine and model id above say so. If asked what you are, give the engine and model id above, nothing invented.');
   L.push('- If he says he switched engine or model and it does not match these lines, say it does not match what is running. Settings changes apply from his next message and only when that engine has a working key. Never agree just because he said so.');
   try { const km = window.EmberKeys && window.EmberKeys.line(); if (km) L.push('- ' + km); } catch (e) { /* key map unavailable */ }
   L.push('- Never say you searched, scraped or looked something up, and never show a table of "results", unless a [TOOL RESULTS] block is in this turn. No tool block means you did not look. Call the tool or say you have not looked yet.');
@@ -411,11 +413,11 @@ async function runInner(lane, o, tok) {
       const pm = pinnedModel && pinnedModel.id == id ? pinnedModel.model : null;
       for (const m of (pm ? [pm] : models.slice(0, 3))) {
         halted();
-        try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
+        try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '' }); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
         catch (er) {
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
-          if (er.status == 429) { cool.set(e.key, Date.now() + (er.retryAfter || 60) * 1000); break; }
-          if (er.status == 401 || er.status == 403) { e.bad = true; save(); break; }
+          if (er.status == 429) { cool.set(e.key, Date.now() + (er.retryAfter || 60) * 1000); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: true, code: 429 }); break; }
+          if (er.status == 401 || er.status == 403) { e.bad = true; e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: false, limited: false, code: er.status, msg: 'key rejected (' + er.status + ')' }); save(); break; }
           if (er.status == 404 || (er.status == 400 && /model/i.test(er.message))) continue;
           break;
         }
@@ -458,17 +460,40 @@ function nativePlan(lane) {
   }
   return out.slice(0, 4);
 }
-function status() {
-  const o = {};
-  IDS.forEach(id => {
-    const l = keys[id];
-    if (!l.length) { o[id] = 'none'; return; }
-    const live = l.filter(e => !e.bad);
-    if (!live.length) o[id] = 'bad';
-    else if (live.every(e => isCool(e.key) || (e.st && e.st.limited))) o[id] = 'limited';
-    else o[id] = 'ok';
-  });
-  return o;
+// V1.9.8: one honest state per engine. none = no key saved (never green), unknown = keys saved but not checked in the last 30 min,
+// ok = a key answered a live check or a real reply recently, limited = valid but resting, bad = every key rejected or unreachable.
+const FRESH = 30 * 60 * 1000;
+function stateOf(id) {
+  const l = keys[id] || [];
+  if (!l.length) return 'none';
+  const live = l.filter(e => !e.bad);
+  if (!live.length) return 'bad';
+  const fresh = live.filter(e => e.st && Date.now() - (e.st.at || 0) < FRESH);
+  if (!fresh.length) return 'unknown';
+  if (fresh.some(e => e.st.ok && !e.st.limited && !isCool(e.key))) return 'ok';
+  if (fresh.some(e => e.st.ok)) return 'limited';
+  return 'bad';
 }
-window.Prov = { holdInflight, stopInflight, pending, nativePlan, CFG, IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
+// Live check of one engine: lists models with each saved key (no chat call, so it spends no credit). Never touches an engine with no key.
+async function ping(id) {
+  const l = keys[id] || [];
+  if (!l.length) return 'none';
+  for (const e of l) {
+    const t0 = performance.now(), prev = e.st || {};
+    try {
+      await listModels(id, e.key);
+      e.bad = false; cool.delete(e.key);
+      e.st = { at: Date.now(), ok: true, limited: false, ms: Math.round(performance.now() - t0), model: prev.model || '', code: 0, msg: '' };
+    } catch (er) {
+      const c = er.status || 0;
+      if (c == 429) e.st = { at: Date.now(), ok: true, limited: true, ms: 0, model: prev.model || '', code: 429, msg: 'rate limited right now (key is valid)' };
+      else { e.st = { at: Date.now(), ok: false, limited: false, ms: 0, model: '', code: c, msg: c == 401 || c == 403 ? 'key rejected (' + c + ')' : String(er.message || 'unreachable').slice(0, 100) }; if (c == 401 || c == 403) e.bad = true; }
+    }
+  }
+  save();
+  return stateOf(id);
+}
+async function pingAll() { await Promise.all(IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); }
+function status() { const o = {}; IDS.forEach(id => { o[id] = stateOf(id); }); return o; }
+window.Prov = { stateOf, ping, pingAll, holdInflight, stopInflight, pending, nativePlan, CFG, IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
 })();

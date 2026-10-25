@@ -12,3 +12,7 @@ Settings > Hacking > bottom panel. Bridge: `ttyd` in your own Termux, plain bash
 - If Termux is running and Connect always fails, Android may be blocking `ws://127.0.0.1` from the https app page. Fix: `"allowMixedContent": true` under `android` in capacitor.config.json, `npx cap sync`, rebuild.
 - Ask Ember sends the last 60 terminal lines (keys/passwords masked) to your AI engine when 👁 is on. Turn it off to send only your question.
 - Open Termux needs the new APK (EmberDevicePlugin.openApp and the `<queries>` package line in AndroidManifest.additions.xml).
+
+## V1.9.8
+- The panel starts as a bar. Tap ▴ to open it. A command line under the screen runs real commands; A−/A+ change the text size.
+- Open Termux folds the panel by itself and it stays folded when you come back.

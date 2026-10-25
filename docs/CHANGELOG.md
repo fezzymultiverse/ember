@@ -1,14 +1,47 @@
 # Changelog
 
+## V1.9.10
+- **Lyrics preview (3 lines).** New `ember_lyrics.js`. A Lyrics card under the now-playing card shows at most 3 lines from LRCLIB (free, no key). With timed lyrics the first line is the one being sung and the next two follow it as the song plays; with plain lyrics the opening lines show. Long-press or hover the song title to see the same lines as a tooltip. The lookup tries exact (artist, title, album, length), then a search, and cleans tags like "(Official Video)" and "- Topic" first. Settings > Music has a **Lyrics preview** switch (on by default).
+- **Privacy.** Only the title, artist, album and length of the playing song go to lrclib.net, only while the switch is on. The full lyric text is held in memory for the last 12 songs and is never saved or shown beyond 3 lines. Not sent to any AI.
+- Tests: `tests/lyrics-test.js` (LRCLIB mocked, no network). Not run on a device: LRCLIB match rate for your files is untested. APK rebuild needed.
+
+## V1.9.9
+- **Ember Voice: a real voice instead of the Android default.** New `ember_voice.js`. Settings > Perms > Voice has an **Ember Voice** picker: **Gemini voice** (on by default, uses the Gemini key already saved in Settings > Keys, 18 voices such as Puck, Charon, Fenrir, Aoede, Sulafat, Algenib) or **ElevenLabs** (your own key, 7 premade voices or any voice ID) or **Phone voice only**. The 🔊 button, auto-read and Test this voice all use it, and the red Stop button stops it. Speed slider applies (0.8 to 1.4); the phone-voice Pitch and Lively sliders only affect the fallback.
+- **Gemini voice details.** Models are tried in order and the one that works is remembered (`gemini-3.1-flash-tts-preview`, `gemini-2.5-flash-preview-tts`, `gemini-3.8-flash-tts`); each saved Gemini key is tried in turn on 401/403/429. Delivery asks for a warm, quick-witted tone; when the safety layer has flagged the conversation (level 1 or higher) it asks for a slow, soft, calm tone with no jokes.
+- **Never silent.** If the cloud voice fails (no key, rate limit, offline, model has no audio, audio blocked until a first tap) the unread text is read by the phone voice and a short toast says why. Long replies: first 6 chunks go to the cloud voice, the rest to the phone voice. Chunk N+1 is fetched while chunk N plays.
+- **Privacy.** Reply text goes to Google (Gemini) or ElevenLabs only when a reply is read aloud and only if that engine is selected; Settings says so. The ElevenLabs key is stored in `ember_voice` on the device and is cleared by Wipe.
+- Tests: `tests/voice-cloud-test.js` (fetch and audio mocked, nothing is heard, no network). Not run on a device: voice quality, model names and free-tier limits are untested against the live services. APK rebuild needed.
+
+## V1.9.8
+- **Providers chip (header).** A chipset icon left of Ember's name opens a dropdown of every engine (Groq, Mistral, Gemini, OpenRouter, Cohere, HuggingFace, Free Mode) with a live dot: green working, amber rate limited, red rejected/unreachable, hollow grey no key. Opening it lists each key's models (no chat call, no credit). `ember_prov_ui.js`, `Prov.stateOf / ping / pingAll` in `providers.js`.
+- **Fix: Gemini showed green with no Gemini key / the AI said it was Gemini.** Health was never re-checked and the picker's first option was a hard-coded green dot. State now comes from `stateOf()`: no key = never green; keys not checked in 30 min = grey "unknown"; real replies and live checks refresh it. The runtime facts told to every model now list the engines with NO key and, in Free Mode, forbid claiming to be Gemini or any named model.
+- **Ember's name sits in the true middle of the header** (left group and right group take equal width).
+- **Termux:** a command line (`$` input + ⏎, history with the arrow keys, destructive commands need a second tap) runs real commands over the bridge; terminal text is smaller (A− / A+ keys, default 10.5 px, scrollback 500 lines); the panel starts as a bar. **Open Termux folds Ember's panel by itself**, it folds when the app goes to the background, and it never expands again on its own (the ▾/▴ arrow still toggles). The Hacking page no longer slides up to make room.
+- **Documents:** the `＋ Files` / `＋ Note` text buttons are one 📎; tap it for two icons (file, note).
+- **Dictation button removed** (did not work on this phone); a 📎 Docs button sits in its place. The mic code is guarded so nothing breaks without the button.
+- **Fix: app kept restarting after exit.** `EmberKeepAliveService` returned `START_STICKY` so Android recreated it (and its notification) after the app was closed; now `START_NOT_STICKY` plus `onTaskRemoved` stops it. APK rebuild needed. Not run on a device.
+
+## V1.9.7
+- **No more fake actions.** If a reply says it searched, looked up, read, downloaded or saved something but no tool ran that turn, `resolveAddonCalls` (`app.js`) now makes one corrective call (do it for real with a tool_call, or say plainly what is off); if it still claims, the reply is replaced with an honest "nothing was done" line. Tool-result synthesis is told to claim only what the result says. A "NO FAKE ACTIONS" rule is in the system prompt.
+- **YouTube switch off is now stated.** The prompt tells the model the YouTube tools are off (and where the switch is) instead of letting it pretend to download.
+- **Your rules get the last word.** Settings > Persona text is repeated at the very end of the system prompt (it was buried mid-prompt under the tools list).
+- **Download notification:** the app asks for notification permission before starting a download (`ai_agent.js`), so the device notification can appear on Android 13+. The chat progress card and "saved" message already existed; they only show when the tool actually runs. Not run on a device.
+
+## V1.9.6
+- **Scraper honesty + tool choice.** `scrape_url`'s description now tells the model to use it (not `web_search`) for any scrape/read/open request or link, that it rotates all saved keys itself, and to read its `tried` list instead of giving up. `via` now lists Sting. The SCRAPER STATE prompt block says the AI has live web access when scraping is on, and names saved keys that cannot run (Sting with no endpoint, Octoparse: no fetcher exists). No change to the rotation code. Not run on a device.
+
+## V1.9.5
+- **Fix: Termux panel dead (Connect, Terminal, Port, New path did nothing).** `paintSetup()` bound `$('etGo')`, a button V1.9.0 removed, so it threw "Cannot set properties of null" before binding every other Setup button, and because `setState()` called it, `connect()` threw before it opened the WebSocket. Removed the dead line; **Open Termux** now copies the command and opens Termux; `setState` can no longer be broken by a paint error. Found by `tests/term-test.js` (was 51/52).
+
+## V1.9.4
+- **Composer box:** removed the brown inner rectangle (the old focus ring drawn inside the pill) and the spellcheck underline; the whole pill glows on focus instead.
+- **Hero vs music widget:** the "Evening. Talk to me." block no longer sits under the mini music widget; it now measures the widget + composer height live (`--dock`, `ember_ui.js`). Not run on a device.
+
 ## V1.9.3
-- Default ElevenLabs key replaced with the real `sk_` key in `www/ember_eleven_key.js` (the V1.9.2 placeholder-style key was not in ElevenLabs format). Nothing else changed. Version bumped in `package.json`, `sw.js`, README. Still readable in the repo and the APK: keep the repo private. Mock tests pass (25); the real API has not been called from here.
+- **Browser buttons restyled.** The stock white Android buttons in the native browser are now dark rounded pills with a thin border; Ask Ember is orange; the address box is a matching pill (`mkButton` in `EmberWebPlugin.kt`). Kotlin not compiled or run; APK rebuild needed.
 
 ## V1.9.2
-- **ElevenLabs voice.** Before this version Ember had no ElevenLabs code at all. New `www/ember_eleven.js`: when switched on and a key exists, the 🔊 button and "Read replies aloud" use ElevenLabs text-to-speech (`eleven_turbo_v2_5`, default voice `21m00Tcm4TlvDq8ikWAM`, mp3). Text is cut into pieces of up to 800 characters at sentence ends and the next piece is fetched while the current one plays. Inside the APK the request goes through CapacitorHttp (binary-safe, no CORS); in a browser it uses fetch. If ElevenLabs fails (bad key, no credits, rate limit, offline) Ember shows the reason and reads the reply with the phone voice instead. A key that answers 401/402/403 rests 10 minutes (429: 1 minute) so it is not retried on every tap.
-- **Default key.** The key lives in its own file, `www/ember_eleven_key.js`, as the default. A key saved in Settings > Perms > ElevenLabs voice (localStorage `ELEVENLABS_API_KEY`) overrides it, so nothing has to be typed or pasted in DevTools. **Anything in that file is readable in the repo and inside the APK: keep the repo private, and rotate the key in ElevenLabs if it was ever public.**
-- **Settings > Perms > ElevenLabs voice** card: on/off switch, key field, optional voice id and model, Save, Test key (costs 2 characters of credit), Remove saved key. The Voice card's Speed slider applies; Pitch and Lively delivery do not.
-- `app.js`: two small additions inside `speakText` / `stopSpeak` (try ElevenLabs first, one retry on the phone voice if it fails; stop also stops ElevenLabs). Nothing else in `app.js` changed. `sw.js` caches the two new files (cache name V1.9.2).
-- Tests: `tests/eleven-test.js` (24 checks: key order, request shape, chunking, 401/429/500/offline, stop/cancel, native CapacitorHttp path, wiring). fetch, Audio and CapacitorHttp are mocked: no network, no credits. **Not run on a device, and the real ElevenLabs API has not been called, so it is not known whether the default key is accepted.** The other suites in `package.json` need Playwright and were not run for this release (every `www/*.js` passes `node --check`). The APK has to be rebuilt.
+- **Browser opens as a medium sheet.** The native browser (globe button) now opens as a bottom sheet about 62% of the screen high instead of full screen (`EmberWebPlugin.kt`). Same address bar, progress line, Ask Ember / Save to Documents / Open in Chrome buttons. **Kotlin not compiled or run: first CI build is its first compile.** APK rebuild needed.
 
 ## V1.9.1
 - Settings > Keys: "Get a key" and "Notepad" cards start folded. Get-a-key buttons are one sideways-scrolling row (also in Scraping). Engine picker shows key health dots (🟢 working, 🟡 rate-limited, 🔴 failing, ⚪ no key / unchecked) and refreshes after a key check. Not run on a device.
