@@ -579,8 +579,8 @@ $('kList').addEventListener('click', e => { const b = e.target.closest('[data-fo
 
 // ---------- V1.6.1: Get Key buttons ----------
 const KEY_LINKS = { groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', openrouter: 'https://openrouter.ai/settings/keys', cohere: 'https://dashboard.cohere.com/api-keys', huggingface: 'https://huggingface.co/settings/tokens' };
-const SCRAPE_LINKS = { firecrawl: 'https://www.firecrawl.dev/app/api-keys', browserless: 'https://www.browserless.io/', scraperapi: 'https://www.scraperapi.com/', scraperbee: 'https://app.scrapingbee.com/account/manage', zenrows: 'https://app.zenrows.com/builder', serpapi: 'https://serpapi.com/manage-api-key', sting: '', octoparse: 'https://www.octoparse.com/' };
-function paintGetKeyRow(el, links) { if (!el) return; el.innerHTML = Object.keys(links).filter(k => links[k]).map(k => '<button class="btn g" data-link="' + esc(links[k]) + '" style="width:auto;padding:7px 12px;font-size:12px">' + (Prov.CFG[k] ? Prov.CFG[k].name : k) + ' ↗</button>').join(''); }
+const SCRAPE_LINKS = { firecrawl: 'https://www.firecrawl.dev/app/api-keys', browserless: 'https://www.browserless.io/', scraperapi: 'https://www.scraperapi.com/', scraperbee: 'https://app.scrapingbee.com/account/manage', zenrows: 'https://app.zenrows.com/builder', tavily: 'https://app.tavily.com/home', serpapi: 'https://serpapi.com/manage-api-key', sting: '', octoparse: 'https://www.octoparse.com/' };
+function paintGetKeyRow(el, links) { if (!el) return; el.innerHTML = Object.keys(links).filter(k => links[k]).map(k => '<button class="btn g" data-link="' + esc(links[k]) + '" style="width:auto;padding:7px 12px;font-size:12px">' + (Prov.CFG[k] ? Prov.CFG[k].name : (window.EmberScraper && window.EmberScraper.LABEL[k]) || k) + ' ↗</button>').join(''); }
 document.addEventListener('click', e => { const b = e.target.closest('[data-link]'); if (b) window.open(b.dataset.link, '_blank', 'noopener'); });
 
 // ---------- V1.6.1: engine pin ----------
@@ -646,8 +646,9 @@ $('padExtract') && ($('padExtract').onclick = async () => {
     const r = await Prov.ingest(t);
     const sc = window.EmberScraper ? window.EmberScraper.ingestKeys(t) : { added: [] };
     const tv = window.EmberAgentAddon && window.EmberAgentAddon.ingestTavily ? window.EmberAgentAddon.ingestTavily(t) : false;
-    const n = r.added.length + sc.added.length + (tv ? 1 : 0);
-    const bits = []; if (r.added.length) bits.push(r.added.length + ' chat engine key(s)'); if (sc.added.length) bits.push(sc.added.map(id => window.EmberScraper.LABEL[id]).join(', ') + ' (scraping)'); if (tv) bits.push('Tavily (web search)');
+    const scIds = sc.added.filter(id => id != 'tavily'), tav = tv || sc.added.includes('tavily');
+    const n = r.added.length + scIds.length + (tav ? 1 : 0);
+    const bits = []; if (r.added.length) bits.push(r.added.length + ' chat engine key(s)'); if (scIds.length) bits.push(scIds.map(id => window.EmberScraper.LABEL[id]).join(', ') + ' (scraping)'); if (tav) bits.push('Tavily (web search and page reading)'); if ((sc.endpointAdded || []).length) bits.push('Sting endpoint');
     $('padStatus').textContent = n ? ('Added: ' + bits.join(' · ') + '.') : 'No keys found in that text.';
   } catch (e) { $('padStatus').textContent = 'Failed: ' + e.message; }
   b.disabled = false; b.textContent = 'Extract keys'; renderKeys(); renderTop(); if (window.EmberScrapeUI) window.EmberScrapeUI.repaint();
@@ -935,11 +936,13 @@ $('bIngest').onclick = async () => {
     const f = r.found, nm = Prov.CFG;
     let h = 'Found <b>' + (f.groq + f.gemini + f.mistral + f.openrouter + f.huggingface + f.cohere + f.unknown) + '</b> possible key(s) in your notes.<br>';
     r.added.forEach(a => { h += (a.ok ? '<b>✓</b> ' : '<span class="w">✗</span> ') + nm[a.id].name + ' ' + esc(Prov.mask(a.key)) + (a.guess ? ' (no label, identified by testing it on Mistral)' : '') + '<br>'; });
-    if (sc.added.length) h += '<b>✓</b> Scraping keys saved: ' + sc.added.map(id => window.EmberScraper.LABEL[id]).join(', ') + ' (Settings > Scraping shows them; turn Web Scraping on to use them)<br>';
-    if (tv) h += '<b>✓</b> Tavily key saved (web search)<br>';
+    const scIds = sc.added.filter(id => id != 'tavily'), tav = tv || sc.added.includes('tavily');
+    if (scIds.length) h += '<b>✓</b> Scraping keys saved: ' + scIds.map(id => window.EmberScraper.LABEL[id]).join(', ') + ' (Settings > Scraping shows them; turn Web Scraping on to use them)<br>';
+    if ((sc.endpointAdded || []).length) h += '<b>✓</b> Sting endpoint saved (https, with {key} and {url})<br>';
+    if (tav) h += '<b>✓</b> Tavily key saved (web search and page reading)<br>';
     if (r.dupes) h += r.dupes + ' already added.<br>';
     if (r.rejected) h += '<span class="w">' + r.rejected + ' unlabeled 32-character string(s) were not a valid Mistral key and were ignored.</span><br>';
-    if (!r.added.length && !r.dupes && !r.rejected && !sc.added.length && !tv) h = '<span class="w">No keys found. Groq keys start with gsk_, Gemini keys with AQ. (new) or AIza, OpenRouter with sk-or-v1-, HuggingFace with hf_. Mistral and Cohere keys have no prefix, so put the word Mistral or Cohere on the line above or beside them.</span>';
+    if (!r.added.length && !r.dupes && !r.rejected && !sc.added.length && !tv && !(sc.endpointAdded || []).length) h = '<span class="w">No keys found. Groq keys start with gsk_, Gemini keys with AQ. (new) or AIza, OpenRouter with sk-or-v1-, HuggingFace with hf_. Mistral and Cohere keys have no prefix, so put the word Mistral or Cohere on the line above or beside them.</span>';
     $('kRep').innerHTML = h;
   } catch (e) { $('kRep').innerHTML = '<span class="w">Failed: ' + esc(e.message) + '</span>'; }
   b.disabled = false; b.textContent = 'Extract + check keys'; renderKeys(); renderTop();
@@ -998,9 +1001,9 @@ $('fImp').onchange = async e => {
   } catch (er) { toast('Import failed: ' + er.message); }
 };
 $('bWipe').onclick = async () => {
-  if (!(await sure('Delete everything?', 'All chats, memory, settings, keys, uploaded music, playlists and the Audd.io token on this device. This cannot be undone.'))) return;
+  if (!(await sure('Delete everything?', 'All chats, memory, settings, chat and scraping keys, the Tavily key, the notepad, uploaded music, playlists and the Audd.io token on this device. This cannot be undone.'))) return;
   try { if (window.EmberPlayer) await window.EmberPlayer.wipe(); if (window.EmberAudd) window.EmberAudd.wipe(); } catch (e) { /* storage already blocked */ }
-  await Store.wipe(); ['ember_set', 'ember_keys', 'ember_models', 'ember_voice', 'ember_voice_gm'].forEach(k => LS.del(k)); location.reload();
+  await Store.wipe(); ['ember_set', 'ember_keys', 'ember_models', 'ember_voice', 'ember_voice_gm', 'ember_scrape', 'ember_scrape_rot', 'ember_agent', 'ember_pad'].forEach(k => LS.del(k)); location.reload();
 };
 
 // ---------- start ----------

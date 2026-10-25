@@ -83,7 +83,7 @@ When "Keep replying in the background" is on and you leave Ember mid-reply, the 
 
 ## V1.6.0 · Agent & API tools
 
-- **Web Search (Tavily):** when on, the words the AI searches for are sent to Tavily (`api.tavily.com`) with your Tavily key. Results come back into the chat. The key is stored in this phone's `localStorage` (`ember_agent`) and is not included in backups.
+- **Web Search (Tavily, with DuckDuckGo as the fallback):** when on, the words the AI searches for are sent to Tavily (`api.tavily.com`) with your Tavily key. If you have no Tavily key, or Tavily fails, the same words are sent to DuckDuckGo (`api.duckduckgo.com`) instead, with no key and no account. Results come back into the chat. The key is stored in this phone's `localStorage` (`ember_agent`) and is not included in backups.
 - **YouTube:** searching and downloading go from the phone straight to YouTube/Google servers, like any browser or app would. Nothing goes through an Ember server. The last download's title and result are kept in the app's private storage. Saved audio lands in `Music/Ember`, where other music apps can see it.
 - **Vision:** the image link you paste (and your question about it) is sent to Pollinations (`text.pollinations.ai`), which fetches the picture. Leave it off for private images.
 - Search results and image descriptions are passed to whichever chat engine answers (including Free Mode), like other tool results.

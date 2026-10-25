@@ -23,7 +23,7 @@ Capacitor (`@capacitor/core`, `@capacitor/android`, `@capacitor/cli`) is used on
 
 The YouTube downloader links against **NewPipe Extractor** (`com.github.TeamNewPipe:NewPipeExtractor`), which is licensed **GPL-3.0**. An APK that includes it is a combined work that has to be distributed under GPL-compatible terms (source offered to recipients). That clashes with `"license": "UNLICENSED"` in `package.json`. **Owner decision needed before the APK is shared with anyone:** pick a GPL-3.0-compatible licence, or drop the YouTube switch and the three `Ember*Yt*` / `DownloadWorker` Kotlin files from the build. (This is a note for maintainers, not legal advice.)
 
-Third-party services added in V1.6.0: Tavily (`api.tavily.com`, web search, with the person's key), Pollinations (`text.pollinations.ai/openai`, image reading), YouTube (through NewPipe). Terms links are still **TBD**. YouTube's Terms of Service do not allow downloading content unless YouTube offers a download button or link for it.
+Third-party services added in V1.6.0: Tavily (`api.tavily.com`, web search, with the person's key; V1.9.12 adds DuckDuckGo's Instant Answer API, `api.duckduckgo.com`, as a keyless fallback, terms link still **TBD**), Pollinations (`text.pollinations.ai/openai`, image reading), YouTube (through NewPipe). Terms links are still **TBD**. YouTube's Terms of Service do not allow downloading content unless YouTube offers a download button or link for it.
 
 ## Provenance
 

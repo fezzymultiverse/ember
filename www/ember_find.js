@@ -68,7 +68,7 @@ async function find_in_app(a) {
     try {
       const st = P ? P.status() : {};
       if (P) P.IDS.forEach(id => (P.entries(id) || []).forEach(e => { if (e && e.key) push('key', P.CFG[id].name + ' key', 'saved ' + mask(e.key) + ' · engine ' + (e.bad ? 'rejected it' : (st[id] || 'unknown'))); }));
-      if (SC) { const ks = (SC.get().keys) || {}; Object.keys(ks).forEach(id => { if (ks[id]) push('key', (SC.LABEL[id] || id) + ' scraping key', 'saved ' + mask(ks[id])); }); }
+      if (SC) { const ks = (SC.get().keys) || {}; Object.keys(ks).filter(id => id != 'tavily').forEach(id => { if (ks[id]) push('key', (SC.LABEL[id] || id) + ' scraping key', 'saved ' + mask(ks[id])); }); }
       if (AG && AG.hasTavilyKey && AG.hasTavilyKey()) push('key', 'Tavily key', 'saved');
     } catch (e) { /* keys unreadable */ }
   }
@@ -106,7 +106,8 @@ function block(S, conv) {
   const scrapeOn = !!(SCR && SCR.enabled()), readerOn = !!(SCR && SCR.readerOn && SCR.readerOn());
   const docs = D && D.count ? D.count() : 0;
   const native = !!(AG && AG.native && AG.native());
-  const search = !!(AG && AG.hasTavilyKey && AG.hasTavilyKey() && S.agentAddon);
+  const search = !!(AG && S.agentAddon), tav = !!(AG && AG.hasTavilyKey && AG.hasTavilyKey());
+  const chain = (AG && AG.searchChain) ? AG.searchChain() : [];
   const L = [
     'ABOUT THE APP YOU LIVE IN (live, true right now). You are inside ' + ver + ' on his phone. Know it, so you never guess or claim you cannot when you can:',
     '- Chat: ' + nKeys + ' engine key' + (nKeys == 1 ? '' : 's') + ' saved, automatic failover between engines, Free Mode ' + on(P && P.freeOn && P.freeOn()) + '.',
@@ -115,7 +116,7 @@ function block(S, conv) {
     '- Prompts: the Prompts tab in the left menu holds his saved prompts (search, tags, pin). Saved sites: the Chats tab of the left menu.',
     '- Music Control is ' + on(S.musicAddon) + (S.musicAddon ? '' : ': you cannot touch his player until he switches it on in Settings > Music > Ember add-ons') + '.',
     '- YouTube and SoundCloud search, playlists and audio download are ' + on(S.youtubeAddon) + (S.youtubeAddon ? (native ? '' : ' but the native downloader is missing from this build') : ' (switch: Settings > Music > Ember add-ons)') + '.',
-    '- Live web search is ' + (search ? 'ON' : 'OFF (needs the Agent switch and a Tavily key in Settings > Music > Agent & API Tools)') + '. Image links are ' + on(S.visionAddon) + '.',
+    '- Live web search is ' + (search ? (chain.length > (tav ? 2 : 1) ? 'ON (' + chain.join(' > ') + ')' : tav ? 'ON (Tavily, DuckDuckGo as backup)' : 'ON through DuckDuckGo only (encyclopedia-style answers, no news; a Tavily key in Settings > Music > Agent & API Tools gives full results)') : 'OFF (switch it on in Settings > Music > Agent & API Tools; no key is needed)') + '. Image links are ' + on(S.visionAddon) + '.',
     '- Termux Mode is ' + on(S.termuxMode) + ' (the Termux button opens its tab). EMBER TERMUX (Terminal, Ask Ember, Setup) is docked at the bottom of Settings > Hacking.',
     'HOW TO USE THIS: he loses time hunting for things he saved (chats, keys, prompts, notes, ideas, documents). When he cannot find something or asks what he has, call find_in_app first instead of asking him questions. Keys come back masked; he copies the full ones in Settings > Keys. If a capability above is OFF, give him the exact switch to flip in one line instead of saying you have no access. For general knowledge, code, security, music, business and ideas, answer directly and fully from what you know; never hide behind tools, and when he wants ideas give several concrete ones.'
   ];
