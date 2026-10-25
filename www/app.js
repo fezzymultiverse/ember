@@ -400,6 +400,21 @@ const nativeSpeech = () => (window.EmberNative && window.EmberNative.speech) || 
 let rec = null, recOn = false;
 function micUI(on) { recOn = on; const mb = $('bMic'); if (mb) { mb.classList.toggle('rec', on); mb.setAttribute('aria-pressed', on ? 'true' : 'false'); } if (!on) $('inp').focus(); }
 if ($('bMic')) $('bMic').onclick = async () => {
+  const EV = window.EmberVoice;
+  if (recOn && window.__gemRec) {
+    const h = window.__gemRec; window.__gemRec = null; micUI(false); toast('Writing it down');
+    try { const t = await h.stop(); if (t) { $('inp').value = h.base + t; grow(); } else toast('Heard nothing, try again'); } catch (e) { toast(String((e && e.message) || e).slice(0, 140)); }
+    return;
+  }
+  if (!recOn && EV && EV.canListen && EV.canListen()) {
+    stopSpeak();
+    const base = $('inp').value ? $('inp').value.replace(/\s+$/, '') + ' ' : '';
+    try {
+      const h = await EV.listen(); h.base = base; window.__gemRec = h; micUI(true); toast('Listening. Tap the mic again when done');
+      setTimeout(() => { if (window.__gemRec === h) $('bMic').click(); }, 120000);
+    } catch (e) { micUI(false); toast(String((e && e.message) || e).slice(0, 140)); }
+    return;
+  }
   const NSR = nativeSpeech();
   if (recOn) { if (NSR) { await NSR.stop(); } else { try { rec.stop(); } catch (e) { } } return; }
   // V1.6.1: browser speech recognition needs a secure origin (https, or http://localhost itself). If this is opened
@@ -469,7 +484,7 @@ function stopSpeak() {
   if (window.EmberVoice) { try { window.EmberVoice.stop(); } catch (e) { } }
   if (TTS) { try { speechSynthesis.cancel(); } catch (e) { } } setSay(-1);
 }
-// V1.9.9: Ember Voice (Gemini / ElevenLabs) reads first when it is on and usable; any failure hands the unread text to the phone voice (noCloud).
+// V1.9.9: Ember Voice (Gemini) reads first when it is on and usable; any failure hands the unread text to the phone voice (noCloud).
 const calmNow = () => { try { return !!(window.Safety && window.Safety.lastLevel && window.Safety.lastLevel() >= 1); } catch (e) { return false; } };
 function speakText(t, idx, noCloud) {
   const N = nativeTTS(), EV = window.EmberVoice, cloud = !noCloud && !!EV && EV.active();

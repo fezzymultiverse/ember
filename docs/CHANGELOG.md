@@ -1,5 +1,11 @@
 # Changelog
 
+## V1.9.11
+- **Header back to the V1.9.2 layout.** The Providers chip and its dropdown are gone (`ember_prov_ui.js` deleted, its CSS and markup removed). Header is again: history, Ember name with the engine pill, browser, Termux, settings.
+- **Mic is back, and it no longer needs the phone's speech service.** The 🎤 button sits left of 📎 Docs. Tap, talk, tap again: the phone records, the audio is sent to Gemini (your saved Gemini key) and the words are typed into the message box. Only the recording is sent, only when you tap the mic. Without a Gemini key the old route (Android speech recogniser, then the "Speak now" dialog) is used. Not run on a device: the first tap asks for the microphone permission; if it is refused the toast says where to allow it.
+- **ElevenLabs removed** from Ember Voice (settings rows, code, stored key is ignored). Engines are now Gemini voice and Phone voice only.
+- **All 30 Gemini prebuilt voices** in the picker (was 18).
+
 ## V1.9.10
 - **Lyrics preview (3 lines).** New `ember_lyrics.js`. A Lyrics card under the now-playing card shows at most 3 lines from LRCLIB (free, no key). With timed lyrics the first line is the one being sung and the next two follow it as the song plays; with plain lyrics the opening lines show. Long-press or hover the song title to see the same lines as a tooltip. The lookup tries exact (artist, title, album, length), then a search, and cleans tags like "(Official Video)" and "- Topic" first. Settings > Music has a **Lyrics preview** switch (on by default).
 - **Privacy.** Only the title, artist, album and length of the playing song go to lrclib.net, only while the switch is on. The full lyric text is held in memory for the last 12 songs and is never saved or shown beyond 3 lines. Not sent to any AI.

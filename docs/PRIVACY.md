@@ -13,7 +13,7 @@ Ember has no server and no account. Everything it stores stays on the person's d
 | `ember_set` | Settings: their name, the "About you" text, Ember's name and curiosities, style choices, the Persona box text, mode, context size, accent colour, Free Mode choice |
 | `ember_keys` | API keys for Groq, Mistral and Gemini, with the last health-check result. Stored in plain text on the device |
 | `ember_models` | Cached lists of model names from each provider (12 hours) |
-| `ember_voice` | Ember Voice choices: engine, voice, and the ElevenLabs key if one was pasted (plain text on the device). Cleared by Wipe |
+| `ember_voice` | Ember Voice choices: engine, voice,. Cleared by Wipe |
 | `ember_voice_gm` | Which Gemini speech model last worked |
 
 **IndexedDB** (database `ember`, version 1)
