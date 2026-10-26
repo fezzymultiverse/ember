@@ -1,4 +1,4 @@
-# Ember V1.9.18 HANDOVER
+# Ember V1.9.20 HANDOVER (V1.9.19 content unchanged; CI workflows restored)
 Status: key-extraction fix wired in. The app-test wording check is fixed; app-test now reaches the same #hq crash as the original baseline.
 ## Open items
 1. tests/app-test.js: ONE check fails ("unlabeled junk string rejected"): it expects the old wording "1 unlabeled 32-character string(s) were not a valid Mistral key". Fix prepared, NOT applied: add `rejectedBy:{mistral,cohere}` to Prov.ingest's report and make EmberKeyScan.describe print "N unlabeled 32-character string(s) were not a valid Mistral key and were ignored" (and a 40-character Cohere variant).

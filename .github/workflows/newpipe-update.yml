@@ -1,7 +1,6 @@
 name: NewPipe auto-update
-# Every Monday: look up the newest NewPipeExtractor, build the APK with it, and only if the build passes
-# commit the new version to scripts/newpipe.version. A broken release never reaches main.
-# (Same idea as Prodigy Syncing's workflow of the same name.)
+# Every Monday: look up the newest NewPipeExtractor, build the APK with it, and only if the build
+# passes commit the new version to scripts/newpipe.version. A broken release never reaches main.
 on:
   schedule: [{cron: '17 3 * * 1'}]
   workflow_dispatch: {}
@@ -23,17 +22,19 @@ jobs:
           if [ -n "$NEW" ] && [ "$NEW" != "$OLD" ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; fi
       - if: steps.v.outputs.changed == 'true'
         uses: actions/setup-node@v4
-        with: {node-version: 22}
+        with: {node-version: 20}
       - if: steps.v.outputs.changed == 'true'
         uses: actions/setup-java@v4
         with: {distribution: temurin, java-version: 17}
-      - name: Build (debug) with the new version
+      - if: steps.v.outputs.changed == 'true'
+        uses: android-actions/setup-android@v3
+      - name: Build with the new version
         if: steps.v.outputs.changed == 'true'
         env: {NEWPIPE_VERSION: '${{ steps.v.outputs.new }}'}
         run: |
-          for f in www/*.js; do node --check "$f"; done
-          npm install --no-audit --no-fund
-          npx cap add android || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+          npm install
+          npx cap add android
           python3 scripts/apply_android_patch.py android android_patch
           npx cap sync android
           cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon --stacktrace
@@ -41,7 +42,12 @@ jobs:
         if: steps.v.outputs.changed == 'true'
         run: |
           echo "${{ steps.v.outputs.new }}" > scripts/newpipe.version
-          git config user.name "ember-bot"; git config user.email "ember-bot@users.noreply.github.com"
+          git config user.name "bojack-bot"; git config user.email "bojack-bot@users.noreply.github.com"
           git add scripts/newpipe.version
           git commit -m "NewPipeExtractor ${{ steps.v.outputs.old }} -> ${{ steps.v.outputs.new }} (auto, build verified)"
           git push
+      - if: steps.v.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ember-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
