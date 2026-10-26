@@ -65,7 +65,7 @@ const toolsFor = S => {
 };
 
 // ---------- gate for downloads: the AI never downloads on its own ----------
-const DL_INTENT = /\b(download|save|grab|rip|keep|store)\b|youtu(?:\.be|be\.com)|soundcloud\.com/i;
+const DL_INTENT = /\b(download(?:ing|ed)?|sav(?:e|ing)|grab(?:bing)?|rip(?:ping)?|keep|stor(?:e|ing)|get|fetch|pull|put|add|want|need|newpipe)\b|youtu(?:\.be|be\.com)|soundcloud\.com/i;
 const NOT_FOLLOW = /\b(how (are|is|was|do|did|have)|how'?s (your|it going)|what do you think|tell me (a joke|something)|your day|you doing|you been)\b/i;
 const VID = /(?:[?&]v=|youtu\.be\/|\/shorts\/|\/embed\/)([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/;
 let intent = '', prevIntent = '';
@@ -300,7 +300,7 @@ function stateBlock(S) {
   S = S || {}; const o = [];
   if (S.agentAddon) o.push(extraEngines().length ? 'web_search works. Engines in order: ' + searchChain().join(' > ') + '. An engine that fails or finds nothing is skipped to the next; the result says which one answered (source) and which were skipped (tried).' : tavilyKey() ? 'web_search works (Tavily key is set; DuckDuckGo is the backup if Tavily fails).' : 'web_search works through DuckDuckGo (no Tavily key): it gives encyclopedia-style answers and related links, NOT news or full search results, so an empty result is normal for current events and you must say so, never invent results. If he needs news or full results, tell him a Tavily key in Settings > Music > Agent & API Tools gives full web search.');
   if (S.agentAddon && scraperOn()) o.push('search_and_read(query) searches and opens the top pages in one call: use it when he wants an answer from the real pages, and report any page that failed to open.');
-  if (S.youtubeAddon) o.push(yt() ? 'YouTube and SoundCloud search, playlist listing and audio download work on this phone (SoundCloud: track links, set links and search). Download only when he asks, only for links he gave you or a listing returned, and tell him it saves to Music/Ember. Progress shows in the chat by itself, and a message appears when each track is saved, so you can confirm it is done.' : 'YouTube is on but the native downloader is not in this build, so those tools will fail.'); if (dlLast) o.push('Last download result: ' + dlLast);
+  if (S.youtubeAddon) o.push(yt() ? 'YouTube and SoundCloud search, playlist listing and audio download work on this phone (SoundCloud: track links, set links and search). Download only when he asks, and plain talk counts as asking: "get me X", "grab X", "put X on my phone", "add X", "I want X" all mean download it, he does not have to say the word download. For a song name, run youtube_search, pick the best match, then call youtube_download with that url. Only for links he gave you or a listing returned, and tell him it saves to Music/Ember. Progress shows in the chat by itself, and a message appears when each track is saved, so you can confirm it is done.' : 'YouTube is on but the native downloader is not in this build, so those tools will fail.'); if (dlLast) o.push('Last download result: ' + dlLast);
   if (S.visionAddon) o.push('see_image only works on https image links he pastes; you cannot see images he has not linked. Never describe an image you did not get a description for.');
   return o.length ? 'AGENT TOOLS STATE: ' + o.join(' ') : '';
 }
