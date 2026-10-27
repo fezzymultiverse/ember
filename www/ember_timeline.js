@@ -1,112 +1,146 @@
-// Ember V1.9.30+ - ember_timeline.js: the live thinking timeline inside chat replies (add-on pattern, like ai_music.js).
-// While Ember works, a card replaces the three typing dots: grey dots for what it is thinking, square terminal icons for each tool it runs
-// (with a SUCCESS / FAILED pill), and an orange radar dot on "Thinking…". When the reply lands the card is saved on that message as a
-// collapsed "Worked through N steps" row. It shows only what really happened: tool names, results, ReAct thoughts. Nothing is invented.
-// app.js calls: begin(), note(), tool(), snapshot(), drop(), liveHtml(), savedHtml(). ReAct thoughts arrive through the 'ember-react' event.
+// Ember V1.9.31 - ember_timeline.js
+// Claude-style collapsible "Thinking…" panel while Ember works on a reply.
+// Shows a shimmer header + collapsible text notes. Does NOT touch ember_think_inline.js
+// or the ReAct process: during a run_react job this panel hides, letting the existing
+// Summary card handle it.
+// API surface unchanged so app.js wiring needs no edit:
+//   begin()           – insert the panel (replaces the three typing dots)
+//   note(text, key?)  – add a line of thinking text
+//   tool(name, args)  – add a tool-call line; .end(result) marks it done / failed
+//   snapshot()        – data to save on the reply (null when no tool ran)
+//   drop()            – remove the panel
+//   liveHtml()        – used by renderLog() to keep the panel alive
+//   savedHtml(tl)     – "Thought for Xs" row above the final reply
 'use strict';
 (() => {
-const $ = id => document.getElementById(id);
-const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const clip = (s, n) => { s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
-const MAX_STEPS = 30, TEXT_MAX = 110;
-const TERM_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l6-6-6-6M12 19h8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const clip = (s, n) => { s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '\u2026' : s; };
 
-const reactOn = () => { try { const RX = window.EmberEngine && window.EmberEngine.react, s = RX && RX.state && RX.state(); return !!(s && s.status === 'running'); } catch (e) { return false; } };
-let live = null, open = true; // live = { steps: [{ k: 't'|'x', text, st: 'run'|'ok'|'bad', ms }], t0, seen: {} }
+  const CHEV = '<svg class="et-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>';
 
-// ---------- words for tools ----------
-const host = u => { try { return new URL(/^https?:/i.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, ''); } catch (e) { return clip(u, 30); } };
-function label(tool, a) {
-  a = a && typeof a == 'object' ? a : {};
-  const q = a.query || a.q || a.text || a.goal || a.title || a.name || '';
-  switch (tool) {
-    case 'scrape_url': return 'Reading ' + (a.url ? host(a.url) : 'a page');
-    case 'web_search': return 'Searching the web' + (q ? ': ' + clip(q, 40) : '');
-    case 'search_in_document': return 'Searching a document' + (q ? ': ' + clip(q, 40) : '');
-    case 'read_document_chunk': return 'Reading document chunk' + (a.chunk ? ' #' + clip(a.chunk, 8) : '');
-    case 'get_document_outline': return 'Reading the document outline';
-    case 'read_document': return 'Reading a document';
-    case 'list_documents': return 'Listing your documents';
-    case 'find_in_app': return 'Looking inside the app' + (q ? ': ' + clip(q, 40) : '');
-    case 'run_react': return 'Working it out step by step';
-    case 'run_plan': return 'Running a plan';
-    case 'list_sites': return 'Checking your saved sites';
-    default: return clip(String(tool || 'tool').replace(/_/g, ' ').replace(/^./, c => c.toUpperCase()) + (q ? ': ' + clip(q, 36) : ''), 70);
+  const reactOn = () => {
+    try { const s = window.EmberEngine && window.EmberEngine.react && window.EmberEngine.react.state && window.EmberEngine.react.state(); return !!(s && s.status === 'running'); }
+    catch (e) { return false; }
+  };
+
+  // ---------- tool label helpers ----------
+  const host = u => { try { return new URL(/^https?:/i.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, ''); } catch (e) { return clip(u, 30); } };
+  function label(tool, a) {
+    a = a && typeof a === 'object' ? a : {};
+    const q = a.query || a.q || a.text || a.goal || a.title || a.name || '';
+    switch (tool) {
+      case 'scrape_url':          return 'Reading ' + (a.url ? host(a.url) : 'a page');
+      case 'web_search':          return 'Searching the web' + (q ? ': \u201c' + clip(q, 40) + '\u201d' : '');
+      case 'search_in_document':
+      case 'search_documents':    return 'Searching your document' + (q ? ': \u201c' + clip(q, 40) + '\u201d' : '');
+      case 'read_document_chunk':
+      case 'read_document':       return 'Reading your document' + (a.chunk ? ' (chunk #' + a.chunk + ')' : '');
+      case 'get_document_outline':return 'Reading the document outline';
+      case 'list_documents':      return 'Listing your documents';
+      case 'youtube_search':      return 'Searching YouTube' + (q ? ': \u201c' + clip(q, 40) + '\u201d' : '');
+      case 'youtube_download':    return 'Downloading audio';
+      case 'see_image':           return 'Looking at the image';
+      case 'find_in_app':         return 'Looking in the app' + (q ? ': \u201c' + clip(q, 36) + '\u201d' : '');
+      default: return clip(String(tool || '').replace(/_/g, ' ').replace(/^./, c => c.toUpperCase()) + (q ? ': \u201c' + clip(q, 36) + '\u201d' : ''), 90);
+    }
   }
-}
-const failed = r => !!(r && typeof r == 'object' && (r.error || r.ok === false));
+  const failed = r => !!(r && typeof r === 'object' && (r.error || r.ok === false));
 
-// ---------- the run ----------
-function begin() {
-  live = { steps: [], t0: Date.now(), seen: {} };
-  const old = $('typ'); if (old) old.remove();
-  const log = $('log'); if (!log) return;
-  log.insertAdjacentHTML('beforeend', '<div class="msg a etlive' + (reactOn() ? ' et-hide' : '') + '" id="typ">' + cardInner(live.steps, true, 0) + '</div>');
-  log.scrollTop = log.scrollHeight;
-}
-function drop() { live = null; const old = $('typ'); if (old) old.remove(); }
-function paint() {
-  const el = $('typ'); if (!el || !live) return;
-  el.innerHTML = cardInner(live.steps, true, 0); if (el.classList) el.classList.toggle('et-hide', reactOn());
-  const log = $('log'); if (log) log.scrollTop = log.scrollHeight;
-}
-function push(s) { if (!live) return null; live.steps.push(s); if (live.steps.length > MAX_STEPS) live.steps.shift(); return s; }
-function note(text, key) {
-  if (!live || !text) return;
-  if (key) { if (live.seen[key]) return; live.seen[key] = 1; }
-  const t = clip(text, TEXT_MAX), last = live.steps[live.steps.length - 1];
-  if (last && last.k == 't' && last.text == t) return;
-  push({ k: 't', text: t, st: 'ok' }); paint();
-}
-// wraps one tool call: const h = tool(name, args); ...run...; h.end(result)
-function tool(name, args) {
-  const s = push({ k: 'x', text: label(name, args), st: 'run', t0: Date.now() });
-  if (s) paint();
-  return { end(res) { if (!s) return; s.st = failed(res) ? 'bad' : 'ok'; s.ms = Date.now() - s.t0; paint(); } };
-}
-// what gets saved on the reply: only when a tool ran or ReAct thought out loud (a plain answer keeps no card)
-function snapshot() {
-  if (!live) return null;
-  const st = live.steps.filter(s => s.st != 'run' || s.k == 'x');
-  if (!st.some(s => s.k == 'x')) return null;
-  return { ms: Date.now() - live.t0, s: st.slice(-MAX_STEPS).map(s => [s.k, clip(s.text, TEXT_MAX), s.st == 'run' ? 'bad' : s.st, s.ms || 0]) };
-}
+  // ---------- state ----------
+  const MAX = 20;
+  let live = null; // { lines:[{text,bad}], t0, open, seen:{}, toolRan }
 
-// ---------- html ----------
-function row(s) {
-  if (s.k == 'x') {
-    const pill = s.st == 'ok' ? '<span class="et-pill ok">SUCCESS</span>' : s.st == 'bad' ? '<span class="et-pill bad">FAILED</span>' : '';
-    return '<div class="et-i act' + (s.st == 'run' ? ' run' : '') + '"><div class="et-ic"><div class="et-tool">' + TERM_SVG + '</div></div><div class="et-c">' + esc(s.text) + pill + '</div></div>';
+  // ---------- core ----------
+  function begin() {
+    live = { lines: [], t0: Date.now(), open: true, seen: {}, toolRan: false };
+    const old = $('typ'); if (old) old.remove();
+    const log = $('log'); if (!log) return;
+    log.insertAdjacentHTML('beforeend', outerHtml());
+    log.scrollTop = log.scrollHeight;
   }
-  return '<div class="et-i"><div class="et-ic"><div class="et-dot"></div></div><div class="et-c">' + esc(s.text) + '</div></div>';
-}
-function cardInner(steps, isLive, ms) {
-  const head = isLive ? 'Thinking…' : 'Summary';
-  const body = open ? '<div class="et-line">' + steps.map(row).join('') + (isLive ? '<div class="et-i think"><div class="et-act"><div class="et-adot"></div></div><div class="et-c">Thinking<span class="et-el">…</span></div></div>' : '') + '</div>' : '';
-  return '<div class="et-h"><b>' + head + (ms ? ' <small>' + (ms / 1000).toFixed(1) + 's</small>' : '') + '</b><button class="et-x" data-tl="toggle" aria-label="' + (open ? 'Collapse' : 'Expand') + ' thinking">' + (open ? '×' : '⌄') + '</button></div>' + body;
-}
-function liveHtml() { return live ? '<div class="msg a etlive' + (reactOn() ? ' et-hide' : '') + '" id="typ">' + cardInner(live.steps, true, 0) + '</div>' : ''; }
-function savedHtml(tl) {
-  if (!tl || !Array.isArray(tl.s) || !tl.s.length) return '';
-  const n = tl.s.filter(x => x[0] == 'x').length, bad = tl.s.filter(x => x[0] == 'x' && x[2] == 'bad').length;
-  const sum = 'Worked through ' + n + (n == 1 ? ' action' : ' actions') + (bad ? ' · ' + bad + ' failed' : '') + (tl.ms ? ' · ' + (tl.ms / 1000).toFixed(1) + 's' : '');
-  const rows = tl.s.map(x => row({ k: x[0], text: x[1], st: x[2] }));
-  return '<details class="etsaved"><summary>' + esc(sum) + '</summary><div class="et-line">' + rows.join('') + '</div></details>';
-}
+  function drop() { live = null; const old = $('typ'); if (old) old.remove(); }
 
-// ---------- events ----------
-document.addEventListener('click', e => {
-  const b = e.target.closest && e.target.closest('[data-tl="toggle"]'); if (!b) return;
-  open = !open; paint();
-});
-// ReAct thoughts: tool rows come from app.js runTool, so only the model's thinking is added here
-window.addEventListener('ember-react', e => {
-  const d = e.detail || {}; if (live && (d.type == 'start' || d.type == 'end')) paint();
-  if (!live || d.type != 'thought') return;
-  const RX = window.EmberEngine && window.EmberEngine.react, s = RX && RX.state && RX.state();
-  const en = s && s.entries && s.entries.find(x => x.n === d.n && x.type == 'step');
-  if (en && en.thought) note(en.thought, 'rx' + (s.startedAt || '') + ':' + d.n);
-});
+  function paint() {
+    const el = $('typ'); if (!el || !live) return;
+    el.className = 'et-think' + (reactOn() ? ' et-hide' : '');
+    el.innerHTML = innerHtml();
+    const log = $('log'); if (log) log.scrollTop = log.scrollHeight;
+  }
 
-window.EmberTimeline = { begin, drop, note, tool, snapshot, liveHtml, savedHtml, label, _live: () => live, _failed: failed };
+  function addLine(text, bad) {
+    if (!live) return null;
+    const line = { text, bad: !!bad };
+    live.lines.push(line);
+    if (live.lines.length > MAX) live.lines.shift();
+    paint();
+    return line;
+  }
+
+  function note(text, key) {
+    if (!live || !text) return;
+    text = clip(text, 120);
+    if (key) { if (live.seen[key]) return; live.seen[key] = 1; }
+    const last = live.lines[live.lines.length - 1];
+    if (last && last.text === text) return;
+    addLine(text, false);
+  }
+
+  function tool(name, args) {
+    if (live) live.toolRan = true;
+    const line = live ? addLine(label(name, args), false) : null;
+    return {
+      end(res) { if (line) { line.bad = failed(res); paint(); } }
+    };
+  }
+
+  function snapshot() {
+    if (!live || !live.toolRan) return null;
+    return { ms: Date.now() - live.t0, lines: live.lines.slice(-MAX).map(l => [l.text, l.bad ? 1 : 0]) };
+  }
+
+  // ---------- html ----------
+  function linesHtml(lines) {
+    if (!lines || !lines.length) return '<p class="et-line et-muted">Starting\u2026</p>';
+    return lines.map(l => '<p class="et-line' + (l.bad ? ' et-bad' : '') + '">' + esc(l.text) + '</p>').join('');
+  }
+
+  function innerHtml() { // live only
+    const openCls = live.open ? ' et-open' : '';
+    return '<div class="et-inner' + openCls + '">'
+      + '<div class="et-hdr" data-et="toggle">' + CHEV + '<span class="et-shimmer">Thinking\u2026</span></div>'
+      + '<div class="et-body"><div class="et-lines">' + linesHtml(live.lines) + '</div></div>'
+      + '</div>';
+  }
+
+  function outerHtml() {
+    return '<div id="typ" class="et-think' + (reactOn() ? ' et-hide' : '') + '">' + innerHtml() + '</div>';
+  }
+
+  function liveHtml() { return live ? outerHtml() : ''; }
+
+  function savedHtml(tl) {
+    if (!tl || !Array.isArray(tl.lines) || !tl.lines.length) return '';
+    const secs = tl.ms ? (tl.ms / 1000).toFixed(1) + 's' : '\u2013';
+    const lns = tl.lines.map(l => '<p class="et-line' + (l[1] ? ' et-bad' : '') + '">' + esc(l[0]) + '</p>').join('');
+    return '<details class="et-saved"><summary>' + CHEV + '<span>Thought for ' + secs + '</span></summary><div class="et-lines">' + lns + '</div></details>';
+  }
+
+  // ---------- events ----------
+  // toggle open/closed: lightweight class flip, no innerHTML rebuild needed
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('[data-et="toggle"]');
+    if (!b || !live) return;
+    live.open = !live.open;
+    const inner = b.closest('.et-inner'); if (inner) inner.classList.toggle('et-open', live.open);
+  });
+
+  // hide/show when ReAct starts or ends
+  window.addEventListener('ember-react', e => {
+    const t = (e.detail || {}).type;
+    if (t === 'start' || t === 'end') paint();
+  });
+
+  window.EmberTimeline = { begin, drop, note, tool, snapshot, liveHtml, savedHtml, label, _failed: failed, _live: () => live };
 })();
