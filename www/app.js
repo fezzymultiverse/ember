@@ -115,7 +115,9 @@ function bub(x, last, i) {
   const regen = last && x.r == 'a' ? '<button data-act="regen">↻ again</button>' : '';
   const say = x.r == 'a' ? '<button data-act="say" data-i="' + i + '" aria-label="Read aloud" title="Read aloud"' + (sayIdx === i ? ' class="talking"' : '') + '>' + (sayIdx === i ? '■ Stop' : '🔊') + '</button>' : '';
   const eggImg = x.egg == 'bojack' ? '<img src="ember-icon.svg" alt="" class="msg-egg-icon">' : '';
-  return '<div class="msg ' + x.r + (x.egg ? ' egg' : '') + '">' + eggImg + '<div>' + fmt(x.t) + '</div><div class="mt"><span>' + U.time(x.ts) + (x.deep ? ' · 💡' : '') + eng + '</span>' + say + regen + '</div></div>';
+  const rc = Array.isArray(x.rc) && x.rc.length ? '<div class="rcs">' + x.rc.map(r => '<div class="rc ' + esc(r.s) + '">' + ({ ok: '✓', warn: '⚠', empty: '∅', fail: '✕' }[r.s] || '•') + ' <b>' + esc(r.tool) + '</b>' + (r.src ? ' · ' + esc(r.src) : '') + (r.n ? ' · ' + esc(r.n) : '') + '</div>').join('') + '</div>' : '';
+  const copy = '<button data-act="copy" data-i="' + i + '" aria-label="Copy message" title="Copy">⧉ Copy</button>';
+  return '<div class="msg ' + x.r + (x.egg ? ' egg' : '') + '">' + eggImg + '<div class="mtxt">' + fmt(x.t) + '</div>' + rc + '<div class="mt"><span>' + U.time(x.ts) + (x.deep ? ' · 💡' : '') + eng + '</span>' + copy + say + regen + '</div></div>';
 }
 function renderLog() {
   const m = conv ? conv.msgs : [];
@@ -235,6 +237,31 @@ if (window.EmberEngine) window.EmberEngine.setHost({
     return String((r && r.text) || '');
   }
 });
+// V1.9.20: TOOL RECEIPTS. The app, not the model, writes what each tool actually did and shows it under the reply.
+// A model can say "Downloading now" or invent headlines; the receipt line is built from the tool's real result and cannot be talked around.
+let lastReceipts = [];
+const CHECKED = /^(web_search|search_and_read|scrape_url|youtube_search|playlist_list|youtube_download|playlist_download)$/;
+function receiptOf(tool, res) {
+  if (!res || typeof res != 'object') return { tool, s: 'ok', n: '' };
+  const src = String(res.source || res.provider || res.search_source || '').slice(0, 40);
+  if (res.error || res.ok === false) return { tool, s: 'fail', n: String(res.error || 'failed').slice(0, 160) };
+  if (CHECKED.test(tool)) {
+    const has = res.answer || res.markdown || res.jobId || res.count || res.ok === true ||
+      (Array.isArray(res.results) && res.results.length) || (Array.isArray(res.pages) && res.pages.some(p => p && !p.error)) || (Array.isArray(res.tracks) && res.tracks.length);
+    if (!has) return { tool, s: 'empty', n: String(res.note || 'it returned nothing').slice(0, 160), src };
+    if (res.degraded) return { tool, s: 'warn', n: 'only search snippets, not the real page', src };
+    if (Array.isArray(res.pages) && res.pages.some(p => p && p.error)) return { tool, s: 'warn', n: res.pages.filter(p => p && p.error).length + ' page(s) failed to open', src };
+    if (/^(youtube_download|playlist_download)$/.test(tool)) return { tool, s: 'ok', n: 'download started (watch the card for the real result)', src };
+  }
+  return { tool, s: 'ok', n: '', src };
+}
+function honestTail(err) {
+  const bad = lastReceipts.filter(r => r.s == 'fail' || r.s == 'empty');
+  const why = err && err.message ? ' The engine said: ' + String(err.message).slice(0, 120) + '.' : '';
+  if (bad.length) return 'The ' + bad.map(r => r.tool).join(' and ') + ' step did not work (' + bad[0].n + '), and I could not get a clean reply written after it.' + why + ' Nothing above is a result. Tap ↻ to try again.';
+  return 'The tool ran, but the engine sent back an empty reply, so I have nothing real to tell you yet.' + why + ' Tap ↻ to try again.';
+}
+const ASKS_TOOL = /\b(scrape|duck ?duck ?go|google (?:it|him|her|the|this|that|for|search)|look (?:it |that |him |her )?up|headlines|download)\b|https?:\/\/\S+|^\s*(?:search|find)\b/i;
 async function resolveAddonCalls(text, L) {
   if (window.EmberMusicAddon && window.EmberMusicAddon.setIntent) {
     // the music tools only run if HIS latest message is about music (ai_music.js checks this), never because the AI wants to
@@ -244,11 +271,13 @@ async function resolveAddonCalls(text, L) {
   if (window.EmberAgentAddon && window.EmberAgentAddon.setIntent) { // YouTube downloads only run if HIS latest message asks for one (ai_agent.js checks this)
     const us = conv.msgs.filter(m => m.r == 'u'); window.EmberAgentAddon.setIntent(us.length ? us[us.length - 1].t : '', us.length > 1 ? us[us.length - 2].t : '');
   }
+  lastReceipts = [];
   let cur = text, calls = parseCalls(cur);
+  const lastUserText = (() => { const us = conv.msgs.filter(m => m.r == 'u'); return us.length ? String(us[us.length - 1].t || '') : ''; })();
   // V1.9.7: a reply that says it searched / browsed / downloaded when NO tool ran is a lie. Give the model one chance to do it for real, else say so honestly.
   const FAKE = /\b(?:i(?:'ve| have|'ll| will)?\s+(?:just\s+|now\s+)?(?:searched|looked(?: it| that| this)? up|googled|browsed|scraped|fetched|pulled up|went (?:on|to) the (?:web|internet)|visited|downloaded|queued|started (?:the |your )?download|saved (?:it|that|this|the (?:song|track|playlist)))|checked (?:the )?(?:web|internet|site|page|link)|(?:the )?download(?:ing)?(?: has| is| just)? (?:started|underway|queued|complete|done|finished)|(?:it'?s|they'?re) (?:now )?(?:downloading|saved to))/i;
   if (!calls.length) {
-    if (!FAKE.test(stripTags(cur)) || Safety.lastLevel() >= 3) return stripTags(cur) || text;
+    if (!(FAKE.test(stripTags(cur)) || ASKS_TOOL.test(lastUserText)) || Safety.lastLevel() >= 3) return stripTags(cur) || text;
     const base = Persona.sentMsgs(conv, S).map(x => ({ role: x.r == 'u' ? 'user' : 'assistant', content: Persona.body(x) }));
     if (base.length && base[0].role == 'assistant') base.unshift({ role: 'user', content: '(we are picking the conversation back up)' });
     base.push({ role: 'assistant', content: stripTags(cur) });
@@ -258,8 +287,9 @@ async function resolveAddonCalls(text, L) {
       const fix = await Prov.run(L.lane, { system: sys0, messages: base, temp: 0.3, max: 450 });
       const t2 = String(fix.text || ''), c2 = parseCalls(t2);
       if (c2.length) { cur = t2; calls = c2; }
-      else return FAKE.test(stripTags(t2)) || !stripTags(t2) ? 'I did not actually do that: no tool ran, so nothing was searched, read or downloaded. Ask me again, and check that Web Scraping / YouTube search & audio download are switched on in Settings.' : stripTags(t2);
-    } catch (e) { return 'I did not actually do that: no tool ran, so nothing was searched, read or downloaded. Try again in a moment.'; }
+      else if (FAKE.test(stripTags(t2)) || !stripTags(t2) || ASKS_TOOL.test(lastUserText) && /\b(results?|found|headlines?|returned|according to)\b/i.test(stripTags(t2))) { lastReceipts = [{ tool: '(none)', s: 'fail', n: 'no tool ran for this reply' }]; return 'I did not actually do that: no tool ran, so nothing was searched, read or downloaded. Ask me again, and check that Web Scraping / YouTube search & audio download are switched on in Settings.'; }
+      else return stripTags(t2);
+    } catch (e) { lastReceipts = [{ tool: '(none)', s: 'fail', n: 'no tool ran for this reply' }]; return 'I did not actually do that: no tool ran, so nothing was searched, read or downloaded. Try again in a moment.'; }
   }
   const anyOn = true; // find_in_app is always available
   if (Safety.lastLevel() >= 3 || !anyOn) return stripTags(cur);
@@ -281,6 +311,7 @@ async function resolveAddonCalls(text, L) {
       }
       try { if (window.EmberKnow) window.EmberKnow.log(conv, c.tool, args, res); } catch (e) { /* logging never blocks a reply */ }
       results.push({ tool: c.tool, result: res });
+      lastReceipts.push(receiptOf(c.tool, res));
       const failedMsg = res && typeof res == 'object' && (res.error || res.ok === false) ? String(res.error || 'failed') : '';
       thisRound.push({ tool: c.tool, args, ok: !failedMsg, note: failedMsg.slice(0, 160) });
     }
@@ -298,10 +329,10 @@ async function resolveAddonCalls(text, L) {
       const sys = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, noTools: last, uiState: uiStateBlock(), actionHistory: historyLines(rounds) }), Safety.lastLevel());
       const synth = await Prov.run(L.lane, { system: sys, messages: msgs, temp: 0.85, max: 450 });
       cur = String(synth.text || '');
-    } catch (e) { return stripTags(cur) || 'I tried, but the add-on came back empty.'; }
+    } catch (e) { return honestTail(e); }
     calls = last ? [] : parseCalls(cur);
   }
-  return stripTags(cur) || 'I tried, but the add-on came back empty.';
+  return stripTags(cur) || honestTail(null);
 }
 async function reply(o) {
   o = o || {}; if (busy) return;
@@ -317,7 +348,7 @@ async function reply(o) {
     if (bgWon()) finalText = '';
     else if (finalText) finalText = await resolveAddonCalls(finalText, L);
     if (finalText && !bgWon()) {
-      conv.msgs.push({ r: 'a', t: finalText, ts: Date.now(), turn: turnId, deep: L.deep || undefined, eng: { p: r.provider, m: r.model, ms: r.ms, pm: r.pinMiss ? r.pinMiss.want : undefined } });
+      conv.msgs.push({ r: 'a', t: finalText, ts: Date.now(), turn: turnId, deep: L.deep || undefined, eng: { p: r.provider, m: r.model, ms: r.ms, pm: r.pinMiss ? r.pinMiss.want : undefined }, rc: lastReceipts.length ? lastReceipts.slice(0, 6) : undefined });
       if (window.EmberNative && window.EmberNative.aiAvailable) window.EmberNative.aiCancel(turnId);
       if (S.autoRead) speakText(finalText, conv.msgs.length - 1);
       if (window.EmberNative) window.EmberNative.notifyReply(finalText);
@@ -353,11 +384,7 @@ async function send() {
   Safety.mark(Safety.detect(t).level);
   if (conv.auto && conv.title == 'New chat') conv.title = t.length > 38 ? t.slice(0, 38).trim() + '…' : t;
   $('inp').value = ''; grow();
-  const egg = window.NineNine && window.NineNine.BOJACK_EGG && window.NineNine.BOJACK_EGG.test(t);
-  if (egg) {
-    conv.msgs.push({ r: 'a', t: window.NineNine.BOJACK_REPLY, ts: Date.now(), egg: 'bojack' });
-    await persist(); renderLog(); return;
-  }
+  // V1.9.20: the hardcoded Bojack card is gone. Every message, Bojack included, goes to the model.
   await persist(); renderLog(); reply();
 }
 function needKeys() { return false; }
@@ -394,12 +421,33 @@ $('log').addEventListener('click', e => {
   if (a.dataset.act == 'keys') openSettings();
   else if (a.dataset.act == 'retry') { if (conv && conv.msgs.length) reply({ directive: conv.msgs[conv.msgs.length - 1].r == 'a' ? SPARK : undefined }); }
   else if (a.dataset.act == 'say') speakMsg(+a.dataset.i);
+  else if (a.dataset.act == 'copy') { const m = conv && conv.msgs[+a.dataset.i]; if (m) copyText(String(m.t || '')).then(ok => toast(ok ? 'Copied' : 'Could not copy: long-press the text and use Copy')); }
   else if (a.dataset.act == 'regen' && conv && !busy) {
     const last = conv.msgs[conv.msgs.length - 1]; if (!last || last.r != 'a') return;
     conv.msgs.pop(); const prevUser = conv.msgs.length && conv.msgs[conv.msgs.length - 1].r == 'u';
     reply({ directive: prevUser ? undefined : SPARK });
   }
 });
+
+// V1.9.20: copy and paste that work inside the Android WebView
+async function copyText(t) {
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(t); return true; } } catch (e) { /* fall through to the old way */ }
+  try {
+    const ta = document.createElement('textarea'); ta.value = t; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
+    document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, t.length);
+    const ok = document.execCommand('copy'); ta.remove(); return !!ok;
+  } catch (e) { return false; }
+}
+async function pasteInto() {
+  const el = $('inp'); el.focus();
+  try {
+    const t = navigator.clipboard && navigator.clipboard.readText ? await navigator.clipboard.readText() : '';
+    if (t) { const a = el.selectionStart == null ? el.value.length : el.selectionStart, b = el.selectionEnd == null ? a : el.selectionEnd; el.value = el.value.slice(0, a) + t + el.value.slice(b); el.selectionStart = el.selectionEnd = a + t.length; grow(); saveSession(); toast('Pasted'); return; }
+  } catch (e) { /* permission or no clipboard API */ }
+  toast('Long-press the box and tap Paste');
+}
+if ($('bPaste')) $('bPaste').onclick = pasteInto;
+if ($('bCopyAll')) $('bCopyAll').onclick = async () => { const v = $('inp').value; if (!v) { toast('Nothing in the box'); return; } toast((await copyText(v)) ? 'Copied' : 'Could not copy'); };
 
 // ---------- history ----------
 async function renderHist() {
@@ -1072,7 +1120,7 @@ window.addEventListener('ember-dl', e => {
   const j = e.detail || {};
   const el = document.getElementById('dl-' + j.id);
   if (el && window.EmberAgentAddon) el.outerHTML = window.EmberAgentAddon.cardHtml(j);
-  else if (conv && window.EmberAgentAddon) renderLog();
+  else if (conv && window.EmberAgentAddon) { const sel = window.getSelection && String(window.getSelection()); if (!sel) renderLog(); }
 });
 window.addEventListener('ember-dl-final', e => {
   const text = (e.detail && e.detail.text) || '';

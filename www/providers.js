@@ -183,8 +183,14 @@ async function call(id, key, model, o) {
   if (c.kind == 'oai') {
     const body = { model, messages: [{ role: 'system', content: o.system }].concat(o.messages), temperature: o.temp == null ? 0.8 : o.temp, max_tokens: o.max || 400 };
     if (o.json) body.response_format = { type: 'json_object' };
-    const j = await jfetch(c.base + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, 40000);
+    // V1.9.20: gpt-oss is a reasoning model. Its thinking is paid for out of max_tokens, so a small budget leaves the visible reply EMPTY
+    // ("empty reply (blocked or cut off)"). Keep the thinking short and give it room; if it still comes back empty, retry once with a bigger budget.
+    const reasoner = /gpt-oss/i.test(model);
+    if (reasoner) { body.reasoning_effort = 'low'; body.max_tokens = Math.max(body.max_tokens * 3, 1600); }
+    const post = b => jfetch(c.base + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(b) }, 40000);
+    let j = await post(body);
     text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content || '';
+    if (!String(text).trim() && reasoner) { body.max_tokens = Math.min(body.max_tokens * 2, 6000); j = await post(body); text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content || ''; }
   } else if (c.kind == 'cohere') {
     const body = { model, messages: [{ role: 'system', content: o.system }].concat(o.messages), temperature: o.temp == null ? 0.8 : o.temp, max_tokens: o.max || 400 };
     if (o.json) body.response_format = { type: 'json_object' };
