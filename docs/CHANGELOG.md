@@ -7,16 +7,6 @@
 
 # Changelog
 
-## V1.9.21
-- **Natural-talk downloads.** The download gate (`DL_INTENT` in `www/ai_agent.js`) only opened for download/save/grab/rip/keep/store or a pasted link, so "get me X", "put X on my phone", "add X", "I want X" were refused with "He did not ask to download". Widened to also accept get/fetch/pull/put/add/want/need/newpipe and -ing/-ed forms. The seen-link guard is unchanged: the AI still cannot download a video id that did not come from him or from `youtube_search`.
-- **Ember is told it can download.** The agent state block (`stateBlock`) and the TOOLS line in `www/persona.js` now say plain requests count and give the flow: youtube_search, pick best match, youtube_download.
-- Tests: 5 new checks in `tests/agent-test.js`. Not run on a device. Reminder: the YouTube switch is OFF by default. Version 1.9.21.
-
-## V1.9.20
-- **Download path audited, nothing removed from the code.** `youtube_download`, `playlist_download`, `EmberYoutubePlugin.kt`, `DownloadWorker.kt`, `EmberYtCore.kt` and the NewPipe/OkHttp/desugaring/JitPack patch are all present. `tests/agent-test.js` passes 67/67 (gate, link checks, job start, progress cards). `scripts/apply_android_patch.py` was run against a fresh `npx cap add android` project and wires NewPipe v0.26.5 correctly.
-- **Restored the missing CI files.** The V1.9.19 zip had no `.github/` folder, so no workflow could build an APK carrying the native downloader (the app then says the native downloader is missing). Added `.github/workflows/build.yml` (signed release APK, steps as in `docs/ANDROID_BUILD.md`) and `.github/workflows/newpipe-update.yml` (Monday NewPipe bump, commits only if the build passes). `.gitlab-ci.yml` is not restored.
-- Reminder: Settings > Music > Ember add-ons > YouTube search & audio download is OFF by default. Kotlin was still never compiled or run on a device. Version 1.9.20.
-
 ## V1.9.18
 - **Wiring audit, no app code changed.** Checked the three layers for the document tools, `scrape_url`, the router and the ReAct loop, and locked each one in with tests so a future edit cannot silently disconnect them: schema shown to the model (`persona.js` toolsBlock), dispatcher (`app.js` runTool), the ReAct host (`setHost({ run: runTool ... })`), and strict engine pin (a pinned Gemini calls only the Gemini API; if Google rejects it you see Gemini's error, never a Groq answer). The ReAct test drives a scripted model through `run_react` and checks every Action reached the real document tools in order and that the model saw the real result.
 - Tests: `tests/v1915-test.js` now 45 checks, all passing. Not run on a device; Playwright suites not run here. Version 1.9.18.
