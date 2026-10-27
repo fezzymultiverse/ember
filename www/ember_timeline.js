@@ -56,8 +56,8 @@
   const failed = r => !!(r && typeof r === 'object' && (r.error || r.ok === false));
 
   // ---------- styles: 'tl' = existing Summary card, 'dd' = compact dropdown, 'claude' = animated status line ----------
-  const SK = 'ember_think_style';
-  const getStyle = () => { try { const v = localStorage.getItem(SK); return ['dd', 'claude'].includes(v) ? v : 'tl'; } catch (e) { return 'tl'; } };
+  const SK = 'ember_think_style_v2'; // V1.9.43: start with the requested Claude-style dropdown by default
+  const getStyle = () => { try { const v = localStorage.getItem(SK); return ['tl', 'dd', 'claude'].includes(v) ? v : 'claude'; } catch (e) { return 'claude'; } };
   const setStyle = v => { try { localStorage.setItem(SK, v); } catch (e) { /* private mode */ } };
   const nextStyle = () => ({ tl: 'dd', dd: 'claude', claude: 'tl' }[getStyle()] || 'tl');
 
@@ -227,5 +227,15 @@
   });
 
   window.addEventListener('ember-try', e => { const d = e.detail || {}; note('Asking ' + d.name + (d.model && d.model != 'openai' ? ' (' + d.model + ')' : '') + '…'); });
+  // Keep provider fallback visible in the same thinking card used by every routed engine.
+  // The router emits this only after a different engine has successfully answered.
+  window.addEventListener('ember-switch', e => {
+    const d = e.detail || {};
+    const label = id => { try { return window.Prov && Prov.label ? Prov.label(id) : String(id || 'engine'); } catch (_) { return String(id || 'engine'); } };
+    const why = Number(d.status) === 429 ? 'was rate limited'
+      : Number(d.status) === 401 || Number(d.status) === 403 ? 'key was rejected'
+      : 'was unavailable';
+    note(label(d.from) + ' ' + why + '; switching to ' + label(d.to));
+  });
   window.EmberTimeline = { getStyle, setStyle, begin, drop, note, tool, upsert, unkey, collapse, snapshot, liveHtml, savedHtml, label, _failed: failed, _live: () => live };
 })();
