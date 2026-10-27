@@ -1,3 +1,4 @@
+// Ember V1.9.45 - ember_timeline.js: thought-by-thought reveal queue (rv flags) for every style; 'claude' style is now a spinner + rotating status line (no dropdown)
 // Ember V1.9.42 - ember_timeline.js (single owner of the live thinking card; ReAct feeds it via upsert())
 // Ember V1.9.31 - ember_timeline.js
 // "Summary" card while Ember works on a reply: grey dot = thought, terminal icon = tool call
@@ -63,10 +64,31 @@
 
   // ---------- state ----------
   const MAX = 20;
-  let live = null; // { lines:[{text,bad}], t0, open, seen:{}, toolRan }
+  let live = null; // { lines:[{text,bad,rv,rvAt}], t0, open, seen:{}, toolRan }
+
+  // ---------- V1.9.45: reveal queue ----------
+  // Real events (notes / tool calls) can arrive in a burst; the card must show them one at a time,
+  // thought by thought. Every line carries rv (revealed) + rvAt; only revealed lines are painted.
+  // The first line shows at once, later ones are spaced out and speed up when a backlog builds.
+  let rvTimer = null, lastRv = 0;
+  const vis = () => (live ? live.lines.filter(l => l.rv) : []);
+  const gapFor = pend => getStyle() === 'claude' ? (pend > 4 ? 320 : pend > 2 ? 400 : 520) : (pend > 4 ? 240 : pend > 2 ? 380 : 540);
+  function pump() {
+    if (!live || rvTimer) return;
+    const pend = live.lines.filter(l => !l.rv).length; if (!pend) return;
+    const wait = Math.max(0, lastRv + gapFor(pend) - Date.now());
+    rvTimer = setTimeout(() => {
+      rvTimer = null; if (!live) return;
+      const n = live.lines.find(l => !l.rv);
+      if (n) { n.rv = true; n.rvAt = lastRv = Date.now(); paint(); }
+      pump();
+    }, wait);
+  }
+  function flush() { if (!live) return; if (rvTimer) { clearTimeout(rvTimer); rvTimer = null; } live.lines.forEach(l => { if (!l.rv) { l.rv = true; l.rvAt = 0; } }); paint(); }
 
   // ---------- core ----------
   function begin() {
+    if (rvTimer) { clearTimeout(rvTimer); rvTimer = null; } lastRv = 0;
     live = { lines: [], t0: Date.now(), open: true, seen: {}, toolRan: false };
     // Hide the welcome hero as soon as a turn starts; otherwise it can sit behind
     // the live Summary card while the first user/assistant rows are being rendered.
@@ -76,18 +98,36 @@
     log.insertAdjacentHTML('beforeend', outerHtml());
     log.scrollTop = log.scrollHeight;
   }
-  function drop() { live = null; const old = $('typ'); if (old) old.remove(); }
+  function drop() { if (rvTimer) { clearTimeout(rvTimer); rvTimer = null; } live = null; const old = $('typ'); if (old) old.remove(); }
 
   function paint() {
     const el = $('typ'); if (!el || !live) return;
     el.className = 'et-think' + (reactOn() ? ' et-hide' : '');
+    if (getStyle() === 'claude' && paintSpin(el)) { const lg = $('log'); if (lg) lg.scrollTop = lg.scrollHeight; return; }
     el.innerHTML = innerHtml();
-    if (el.querySelectorAll) { // V1.9.39: only the new rows animate in
-      const items = el.querySelectorAll('.tl-item:not(.tl-now)'), seen = live.shown || 0;
-      items.forEach((it, i) => { if (i >= seen) it.classList.add('tl-new'); });
-      live.shown = items.length;
+    if (el.querySelectorAll) { // V1.9.45: each revealed row drops in once; a repaint mid-drop carries on from where it was
+      const items = el.querySelectorAll('.tl-item:not(.tl-now)'), v = vis(), now = Date.now();
+      items.forEach((it, i) => {
+        const l = v[i]; if (!l || !l.rvAt) return;
+        const age = now - l.rvAt;
+        if (age < 460) { it.classList.add('tl-new'); it.style.animationDelay = '-' + age + 'ms'; }
+      });
     }
     const log = $('log'); if (log) log.scrollTop = log.scrollHeight;
+  }
+
+  // V1.9.45: 'claude' style = spinner + one status line that rotates to the next. The DOM is kept (never rebuilt)
+  // so the spinner turns smoothly; only the status line is swapped.
+  const statusOf = () => { const v = vis(), last = v[v.length - 1]; return last ? { t: clip(last.text, 100), bad: !!last.bad } : { t: 'Preparing your response', bad: false }; };
+  const statusSpan = (st, cls) => '<span class="et-status ' + (cls || '') + (st.bad ? ' et-bad' : '') + '" data-s="' + esc(st.t) + '">' + esc(st.t) + '</span>';
+  function paintSpin(el) {
+    if (!el.querySelector) return false;
+    const stage = el.querySelector('.et-stage'); if (!stage) return false;
+    const st = statusOf(), cur = stage.querySelector('.et-status:not(.et-rot-out)');
+    if (cur && cur.getAttribute('data-s') === st.t) return true;
+    if (cur) { cur.classList.add('et-rot-out'); setTimeout(() => { if (cur.parentNode) cur.parentNode.removeChild(cur); }, 400); }
+    stage.insertAdjacentHTML('beforeend', statusSpan(st, 'et-rot-in'));
+    return true;
   }
 
   function addLine(text, bad) {
@@ -95,7 +135,7 @@
     const line = { text, bad: !!bad, k: 't', st: '' };
     live.lines.push(line);
     if (live.lines.length > MAX) live.lines.shift();
-    paint();
+    pump();
     return line;
   }
 
@@ -111,7 +151,7 @@
   function tool(name, args) {
     if (live) live.toolRan = true;
     const line = live ? addLine(label(name, args), false) : null;
-    if (line) { line.k = 'a'; line.st = 'run'; paint(); } // V1.9.39: repaint so the RUNNING pill / "Executing Tool…" show while the tool works (they were set after the paint)
+    if (line) { line.k = 'a'; line.st = 'run'; paint(); pump(); } // V1.9.39: repaint so the RUNNING pill / "Executing Tool…" show while the tool works (they were set after the paint)
     return {
       end(res) { if (line) { line.bad = failed(res); line.st = line.bad ? 'bad' : 'ok'; paint(); } }
     };
@@ -131,7 +171,7 @@
     line.text = clip(text, opt.max || 120); line.k = k || line.k || 't'; line.st = st || '';
     line.bad = st === 'bad'; line.pill = opt.pill || ''; line.err = opt.err ? clip(opt.err, 140) : '';
     if (line.k === 'a') live.toolRan = true;
-    paint();
+    paint(); pump();
     return line;
   }
   function unkey(key) {
@@ -162,24 +202,22 @@
   }
 
   const SW = '<button class="tl-x et-sw" data-et="style" aria-label="Switch thinking display" title="Switch thinking display">\u21c4</button>';
+  const SPIN = '<svg class="et-spinner" viewBox="0 0 24 24" aria-hidden="true"><circle class="et-sp-track" cx="12" cy="12" r="9.5"/><circle class="et-sp-arc" cx="12" cy="12" r="9.5"/><circle class="et-sp-arc2" cx="12" cy="12" r="5.2"/></svg>';
   function innerHtml() { // live only
-    if (getStyle() === 'claude') {
-      const last = live.lines[live.lines.length - 1];
-      const status = last ? last.text : 'Preparing your response';
-      const rows = live.lines.map(l => '<p class="et-line' + (l.bad ? ' et-bad' : '') + '">' + esc(l.text) + '</p>').join('');
-      return '<div class="et-inner et-claude' + (live.open ? ' et-open' : '') + '">'
-        + '<div class="et-hdr" data-et="toggle"><span class="et-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="et-status">' + esc(clip(status, 100)) + '</span>' + SW + CHEV + '</div>'
-        + '<div class="et-body"><div class="et-lines"><div class="et-claude-log">' + (rows || '<p class="et-line et-muted">Getting started…</p>') + '</div></div></div></div>';
+    const V = vis();
+    if (getStyle() === 'claude') { // V1.9.45: spinner that turns + status line that rotates; no dropdown, no chevron
+      return '<div class="et-inner et-claude et-spin">'
+        + '<div class="et-hdr">' + SPIN + '<span class="et-stage">' + statusSpan(statusOf(), '') + '</span>' + SW + '</div></div>';
     }
     if (getStyle() === 'dd') {
       return '<div class="et-inner' + (live.open ? ' et-open' : '') + '">'
         + '<div class="et-hdr" data-et="toggle">' + CHEV + '<span class="et-shimmer">Thinking\u2026</span>' + SW + '</div>'
-        + '<div class="et-body"><div class="et-lines">' + (live.lines.length ? live.lines.map(l => '<p class="et-line' + (l.bad ? ' et-bad' : '') + '">' + esc(l.text) + '</p>').join('') : '<p class="et-line et-muted">Starting\u2026</p>') + '</div></div></div>';
+        + '<div class="et-body"><div class="et-lines">' + (V.length ? V.map(l => '<p class="et-line' + (l.bad ? ' et-bad' : '') + '">' + esc(l.text) + '</p>').join('') : '<p class="et-line et-muted">Starting\u2026</p>') + '</div></div></div>';
     }
     return '<div class="tl-card tl-run' + (live.open ? ' tl-open' : '') + '">'
-      + '<div class="tl-hdr" data-et="toggle">' + titleHtml(true, (live.lines[live.lines.length - 1] || {}).st === 'run', 0) + '<span class="tl-meta">' + live.lines.length + ' steps</span>' + SW
+      + '<div class="tl-hdr" data-et="toggle">' + titleHtml(true, (V[V.length - 1] || {}).st === 'run', 0) + '<span class="tl-meta">' + V.length + ' steps</span>' + SW
       + '<span class="tl-chev2" data-et="toggle" aria-label="Collapse">' + DOWN + '</span></div>'
-      + '<div class="tl-body">' + linesHtml(live.lines, true) + '</div></div>';
+      + '<div class="tl-body">' + linesHtml(V, true) + '</div></div>';
   }
 
   function outerHtml() {
@@ -237,5 +275,5 @@
       : 'was unavailable';
     note(label(d.from) + ' ' + why + '; switching to ' + label(d.to));
   });
-  window.EmberTimeline = { getStyle, setStyle, begin, drop, note, tool, upsert, unkey, collapse, snapshot, liveHtml, savedHtml, label, _failed: failed, _live: () => live };
+  window.EmberTimeline = { getStyle, setStyle, begin, drop, note, tool, upsert, unkey, collapse, snapshot, liveHtml, savedHtml, label, flush, _failed: failed, _live: () => live };
 })();

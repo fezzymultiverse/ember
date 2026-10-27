@@ -1,4 +1,11 @@
-# Ember V1.9.42 HANDOVER
+# Ember V1.9.45 HANDOVER
+Status: thinking motion. Spinner style = turning spinner + rotating status line (no dropdown). Summary card and compact dropdown reveal one thought at a time through a queue in ember_timeline.js (rv / rvAt flags, pump(), flush()).
+
+## Verification
+- `node tests/v1945-motion-test.js`, `v1942-thought-test.js`, `v1941-thought-test.js`, `v1928-test.js`, `v1933-test.js`, `v1940-ui-test.js`: passed.
+- Android APK/device verification: not performed in this environment.
+
+## Previous (V1.9.42)
 Status: thinking-card repair. Title clipping fixed (no background-clip text), ReAct now feeds the single live card via EmberTimeline.upsert(), card collapses as a dropdown when the run/reply ends. README not touched.
 
 ## Previous (V1.9.41)

@@ -1147,3 +1147,53 @@ header .who b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:el
 .tl-pill-warn{letter-spacing:.3px}
 .tl-err{overflow-wrap:anywhere}
 @media (prefers-reduced-motion:reduce){.tl-shimmer,.tl-title .tl-shimmer,.et-shimmer{animation:none;color:var(--m)}.tl-card.tl-run::before,.tl-card.tl-run .tl-spark{animation:none}.tl-card .tl-body{transition:none}}
+
+/* ================= V1.9.45 - thinking motion =================
+   1) 'claude' style: a spinner that turns + ONE status line that rotates to the next (no dropdown, no chevron).
+   2) Summary card ('tl') and compact dropdown ('dd'): rows drop in one at a time, thought by thought (reveal queue in ember_timeline.js). */
+.et-spin .et-hdr{cursor:default;gap:11px;align-items:center;min-height:30px}
+.et-spin .et-sw{flex-shrink:0;margin-left:auto}
+.et-spinner{width:20px;height:20px;flex-shrink:0;overflow:visible}
+.et-spinner circle{fill:none;stroke-width:2.4;transform-origin:12px 12px}
+.et-sp-track{stroke:#3a3a3a}
+.et-sp-arc{stroke:var(--ac);stroke-linecap:round;stroke-dasharray:22 38;animation:et-spin 0.9s linear infinite}
+.et-sp-arc2{stroke:#bdbdbd;stroke-linecap:round;stroke-dasharray:9 24;animation:et-spin 1.35s linear infinite reverse}
+@keyframes et-spin{to{transform:rotate(360deg)}}
+.et-stage{display:grid;flex:1;min-width:0;overflow:hidden;perspective:340px}
+.et-stage .et-status{grid-area:1/1;min-width:0;color:#d4d4d4;font-style:italic;font-size:14px;font-weight:500;line-height:1.45;overflow-wrap:anywhere;transform-origin:50% 50%;backface-visibility:hidden}
+.et-stage .et-status.et-bad{color:var(--rd)}
+.et-rot-in{animation:et-rot-in .4s cubic-bezier(.2,.85,.25,1) both}
+.et-rot-out{animation:et-rot-out .34s cubic-bezier(.5,0,.8,.4) both;pointer-events:none}
+@keyframes et-rot-in{from{opacity:0;transform:rotateX(-85deg) translateY(60%)}to{opacity:1;transform:none}}
+@keyframes et-rot-out{from{opacity:1;transform:none}to{opacity:0;transform:rotateX(85deg) translateY(-60%)}}
+/* rows drop down one by one */
+.tl-new{animation:tl-drop .46s cubic-bezier(.2,.85,.25,1) both!important}
+@keyframes tl-drop{from{opacity:0;transform:translateY(-18px) scale(.97)}60%{opacity:1}to{opacity:1;transform:none}}
+.et-lines .et-line{animation:tl-drop .4s cubic-bezier(.2,.85,.25,1) both}
+.et-saved .et-lines .et-line{animation:none}
+@media (prefers-reduced-motion:reduce){
+  .et-sp-arc{animation-duration:2.4s}.et-sp-arc2{animation:none}
+  .et-rot-in{animation:et-fade .2s ease both}.et-rot-out{animation:et-fade .2s ease reverse both}
+  .tl-new,.et-lines .et-line{animation:none!important}
+}
+@keyframes et-fade{from{opacity:0}to{opacity:1}}
+
+
+/* V1.9.46 - softer light surfaces + pill composer polish */
+:root{
+  --bg:#f5f6f8;--p:#ffffff;--p2:#eef0f4;--b:#dfe3e9;--t:#20232a;--m:#697180;
+  --on:#ffffff;
+}
+body{background:var(--bg);color:var(--t)}
+#app{background:radial-gradient(ellipse at 50% -20%,rgba(255,106,0,.09),transparent 62%),var(--bg)}
+header{background:rgba(255,255,255,.94);border-bottom-color:var(--b)}
+.hb{background:#fff;border-color:var(--b);color:var(--t);border-radius:999px}
+#inp{background:#fff;border:1px solid #d9dee7;border-radius:28px;padding:13px 17px;box-shadow:0 2px 8px rgba(20,30,50,.045);transition:border-color .18s,box-shadow .18s}
+#inp:focus{border-color:color-mix(in srgb,var(--ac) 65%,#fff);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 12%,transparent)}
+#bPlus,#bTalk,#bMic{border-radius:999px}
+#bSend{box-shadow:0 3px 10px rgba(255,106,0,.22);transition:transform .15s,box-shadow .15s}
+#bSend:active{transform:scale(.94);box-shadow:none}
+.card,.prm,.tl-card,.et-claude,.et-claude-saved{box-shadow:0 2px 10px rgba(20,30,50,.045)}
+input[type=text],input[type=password],select,textarea.pad{background:#fff;border-color:var(--b);color:var(--t)}
+.btn.g{background:#fff;color:var(--t);border-color:var(--b)}
+@media(prefers-reduced-motion:reduce){#inp,#bSend{transition:none}}

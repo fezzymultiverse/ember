@@ -2,8 +2,8 @@
 const fs = require('fs'), assert = require('assert'), vm = require('vm');
 const read = f => fs.readFileSync(__dirname + '/../' + f, 'utf8');
 const css = read('www/style.css'), pkg = JSON.parse(read('package.json')), sw = read('www/sw.js');
-assert.strictEqual(pkg.version, '1.9.42');
-assert(sw.includes("const V = 'ember-v1.9.42'"));
+assert(/^1\.9\.\d+$/.test(pkg.version));
+assert(/const V = 'ember-v1\.9\.\d+'/.test(sw));
 // shimmer can no longer clip the title
 assert(css.includes('@keyframes tl-glow') && css.includes('-webkit-text-fill-color:currentColor!important'));
 // behaviour: one live card, keyed lines, pills, snapshot, collapse
@@ -13,12 +13,13 @@ const store = {};
 const win = { addEventListener() {}, EmberEngine: { react: { state: () => null } } };
 const ctx = { window: win, document: { getElementById: id => els[id] || null, addEventListener() {} }, localStorage: { getItem: k => store[k] || null, setItem: (k, v) => { store[k] = v; } }, setTimeout, clearTimeout };
 vm.runInNewContext(read('www/ember_timeline.js'), ctx);
-const TL = win.EmberTimeline; assert(TL && TL.upsert && TL.unkey && TL.collapse);
+const TL = win.EmberTimeline; assert(TL && TL.upsert && TL.unkey && TL.collapse); TL.setStyle('tl');
 TL.begin(); TL.note('Reading your message');
 TL.upsert('rt1', 'Check the docs first', 't', '');
 TL.upsert('rt1', 'Check the docs first', 't', ''); // same key must not duplicate
 TL.upsert('ra1', 'Searching the web', 'a', 'warn', { pill: 'SKIPPED', err: 'He chose not to run this action.' });
 TL.upsert('rwait', 'Waiting for your approval', 'a', 'warn', { pill: 'WAITING' }); TL.unkey('rwait');
+TL.flush(); // V1.9.45: rows are revealed one at a time; flush shows them all
 const lines = Array.from(TL._live().lines, l => l.text);
 assert.strictEqual(JSON.stringify(lines), JSON.stringify(['Reading your message', 'Check the docs first', 'Searching the web']));
 assert(els.typ.innerHTML.includes('SKIPPED') && els.typ.innerHTML.includes('He chose not to run'), 'pill and error render');

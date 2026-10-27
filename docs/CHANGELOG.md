@@ -19,6 +19,13 @@
 
 # Changelog
 
+## V1.9.45
+- **Spinner style (the first card) now spins and rotates instead of dropping down.** The status-line display is a turning two-ring spinner with ONE status line. When the status changes, the old line rotates away and the next one rotates in (3D flip). The dropdown body, chevron and tap-to-open are gone from this style; the full list still shows in the saved "Thought for Xs" row after the reply. The DOM is kept between updates so the spinner never restarts or jitters. Reduced-motion: slow spinner + plain fade.
+- **Summary card (the second card) drops down thought by thought.** Events that arrive in a burst (Reading your message, Quick lane, Loading the chat, Choosing the best engine, Asking ..., tool calls) used to land on screen all at once. New reveal queue in `ember_timeline.js`: the first thought shows at once, every next one drops in after its own beat (about 0.5s, faster when a backlog builds), the tool row shows RUNNING then flips to SUCCESS / FAILED in place, and "Thinking..." stays pinned at the bottom. Same queue feeds the compact dropdown. Nothing is lost: lines still waiting when the reply lands are kept in the saved row.
+- A repaint in the middle of a drop (for example RUNNING -> SUCCESS) carries on the animation instead of snapping.
+- Files: `www/ember_timeline.js`, `www/style.css` (appended CSS), `www/sw.js` (cache `ember-v1.9.45`), `package.json`, `www/index.html` version text.
+- Tests: new `tests/v1945-motion-test.js`; `v1941` and `v1942` thought tests made version-agnostic and brought up to date with the V1.9.43 default style. NOT tested on a device.
+
 ## V1.9.39
 - **Thinking card now follows the mockup.** While Ember works the card glows orange, the header shows a spark and shimmering "Thinking…", which switches to "Executing Tool…" while a tool runs. Rows drop in one by one. When the reply lands the header becomes a muted "Thought for Xs" and the card stays above the reply, collapsed (tap to open). Same look for the ReAct card (`ember_think_inline.js`), which now collapses 0.8 s after the run ends. Files: `ember_timeline.js`, `ember_think_inline.js`, CSS appended to `style.css`. Cache `ember-v1.9.39`.
 - **Bug fixed:** the RUNNING pill and "Executing Tool…" never showed while a tool ran (the line was marked running after the repaint). `tool()` now repaints.

@@ -72,7 +72,14 @@ async function jfetch(url, opt, timeout) {
   if (!r.ok) {
     let body = ''; try { body = await r.text(); } catch (e) {}
     let msg = ''; try { const j = JSON.parse(body); msg = (j.error && (j.error.message || j.error)) || j.message || ''; } catch (e) {}
-    throw Object.assign(new Error(String(msg || body || ('HTTP ' + r.status)).slice(0, 200)), { status: r.status, retryAfter: +(r.headers && r.headers.get && r.headers.get('retry-after')) || 0 });
+    const hdrRetry = +(r.headers && r.headers.get && r.headers.get('retry-after')) || 0;
+    let bodyRetry = 0;
+    try {
+      const parsed = JSON.parse(body);
+      bodyRetry = +(parsed.retry_after || parsed.retryAfter || (parsed.error && (parsed.error.retry_after || parsed.error.retryAfter))) || 0;
+    } catch (e) { /* non-JSON error body */ }
+    const retryAfter = hdrRetry || bodyRetry;
+    throw Object.assign(new Error(String(msg || body || ('HTTP ' + r.status)).slice(0, 200)), { status: r.status, retryAfter });
   }
   return r.json();
 }
@@ -469,7 +476,7 @@ async function runInner(lane, o, tok) {
       let models;
       try { models = await modelsFor(id, e.key, lane); }
       catch (er) {
-        if (er.status == 401 || er.status == 403) { e.bad = true; save(); } else if (er.status == 429) cool.set(e.key, Date.now() + (er.retryAfter || 60) * 1000);
+        if (er.status == 401 || er.status == 403) { e.bad = true; save(); } else if (er.status == 429) cool.set(e.key, Date.now() + Math.max(5, Math.min(900, Number(er.retryAfter) || 60)) * 1000);
         errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message }); continue;
       }
       const pm = pinnedModel && pinnedModel.id == id ? pinnedModel.model : null;
@@ -479,7 +486,7 @@ async function runInner(lane, o, tok) {
         catch (er) {
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
           if (soft && (er.status == 400 || er.status == 402 || er.status == 403 || er.status == 422) && !pm) continue; // V1.9.15: try the next model, keep the key, the reason stays in failed[]
-          if (er.status == 429) { cool.set(e.key, Date.now() + (er.retryAfter || 60) * 1000); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: true, code: 429 }); break; }
+          if (er.status == 429) { cool.set(e.key, Date.now() + Math.max(5, Math.min(900, Number(er.retryAfter) || 60)) * 1000); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: true, code: 429 }); break; }
           if (er.status == 401 || er.status == 403) { e.bad = true; e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: false, limited: false, code: er.status, msg: 'key rejected (' + er.status + ')' }); save(); break; }
           if (er.status == 404 || (er.status == 400 && /model/i.test(er.message))) continue;
           break;
