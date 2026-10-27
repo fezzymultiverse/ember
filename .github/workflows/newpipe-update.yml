@@ -28,6 +28,7 @@ jobs:
         with: {distribution: temurin, java-version: 17}
       - if: steps.v.outputs.changed == 'true'
         uses: android-actions/setup-android@v3
+        with: {packages: ''}
       - name: Build with the new version
         if: steps.v.outputs.changed == 'true'
         env: {NEWPIPE_VERSION: '${{ steps.v.outputs.new }}'}

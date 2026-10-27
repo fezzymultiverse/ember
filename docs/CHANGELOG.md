@@ -7,6 +7,9 @@
 
 # Changelog
 
+## V1.9.23-1
+- **CI fix.** `android-actions/setup-android@v3` runs `sdkmanager tools` by default and that package no longer exists ("Failed to find package 'tools'", run #50 failed at that step). Both workflows now pass `packages: ''` so that default install is skipped; the runner already has the SDK and the next step installs platform 34 and build-tools 34.0.0. Later steps (cap add, patch, Gradle) have not been seen to pass yet.
+
 ## V1.9.23
 - **Phone voices load fully.** The voice list was cached even when the phone's speech engine answered empty (it is often still starting on the first call), so the picker could stay on "Default" with few or no voices. Now an empty answer is never cached, the call is retried (6 x 0.7 s), duplicate voice names get unique ids, and a chosen voice speaks in its own language. New **Reload voices** and **Hear it** buttons plus a count line under Phone voice. If it still says 0, the phone has no TTS engine/voice data installed (Android Settings > Text-to-speech). NOT tested on a device.
 
