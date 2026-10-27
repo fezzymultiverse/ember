@@ -1,0 +1,53 @@
+// Ember V1.9.20 test: pure Node. The live thinking timeline (ember_timeline.js) and its wiring in app.js. Run: node tests/timeline-test.js
+const fs = require('fs'), path = require('path'), vm = require('vm');
+let pass = 0, fail = 0;
+const ok = (n, c, x) => { c ? pass++ : fail++; console.log(c ? 'PASS' : 'FAIL', n, c ? '' : (x || '')); };
+const W = f => fs.readFileSync(path.join(__dirname, '..', 'www', f), 'utf8');
+function boot() {
+  const els = {}, log = { id: 'log', html: '', scrollTop: 0, scrollHeight: 99, insertAdjacentHTML(_, h) { this.html += h; els.typ = this.html.includes('id="typ"') ? { remove: () => { this.html = this.html.replace(/<div class="msg a tlive" id="typ">[\s\S]*$/, ''); delete els.typ; }, set innerHTML(v) { this.html = v; }, get innerHTML() { return this.html || ''; }, html: '' } : undefined; } };
+  els.log = log; let typ = null;
+  const listeners = {}, doc = { getElementById: id => id == 'log' ? log : id == 'typ' ? (log.html.includes('id="typ"') ? (typ = typ || { remove() { log.html = log.html.replace(/<div class="msg a tlive" id="typ">[\s\S]*$/, ''); typ = null; }, set innerHTML(v) { log.html = log.html.replace(/(<div class="msg a tlive" id="typ">)[\s\S]*$/, '$1' + v + '</div>'); } }) : null) : null, addEventListener() {} };
+  const win = { addEventListener(n, f) { (listeners[n] = listeners[n] || []).push(f); }, EmberEngine: { react: { state: () => win._rx } } };
+  const ctx = { window: win, document: doc, URL, console, Date }; ctx.window = Object.assign(win, ctx); vm.createContext(ctx); vm.runInContext(W('ember_timeline.js'), ctx);
+  return { TL: win.EmberTimeline, log, fire: (n, d) => (listeners[n] || []).forEach(f => f({ detail: d })), win };
+}
+const t = boot(), TL = t.TL;
+ok('module loads and exports the API', TL && ['begin', 'note', 'tool', 'snapshot', 'savedHtml', 'liveHtml', 'drop'].every(k => typeof TL[k] == 'function'));
+TL.begin();
+ok('begin: card replaces the dots, with the radar dot', /id="typ"/.test(t.log.html) && /tl-adot/.test(t.log.html) && !/class="msg a typing"/.test(t.log.html));
+let h = TL.tool('scrape_url', { url: 'https://www.example.com/a/b' });
+ok('tool row says what it reads (host only)', /Reading example\.com/.test(TL.liveHtml()) && !/\/a\/b/.test(TL.liveHtml()));
+ok('running tool has no pill yet', !/tl-pill/.test(TL.liveHtml()));
+h.end({ ok: true, text: 'x' });
+ok('success pill after a good result', /tl-pill ok">SUCCESS/.test(TL.liveHtml()));
+h = TL.tool('web_search', { query: 'weather in Cape Town' }); h.end({ error: 'no key' });
+ok('failed pill after an error result', /tl-pill bad">FAILED/.test(TL.liveHtml()));
+ok('failed detection: ok:false counts, plain data does not', TL._failed({ ok: false }) && !TL._failed({ items: [] }) && !TL._failed('text'));
+TL.note('Reading the results and writing the answer'); TL.note('Reading the results and writing the answer');
+ok('same note twice is shown once', (TL.liveHtml().match(/Reading the results/g) || []).length == 1);
+t.win._rx = { startedAt: 7, entries: [{ n: 1, type: 'step', thought: 'I should search the outline first' }] };
+t.fire('ember-react', { type: 'thought', n: 1 }); t.fire('ember-react', { type: 'thought', n: 1 });
+ok('ReAct thought appears once', (TL.liveHtml().match(/search the outline first/g) || []).length == 1);
+ok('html is escaped', (TL.note('<img onerror=x>'), !/<img onerror/.test(TL.liveHtml())));
+const snap = TL.snapshot();
+ok('snapshot kept when a tool ran', snap && snap.s.some(x => x[0] == 'x') && snap.s.length >= 4 && typeof snap.ms == 'number');
+const saved = TL.savedHtml(snap);
+ok('saved card summarises actions and failures', /Worked through 2 actions/.test(saved) && /1 failed/.test(saved) && /<details/.test(saved));
+TL.drop();
+ok('drop removes the live card', !/id="typ"/.test(t.log.html) && TL.liveHtml() == '');
+TL.begin(); TL.note('just thinking');
+ok('plain answer (no tool) keeps no saved card', TL.snapshot() == null); TL.drop();
+ok('savedHtml tolerates junk', TL.savedHtml(null) == '' && TL.savedHtml({ s: [] }) == '' && TL.savedHtml({}) == '');
+TL.begin(); for (let i = 0; i < 60; i++) TL.tool('t' + i, {}).end({});
+ok('step list is capped', TL._live().steps.length <= 30); TL.drop();
+ok('tool() outside a run is harmless', (() => { const x = TL.tool('a', {}); x.end({}); return true; })());
+// wiring in app.js / index.html / sw.js
+const app = W('app.js'), idx = W('index.html'), sw = W('sw.js');
+ok('app.js: typing() starts/drops the timeline', /EmberTimeline\.begin\(\)/.test(app) && /EmberTimeline\.drop\(\)/.test(app));
+ok('app.js: runTool wraps runToolRaw with the timeline', /async function runTool\([^)]*\)[\s\S]{0,200}TL\.tool\(tool, args\)[\s\S]{0,200}runToolRaw\(tool, args\)/.test(app) && /async function runToolRaw\(/.test(app));
+ok('app.js: reply saves the snapshot on the message', /tl: tlSnap \|\| undefined/.test(app) && /EmberTimeline\.snapshot\(\)/.test(app));
+ok('app.js: saved card drawn above the bubble, live card survives renderLog', /savedHtml\(x\.tl\)/.test(app) && /EmberTimeline\.liveHtml\(\)/.test(app));
+ok('index.html loads ember_timeline.js before app.js', idx.indexOf('ember_timeline.js') > 0 && idx.indexOf('ember_timeline.js') < idx.indexOf('src="app.js"'));
+ok('sw.js caches it and the version moved', /ember_timeline\.js/.test(sw) && /ember-v1\.9\.20/.test(sw));
+ok('style.css has the timeline styles', /\.tl-adot::after/.test(W('style.css')) && /@keyframes tlradar/.test(W('style.css')));
+console.log(`\nTimeline: ${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

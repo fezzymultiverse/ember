@@ -29,9 +29,8 @@
 <div id="mw" class="mw hidden"><img id="mwArt" class="mwart hidden" alt=""><button id="mwOpen" class="mwt" aria-label="Open the music panel"><b id="mwTitle">—</b><small id="mwSub"></small></button><button id="mwPlay" aria-label="Play or pause">▶</button><button id="mwNext" aria-label="Next">⏭</button></div>
 <footer class="comp">
 <div class="mrow"><div class="modes" id="modes"><button data-m="chill">Chill</button><button data-m="sharp">Sharp</button><button data-m="deep">Deep</button></div><button id="bDocsQuick" aria-label="Open Documents: attach a file or note" title="Documents: attach a file or note">📎 <span>Docs</span></button></div>
-<div class="tools"><button id="bPasteIn" aria-label="Paste into the message box">📋 Paste</button><button id="bCopyIn" aria-label="Copy the message box text">⧉ Copy</button><button id="bDevice">📟 Device</button><button id="bReact">🧠 Reasoning</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
-<div id="plusChips" class="pchips hidden" aria-live="polite"></div>
-<div class="row"><div id="plusMenu" class="pmenu hidden" role="menu" aria-label="Add to message"></div><button id="bPlus" class="plus" aria-label="Add: tools and attachments" aria-haspopup="menu" aria-expanded="false" title="Add">+</button><textarea id="inp" rows="1" spellcheck="false" autocorrect="off" placeholder="Say anything…" enterkeyhint="send"></textarea><div class="side"><button id="bTalk" aria-label="Talk mode: hands-free conversation" aria-pressed="false" title="Talk mode: just talk. It sends when you stop, reads the reply aloud, then listens again. Tap again to stop.">🗣</button><button id="bMic" aria-label="Dictate: talk and your words are typed here" aria-pressed="false" title="Dictate: tap, talk, tap again. Your words are typed into the message box.">🎤</button><button id="bSend" aria-label="Send">➤</button></div></div>
+<div class="tools"><button id="bDevice">📟 Device</button><button id="bReact">🧠 Reasoning</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
+<div class="row"><textarea id="inp" rows="1" spellcheck="false" autocorrect="off" placeholder="Say anything…" enterkeyhint="send"></textarea><div class="side"><button id="bMic" aria-label="Dictate: talk and your words are typed here" aria-pressed="false" title="Dictate: tap, talk, tap again. Your words are typed into the message box.">🎤</button><button id="bSend" aria-label="Send">➤</button></div></div>
 </footer>
 </div>
 
@@ -228,14 +227,13 @@
 <div class="cr"><span>Read replies aloud automatically</span><div class="sw" id="swRead"></div></div>
 <p class="hint" id="ttsNote">Every reply also has a 🔊 button to read just that one. While it is reading, that button turns red and says Stop: tap it to stop, and it goes back to 🔊 when the voice is done. The 🎤 button is dictation: tap, talk, tap again, and your words are typed into the message box (it uses your Gemini key to turn speech into text). Replies are read with Ember Voice (below) when it is on, and with the native Android text-to-speech as the fallback.</p>
 <label class="lb">Ember Voice</label><select id="sEngine"><option value="gemini">Gemini voice (uses your Gemini key)</option><option value="easyvoice">EasyVoice (free key, 12 voices)</option><option value="device">Phone voice only</option></select>
-<div id="rowGem"><label class="lb">Gemini voice</label><select id="sGemV"></select><label class="lb">How it speaks</label><select id="sGemStyle"></select></div>
+<div id="rowGem"><label class="lb">Gemini voice</label><select id="sGemV"></select></div>
 <div id="rowEz" style="display:none"><label class="lb">EasyVoice key</label><input type="password" id="sEzKey" placeholder="ev_... from easyvoice.ae/account/keys" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%">
 <label class="lb">EasyVoice voice</label><select id="sEzVoice"></select>
 <div class="btnrow"><button class="btn g" id="ezLoad">Load my voices</button><button class="btn g" id="ezTest">Test key</button></div>
 <p class="hint" id="ezNote"></p></div>
 <p class="hint" id="voiceNote"></p>
 <label class="lb">Phone voice (fallback)</label><select id="sVoice"><option value="">Default</option></select>
-<div class="btnrow" style="margin-top:6px"><button class="btn g" id="bVoiceReload">↻ Reload voices</button><button class="btn g" id="bVoicePlay">▶ Hear it</button></div><p class="hint" id="vCount"></p>
 <label class="lb">Speed <span id="vRate" class="hint">1.00×</span></label><input type="range" id="sRate" min="0.6" max="1.6" step="0.05" value="1" style="width:100%">
 <label class="lb">Pitch <span id="vPitch" class="hint">1.00</span></label><input type="range" id="sPitch" min="0.6" max="1.6" step="0.05" value="1" style="width:100%">
 <div class="cr"><span>Lively delivery (questions lift, exclamations speed up)</span><div class="sw on" id="swLively"></div></div>
@@ -277,7 +275,7 @@
 <p class="hint">Ember can search YouTube and download a video's audio to Music/Ember on your phone, with a progress notification. It only downloads when you ask, and only for links you gave it or that its own search returned. Only save things you have the right to keep. Needs the V1.6.0 APK.</p>
 <p class="hint" id="agentStatus"></p>
 <div class="cr" style="margin-top:10px"><span>Vision (read image links)</span><div class="sw" id="swVision"></div></div>
-<p class="hint">Ember can describe an image when you paste an https link to it. The link goes to Pollinations' free image reader, which fetches the picture. Photos from the + menu (Camera / Vision, Upload File) go to the same reader: shrunk to a small JPEG, sent only when you pick one, and only while this switch is on. Ember cannot see photos you have not given it.</p></div>
+<p class="hint">Ember can describe an image when you paste an https link to it. The link goes to Pollinations' free image reader, which fetches the picture. Ember cannot see photos you have not linked, and there is no camera or upload here.</p></div>
 
 <div class="card" data-tab="scraping"><div class="ct">Paste &amp; extract scraping keys</div>
 <textarea id="swPad" class="pad" rows="4" placeholder="Paste anything here: emails, notes, a whole page of keys. Extract finds the scraping keys (Firecrawl, Browserless, ScraperAPI, ZenRows and the rest) and saves them below." spellcheck="false" autocomplete="off" style="width:100%"></textarea>
@@ -307,7 +305,7 @@
 <div class="btnrow"><button class="btn" id="bExp">Export backup</button><button class="btn g" id="bImp">Import backup</button></div>
 <input type="file" id="fImp" accept="application/json,.json" hidden>
 <button class="btn g danger" id="bWipe" style="margin-top:10px">Delete everything</button>
-<p class="hint" id="ver">Ember V1.9.28 · S.O.I. × Bojack 999 · 🔥 Orange Build</p></div>
+<p class="hint" id="ver">Ember V1.9.20 · S.O.I. × Bojack 999 · 🔥 Orange Build</p></div>
 </div></section>
 
 <section id="react" class="sheet"><div class="sh"><b>Reasoning</b><button class="hb" id="bRx" aria-label="Close reasoning">✕</button></div>
@@ -327,12 +325,11 @@
 <div class="npt" id="npTitle">Nothing playing</div><div class="nps" id="npSub">Upload music or scan the phone.</div><div class="npsrc" id="npSrc"></div><div class="npchips" id="npChips"></div>
 <div class="npc"><button id="npShuf" aria-label="Shuffle" title="Shuffle (library)">🔀</button><button id="npPrev" aria-label="Previous">⏮</button><button id="npPlay" class="big" aria-label="Play or pause">▶</button><button id="npNext" aria-label="Next">⏭</button><button id="npRep" aria-label="Repeat" title="Repeat (library)">🔁</button></div>
 <div class="npv"><span>🔈</span><input type="range" id="npVol" min="0" max="100" value="100" aria-label="Volume"></div>
-<div class="btnrow" style="margin-top:8px"><button class="btn g" id="npId">🎧 Identify this song</button></div>
-<div class="npv" style="margin-top:8px"><span>😴</span><select id="npSleep" aria-label="Sleep timer"><option value="0">Sleep timer: off</option><option value="15">Stop in 15 min</option><option value="30">Stop in 30 min</option><option value="45">Stop in 45 min</option><option value="60">Stop in 60 min</option><option value="90">Stop in 90 min</option></select><span id="npSleepLeft"></span></div><div class="hint" id="npIdRes"></div>
+<div class="btnrow" style="margin-top:8px"><button class="btn g" id="npId">🎧 Identify this song</button></div><div class="hint" id="npIdRes"></div>
 <p class="hint" id="npErr"></p></div>
 <div class="card lyr hidden" id="npLyr"><div class="ct">Lyrics</div><div class="lbody" id="npLyrBody"></div><small class="asrc">Preview, 3 lines. Lyrics: LRCLIB</small></div>
 <div class="card about hidden" id="npAbout"><div class="ct">About</div><div class="abody" id="npAboutBody"></div></div>
-<div class="mtabs" role="tablist"><button class="mtab on" data-m="lib" role="tab">🎵 Library</button><button class="mtab" data-m="get" role="tab">⬇ Get</button><button class="mtab" data-m="ai" role="tab">✨ Ember</button></div>
+<div class="mtabs" role="tablist"><button class="mtab on" data-m="lib" role="tab">🎵 Library</button><button class="mtab" data-m="ai" role="tab">✨ Ember control</button></div>
 <div class="mpane" id="mp_lib">
 <div class="btnrow"><button class="btn" id="mUp">＋ Upload music</button><button class="btn g" id="mScan">Scan phone</button></div>
 <input type="file" id="mFile" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac" multiple hidden>
@@ -343,17 +340,6 @@
 <div id="mPls"></div>
 <input type="text" id="mPlName" placeholder="Playlist name" maxlength="40" autocomplete="off" style="margin-top:6px">
 <button class="btn g" id="mPlSave" style="margin-top:6px">Save the listed songs as a playlist</button>
-</div>
-<div class="mpane hidden" id="mp_get">
-<p class="hint" id="gtNote">Search YouTube or SoundCloud and save the audio to Music/Ember on this phone. Only save what you have the right to keep.</p>
-<input type="text" id="gtQ" placeholder="Song or artist…" autocomplete="off" enterkeyhint="search">
-<div class="btnrow" style="margin-top:6px"><button class="btn" id="gtYt">Search YouTube</button><button class="btn g" id="gtSc">Search SoundCloud</button></div>
-<div id="gtRes"></div>
-<div class="ct" style="margin:14px 0 6px">Or paste a link</div>
-<input type="text" id="gtUrl" placeholder="youtube.com, youtu.be or soundcloud.com link" autocomplete="off" spellcheck="false">
-<div class="btnrow" style="margin-top:6px"><button class="btn" id="gtOne">⬇ Track</button><button class="btn g" id="gtList">📃 List playlist</button><button class="btn g" id="gtAll">⬇ Whole playlist</button></div>
-<div class="ct" style="margin:14px 0 6px">Downloads</div>
-<div id="gtJobs"><p class="hint">Nothing downloading.</p></div>
 </div>
 <div class="mpane hidden" id="mp_ai">
 <div class="cr"><span>Let Ember control music</span><div class="sw" id="mAiSw"></div></div>
@@ -392,7 +378,6 @@
 <table><tr><th>Feature</th><th>What is sent</th><th>To</th></tr>
 <tr><td>Every chat reply</td><td>System prompt, your "About you" text, memory facts, persona text and the most recent messages</td><td>The engine that answers: Groq, Mistral or Gemini (your key), or Pollinations (Free Mode)</td></tr>
 <tr><td>Free Mode</td><td>The same chat content, no key. Message text can appear in the request address</td><td>text.pollinations.ai, a free third party with no uptime or privacy promise this project can vouch for</td></tr>
-<tr><td>Imagine (images)</td><td>The prompt you type, only when you tap Make it</td><td>image.pollinations.ai, a free third party with no uptime or privacy promise this project controls</td></tr>
 <tr><td>Memory, titles, summaries</td><td>Recent or older messages</td><td>A key-based engine only. Never Free Mode</td></tr>
 <tr><td>Key checks, model lists</td><td>The key, as the provider's credential</td><td>That key's own provider</td></tr>
 <tr><td>Background replies (on by default)</td><td>The request and the keys of the engines to try, held in private app storage until done, then deleted</td><td>The same engines</td></tr>
@@ -400,7 +385,7 @@
 <tr><td>Web search (off by default)</td><td>The words the AI searches for, plus your Tavily key when one is saved</td><td>Tavily, and DuckDuckGo (api.duckduckgo.com) as the keyless fallback</td></tr>
 <tr><td>Reading or scraping a page</td><td>The page address (and your key for paid scrapers). The page text then goes to the chat engine</td><td>The reader or scraper you chose</td></tr>
 <tr><td>YouTube search and saving</td><td>Search and download requests from the phone</td><td>YouTube / Google servers</td></tr>
-<tr><td>Vision (off by default)</td><td>The image link you paste and your question; or, from the + menu (Camera / Vision, Upload File), the photo itself, shrunk to a JPEG, only when you pick one</td><td>Pollinations</td></tr>
+<tr><td>Vision (off by default)</td><td>The image link you paste and your question</td><td>Pollinations</td></tr>
 <tr><td>Song identification (optional, off until you add a token)</td><td>A clip of about 12 seconds of the song (or the audio link you typed) and your Audd.io token. Only when you tap Identify or ask Ember to</td><td>Audd.io</td></tr>
 <tr><td>Song info (artwork, album, year, bio)</td><td>The song title and artist name only. Never audio, files or your library</td><td>Deezer, MusicBrainz and Wikipedia</td></tr>
 <tr><td>VPN area lookup</td><td>Your public IP address, which the request reveals by existing</td><td>ipwho.is. Only while a VPN is detected, or when you tap the lookup button</td></tr>
@@ -468,14 +453,14 @@
 
 <div class="modal" id="dlg"><div class="mc"><h2 id="dT"></h2><p id="dX"></p><input type="text" id="dI" class="hidden"><div class="btnrow" style="margin-top:14px"><button class="btn" id="dOk">OK</button><button class="btn g" id="dNo">Cancel</button></div></div></div>
 <div id="toast"></div>
-<script src="store.js"></script><script src="ember_keyscan.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js"></script><script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script><script src="ember_getmusic.js"></script><script src="ember_react_ui.js"></script><script src="ember_think_inline.js"></script><script src="ember_device.js"></script>
+<script src="store.js"></script><script src="ember_keyscan.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js"></script><script src="ember_timeline.js"></script><script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script><script src="ember_react_ui.js"></script><script src="ember_device.js"></script>
 <script src="ember_docs_lib.js"></script>
 <script src="ember_find.js"></script><script src="ember_tasks.js"></script><script src="ember_keys.js"></script>
 <script src="ember_browser.js"></script>
 <script src="ember_term.js"></script>
-<script src="ember_voice.js"></script><script src="ember_lyrics.js"></script><script src="ember_prov_ui.js"></script><script src="ember_plus.js"></script>
+<script src="ember_voice.js"></script><script src="ember_lyrics.js"></script><script src="ember_prov_ui.js"></script>
 
-<script src="ember_ui.js"></script><script src="ember_extras.js"></script><script src="ember_create.js"></script>
+<script src="ember_ui.js"></script>
 <script>
 // Apply termux-mode-on class to body when S is available, for CSS theming
 (function pollTermux(){

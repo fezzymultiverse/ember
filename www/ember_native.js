@@ -216,24 +216,12 @@
   const tts = TTSP ? {
     isNative: true,
     // V1.8.1: the voices the phone's speech engine actually has (the plugin returns them in an order its speak() indexes into)
-    // V1.9.23: an empty answer is NOT cached (the engine is often still starting on the first call), the call is retried, and duplicate names get a unique id
-    async voices(force) {
-      if (voiceCache && voiceCache.length && !force) return voiceCache;
-      // V1.9.24: a partial answer is NOT trusted either. Ask until two calls in a row return the same count (max 8 tries), keep the biggest list seen.
-      let list = [], prev = -1;
-      for (let k = 0; k < 8; k++) {
-        let cur = [];
-        try { const r = await TTSP.getSupportedVoices(); cur = (r && r.voices) || []; } catch (e) { cur = []; }
-        if (cur.length > list.length) list = cur;
-        if (cur.length && cur.length === prev) break;
-        prev = cur.length;
-        await new Promise(res => setTimeout(res, 700));
-      }
-      const seen = {};
-      voiceCache = list.map((v, i) => {
-        const base = String(v.voiceURI || v.name || i); seen[base] = (seen[base] || 0) + 1;
-        return { i, uri: seen[base] > 1 ? base + '#' + i : base, name: String(v.name || v.voiceURI || ('Voice ' + i)), lang: String(v.lang || ''), local: v.localService !== false };
-      });
+    async voices() {
+      if (voiceCache) return voiceCache;
+      try {
+        const r = await TTSP.getSupportedVoices();
+        voiceCache = ((r && r.voices) || []).map((v, i) => ({ i, uri: String(v.voiceURI || v.name || i), name: String(v.name || v.voiceURI || ('Voice ' + i)), lang: String(v.lang || ''), local: v.localService !== false }));
+      } catch (e) { voiceCache = []; }
       return voiceCache;
     },
     // o = { voice: voiceURI, rate, pitch }; unknown or missing values fall back to the engine default
@@ -241,9 +229,7 @@
       o = o || {};
       const rate = Math.min(2, Math.max(0.5, Number(o.rate) || 1)), pitch = Math.min(2, Math.max(0.5, Number(o.pitch) || 1));
       let vi = -1;
-      let vlang = '';
-      if (o.voice) { const vs = await this.voices(); const f = vs.find(v => v.uri === o.voice); if (f) { vi = f.i; vlang = f.lang; } }
-      if (vlang) lang = vlang; // a chosen voice speaks in its own language
+      if (o.voice) { const vs = await this.voices(); const f = vs.find(v => v.uri === o.voice); if (f) vi = f.i; }
       const tryLang = async l => { const a = { text, lang: l, rate, pitch, volume: 1.0, category: 'playback', queueStrategy: 0 }; if (vi >= 0) a.voice = vi; await TTSP.speak(a); };
       try { await tryLang(lang || 'en-US'); return { ok: true }; }
       catch (e) {

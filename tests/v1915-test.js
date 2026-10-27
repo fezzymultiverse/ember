@@ -135,5 +135,62 @@ const base = hfChat => (url, body) => {
   ok('persona injects the ready scrapers (from saved keys) and orders scrape_url', /SCRAPER STATE \(true now\): scrape_url is ON\. Providers ready: ' \+ SCR\.plan\(true\)\.map\(id => SCR\.LABEL\[id\]\)/.test(ps) && /call scrape_url first/.test(ps));
   ok('app.js dispatches scrape_url and the document tools', /scrapeOn && namesOf\(A\.EmberScraper\)\.includes\(tool\)\) return await A\.EmberScraper\.dispatch/.test(ap) && /docsOn && A\.EmberDocsAddon && namesOf\(A\.EmberDocsAddon\)\.includes\(tool\)\) return await A\.EmberDocsAddon\.dispatch/.test(ap));
   ok('app.js hands the ReAct loop the same dispatcher (host.run = runTool)', /EmberEngine\.setHost\(\{\s*run: runTool, has: toolOn, tools: toolCatalog/.test(ap));
+  // 14. V1.9.19 layer 1+2: error recovery and working memory inside the real ReAct loop
+  eng2.window.EmberScraper = { enabled: () => true, plan: () => ['firecrawl', 'browserless', 'reader'], LABEL: { firecrawl: 'Firecrawl', browserless: 'Browserless', reader: 'Free reader' } };
+  const sysSeen = [], obsSeen = [], calls = [];
+  const TOOLSET = [{ name: 'scrape_url', description: 'x', parameters: { url: 'string', via: 'string?' } }, { name: 'web_search', description: 'x', parameters: { query: 'string' } }, ...AD2.TOOLS];
+  const sc1 = [
+    'Thought: scrape the page.\nAction: {"tool":"scrape_url","args":{"url":"https://example.com/artist","via":"firecrawl"}}',
+    'Thought: Firecrawl failed. Let me try Browserless.\nAction: {"tool":"scrape_url","args":{"url":"https://example.com/artist","via":"browserless"}}',
+    'Thought: got it.\nFinal: Found it. The artist just announced a new album for Friday.'
+  ]; let k1 = 0;
+  E2.setHost({ tools: () => TOOLSET, has: n => TOOLSET.some(x => x.name == n), run: async (n, a) => { calls.push(n + ':' + (a.via || '')); return a.via == 'firecrawl' ? { ok: false, error: 'Firecrawl: 403 forbidden' } : { ok: true, text: 'New album drops Friday' }; },
+    llm: async (sys, msgs) => { sysSeen.push(sys); obsSeen.push(msgs.map(m => m.content).join('\n')); return sc1[k1++]; } });
+  const r14 = await E2.dispatch('run_react', { goal: 'what is new with the artist at example.com/artist' });
+  ok('recovery: the failed Firecrawl observation carries a RECOVERY line naming Browserless with its via id', /Error: Firecrawl: 403 forbidden/.test(obsSeen[1]) && /RECOVERY:/.test(obsSeen[1]) && /Browserless \(via "browserless"\)/.test(obsSeen[1]) && !/Firecrawl \(via/.test(obsSeen[1]), obsSeen[1]);
+  ok('recovery: the refusal is named as a block, not a generic failure', /refused it \(blocked or forbidden\)/.test(obsSeen[1]));
+  ok('recovery: the model retried with the next provider and the run finished', calls.join(',') == 'scrape_url:firecrawl,scrape_url:browserless' && /Found it/.test(JSON.stringify(r14)), calls.join(',') + ' ' + JSON.stringify(r14).slice(0, 120));
+  ok('working memory: step 2 prompt shows step 1 and the dead end', /WORKING MEMORY \(your last 1 step/.test(sysSeen[1]) && /step 1: .*scrape_url.*FAILED/.test(sysSeen[1]) && /DEAD ENDS in this run/.test(sysSeen[1]), sysSeen[1].slice(-400));
+  ok('working memory: step 3 prompt shows both steps', /WORKING MEMORY \(your last 2 steps/.test(sysSeen[2]) && /step 2: .*browserless.*ok:/.test(sysSeen[2]));
+  const th = E2.react.state().thought_history;
+  ok('thought_history array is kept on the run', Array.isArray(th) && th.length == 2 && th[0].n == 1 && /^FAILED/.test(th[0].outcome) && /^ok:/.test(th[1].outcome), JSON.stringify(th));
+  // all scrapers tried: the hint switches strategy instead of looping
+  const sc2 = ['Thought: try.\nAction: {"tool":"scrape_url","args":{"url":"https://x.test/a"}}', 'Thought: all failed.\nFinal: Every scraper failed on that page, so I could not read it.']; let k2 = 0, ob2 = '';
+  E2.setHost({ tools: () => TOOLSET, has: n => TOOLSET.some(x => x.name == n), run: async () => ({ ok: false, error: 'Every provider failed. Firecrawl: 403 | Browserless: timed out | Free reader: 404' }), llm: async (s, m) => { ob2 = m.map(x => x.content).join('\n'); return sc2[k2++]; } });
+  await E2.dispatch('run_react', { goal: 'read x.test/a' });
+  ok('recovery: when every scraper failed it says so and suggests web_search / another url form', /Every ready scraper has now been tried/.test(ob2) && /web_search/.test(ob2) && !/Not tried yet/.test(ob2), ob2);
+  // file not found
+  const sc3 = ['Thought: read it.\nAction: {"tool":"read_document_chunk","args":{"fileId":"nope","chunk":1}}', 'Thought: ok.\nFinal: I could not find that file.']; let k3 = 0, ob3 = '';
+  E2.setHost({ tools: () => TOOLSET, has: n => TOOLSET.some(x => x.name == n), run: async (n, a) => AD2.dispatch(n, a), llm: async (s, m) => { ob3 = m.map(x => x.content).join('\n'); return sc3[k3++]; } });
+  await E2.dispatch('run_react', { goal: 'read file nope', mode: 'document' });
+  ok('recovery: file not found points at list_documents / search without a fileId', /RECOVERY: File not found/.test(ob3) && /list_documents/.test(ob3) && /WITHOUT a fileId/.test(ob3), ob3);
+  // 15. V1.9.19 layer 4: auto-planner
+  const cl = E2.classify;
+  ok('planner: his own example is a plan', cl('Find my public profiles, scrape them, and summarize them').route == 'plan', JSON.stringify(cl('Find my public profiles, scrape them, and summarize them')));
+  ok('planner: scrape + summarize + save is a plan', cl('Scrape this page and summarize it, then save it to my documents').route == 'plan');
+  ok('planner: open-ended investigation is react', cl('figure out why this site blocks my scraper').route == 'react');
+  ok('planner: two chained steps is react', cl('search the web for the new album then read the best article').route == 'react');
+  ok('planner: a plain question is answered directly', cl('what is the capital of France').route == 'answer' && cl('why is the sky blue').route == 'answer' && cl('hey how are you today').route == 'answer');
+  ok('planner: 3 verbs with no pages/web/files stay a simple ask', cl('write a poem, summarize it and translate it').route == 'answer');
+  ok('planner: one tool call is not a plan', cl('open this link and read it').route == 'answer');
+  // 16. V1.9.19 layer 5: <state> tag from the live screen
+  const mkDoc = (shownIds, active) => ({ getElementById: id => ({ classList: { contains: c => c == 'show' && shownIds.includes(id) } }), querySelector: sel => (active[sel] ? { dataset: active[sel] } : null) });
+  const sctx = { window: { Prov: { getPinned: () => 'gemini', getPinnedModel: () => null, label: id => id == 'gemini' ? 'Gemini' : 'Groq', freeOn: () => false, getStrict: () => true }, EmberDocs: { count: () => 3 }, EmberScraper: { enabled: () => true } }, console, localStorage: { getItem: () => null, setItem() {} } };
+  sctx.window.window = sctx.window; sctx.document = mkDoc(['browser'], { '#brTabs .stab.on': { bt: 'docs' } }); vm.createContext(sctx); vm.runInContext(W('ember_find.js'), sctx);
+  const K = sctx.window.EmberKnow;
+  const st1 = K.stateTag({ termuxMode: false }, null);
+  ok('state: Documents tab and pinned Gemini are named', /<state>User is currently in the \[Documents/.test(st1) && /Active provider: \[Gemini \(pinned, strict/.test(st1) && /<\/state>/.test(st1), st1);
+  ok('state: library size, scraping and Termux mode included', /Documents in library: 3/.test(st1) && /Web Scraping: ON/.test(st1) && /Termux Mode: OFF/.test(st1));
+  sctx.document = mkDoc(['settings'], { '#stabs .stab.on': { st: 'keys' } });
+  ok('state: Settings tab is named', /\[Settings > Keys\]/.test(K.stateTag({}, null)));
+  sctx.document = mkDoc([], {}); sctx.window.Prov.getPinned = () => null;
+  ok('state: plain chat + Auto shows the last engine that answered', /\[Chat\] screen/.test(K.stateTag({}, { msgs: [{ r: 'a', eng: { p: 'groq' } }] })) && /Auto \(last reply came from Groq\)/.test(K.stateTag({}, { msgs: [{ r: 'a', eng: { p: 'groq' } }] })));
+  sctx.document = mkDoc(['react'], {});
+  ok('state: Reasoning panel open is noted', /Reasoning panel open/.test(K.stateTag({}, null)));
+  // 17. V1.9.19 layer 3 + wiring
+  const pj = W('persona.js'), aj = W('app.js');
+  ok('voice: tool-results rule is in the chat prompt and in the results message', /parts\.push\(TOOL_VOICE\)/.test(pj) && /Persona\.TOOL_VOICE/.test(aj) && /Lead with the finding in plain words/.test(pj));
+  ok('route + state are injected into the prompt', /window\.EmberEngine\.classify\(lastUser\.t\)/.test(pj) && /TASK ROUTE/.test(pj) && /window\.EmberKnow\.stateTag\(S, conv\)/.test(pj));
+  ok('ReAct system prompt carries the recovery protocol and the conversational Final', /RECOVERY line/.test(W('ember_react.js')) && /conversational voice/.test(W('ember_react.js')));
   console.log('\n' + pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);
 })().catch(e => { console.log('CRASH', e); process.exit(1); });
