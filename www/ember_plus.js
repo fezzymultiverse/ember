@@ -31,8 +31,21 @@ const getSet = () => { try { return JSON.parse(localStorage.getItem('ember_set')
 
 // ---------- menu + chips ----------
 const menu = $('plusMenu'), chips = $('plusChips'), btn = $('bPlus');
-menu.innerHTML = '<div class="pm-h">Toggles</div>' + TOGGLES.map(t => '<button class="pm-i" data-t="' + t.id + '" role="menuitemcheckbox" aria-checked="false"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span><span class="pm-sw"></span></button>').join('') +
-  '<div class="pm-h">Do it now</div>' + ONCE.map(t => '<button class="pm-i" data-o="' + t.id + '" role="menuitem"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span></button>').join('');
+const QUICK = [
+  { id: 'bPasteIn', icon: '📋', label: 'Paste', hint: 'Insert clipboard text' },
+  { id: 'bCopyIn', icon: '⧉', label: 'Copy message', hint: 'Copy the text in the composer' },
+  { id: 'bDevice', icon: '📟', label: 'Device tools', hint: 'Open device and Termux tools' },
+  { id: 'bReact', icon: '🧠', label: 'Reasoning', hint: 'Toggle reasoning mode' },
+  { id: 'bSpark', icon: '✨', label: 'Spark', hint: 'Toggle Spark mode' },
+  { id: 'bDeep', icon: '💡', label: 'Go deeper', hint: 'Toggle deeper answers' },
+  { id: 'bPriv', icon: '🔓', label: 'Normal mode', hint: 'Toggle normal privacy mode' }
+];
+menu.innerHTML = '<div class="pm-h">Chat tools</div>' +
+  QUICK.map(t => '<button class="pm-i" data-action="' + t.id + '" role="menuitem"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span></button>').join('') +
+  '<div class="pm-h pm-action">Enable for this chat</div>' +
+  TOGGLES.map(t => '<button class="pm-i" data-t="' + t.id + '" role="menuitemcheckbox" aria-checked="false"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span><span class="pm-sw"></span></button>').join('') +
+  '<div class="pm-h pm-action">Attach or capture</div>' +
+  ONCE.map(t => '<button class="pm-i" data-o="' + t.id + '" role="menuitem"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span></button>').join('');
 function paint() {
   menu.querySelectorAll('[data-t]').forEach(b => { const v = !!on[b.dataset.t]; b.classList.toggle('on', v); b.setAttribute('aria-checked', v ? 'true' : 'false'); });
   const act = TOGGLES.filter(t => on[t.id]);
@@ -48,7 +61,15 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen()) 
 window.addEventListener('popstate', () => { if (isOpen()) setMenu(false); });
 chips.addEventListener('click', e => { const x = e.target.closest('[data-x]'); if (!x) return; on[x.dataset.x] = false; save(); paint(); });
 menu.addEventListener('click', e => {
+  const action = e.target.closest('[data-action]');
   const t = e.target.closest('[data-t]'), o = e.target.closest('[data-o]');
+  if (action) {
+    setMenu(false);
+    const target = $(action.dataset.action);
+    if (target) target.click();
+    else toast('This tool is not available on this screen.');
+    return;
+  }
   if (t) { const id = t.dataset.t; on[id] = !on[id]; save(); paint(); toast((on[id] ? '✔ ' : '✖ ') + TOGGLES.find(x => x.id == id).label + (on[id] ? ' on' : ' off')); return; } // toggles keep the menu open so several can be switched at once
   if (o) { setMenu(false); fire(o.dataset.o); }
 });

@@ -56,10 +56,11 @@
   }
   const failed = r => !!(r && typeof r === 'object' && (r.error || r.ok === false));
 
-  // ---------- style: 'tl' = Summary timeline card, 'dd' = dropdown (shimmer + text) ----------
+  // ---------- styles: 'tl' = existing Summary card, 'dd' = compact dropdown, 'claude' = animated status line ----------
   const SK = 'ember_think_style';
-  const getStyle = () => { try { return localStorage.getItem(SK) === 'dd' ? 'dd' : 'tl'; } catch (e) { return 'tl'; } };
+  const getStyle = () => { try { const v = localStorage.getItem(SK); return ['dd', 'claude'].includes(v) ? v : 'tl'; } catch (e) { return 'tl'; } };
   const setStyle = v => { try { localStorage.setItem(SK, v); } catch (e) { /* private mode */ } };
+  const nextStyle = () => ({ tl: 'dd', dd: 'claude', claude: 'tl' }[getStyle()] || 'tl');
 
   // ---------- state ----------
   const MAX = 20;
@@ -68,6 +69,9 @@
   // ---------- core ----------
   function begin() {
     live = { lines: [], t0: Date.now(), open: true, seen: {}, toolRan: false };
+    // Hide the welcome hero as soon as a turn starts; otherwise it can sit behind
+    // the live Summary card while the first user/assistant rows are being rendered.
+    const empty = $('empty'); if (empty) empty.classList.add('hidden');
     const old = $('typ'); if (old) old.remove();
     const log = $('log'); if (!log) return;
     log.insertAdjacentHTML('beforeend', outerHtml());
@@ -131,8 +135,16 @@
     return '<div class="tl">' + (lines || []).map(l => row(l.text, l.k, l.st)).join('') + (active ? nowRow : '') + '</div>';
   }
 
-  const SW = '<button class="tl-x et-sw" data-et="style" aria-label="Switch thinking style" title="Switch style">\u21c4</button>';
+  const SW = '<button class="tl-x et-sw" data-et="style" aria-label="Switch thinking display" title="Switch thinking display">\u21c4</button>';
   function innerHtml() { // live only
+    if (getStyle() === 'claude') {
+      const last = live.lines[live.lines.length - 1];
+      const status = last ? last.text : 'Preparing your response';
+      const rows = live.lines.map(l => '<p class="et-line' + (l.bad ? ' et-bad' : '') + '">' + esc(l.text) + '</p>').join('');
+      return '<div class="et-inner et-claude' + (live.open ? ' et-open' : '') + '">'
+        + '<div class="et-hdr" data-et="toggle"><span class="et-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="et-status">' + esc(clip(status, 100)) + '</span>' + SW + CHEV + '</div>'
+        + '<div class="et-body"><div class="et-lines"><div class="et-claude-log">' + (rows || '<p class="et-line et-muted">Getting started…</p>') + '</div></div></div></div>';
+    }
     if (getStyle() === 'dd') {
       return '<div class="et-inner' + (live.open ? ' et-open' : '') + '">'
         + '<div class="et-hdr" data-et="toggle">' + CHEV + '<span class="et-shimmer">Thinking\u2026</span>' + SW + '</div>'
@@ -153,6 +165,10 @@
   function savedHtml(tl) {
     if (!tl || !Array.isArray(tl.lines) || !tl.lines.length) return '';
     const secs = tl.ms ? (tl.ms / 1000).toFixed(1) + 's' : '\u2013';
+    if (getStyle() === 'claude') {
+      const lns = tl.lines.map(l => '<p class="et-line' + (l[1] ? ' et-bad' : '') + '">' + esc(l[0]) + '</p>').join('');
+      return '<details class="et-saved et-claude-saved"><summary><span class="et-dots et-done" aria-hidden="true"><i></i><i></i><i></i></span><span>Thought for ' + secs + '</span></summary><div class="et-lines"><div class="et-claude-log">' + lns + '</div></div></details>';
+    }
     if (getStyle() === 'dd') {
       const lns = tl.lines.map(l => '<p class="et-line' + (l[1] ? ' et-bad' : '') + '">' + esc(l[0]) + '</p>').join('');
       return '<details class="et-saved"><summary>' + CHEV + '<span>Thought for ' + secs + '</span></summary><div class="et-lines">' + lns + '</div></details>';
@@ -165,7 +181,7 @@
   // toggle open/closed: lightweight class flip, no innerHTML rebuild needed
   document.addEventListener('click', e => {
     const sw = e.target.closest && e.target.closest('[data-et="style"]');
-    if (sw && live) { e.stopPropagation(); setStyle(getStyle() === 'dd' ? 'tl' : 'dd'); paint(); return; }
+    if (sw && live) { e.stopPropagation(); setStyle(nextStyle()); paint(); return; }
     const b = e.target.closest && e.target.closest('[data-et="toggle"]');
     if (!b || !live) return;
     live.open = !live.open;

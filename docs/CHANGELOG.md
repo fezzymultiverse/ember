@@ -1,3 +1,15 @@
+## V1.9.41
+- Added a third optional Claude-like thinking display: animated three-dot indicator, live status line, expandable progress log, and a completed “Thought for Xs” summary.
+- Preserved the existing Summary timeline and compact dropdown; the switch cycles through all three styles and saves the selected style.
+- Uses observable progress notes and real tool events only; does not display or claim access to hidden internal reasoning. Reduced-motion preferences are respected.
+- Added `tests/v1941-thought-test.js`. JavaScript syntax and targeted regression checks pass; Android-device verification not performed.
+
+## V1.9.40
+- Restored a dark composer with readable light text; removed the white input-pill regression.
+- Moved Paste, Copy, Device, Reasoning, Spark, Go deeper and Normal mode into the + menu to reduce composer clutter.
+- Rebalanced thinking-card accents toward neutral grey/white while retaining Ember orange as a secondary accent.
+- Kept YouTube search/download tool labels in the timeline so real tool calls show search followed by download when both run.
+
 # Changelog
 
 ## V1.9.39
