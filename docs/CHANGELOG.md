@@ -1,7 +1,3 @@
-## V1.9.20
-- **Restored missing CI files** (dotfiles dropped by earlier zips): `.github/workflows/build.yml`, `.github/workflows/newpipe-update.yml`, `.gitlab-ci.yml` (lint, audit, Pages, manual APK job), `.gitignore`. Rebuilt from the docs; untested on the real runners.
-- Removed hardcoded Bojack card; tool receipts; forced-tool guard; DDG HTML web search; scrape of search-engine URLs becomes web_search; Groq gpt-oss empty-reply fix; copy/paste buttons.
-
 ## V1.9.14
 - **One key finder for every paste box** (`www/ember_keyscan.js`, loads before `providers.js`). Replaces the two old extractors. Fixes: `Name: key  Name2: key2` on one line, blank lines after a label, Cohere key under its label, `CO_API_KEY`, key before its name, hex-only labelled Mistral keys, Audd.io and EasyVoice keys, Bright Data key and zones.
 - **Several keys per provider** (`ai_scraper.js`): first = primary, rest = extras (max 8), never overwritten. Extras take turns and cover for a key that is rejected, out of credits or rate limited (401/402/403/429/432/433). A 5xx stops at once (no double billing). Tavily extras also cover web search (`ai_agent.js`). Health checks every key.
@@ -10,6 +6,16 @@
 - Tests: new `tests/keyscan-test.js` (44 checks), `scrape-test.js` and `v168-test.js` updated. Version 1.9.14.
 
 # Changelog
+
+## V1.9.21
+- **Natural-talk downloads.** The download gate (`DL_INTENT` in `www/ai_agent.js`) only opened for download/save/grab/rip/keep/store or a pasted link, so "get me X", "put X on my phone", "add X", "I want X" were refused with "He did not ask to download". Widened to also accept get/fetch/pull/put/add/want/need/newpipe and -ing/-ed forms. The seen-link guard is unchanged: the AI still cannot download a video id that did not come from him or from `youtube_search`.
+- **Ember is told it can download.** The agent state block (`stateBlock`) and the TOOLS line in `www/persona.js` now say plain requests count and give the flow: youtube_search, pick best match, youtube_download.
+- Tests: 5 new checks in `tests/agent-test.js`. Not run on a device. Reminder: the YouTube switch is OFF by default. Version 1.9.21.
+
+## V1.9.20
+- **Download path audited, nothing removed from the code.** `youtube_download`, `playlist_download`, `EmberYoutubePlugin.kt`, `DownloadWorker.kt`, `EmberYtCore.kt` and the NewPipe/OkHttp/desugaring/JitPack patch are all present. `tests/agent-test.js` passes 67/67 (gate, link checks, job start, progress cards). `scripts/apply_android_patch.py` was run against a fresh `npx cap add android` project and wires NewPipe v0.26.5 correctly.
+- **Restored the missing CI files.** The V1.9.19 zip had no `.github/` folder, so no workflow could build an APK carrying the native downloader (the app then says the native downloader is missing). Added `.github/workflows/build.yml` (signed release APK, steps as in `docs/ANDROID_BUILD.md`) and `.github/workflows/newpipe-update.yml` (Monday NewPipe bump, commits only if the build passes). `.gitlab-ci.yml` is not restored.
+- Reminder: Settings > Music > Ember add-ons > YouTube search & audio download is OFF by default. Kotlin was still never compiled or run on a device. Version 1.9.20.
 
 ## V1.9.18
 - **Wiring audit, no app code changed.** Checked the three layers for the document tools, `scrape_url`, the router and the ReAct loop, and locked each one in with tests so a future edit cannot silently disconnect them: schema shown to the model (`persona.js` toolsBlock), dispatcher (`app.js` runTool), the ReAct host (`setHost({ run: runTool ... })`), and strict engine pin (a pinned Gemini calls only the Gemini API; if Google rejects it you see Gemini's error, never a Groq answer). The ReAct test drives a scripted model through `run_react` and checks every Action reached the real document tools in order and that the model saw the real result.

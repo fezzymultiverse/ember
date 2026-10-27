@@ -31,11 +31,6 @@ const srv = http.createServer((q, r) => {
     if (MODE.tavily != 200) return route.fulfill({ status: MODE.tavily, headers: cors, contentType: 'application/json', body: '{"detail":"no"}' });
     route.fulfill({ status: 200, headers: cors, contentType: 'application/json', body: JSON.stringify({ answer: 'Mock answer.', results: [{ title: 'T1', url: 'https://a.example/1', content: 'c1' }, { title: 'T2', url: 'https://b.example/2', content: 'c2' }] }) });
   });
-  await pg.route('https://html.duckduckgo.com/**', async route => { // V1.9.20: real DDG web results; the mock page has none so the Instant Answer backup is exercised
-    const req = route.request(); if (req.method() == 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
-    if (MODE.ddg == 'http') return route.fulfill({ status: 500, headers: cors, body: 'x' });
-    route.fulfill({ status: 200, headers: cors, contentType: 'text/html', body: '<html><body>nothing</body></html>' });
-  });
   await pg.route('https://api.duckduckgo.com/**', async route => {
     const req = route.request(); if (req.method() == 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
     SEEN.ddg.push(req.url());
@@ -109,7 +104,7 @@ const srv = http.createServer((q, r) => {
   MODE.ddg = 'empty'; r = await A('web_search', { query: 'news today' });
   ok('DuckDuckGo with nothing to say is an honest empty result, not an error', !r.error && r.results.length == 0 && r.source == 'DuckDuckGo' && /not news/.test(r.note), r);
   MODE.ddg = 'http'; r = await A('web_search', { query: 'x' });
-  ok('no key and DuckDuckGo down -> one clear error naming both', /^No Tavily key, and DuckDuckGo web search answered HTTP 500/.test(r.error || ''), r);
+  ok('no key and DuckDuckGo down -> one clear error naming both', /^No Tavily key, and DuckDuckGo answered HTTP 500/.test(r.error || ''), r);
   MODE.ddg = 'ok';
   ok('no key: the AI state text says DuckDuckGo, not "will fail"', await pg.evaluate(() => { const t = window.EmberAgentAddon.stateBlock({ agentAddon: true }); return /DuckDuckGo/.test(t) && !/will fail/.test(t); }));
   ok('no key: the app block says search is ON through DuckDuckGo', await pg.evaluate(() => /Live web search is ON through DuckDuckGo only/.test(window.EmberKnow.block({ agentAddon: true }, {}))));
@@ -203,6 +198,23 @@ const srv = http.createServer((q, r) => {
   await intent('how are you doing today', 'download it');
   r = await A('youtube_download', { url: 'https://www.youtube.com/watch?v=AAAAAAAAAAA' });
   ok('an unrelated question after a download request does not authorise one', /did not ask/.test(r.error || ''), r);
+
+  // V1.9.21: plain-talk requests open the gate
+  await intent('get me Song A', '');
+  r = await A('youtube_download', { url: 'https://www.youtube.com/watch?v=AAAAAAAAAAA' });
+  ok('"get me Song A" authorises a download (natural talk)', r.ok === true, r);
+  await intent('can you put Song A on my phone', '');
+  r = await A('youtube_download', { url: 'https://www.youtube.com/watch?v=AAAAAAAAAAA' });
+  ok('"put Song A on my phone" authorises a download', r.ok === true, r);
+  await intent('yes the first one', 'get me Song A');
+  r = await A('youtube_download', { url: 'https://www.youtube.com/watch?v=AAAAAAAAAAA' });
+  ok('a short follow-up after a plain "get me" request counts', r.ok === true, r);
+  await intent('what is the weather like', '');
+  r = await A('youtube_download', { url: 'https://www.youtube.com/watch?v=AAAAAAAAAAA' });
+  ok('an unrelated message still does not authorise one', /did not ask/.test(r.error || ''), r);
+  await intent('get me Song A', '');
+  r = await A('youtube_download', { url: 'https://www.youtube.com/watch?v=ZZZZZZZZZZZ' });
+  ok('natural talk still cannot download a video id that was never seen', /did not come from him/.test(r.error || ''), r);
 
   // ---------- 5. settings UI + prompt ----------
   await pg.click('#bSet').catch(() => {}); await pg.waitForTimeout(200);
