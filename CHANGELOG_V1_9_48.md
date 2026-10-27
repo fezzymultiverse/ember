@@ -16,3 +16,8 @@
 
 ## Streaming scope
 Streaming currently applies to OpenAI-compatible provider calls when there are no native tool declarations and the request is not JSON mode. Providers using different streaming protocols (such as Gemini/Cohere) continue to use their existing non-streaming response path, but can still use routing fallback. The Stop button cancels supported in-flight network/stream work.
+
+### Follow-up routing correction (2026-10-27)
+- Tool-result synthesis now carries the provider and model that issued the tool call, and the router keeps that follow-up on that same provider/model rather than restarting the general fallback order.
+- If the original provider cannot continue the tool-result turn, Ember returns an explicit failure instead of silently starting another full routing chain.
+- Added `tests/tool-followup-routing-test.js` as a regression check for the fixed-route handoff.

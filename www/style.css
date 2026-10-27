@@ -1199,3 +1199,12 @@ header .who b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:el
 .stream-preview{border-left:2px solid var(--ac);padding-left:12px;white-space:normal}.stream-preview small{display:block;margin-top:8px;color:#999;font-size:11px}
 @keyframes ember-route-pulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 12%,transparent)}}
 @media(prefers-reduced-motion:reduce){.engpill.working{animation:none}}
+
+
+/* V1.9.49 — thinking dropdown overflow repair (Android WebView). Keep long routing
+   histories inside the card instead of stretching the entire chat/composer off-screen. */
+.et-inner.et-open .et-lines{max-height:250px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-right:6px}
+.et-inner.et-open .et-body{max-height:258px}
+.tl-card.tl-open .tl-body{max-height:250px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:8px}
+.et-saved[open] .et-lines{max-height:250px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.et-claude-saved .et-claude-log{max-height:250px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}

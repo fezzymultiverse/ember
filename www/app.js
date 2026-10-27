@@ -315,7 +315,7 @@ if (window.EmberEngine) window.EmberEngine.setHost({
     return String((r && r.text) || '');
   }
 });
-async function resolveAddonCalls(text, L) {
+async function resolveAddonCalls(text, L, route) {
   if (window.EmberMusicAddon && window.EmberMusicAddon.setIntent) {
     // the music tools only run if HIS latest message is about music (ai_music.js checks this), never because the AI wants to
     const us = conv.msgs.filter(m => m.r == 'u'); window.EmberMusicAddon.setIntent(us.length ? us[us.length - 1].t : '', us.length > 1 ? us[us.length - 2].t : '');
@@ -335,7 +335,7 @@ async function resolveAddonCalls(text, L) {
     base.push({ role: 'user', content: '[SYSTEM CHECK, not from him: you just wrote that you searched, looked up, read or downloaded something, but NO tool ran this turn, so that is false. If a tool for it is listed, reply with ONLY its tool_call block now. If none is available or it is switched off, tell him plainly what is off or missing and that nothing was done. Never claim an action without a tool result.]' });
     try {
       const sys0 = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, uiState: uiStateBlock() }), Safety.lastLevel());
-      const fix = await Prov.run(L.lane, { system: sys0, messages: base, temp: 0.3, max: 450, tools: toolCatalog() });
+      const fix = await Prov.run(L.lane, Object.assign({ system: sys0, messages: base, temp: 0.3, max: 450, tools: toolCatalog() }, route ? { routeProvider: route.provider, routeModel: route.model } : {}));
       const t2 = String(fix.text || ''), c2 = parseCalls(t2);
       if (c2.length) { cur = t2; calls = c2; }
       else return FAKE.test(stripTags(t2)) || !stripTags(t2) ? 'I did not actually do that: no tool ran, so nothing was searched, read or downloaded. Ask me again, and check that Web Scraping / YouTube search & audio download are switched on in Settings.' : stripTags(t2);
@@ -378,7 +378,7 @@ async function resolveAddonCalls(text, L) {
       'No JSON, no code blocks, no raw data dump — tell him what it means, in your own voice, the way a person would after actually looking at it. Only claim what the result actually says: if it holds an error, ok:false, or nothing, say that plainly in one line and do not pretend it worked. If a result says a bridge or key is missing or empty, say so plainly in one line.]\n\n' + ctx });
     try {
       const sys = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, noTools: last, uiState: uiStateBlock(), actionHistory: historyLines(rounds) }), Safety.lastLevel());
-      const synth = await Prov.run(L.lane, { system: sys, messages: msgs, temp: 0.85, max: 450, tools: last ? null : toolCatalog() });
+      const synth = await Prov.run(L.lane, Object.assign({ system: sys, messages: msgs, temp: 0.85, max: 450, tools: last ? null : toolCatalog() }, route ? { routeProvider: route.provider, routeModel: route.model } : {}));
       cur = String(synth.text || '');
     } catch (e) { return stripTags(cur) || 'I tried, but the add-on came back empty.'; }
     calls = last ? [] : parseCalls(cur);
@@ -404,7 +404,7 @@ async function reply(o) {
     let finalText = r.text;
     const bgWon = () => conv.msgs.some(m => m.turn === turnId); // the background task already delivered this turn's reply
     if (bgWon()) finalText = '';
-    else if (finalText) finalText = await resolveAddonCalls(finalText, L);
+    else if (finalText) finalText = await resolveAddonCalls(finalText, L, { provider: r.provider, model: r.model });
     if (finalText && !bgWon()) {
       const tlSnap = window.EmberTimeline ? window.EmberTimeline.snapshot() : null;
       conv.msgs.push({ r: 'a', t: finalText, ts: Date.now(), turn: turnId, tl: tlSnap || undefined, deep: L.deep || undefined, eng: { p: r.provider, m: r.model, ms: r.ms, pm: r.pinMiss ? r.pinMiss.want : undefined } });

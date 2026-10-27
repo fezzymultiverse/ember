@@ -501,13 +501,15 @@ async function runInner(lane, o, tok) {
   const done = r => { if (pinnedEngine && r.provider != pinnedEngine) { const p0 = failed.find(x => x.id == pinnedEngine); r.pinMiss = { want: pinnedEngine, why: p0 ? (p0.why || '') : 'no usable key' }; } const f = failed.find(x => x.id != r.provider); if (f && pl && !(pinnedEngine && r.provider == pinnedEngine)) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
   let tried = false;
   halted();
-  if (pl && freeOn() && !pinnedEngine) { // V1.9.15: with an engine pinned, Free Mode no longer goes first (it was failing, costing seconds and showing a 'Switched to' toast)
+  if (o.routeProvider && !CFG[o.routeProvider]) throw Object.assign(new Error('The original engine cannot continue this tool result. No other engine was called for this follow-up.'), { code: 'fail' });
+  if (pl && !o.routeProvider && freeOn() && !pinnedEngine) { // V1.9.15: with an engine pinned, Free Mode no longer goes first (it was failing, costing seconds and showing a 'Switched to' toast)
     tried = true;
     try { trying('Free Mode', 'openai'); const o2 = withFacts(o, lane, 'pollinations', 'openai', failed); const r = await callPollinations(flat(o2), o2); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
     catch (er) { errs.push('Free Mode: ' + er.message); failed.push({ id: 'pollinations', status: er.status, why: er.message }); }
   }
-  for (const id of orderFor(lane)) {
-    if (onlyPinned(lane) && id != pinnedEngine) break; // V1.9.15: strict pin
+  const routeIds = o.routeProvider && CFG[o.routeProvider] ? [o.routeProvider] : orderFor(lane);
+  for (const id of routeIds) {
+    if (!o.routeProvider && onlyPinned(lane) && id != pinnedEngine) break; // V1.9.15: strict pin
     const soft = id == 'huggingface' || id == 'openrouter'; // prototypes: a 400/402/403/422 on one model must not kill the key or the engine
     for (const e of keys[id]) {
       if (e.bad || isCool(e.key)) continue;
@@ -520,7 +522,8 @@ async function runInner(lane, o, tok) {
         errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message }); continue;
       }
       const pm = pinnedModel && pinnedModel.id == id ? pinnedModel.model : null;
-      for (const m of (pm ? [pm] : models.slice(0, soft ? 5 : 3))) {
+      const routeModel = o.routeProvider === id && o.routeModel ? String(o.routeModel) : null;
+      for (const m of (routeModel ? [routeModel] : (pm ? [pm] : models.slice(0, soft ? 5 : 3)))) {
         halted();
         trying(CFG[id].name, m); try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
         catch (er) {
@@ -536,10 +539,14 @@ async function runInner(lane, o, tok) {
       }
     }
   }
-  if (pl && !tried && !onlyPinned(lane)) {
+  if (pl && !o.routeProvider && !tried && !onlyPinned(lane)) {
     halted();
     try { trying('Free Mode', 'openai'); const o2 = withFacts(o, lane, 'pollinations', 'openai', failed); const r = await callPollinations(flat(o2), o2); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
     catch (er) { errs.push('Free Mode: ' + er.message); failed.push({ id: 'pollinations', status: er.status, why: er.message }); }
+  }
+  if (o.routeProvider && CFG[o.routeProvider]) {
+    const nm = CFG[o.routeProvider].name;
+    throw Object.assign(new Error('The original ' + nm + ' engine could not continue the tool result. No other engine was called for this follow-up.'), { code: 'fail' });
   }
   if (onlyPinned(lane)) { // V1.9.15: say what really happened instead of answering from someone else
     const nm = CFG[pinnedEngine].name, w = failed.filter(f => f.id == pinnedEngine).slice(-1)[0];

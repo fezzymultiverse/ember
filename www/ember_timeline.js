@@ -264,7 +264,19 @@
     if (t === 'start' || t === 'end') paint();
   });
 
-  window.addEventListener('ember-try', e => { const d = e.detail || {}; note('Asking ' + d.name + (d.model && d.model != 'openai' ? ' (' + d.model + ')' : '') + '…'); });
+  // Avoid flooding the thinking dropdown when the router retries the same provider/model
+  // through duplicate keys or repeated fallback events during one turn.
+  window.addEventListener('ember-try', e => {
+    const d = e.detail || {};
+    const label = 'Asking ' + d.name + (d.model && d.model != 'openai' ? ' (' + d.model + ')' : '') + '…';
+    if (live) {
+      live.trySeen = live.trySeen || new Set();
+      const key = String(d.name || '') + '|' + String(d.model || '');
+      if (live.trySeen.has(key)) return;
+      live.trySeen.add(key);
+    }
+    note(label);
+  });
   // Keep provider fallback visible in the same thinking card used by every routed engine.
   // The router emits this only after a different engine has successfully answered.
   window.addEventListener('ember-switch', e => {
