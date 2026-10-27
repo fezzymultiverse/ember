@@ -1,5 +1,14 @@
 # Changelog
 
+## V1.9.30
+- **"+" button on the left of the message box** (`www/ember_plus.js`, markup in `index.html`, `.plus` / `.pmenu` / `.pchip` in `style.css`). Opens a menu above the box. Toggles stay on and show a removable orange chip above the box (remembered between launches): **Device Access** (turns the Documents tools on and tells the model it may use them and the Termux panel), **Web Search** (the model must search before answering anything factual), **Reasoning** (always the deep lane, step-by-step instruction), **Code Mode** (code first, fenced and complete). The prompt text is added in `uiStateBlock()`, the lane in `laneFor()`, the Documents switch in `toolCatalog()` and `runTool()` (`app.js`).
+- **Do-it-now items** put their result in the message box as a block he can edit before sending: **Upload File** (text files: first 20,000 characters; images: read by the image reader; audio: song ID), **Camera / Vision** (opens the camera, shrinks the photo to a JPEG, describes it and copies out any text), **Audio Context** (records 10 s from the mic and identifies the song through Audd.io).
+- Photos go to Pollinations' free image reader (the same one `see_image` already used), so they only work while Settings > Vision is on. The Vision hint text says so. Song ID needs the Audd.io token already in Settings > Music.
+- Docs and the Chill / Sharp / Deep pills stay where they were.
+- `CAMERA` permission added to `apply_android_patch.py` and `AndroidManifest.additions.xml` (rebuild the APK; without it the camera picker cannot open).
+- Cache name `ember-v1.9.30`, `ember_plus.js` added to the service worker list. Tests: new `tests/v1930-test.js`.
+- NOT tested: on a phone (camera, microphone, real Audd.io and Pollinations calls). The Privacy table's Vision row now says photos from the + menu go to Pollinations.
+
 ## V1.9.29
 - **Tool-execution card (no raw JSON).** The download card in the chat (`cardHtml` in `www/ai_agent.js`, `.act-*` in `www/style.css`) is now a card with an orange border: music note, "Downloading Audio", the file name, a glowing progress bar and a "Saving to Music/Ember" + percent line. Done = green "Saved to your phone", failed = red with the reason. Same `dl-<id>` element id, so the live updater in `app.js` still replaces it in place. The Music > Get tab keeps its own step timeline.
 - **Provider dashboard.** Each engine in the header Providers dropdown (`www/ember_prov_ui.js`) is a card: status dot, name, the model the best key uses, and on the right the real latency of the last reply or check (`⚡ 120ms`) plus the key count. A resting engine is dimmed and says "Rate limited / Retry in 30s", counting down every second while the dropdown is open. A rejected key says "Rejected" and why; no key says "No key". New `Prov.detail(id)` in `www/providers.js` (model, latency, keys, retry seconds) and every successful reply and health check now stores its latency (`lat`) and model on the key.

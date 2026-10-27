@@ -30,7 +30,8 @@
 <footer class="comp">
 <div class="mrow"><div class="modes" id="modes"><button data-m="chill">Chill</button><button data-m="sharp">Sharp</button><button data-m="deep">Deep</button></div><button id="bDocsQuick" aria-label="Open Documents: attach a file or note" title="Documents: attach a file or note">📎 <span>Docs</span></button></div>
 <div class="tools"><button id="bPasteIn" aria-label="Paste into the message box">📋 Paste</button><button id="bCopyIn" aria-label="Copy the message box text">⧉ Copy</button><button id="bDevice">📟 Device</button><button id="bReact">🧠 Reasoning</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
-<div class="row"><textarea id="inp" rows="1" spellcheck="false" autocorrect="off" placeholder="Say anything…" enterkeyhint="send"></textarea><div class="side"><button id="bTalk" aria-label="Talk mode: hands-free conversation" aria-pressed="false" title="Talk mode: just talk. It sends when you stop, reads the reply aloud, then listens again. Tap again to stop.">🗣</button><button id="bMic" aria-label="Dictate: talk and your words are typed here" aria-pressed="false" title="Dictate: tap, talk, tap again. Your words are typed into the message box.">🎤</button><button id="bSend" aria-label="Send">➤</button></div></div>
+<div id="plusChips" class="pchips hidden" aria-live="polite"></div>
+<div class="row"><div id="plusMenu" class="pmenu hidden" role="menu" aria-label="Add to message"></div><button id="bPlus" class="plus" aria-label="Add: tools and attachments" aria-haspopup="menu" aria-expanded="false" title="Add">+</button><textarea id="inp" rows="1" spellcheck="false" autocorrect="off" placeholder="Say anything…" enterkeyhint="send"></textarea><div class="side"><button id="bTalk" aria-label="Talk mode: hands-free conversation" aria-pressed="false" title="Talk mode: just talk. It sends when you stop, reads the reply aloud, then listens again. Tap again to stop.">🗣</button><button id="bMic" aria-label="Dictate: talk and your words are typed here" aria-pressed="false" title="Dictate: tap, talk, tap again. Your words are typed into the message box.">🎤</button><button id="bSend" aria-label="Send">➤</button></div></div>
 </footer>
 </div>
 
@@ -276,7 +277,7 @@
 <p class="hint">Ember can search YouTube and download a video's audio to Music/Ember on your phone, with a progress notification. It only downloads when you ask, and only for links you gave it or that its own search returned. Only save things you have the right to keep. Needs the V1.6.0 APK.</p>
 <p class="hint" id="agentStatus"></p>
 <div class="cr" style="margin-top:10px"><span>Vision (read image links)</span><div class="sw" id="swVision"></div></div>
-<p class="hint">Ember can describe an image when you paste an https link to it. The link goes to Pollinations' free image reader, which fetches the picture. Ember cannot see photos you have not linked, and there is no camera or upload here.</p></div>
+<p class="hint">Ember can describe an image when you paste an https link to it. The link goes to Pollinations' free image reader, which fetches the picture. Photos from the + menu (Camera / Vision, Upload File) go to the same reader: shrunk to a small JPEG, sent only when you pick one, and only while this switch is on. Ember cannot see photos you have not given it.</p></div>
 
 <div class="card" data-tab="scraping"><div class="ct">Paste &amp; extract scraping keys</div>
 <textarea id="swPad" class="pad" rows="4" placeholder="Paste anything here: emails, notes, a whole page of keys. Extract finds the scraping keys (Firecrawl, Browserless, ScraperAPI, ZenRows and the rest) and saves them below." spellcheck="false" autocomplete="off" style="width:100%"></textarea>
@@ -399,7 +400,7 @@
 <tr><td>Web search (off by default)</td><td>The words the AI searches for, plus your Tavily key when one is saved</td><td>Tavily, and DuckDuckGo (api.duckduckgo.com) as the keyless fallback</td></tr>
 <tr><td>Reading or scraping a page</td><td>The page address (and your key for paid scrapers). The page text then goes to the chat engine</td><td>The reader or scraper you chose</td></tr>
 <tr><td>YouTube search and saving</td><td>Search and download requests from the phone</td><td>YouTube / Google servers</td></tr>
-<tr><td>Vision (off by default)</td><td>The image link you paste and your question</td><td>Pollinations</td></tr>
+<tr><td>Vision (off by default)</td><td>The image link you paste and your question; or, from the + menu (Camera / Vision, Upload File), the photo itself, shrunk to a JPEG, only when you pick one</td><td>Pollinations</td></tr>
 <tr><td>Song identification (optional, off until you add a token)</td><td>A clip of about 12 seconds of the song (or the audio link you typed) and your Audd.io token. Only when you tap Identify or ask Ember to</td><td>Audd.io</td></tr>
 <tr><td>Song info (artwork, album, year, bio)</td><td>The song title and artist name only. Never audio, files or your library</td><td>Deezer, MusicBrainz and Wikipedia</td></tr>
 <tr><td>VPN area lookup</td><td>Your public IP address, which the request reveals by existing</td><td>ipwho.is. Only while a VPN is detected, or when you tap the lookup button</td></tr>
@@ -472,7 +473,7 @@
 <script src="ember_find.js"></script><script src="ember_tasks.js"></script><script src="ember_keys.js"></script>
 <script src="ember_browser.js"></script>
 <script src="ember_term.js"></script>
-<script src="ember_voice.js"></script><script src="ember_lyrics.js"></script><script src="ember_prov_ui.js"></script>
+<script src="ember_voice.js"></script><script src="ember_lyrics.js"></script><script src="ember_prov_ui.js"></script><script src="ember_plus.js"></script>
 
 <script src="ember_ui.js"></script><script src="ember_extras.js"></script><script src="ember_create.js"></script>
 <script>

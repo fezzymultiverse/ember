@@ -26,7 +26,7 @@ const setUI = name => { curUI = name; };
 window.addEventListener('ember-ui-tab', e => { if (e.detail) setUI(e.detail); });
 function uiStateBlock() {
   const prov = Prov.getPinned() ? Prov.label(Prov.getPinned()) + ' (pinned)' : (Prov.freeOn() ? 'Free Mode' : 'Auto');
-  return 'User is currently in the ' + curUI + ' tab. Active provider is ' + prov + '.' + (S.termuxMode ? ' Termux Mode is on.' : '');
+  return 'User is currently in the ' + curUI + ' tab. Active provider is ' + prov + '.' + (S.termuxMode ? ' Termux Mode is on.' : '') + (window.EmberPlus && window.EmberPlus.stateLine() ? ' ' + window.EmberPlus.stateLine() : '');
 }
 const saveS = () => LS.set('ember_set', S);
 const saveMem = () => Store.setKV('mem', mem);
@@ -202,7 +202,7 @@ function historyLines(rounds) {
   return flat.slice(-3).map(h => h.tool + '(' + JSON.stringify(h.args).slice(0, 80) + ') -> ' + (h.ok ? 'worked' : 'FAILED: ' + h.note));
 }
 function laneFor() {
-  if (S.mode == 'deep') return { lane: 'deep', deep: true };
+  if (S.mode == 'deep' || (window.EmberPlus && window.EmberPlus.lane())) return { lane: 'deep', deep: true };
   if (S.mode == 'sharp' && conv) {
     const n = conv.msgs.filter(m => m.r == 'a').length, last = conv.msgs[conv.msgs.length - 1];
     if (n % 4 == 3 || (last && last.r == 'u' && last.t.length > 280)) return { lane: 'deep', deep: true };
@@ -262,7 +262,7 @@ function parseCalls(text) {
 // Every tool the AI can use right now (same switches as runTool below). The plan engine checks steps with it; the ReAct loop shows it to the model.
 function toolCatalog() {
   const A = window, scrapeOn = !!(A.EmberScraper && A.EmberScraper.enabled());
-  const docsOn = S.docsAddon || !!(A.EmberDocs && A.EmberDocs.count && A.EmberDocs.count() > 0), sets = [];
+  const docsOn = S.docsAddon || !!(A.EmberPlus && A.EmberPlus.isOn('device')) || !!(A.EmberDocs && A.EmberDocs.count && A.EmberDocs.count() > 0), sets = [];
   if (S.musicAddon && A.EmberMusicAddon) sets.push(A.EmberMusicAddon.TOOLS);
   if (A.EmberKnow) sets.push(A.EmberKnow.TOOLS);
   if (A.EmberTasks) sets.push(A.EmberTasks.TOOLS);
@@ -288,7 +288,7 @@ async function runTool(tool, args) {
     if (A.EmberKnow && namesOf(A.EmberKnow).includes(tool)) return await A.EmberKnow.dispatch(tool, args);
     if (A.EmberTasks && namesOf(A.EmberTasks).includes(tool)) return await A.EmberTasks.dispatch(tool, args);
     if (A.EmberKeys && namesOf(A.EmberKeys).includes(tool)) return await A.EmberKeys.dispatch(tool, args);
-    const docsOn = S.docsAddon || !!(A.EmberDocs && A.EmberDocs.count && A.EmberDocs.count() > 0);
+    const docsOn = S.docsAddon || !!(A.EmberPlus && A.EmberPlus.isOn('device')) || !!(A.EmberDocs && A.EmberDocs.count && A.EmberDocs.count() > 0);
     if (docsOn && A.EmberDocsAddon && namesOf(A.EmberDocsAddon).includes(tool)) return await A.EmberDocsAddon.dispatch(tool, args);
     if (A.EmberAgentAddon && A.EmberAgentAddon.toolsFor(S).some(t => t.name == tool)) return await A.EmberAgentAddon.dispatch(tool, args);
     if (scrapeOn && namesOf(A.EmberScraper).includes(tool)) return await A.EmberScraper.dispatch(tool, args);

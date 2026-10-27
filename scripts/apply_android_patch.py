@@ -42,6 +42,7 @@ m = manifest.read_text()
 perms = [
     ('android.permission.INTERNET', ''),
     ('android.permission.RECORD_AUDIO', ''),
+    ('android.permission.CAMERA', ''),  # V1.9.30: + menu > Camera / Vision opens the camera through the file chooser
     ('android.permission.MODIFY_AUDIO_SETTINGS', ''),
     ('android.permission.POST_NOTIFICATIONS', ''),
     ('android.permission.READ_MEDIA_AUDIO', ''),  # phone music scan (Music panel > Scan phone)
