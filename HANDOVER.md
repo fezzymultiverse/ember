@@ -7,6 +7,10 @@ Status: four reported bugs fixed. Not yet run on a device or APK.
 4. Name search: ai_agent.js now uses DuckDuckGo HTML web results first (real results, works for people), Instant Answer second. A bot-check page is reported as blocked, never "no info". Google/Bing/DDG result-page URLs given to scrape_url are turned into a real web_search.
 5. Groq gpt-oss returned EMPTY replies because its reasoning ate max_tokens. providers.js now sets reasoning_effort low, raises the budget, and retries once with more room if still empty.
 6. Copy/paste: Copy button on every message, Copy and Paste buttons by the input, chat text forced selectable, and the download poll no longer re-renders the chat while text is selected.
+## Restored in this zip (no app code changed)
+- Hidden files were missing from the V1.9.18 and V1.9.20 zips (zipped with `*`, which skips dotfiles): `.github/workflows/build.yml`, `.github/workflows/newpipe-update.yml`, `.gitlab-ci.yml`, `.gitignore`. Rebuilt from docs/ANDROID_BUILD.md, CHANGELOG, CONTRIBUTING and scripts/apply_android_patch.py. Not run on GitHub/GitLab yet; the first CI run is the real test.
+- Zip with `zip -r out.zip ember-V1_9_20` (the folder itself) so dotfiles are included.
+
 ## Open items
 - tests/router-test.js crashes before and after this work (needs playwright, same as the original).
 - app-test crash at #hq and the speaker/v198/voice-cloud failures are unchanged from V1.9.18.

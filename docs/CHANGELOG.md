@@ -1,4 +1,5 @@
 ## V1.9.20
+- **Restored missing CI files** (dotfiles dropped by earlier zips): `.github/workflows/build.yml`, `.github/workflows/newpipe-update.yml`, `.gitlab-ci.yml` (lint, audit, Pages, manual APK job), `.gitignore`. Rebuilt from the docs; untested on the real runners.
 - Removed hardcoded Bojack card; tool receipts; forced-tool guard; DDG HTML web search; scrape of search-engine URLs becomes web_search; Groq gpt-oss empty-reply fix; copy/paste buttons.
 
 ## V1.9.14

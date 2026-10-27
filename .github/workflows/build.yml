@@ -15,9 +15,14 @@ jobs:
       - run: npm install
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
-      - run: |
+      - name: Add Android platform
+        run: |
           npx cap add android || true
           test -d android
+
+      - name: Apply native Android patch
+        run: python3 scripts/apply_android_patch.py android android_patch
+
       - run: npx cap sync android
       - uses: android-actions/setup-android@v4
       - name: Install SDK packages manually
@@ -80,4 +85,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp android/app/build/outputs/apk/release/app-release.apk "${{ github.event.repository.name }}.apk"
-          gh release create "V${{ github.run_number }}" "${{ github.event.repository.name }}.apk" --title "V${{ github.run_number }}" --notes "Signed build"
+          gh release create "V${{ github.run_number }}" "${{ github.event.repository.name }}.apk" --title "V${{ github.run_number }}" --notes "Signed build" --clobber

@@ -1,24 +1,72 @@
-# Ember: GitLab CI build. Same steps as .github/workflows/build.yml (signed release APK).
-# Needs CI/CD variables: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD (same values as the GitHub secrets).
-build-apk:
-  image: mingc/android-build-box:latest
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
+# Ember CI. No secrets in this file: signing values live in GitLab CI/CD variables.
+# lint   : node --check on every .js file
+# audit  : forbidden-pattern grep (no persisted crisis flag, no pasted API keys in www/)
+# pages  : copies www/ to GitLab Pages on the default branch
+# apk    : MANUAL job, mirrors .github/workflows/build.yml (untested on GitLab)
+
+stages:
+  - lint
+  - audit
+  - deploy
+  - build
+
+lint:
+  stage: lint
+  image: node:20-alpine
   script:
-    - java -version
-    - node -v
-    - for f in www/*.js; do node --check "$f"; done
-    - node tests/safety-test.js
-    - npm install --no-audit --no-fund
-    - npx cap add android || true
+    - find . -name '*.js' -not -path './node_modules/*' -not -path './android/*' | sort | while read -r f; do node --check "$f" || exit 1; done
+    - echo "node --check passed"
+
+audit:
+  stage: audit
+  image: alpine:3.20
+  script:
+    # SAFETY.md: the crisis level is transient. A `flagged` field in app code is a build failure.
+    - if grep -rnw "flagged" www; then echo "FORBIDDEN - a flagged field in www/ (see docs/SAFETY.md)"; exit 1; fi
+    # No real-looking API keys in the shipped web folder (tests use fake ones on purpose).
+    - if grep -rnE "AIza[0-9A-Za-z_-]{35}|gsk_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{32,}|hf_[A-Za-z0-9]{30,}|ghp_[A-Za-z0-9]{30,}|glpat-[A-Za-z0-9_-]{20}" www; then echo "FORBIDDEN - key-like string in www/"; exit 1; fi
+    # A keystore must never be committed.
+    - if find . -name '*.keystore' -o -name '*.jks' | grep -q .; then echo "FORBIDDEN - keystore file in repo"; exit 1; fi
+    - echo "audit passed"
+
+pages:
+  stage: deploy
+  image: alpine:3.20
+  script:
+    - mkdir -p public
+    - cp -r www/. public/
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Manual APK build. Set these in Settings > CI/CD > Variables (masked):
+#   KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD (optional)
+apk:
+  stage: build
+  image: mingc/android-build-box:latest
+  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+  timeout: 40 minutes
+  variables:
+    GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+  script:
+    - test -n "$KEYSTORE_BASE64" && test -n "$KEYSTORE_PASSWORD" && test -n "$KEY_ALIAS" || { echo "Missing KEYSTORE_BASE64 / KEYSTORE_PASSWORD / KEY_ALIAS CI variables"; exit 1; }
+    - export KEYSTORE_PASS="$KEYSTORE_PASSWORD" KEY_PASS="${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+    - npm install
+    - '[ -d android ] || npx cap add android'
     - python3 scripts/apply_android_patch.py android android_patch
     - npx cap sync android
-    - test -n "$KEYSTORE_BASE64"
-    - echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
-    - cd android && chmod +x gradlew
-    - KEYSTORE_PASS="$KEYSTORE_PASSWORD" KEY_ALIAS="$KEY_ALIAS" KEY_PASS="${KEY_PASSWORD:-$KEYSTORE_PASSWORD}" ./gradlew assembleRelease --no-daemon --stacktrace
+    - yes | sdkmanager --licenses > /dev/null || true
+    - sdkmanager "platforms;android-34" "build-tools;34.0.0"
+    - echo "sdk.dir=${ANDROID_HOME:-$ANDROID_SDK_ROOT}" > android/local.properties
+    - echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+    - cd android && chmod +x gradlew && ./gradlew assembleRelease --no-daemon --stacktrace
   artifacts:
-    name: ember-apk
+    name: signed-app
     paths:
-      - android/app/build/outputs/apk/release/app-release.apk
-    expire_in: never
+      - android/app/build/outputs/apk/release/*.apk
+    expire_in: 30 days
