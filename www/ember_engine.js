@@ -28,24 +28,6 @@ const TOOLS = [{
   parameters: { goal: 'string?', steps: 'object[]', dry_run: 'boolean?' }
 }];
 
-// ---------- V1.9.19: auto-planner. Sizes a message up so the model is told which tool fits: none/one, run_react or run_plan ----------
-// plan = 3 or more different kinds of step on pages / documents / the web (or 2 chained with two sequence words); react = open-ended or 2 steps;
-// answer = everything else. Pure text rules, no model call, so it costs nothing and cannot be talked out of by the model.
-const VERB_GROUPS = [/\b(find|search|look\s*up|locate|discover|gather|collect|hunt)\b/, /\b(scrape|crawl|fetch|open|read|visit|pull|browse|grab)\b/, /\b(summari[sz]e|summary|digest|condense|analy[sz]e|compare|review|rank)\b/, /\b(save|store|export|download|queue|remind|write\s+(?:it|them|that)\s+(?:to|into|in)|add\s+(?:it|them)\s+to|put\s+(?:it|them)\s+in)\b/, /\b(translate|convert|extract|list|check|verify|count)\b/];
-const TOOLISH = /\b(page|pages|site|sites|website|url|link|links|web|online|internet|document|documents|doc|docs|file|files|notes?|profiles?|article|articles|repo|channel|playlist|video|videos|song|songs|album|posts?|accounts?|results?)\b/;
-const TOOL_VERB = /\b(scrape|crawl|fetch|search|look\s*up|download|save|queue|open|browse|read)\b/;
-const INVESTIGATE = /\b(figure out|find out|investigate|research|dig into|track down|look into|work out|what happened|diagnose|why (?:is|does|did|isn'?t|won'?t|can'?t)|how (?:do|can) i (?:get|find))\b/;
-function classify(text) {
-  const t = String(text || '').toLowerCase().replace(/\s+/g, ' ').trim();
-  if (t.length < 12) return { route: 'answer', steps: 0, why: 'short message' };
-  const steps = VERB_GROUPS.filter(re => re.test(t)).length;
-  const seq = (t.match(/\b(then|after that|afterwards|next|finally|and then|once that|followed by)\b/g) || []).length;
-  const toolish = TOOLISH.test(t) || TOOL_VERB.test(t);
-  if (toolish && (steps >= 3 || (steps >= 2 && seq >= 2))) return { route: 'plan', steps: Math.max(steps, 3), why: steps + ' kinds of step' + (seq ? ', ' + seq + ' sequence word' + (seq > 1 ? 's' : '') : '') };
-  if (toolish && (steps === 2 || INVESTIGATE.test(t))) return { route: 'react', steps, why: steps === 2 ? 'two chained steps' : 'open-ended' };
-  return { route: 'answer', steps, why: 'simple ask' };
-}
-
 // ---------- 1. validate ----------
 function refsOf(v, out, d) {
   d = d || 0; if (d > DEPTH) return out;
@@ -177,5 +159,5 @@ async function dispatch(name, args) {
 function stateBlock() {
   return LAST ? 'LAST PLAN (' + new Date(LAST.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '): ' + LAST.done + ' done, ' + LAST.failed + ' failed, ' + LAST.skipped + ' skipped of ' + LAST.steps + ' steps' + (LAST.goal ? ' (' + LAST.goal + ')' : '') + '.' : '';
 }
-window.EmberEngine = { classify, TOOLS, dispatch, setHost, stateBlock, validate, _host: () => host, limits: { MAX_STEPS, MAX_PAR, MAX_RETRY, STEP_MS, TOTAL_MS } };
+window.EmberEngine = { TOOLS, dispatch, setHost, stateBlock, validate, _host: () => host, limits: { MAX_STEPS, MAX_PAR, MAX_RETRY, STEP_MS, TOTAL_MS } };
 })();

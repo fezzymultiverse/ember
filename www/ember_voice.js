@@ -18,7 +18,7 @@ const GEM_VOICES = [
 ];
 // tried in this order; the one that works is remembered
 const MODELS = ['gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts', 'gemini-3.8-flash-tts'];
-const DEF = { engine: 'gemini', gem: 'Puck', gemModel: '', ezKey: '', ezVoice: 'af_aoede' };
+const DEF = { engine: 'gemini', gem: 'Puck', gemModel: '', ezKey: '', ezVoice: 'af_aoede', style: 'warm' };
 const EZ_URL = 'https://easyvoice.ae/api/mcp';
 const EZ_VOICES = [['af_aoede', 'Aoede (default)'], ['af_heart', 'Heart'], ['af_bella', 'Bella'], ['af_nicole', 'Nicole'], ['af_sarah', 'Sarah'], ['af_sky', 'Sky'], ['am_adam', 'Adam'], ['am_michael', 'Michael'], ['bf_emma', 'Emma'], ['bm_george', 'George'], ['bm_lewis', 'Lewis']];
 const cfg = () => { const c = Object.assign({}, DEF, lsGet(KEY, {})); if (c.engine !== 'device' && c.engine !== 'easyvoice') c.engine = 'gemini'; return c; };
@@ -53,7 +53,15 @@ function pcmBuffer(c, bytes, rate) {
 const err = (m, status, extra) => Object.assign(new Error(m), { status: status || 0 }, extra || {});
 
 // ---------- Gemini ----------
-const GEM_STYLE = { warm: 'Say this in a warm, natural, quick-witted tone, like a close friend talking, with a touch of dry humour where it fits: ', calm: 'Say this slowly, softly and calmly, with care and no jokes: ' };
+// V1.9.20: speaking styles. All keep the same "Say this ...: " shape the voice models already accept.
+const GEM_STYLE = {
+  warm: 'Say this in a natural, relaxed, conversational way, like a close friend talking, with a varied pace, short natural pauses and a touch of dry humour where it fits: ',
+  lively: 'Say this with real energy and a quick, upbeat pace, like a friend who is excited to tell you, with natural pauses: ',
+  chill: 'Say this in a low-key, laid-back, easy tone, a little slower than usual, like talking late at night with a friend: ',
+  story: 'Say this like a storyteller, with expressive pacing, soft emphasis on the key words and natural pauses between ideas: ',
+  calm: 'Say this slowly, softly and calmly, with care and no jokes: '
+};
+const STYLES = [['warm', 'Natural (default)'], ['lively', 'Lively'], ['chill', 'Chill'], ['story', 'Storyteller']];
 async function gemOnce(model, key, text, voice, tone) {
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent';
   const body = JSON.stringify({ contents: [{ parts: [{ text: (GEM_STYLE[tone] || GEM_STYLE.warm) + text }] }], generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } } });
@@ -179,7 +187,7 @@ async function speak(text, o) {
   try { if (cx.state !== 'running') await Promise.race([cx.resume(), sleep(900)]); } catch (e) { }
   if (cx.state !== 'running') return { ok: false, note: 'Tap the screen once to allow Ember Voice, using the phone voice for now', rest: all };
   const max = c.engine === 'easyvoice' ? 900 : 700, chunks = split(all, max), cap = 6, use = chunks.slice(0, cap), leftover = chunks.slice(cap).join(' ').trim();
-  const tone = o.calm ? 'calm' : 'warm';
+  const tone = o.calm ? 'calm' : (GEM_STYLE[c.style] && c.style !== 'calm' ? c.style : 'warm');
   const fetchN = i => { const p = c.engine === 'easyvoice' ? ezBuffer(use[i].trim(), c) : gemBuffer(use[i].trim(), tone, c); p.catch(() => { }); return p; };
   let next = fetchN(0);
   for (let i = 0; i < use.length; i++) {
@@ -236,19 +244,31 @@ async function transcribe(b64) {
   throw last || err('Transcribing failed', 0);
 }
 // listen() starts recording and resolves to { stop() -> Promise<text> }
-async function listen() {
+async function listen(o) {
+  o = o || {};
   let stream;
   try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
   catch (e) { throw err('Microphone blocked. Allow it in the phone’s app settings > Permissions > Microphone', 0); }
   const C = window.AudioContext || window.webkitAudioContext, cx = new C(), src = cx.createMediaStreamSource(stream), proc = cx.createScriptProcessor(4096, 1, 1), chunks = [];
   try { await cx.resume(); } catch (e) { }
-  proc.onaudioprocess = e => { chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+  // o.auto: end the recording by itself. A quiet room is measured for 0.4 s first; then 1.5 s of quiet after speech (or 9 s with no speech at all) calls o.onSilence.
+  const t0 = Date.now(); let floor = 0, nCal = 0, heard = false, lastLoud = t0, fired = false;
+  proc.onaudioprocess = e => {
+    const d = e.inputBuffer.getChannelData(0); chunks.push(new Float32Array(d));
+    if (!o.auto || fired) return;
+    let sum = 0; for (let i = 0; i < d.length; i++) sum += d[i] * d[i];
+    const rms = Math.sqrt(sum / d.length), now = Date.now();
+    if (now - t0 < 400) { floor = (floor * nCal + rms) / (nCal + 1); nCal++; lastLoud = now; return; }
+    if (rms > Math.max(0.02, floor * 3)) { heard = true; lastLoud = now; }
+    if ((heard && now - lastLoud > 1500) || (!heard && now - t0 > 9000) || now - t0 > 60000) { fired = true; try { if (o.onSilence) o.onSilence(); } catch (er) { /* the caller's problem */ } }
+  };
   src.connect(proc); proc.connect(cx.destination);
   let done = false;
   const halt = () => { if (done) return; done = true; try { proc.onaudioprocess = null; proc.disconnect(); src.disconnect(); } catch (e) { } try { stream.getTracks().forEach(t => t.stop()); } catch (e) { } try { cx.close(); } catch (e) { } };
   return {
     async stop() {
       const rate = cx.sampleRate; halt();
+      if (o.auto && !heard) return '';
       const w = wavB64(chunks, rate);
       if (w.seconds < 0.4) return '';
       return transcribe(w.b64);
@@ -260,8 +280,9 @@ async function listen() {
 // ---------- Settings UI (Settings > Perms > Voice) ----------
 function bindUI() {
   const $ = id => document.getElementById(id), eng = $('sEngine'); if (!eng) return;
-  const c = cfg(), gv = $('sGemV'), ezv = $('sEzVoice');
+  const c = cfg(), gv = $('sGemV'), ezv = $('sEzVoice'), gs = $('sGemStyle');
   eng.value = c.engine;
+  if (gs) { gs.innerHTML = STYLES.map(v => '<option value="' + v[0] + '">' + v[1] + '</option>').join(''); gs.value = GEM_STYLE[c.style] ? c.style : 'warm'; gs.onchange = () => setCfg({ style: gs.value }); }
   gv.innerHTML = GEM_VOICES.map(v => '<option value="' + v[0] + '">' + v[0] + ' · ' + v[1] + '</option>').join(''); gv.value = c.gem;
   const fillEz = list => { const cur = cfg().ezVoice; ezv.innerHTML = list.map(v => '<option value="' + v[0] + '">' + v[1] + '</option>').join(''); if (!list.some(v => v[0] === cur)) ezv.insertAdjacentHTML('afterbegin', '<option value="' + cur + '">' + cur + '</option>'); ezv.value = cur; };
   fillEz(EZ_VOICES); $('sEzKey').value = c.ezKey || '';

@@ -132,41 +132,5 @@ function block(S, conv) {
   return L.join('\n');
 }
 
-// V1.9.19: spatial awareness. Where he is in the app right now, and which engine is active. Read from the live screen, never remembered.
-function where(doc) {
-  doc = doc || document;
-  const shown = id => { const e = doc.getElementById(id); return !!(e && e.classList && e.classList.contains('show')); };
-  const act = sel => { const e = doc.querySelector(sel); return e && e.dataset ? e.dataset : {}; };
-  let tab = 'Chat';
-  const SHEETS = [['settings', 'Settings'], ['browser', 'Browser'], ['chats', 'Recent Chats'], ['music', 'Music'], ['device', 'Device'], ['nine', '999']];
-  for (const [id, nm] of SHEETS) {
-    if (!shown(id)) continue;
-    tab = nm;
-    if (id === 'settings') { const d = act('#stabs .stab.on'); if (d.st) tab = 'Settings > ' + d.st.charAt(0).toUpperCase() + d.st.slice(1); }
-    if (id === 'browser') { const d = act('#brTabs .stab.on'); tab = d.bt === 'docs' ? 'Documents (the Documents tab of the Browser sheet)' : 'Browser'; }
-    break;
-  }
-  if (tab === 'Chat' && shown('drawer')) { const d = act('.dtab.on'); tab = 'Menu drawer' + (d.d ? ' (' + d.d + ' tab)' : ''); }
-  return { tab, reasoning: shown('react') };
-}
-function stateTag(S, conv) {
-  S = S || {};
-  const P = window.Prov, D = window.EmberDocs, SCR = window.EmberScraper;
-  let w = { tab: 'Chat', reasoning: false }; try { w = where(); } catch (e) { /* no screen to read */ }
-  let prov = 'none saved';
-  if (P) {
-    const pin = P.getPinned && P.getPinned(), pm = P.getPinnedModel && P.getPinnedModel();
-    if (pin) prov = P.label(pin) + ' (pinned' + (pm && pm.id == pin ? ', model ' + pm.model : '') + (P.getStrict && P.getStrict() ? ', strict: no silent swap' : '') + ')';
-    else {
-      let last = ''; if (conv && Array.isArray(conv.msgs)) for (let k = conv.msgs.length - 1; k >= 0; k--) { const m = conv.msgs[k]; if (m.r == 'a' && m.eng && m.eng.p) { last = m.eng.p; break; } }
-      prov = 'Auto' + (last ? ' (last reply came from ' + P.label(last) + ')' : '') + (P.freeOn && P.freeOn() ? ', Free Mode on' : '');
-    }
-  }
-  const bits = [];
-  if (D && D.count) bits.push('Documents in library: ' + D.count());
-  if (SCR && SCR.enabled) bits.push('Web Scraping: ' + (SCR.enabled() ? 'ON' : 'OFF'));
-  if (S && S.termuxMode != null) bits.push('Termux Mode: ' + (S.termuxMode ? 'ON' : 'OFF'));
-  return '<state>User is currently in the [' + w.tab + '] screen' + (w.reasoning ? ', with the Reasoning panel open' : '') + '. Active provider: [' + prov + ']' + (bits.length ? '. ' + bits.join('. ') : '') + '.</state>\nSTATE RULES: the tag above is true right now and was written by the app. Use it so "this tab", "here" and "this screen" mean where he is, and answer about the provider from it. Never recite it unprompted.';
-}
-window.EmberKnow = { TOOLS, dispatch, block, log, where, stateTag };
+window.EmberKnow = { TOOLS, dispatch, block, log };
 })();

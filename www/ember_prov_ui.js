@@ -6,17 +6,27 @@
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const TXT = { ok: 'working', limited: 'rate limited, key is valid', bad: 'key rejected or unreachable', none: 'no key saved', unknown: 'key saved, not checked yet' };
-let open = false, busy = false, lastAt = 0;
+let open = false, busy = false, lastAt = 0, tk = 0;
 
+function lat(d) { return d.lat ? '⚡ ' + d.lat + 'ms' : '⚡ —'; }
 function rowFor(id) {
-  const P = window.Prov, st = P.stateOf(id), n = P.entries(id).length, c = P.CFG[id];
+  const P = window.Prov, st = P.stateOf(id), n = P.entries(id).length, c = P.CFG[id], d = P.detail(id), chk = busy && n;
   const proto = c.status === 'prototype' ? ' <i class="pdproto">prototype</i>' : '';
-  const sub = n ? TXT[st] + ' · ' + n + ' key' + (n === 1 ? '' : 's') : TXT.none;
-  return '<button class="pdrow" role="menuitem" data-id="' + esc(id) + '"><span class="pdd ' + (busy && n ? 'chk' : st) + '"></span><span class="pdn">' + esc(c.name) + proto + '</span><small>' + esc(busy && n ? 'checking…' : sub) + '</small></button>';
+  const keys = n + ' key' + (n === 1 ? '' : 's');
+  let sub, right;
+  if (!n) { sub = TXT.none; right = '<div class="pdlat pdl-mut">No key</div>'; }
+  else if (chk) { sub = 'checking…'; right = '<div class="pdlat pdl-mut">Checking…</div>'; }
+  else if (st === 'limited') { sub = d.model || TXT.limited; right = '<div class="pdlat pdl-am">Rate limited</div><div class="pdcost">' + (d.retry ? 'Retry in ' + d.retry + 's' : 'key is valid') + '</div>'; }
+  else if (st === 'bad') { sub = d.model || TXT.bad; right = '<div class="pdlat pdl-rd">Rejected</div><div class="pdcost">' + esc(String(d.msg || 'check the key').slice(0, 28)) + '</div>'; }
+  else if (st === 'unknown') { sub = TXT.unknown; right = '<div class="pdlat pdl-mut">Not checked</div><div class="pdcost">' + keys + '</div>'; }
+  else { sub = d.model || 'model picked on first use'; right = '<div class="pdlat">' + lat(d) + '</div><div class="pdcost">' + keys + '</div>'; }
+  const dim = !n || st === 'limited' || st === 'bad' ? ' pd-dim' : '';
+  return '<button class="pdrow' + dim + '" role="menuitem" data-id="' + esc(id) + '"><span class="pdd ' + (chk ? 'chk' : st) + '"></span>' +
+    '<span class="pdinfo"><span class="pdn">' + esc(c.name) + proto + '</span><small>' + esc(sub) + '</small></span><span class="pdright">' + right + '</span></button>';
 }
 function freeRow() {
   const P = window.Prov, on = P.freeOn();
-  return '<button class="pdrow" role="menuitem" data-id="free"><span class="pdd ' + (on ? 'free' : 'none') + '"></span><span class="pdn">Free Mode <i class="pdproto">no key</i></span><small>' + (on ? 'on · third-party, model unknown' : 'off') + '</small></button>';
+  return '<button class="pdrow' + (on ? '' : ' pd-dim') + '" role="menuitem" data-id="free"><span class="pdd ' + (on ? 'free' : 'none') + '"></span><span class="pdinfo"><span class="pdn">Free Mode <i class="pdproto">no key</i></span><small>' + (on ? 'on · third-party, model unknown' : 'off') + '</small></span><span class="pdright"><div class="pdlat ' + (on ? '' : 'pdl-mut') + '">' + (on ? 'On' : 'Off') + '</div></span></button>';
 }
 function paint() {
   const d = $('provDrop'), P = window.Prov; if (!d || !P) return;
@@ -38,6 +48,8 @@ function toggle(force) {
   open = force === undefined ? !open : !!force;
   d.classList.toggle('hidden', !open); b.classList.toggle('on', open); b.setAttribute('aria-expanded', open ? 'true' : 'false');
   if (open) { paint(); check(); }
+  clearInterval(tk); tk = 0;
+  if (open) tk = setInterval(() => { try { if (!busy && window.Prov.IDS.some(i => window.Prov.detail(i).retry > 0)) paint(); } catch (e) { /* repaint is best effort */ } }, 1000);
 }
 if ($('bProv')) {
   $('bProv').addEventListener('click', e => { e.stopPropagation(); toggle(); });

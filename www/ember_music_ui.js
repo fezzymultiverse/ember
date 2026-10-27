@@ -149,6 +149,22 @@ if (!P.deviceOk()) { $('mScan').style.display = 'none'; } else {
   };
 }
 
+// ---------- sleep timer (V1.9.22): fades the volume out over 10 s, then pauses ----------
+let slpEnd = 0, slpTick = null, slpBusy = false;
+function slpPaint() { const left = slpEnd ? Math.max(0, slpEnd - Date.now()) : 0; $('npSleepLeft').textContent = slpEnd ? fmt(left / 1000) : ''; }
+async function slpFire() {
+  slpBusy = true; slpEnd = 0; clearInterval(slpTick); slpTick = null; $('npSleep').value = '0'; slpPaint();
+  const v0 = np.volume != null ? +np.volume : 100;
+  for (let k = 1; k <= 10; k++) { await P.control('volume', { value: Math.round(v0 * (1 - k / 10)) }); await new Promise(r => setTimeout(r, 1000)); }
+  await P.control('pause'); await P.control('volume', { value: v0 }); slpBusy = false; toast('Sleep timer: paused'); soon(300);
+}
+$('npSleep').onchange = () => {
+  const m = +$('npSleep').value; clearInterval(slpTick); slpTick = null;
+  if (!m || slpBusy) { slpEnd = 0; slpPaint(); return; }
+  slpEnd = Date.now() + m * 60000; slpPaint(); toast('Music stops in ' + m + ' min');
+  slpTick = setInterval(() => { if (Date.now() >= slpEnd) slpFire(); else slpPaint(); }, 1000);
+};
+
 // ---------- local playlists ----------
 function renderPls() {
   const a = P.playlists();

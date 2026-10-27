@@ -1,4 +1,4 @@
-// Ember V1.9.20 - ember_timeline.js: the live thinking timeline inside chat replies (add-on pattern, like ai_music.js).
+// Ember V1.9.30+ - ember_timeline.js: the live thinking timeline inside chat replies (add-on pattern, like ai_music.js).
 // While Ember works, a card replaces the three typing dots: grey dots for what it is thinking, square terminal icons for each tool it runs
 // (with a SUCCESS / FAILED pill), and an orange radar dot on "Thinking…". When the reply lands the card is saved on that message as a
 // collapsed "Worked through N steps" row. It shows only what really happened: tool names, results, ReAct thoughts. Nothing is invented.
@@ -11,6 +11,7 @@ const clip = (s, n) => { s = String(s == null ? '' : s).replace(/\s+/g, ' ').tri
 const MAX_STEPS = 30, TEXT_MAX = 110;
 const TERM_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l6-6-6-6M12 19h8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
+const reactOn = () => { try { const RX = window.EmberEngine && window.EmberEngine.react, s = RX && RX.state && RX.state(); return !!(s && s.status === 'running'); } catch (e) { return false; } };
 let live = null, open = true; // live = { steps: [{ k: 't'|'x', text, st: 'run'|'ok'|'bad', ms }], t0, seen: {} }
 
 // ---------- words for tools ----------
@@ -40,13 +41,13 @@ function begin() {
   live = { steps: [], t0: Date.now(), seen: {} };
   const old = $('typ'); if (old) old.remove();
   const log = $('log'); if (!log) return;
-  log.insertAdjacentHTML('beforeend', '<div class="msg a tlive" id="typ">' + cardInner(live.steps, true, 0) + '</div>');
+  log.insertAdjacentHTML('beforeend', '<div class="msg a etlive' + (reactOn() ? ' et-hide' : '') + '" id="typ">' + cardInner(live.steps, true, 0) + '</div>');
   log.scrollTop = log.scrollHeight;
 }
 function drop() { live = null; const old = $('typ'); if (old) old.remove(); }
 function paint() {
   const el = $('typ'); if (!el || !live) return;
-  el.innerHTML = cardInner(live.steps, true, 0);
+  el.innerHTML = cardInner(live.steps, true, 0); if (el.classList) el.classList.toggle('et-hide', reactOn());
   const log = $('log'); if (log) log.scrollTop = log.scrollHeight;
 }
 function push(s) { if (!live) return null; live.steps.push(s); if (live.steps.length > MAX_STEPS) live.steps.shift(); return s; }
@@ -74,23 +75,23 @@ function snapshot() {
 // ---------- html ----------
 function row(s) {
   if (s.k == 'x') {
-    const pill = s.st == 'ok' ? '<span class="tl-pill ok">SUCCESS</span>' : s.st == 'bad' ? '<span class="tl-pill bad">FAILED</span>' : '';
-    return '<div class="tl-i act' + (s.st == 'run' ? ' run' : '') + '"><div class="tl-ic"><div class="tl-tool">' + TERM_SVG + '</div></div><div class="tl-c">' + esc(s.text) + pill + '</div></div>';
+    const pill = s.st == 'ok' ? '<span class="et-pill ok">SUCCESS</span>' : s.st == 'bad' ? '<span class="et-pill bad">FAILED</span>' : '';
+    return '<div class="et-i act' + (s.st == 'run' ? ' run' : '') + '"><div class="et-ic"><div class="et-tool">' + TERM_SVG + '</div></div><div class="et-c">' + esc(s.text) + pill + '</div></div>';
   }
-  return '<div class="tl-i"><div class="tl-ic"><div class="tl-dot"></div></div><div class="tl-c">' + esc(s.text) + '</div></div>';
+  return '<div class="et-i"><div class="et-ic"><div class="et-dot"></div></div><div class="et-c">' + esc(s.text) + '</div></div>';
 }
 function cardInner(steps, isLive, ms) {
   const head = isLive ? 'Thinking…' : 'Summary';
-  const body = open ? '<div class="tl-line">' + steps.map(row).join('') + (isLive ? '<div class="tl-i think"><div class="tl-act"><div class="tl-adot"></div></div><div class="tl-c">Thinking<span class="tl-el">…</span></div></div>' : '') + '</div>' : '';
-  return '<div class="tl-h"><b>' + head + (ms ? ' <small>' + (ms / 1000).toFixed(1) + 's</small>' : '') + '</b><button class="tl-x" data-tl="toggle" aria-label="' + (open ? 'Collapse' : 'Expand') + ' thinking">' + (open ? '×' : '⌄') + '</button></div>' + body;
+  const body = open ? '<div class="et-line">' + steps.map(row).join('') + (isLive ? '<div class="et-i think"><div class="et-act"><div class="et-adot"></div></div><div class="et-c">Thinking<span class="et-el">…</span></div></div>' : '') + '</div>' : '';
+  return '<div class="et-h"><b>' + head + (ms ? ' <small>' + (ms / 1000).toFixed(1) + 's</small>' : '') + '</b><button class="et-x" data-tl="toggle" aria-label="' + (open ? 'Collapse' : 'Expand') + ' thinking">' + (open ? '×' : '⌄') + '</button></div>' + body;
 }
-function liveHtml() { return live ? '<div class="msg a tlive" id="typ">' + cardInner(live.steps, true, 0) + '</div>' : ''; }
+function liveHtml() { return live ? '<div class="msg a etlive' + (reactOn() ? ' et-hide' : '') + '" id="typ">' + cardInner(live.steps, true, 0) + '</div>' : ''; }
 function savedHtml(tl) {
   if (!tl || !Array.isArray(tl.s) || !tl.s.length) return '';
   const n = tl.s.filter(x => x[0] == 'x').length, bad = tl.s.filter(x => x[0] == 'x' && x[2] == 'bad').length;
   const sum = 'Worked through ' + n + (n == 1 ? ' action' : ' actions') + (bad ? ' · ' + bad + ' failed' : '') + (tl.ms ? ' · ' + (tl.ms / 1000).toFixed(1) + 's' : '');
   const rows = tl.s.map(x => row({ k: x[0], text: x[1], st: x[2] }));
-  return '<details class="tlsaved"><summary>' + esc(sum) + '</summary><div class="tl-line">' + rows.join('') + '</div></details>';
+  return '<details class="etsaved"><summary>' + esc(sum) + '</summary><div class="et-line">' + rows.join('') + '</div></details>';
 }
 
 // ---------- events ----------
@@ -100,7 +101,8 @@ document.addEventListener('click', e => {
 });
 // ReAct thoughts: tool rows come from app.js runTool, so only the model's thinking is added here
 window.addEventListener('ember-react', e => {
-  const d = e.detail || {}; if (!live || d.type != 'thought') return;
+  const d = e.detail || {}; if (live && (d.type == 'start' || d.type == 'end')) paint();
+  if (!live || d.type != 'thought') return;
   const RX = window.EmberEngine && window.EmberEngine.react, s = RX && RX.state && RX.state();
   const en = s && s.entries && s.entries.find(x => x.n === d.n && x.type == 'step');
   if (en && en.thought) note(en.thought, 'rx' + (s.startedAt || '') + ':' + d.n);

@@ -793,31 +793,236 @@ header .who b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:el
 #bMic{width:40px;height:40px;padding:0;border-radius:50%;font-size:18px;display:inline-flex;align-items:center;justify-content:center;gap:0;border:1px solid var(--b);background:#1a1a1a}
 .mrow{justify-content:space-between}
 
+/* V1.9.22: copy buttons, code blocks, Talk mode, Get tab, sleep timer */
+.mt button[data-act=copy]{font-size:11px;color:var(--t);opacity:.75}
+.msg.u .mt button[data-act=copy]{color:rgba(0,0,0,.75);opacity:1}
+.cb{margin:8px 0;border:1px solid var(--b);border-radius:10px;background:#0a0a0a;overflow:hidden}
+.cbh{display:flex;justify-content:flex-end;padding:4px 8px;background:rgba(255,255,255,.06)}
+.cbh button{background:none;border:none;color:var(--ac);font-size:12px;font-weight:800;cursor:pointer;padding:2px 4px}
+.cb pre{margin:0;padding:10px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.cb code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.45;color:#e8e8e8;white-space:pre}
+#bTalk{width:40px;height:40px;border-radius:50%;border:1px solid var(--b);background:#1a1a1a;color:var(--t);font-size:18px;cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;padding:0}
+#bTalk.rec{background:var(--ac);border-color:var(--ac);color:#000;animation:recpulse 1.1s infinite}
+.trk>button.gtd{flex:0 0 auto;background:var(--ac);color:#000;border:none;border-radius:8px;padding:7px 11px;font-weight:800;font-size:13px;cursor:pointer}
+.trk>button.gtd:disabled{opacity:.55}
+.gtj{margin:8px 0;padding:9px 11px;border-radius:10px;background:var(--p2);border:1px solid var(--b)}
+.gtj b{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gtj small{display:block;font-size:11px;color:var(--m);margin:2px 0 5px}
+.gtj .bar{height:6px;border-radius:4px;background:rgba(255,255,255,.12);overflow:hidden}
+.gtj .bar i{display:block;height:100%;background:var(--ac);transition:width .4s}
+.gtj.done .bar i{background:#3ddc84}.gtj.failed .bar i{background:#ff5577}
+#npSleep{flex:1;min-width:0}#npSleepLeft{font-size:12px;color:var(--m);min-width:44px;text-align:right}
+
+/* V1.9.24: Browser fits its box and wears the Ember theme (reader view; the real browser is themed in EmberWebPlugin.kt) */
+#browser .sh{border-bottom:1px solid #3a2208}
+#browser .sh b{color:var(--ac)}
+.brview{overflow-x:hidden;overflow-wrap:anywhere;border-color:#3a2208;border-left:3px solid var(--ac);color-scheme:dark}
+.brview *{max-width:100%;box-sizing:border-box}
+.brview pre{white-space:pre-wrap;word-break:break-word}
+.brview a{color:var(--ac)}
+.brview h1,.brview h2,.brview h3{color:var(--ac)}
+.brbar input#brUrl:focus{border-color:var(--ac)}
+
+/* V1.9.24: Saved / Share / Usage sheet */
+#xtras .sb{display:flex;flex-direction:column;gap:10px}
+#xtras input[type=text],#xtras textarea{width:100%;box-sizing:border-box;background:var(--p2);color:var(--t);border:1px solid var(--b);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;outline:none;color-scheme:dark}
+#xtras textarea{resize:vertical;min-height:200px}
+#xtras .xt{white-space:pre-wrap;overflow-wrap:anywhere;max-height:7.5em;overflow:hidden;font-size:14px;line-height:1.5;margin:4px 0}
+#xtras .xs.open .xt{max-height:none}
+#xtras .xq,#xtras .xm{display:block;color:var(--m);font-size:11px}
+.msg .mt [data-xs]{color:var(--ac);font-size:11px;font-weight:700}
+
+/* V1.9.24: Imagine and Notes sheet */
+#xcreate .sb{display:flex;flex-direction:column;gap:10px}
+#xcreate input[type=text],#xcreate textarea{width:100%;box-sizing:border-box;background:var(--p2);color:var(--t);border:1px solid var(--b);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;outline:none;color-scheme:dark}
+#xcreate textarea{resize:vertical}
+#xcreate .iwrap img{width:100%;height:auto;border-radius:14px;border:1px solid #3a2208;display:block}
+#xcreate .iwrap img.hidden{display:none}
+#xcreate .xn{text-align:left;display:flex;flex-direction:column;gap:2px;padding:10px 12px}
+#xcreate .xn small{font-size:11px;font-weight:400;opacity:.7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#xcreate .xm{color:var(--m);font-size:11px}
+.msg .mt [data-xn]{color:var(--ac);font-size:11px;font-weight:700}
+
+.gtth{width:44px;height:44px;border-radius:8px;object-fit:cover;flex:0 0 auto;background:var(--p2)}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   V1.9.28 — "Summary" thinking timeline  (.tl-*)  ember_think_inline.js
+   dot = thought, square icon = tool call (+ pill), orange radar = active step.
+   ════════════════════════════════════════════════════════════════════════════ */
+.tl-card{padding:0!important;overflow:hidden;background:var(--p)!important;border-left:3px solid var(--ac)!important;max-width:92%;width:100%}
+.tl-hdr{display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--b)}
+.tl-card.tl-run .tl-hdr{cursor:default}
+.tl-hdr h2{margin:0;font-size:15px;font-weight:600;flex:1;min-width:0}
+.tl-meta{font-size:11px;color:var(--m);flex-shrink:0}
+.tl-chev{color:var(--m);font-size:13px;flex-shrink:0}
+.tl-x{background:none;border:none;color:var(--m);font-size:22px;line-height:1;cursor:pointer;padding:0 2px;flex-shrink:0}
+.tl-x:active{color:var(--t)}
+.tl-body{max-height:0;overflow:hidden;transition:max-height .35s ease,padding .3s}
+.tl-card.tl-open .tl-body{max-height:3000px;padding:14px 14px 6px}
+.tl-card:not(.tl-open) .tl-hdr{border-bottom-color:transparent}
+.tl{position:relative;display:flex;flex-direction:column}
+.tl::before{content:'';position:absolute;top:10px;bottom:14px;left:11px;width:2px;background-image:linear-gradient(to bottom,var(--b) 50%,transparent 50%);background-size:2px 10px;background-repeat:repeat-y;z-index:1}
+.tl-item{display:flex;align-items:flex-start;margin-bottom:16px;position:relative;z-index:2}
+.tl-ico{width:24px;height:24px;margin-right:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--p);position:relative}
+.tl-dot{width:8px;height:8px;border-radius:50%;background:#6b7280}
+.tl-dot-am{background:var(--am)}
+.tl-tool{width:24px;height:24px;border-radius:6px;border:1px solid var(--b);background:var(--p);display:flex;align-items:center;justify-content:center}
+.tl-tool svg{width:12px;height:12px;fill:none;stroke:var(--t);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tl-txt{font-size:13px;line-height:1.4;color:var(--m);min-width:0;padding-top:3px;word-break:break-word}
+.tl-act .tl-txt{color:var(--t);font-weight:500;font-size:14px;padding-top:2px}
+.tl-name{margin-right:2px}
+.tl-pill{display:inline-block;font:700 10px/1 'Courier New',Courier,monospace;padding:3px 6px;border-radius:4px;margin-left:8px;vertical-align:middle}
+.tl-pill-ok{background:color-mix(in srgb,var(--gr) 18%,transparent);color:var(--gr)}
+.tl-pill-bad{background:color-mix(in srgb,var(--rd) 18%,transparent);color:var(--rd)}
+.tl-pill-warn{background:color-mix(in srgb,var(--am) 18%,transparent);color:var(--am)}
+.tl-pill-run{background:color-mix(in srgb,var(--ac) 18%,transparent);color:var(--ac)}
+.tl-args{font:400 11px/1.4 'Courier New',Courier,monospace;color:var(--m);margin-top:2px}
+.tl-err{font-size:11.5px;font-weight:400;color:var(--rd);margin-top:2px}
+.tl-now .tl-txt{color:var(--ac);font-weight:600}
+.tl-wait{color:var(--am)!important}
+.tl-end-bad .tl-txt{color:var(--rd)}
+.tl-live{width:10px;height:10px;border-radius:50%;background:var(--ac);position:relative;z-index:2}
+.tl-live::after{content:'';position:absolute;top:50%;left:50%;width:10px;height:10px;border-radius:50%;background:var(--ac);transform:translate(-50%,-50%);z-index:1;animation:tl-radar 1.5s infinite ease-out}
+@keyframes tl-radar{0%{width:10px;height:10px;opacity:.8}100%{width:32px;height:32px;opacity:0}}
+.tl-ell::after{content:'...';display:inline-block;width:1.2em;overflow:hidden;vertical-align:bottom;animation:tl-ell 1.2s steps(4,end) infinite}
+@keyframes tl-ell{0%{width:0}100%{width:1.2em}}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   V1.9.28 — Download step timeline  (.gtj-* .gts-*)
+   Replaces the single-bar download row with a 5-step visual timeline.
+   ════════════════════════════════════════════════════════════════════════════ */
+.gtj{margin:8px 0;padding:10px 12px;border-radius:12px;background:var(--p2);border:1px solid var(--b)}
+.gtj.gtj-done{border-color:color-mix(in srgb,var(--gr) 35%,var(--b))}
+.gtj.gtj-failed{border-color:color-mix(in srgb,var(--rd) 35%,var(--b))}
+/* Top: title + status */
+.gtj-top{margin-bottom:9px}
+.gtj-title{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--t)}
+.gtj-sub{font-size:11px;color:var(--m);margin-top:2px}
+.gjst-ok{color:var(--gr);font-weight:600}
+.gjst-bad{color:var(--rd)}
+/* Step timeline: horizontal flex */
+.gtj-timeline{display:flex;align-items:center;gap:0;margin:4px 0 8px}
+/* Each step wrapper */
+.gts-wrap{display:flex;align-items:center;flex:1;min-width:0}
+.gts{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0}
+/* Step icon circle */
+.gts-ico{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;border:2px solid transparent}
+/* Step label (hidden below 380px, shown on wider) */
+.gts-lbl{font-size:9px;font-weight:600;letter-spacing:.3px;text-align:center;white-space:nowrap;max-width:56px;overflow:hidden;text-overflow:ellipsis;display:none}
+@media(min-width:340px){.gts-lbl{display:block}}
+/* Connector line between steps */
+.gts-conn{flex:1;height:2px;border-radius:1px;background:var(--b);min-width:4px}
+.gts-conn-done{background:var(--gr)}.gts-conn-active{background:var(--bl)}.gts-conn-err{background:var(--rd)}
+/* Pending step */
+.gts-pend .gts-ico{background:var(--p);border-color:var(--b);color:var(--m)}
+.gts-pend .gts-lbl{color:var(--m)}
+/* Active step */
+.gts-active .gts-ico{background:color-mix(in srgb,var(--bl) 22%,var(--p2));border-color:var(--bl);color:var(--bl)}
+.gts-active .gts-lbl{color:var(--bl);font-weight:700}
+@keyframes gts-spin{to{transform:rotate(360deg)}}
+.gts-ico-spin{animation:gts-spin 1.3s linear infinite}
+/* Done step */
+.gts-done .gts-ico{background:color-mix(in srgb,var(--gr) 18%,var(--p2));border-color:var(--gr);color:var(--gr)}
+.gts-done .gts-lbl{color:var(--gr)}
+/* Error step */
+.gts-err .gts-ico{background:color-mix(in srgb,var(--rd) 18%,var(--p2));border-color:var(--rd);color:var(--rd)}
+.gts-err .gts-lbl{color:var(--rd)}
+/* % badge on active download step */
+.gts-pct{display:inline-block;margin-left:2px;font-size:9px;font-weight:800;color:var(--bl)}
+/* Slim progress bar under steps (only while running) */
+.gtj-bar{height:4px;border-radius:99px;background:color-mix(in srgb,var(--ac) 15%,var(--b));overflow:hidden;margin-top:2px}
+.gtj-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--ac),var(--pu));transition:width .4s ease;box-shadow:0 0 8px color-mix(in srgb,var(--ac) 50%,transparent)}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   V1.9.29 — tool-execution card (.act-*), provider dashboard rows (.pd*), pill modifier bar
+   ════════════════════════════════════════════════════════════════════════════ */
+.act-card{margin:8px 0;padding:14px 16px;border-radius:16px;border:1px solid var(--ac);background:linear-gradient(180deg,color-mix(in srgb,var(--ac) 6%,transparent) 0%,transparent 100%),var(--p);overflow:hidden}
+.act-card.act-done{border-color:color-mix(in srgb,var(--gr) 55%,var(--b))}
+.act-card.act-bad{border-color:color-mix(in srgb,var(--rd) 55%,var(--b))}
+.act-hd{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.act-hd svg{width:18px;height:18px;fill:var(--ac);flex-shrink:0}
+.act-done .act-hd svg{fill:var(--gr)}.act-bad .act-hd svg{fill:var(--rd)}
+.act-title{font-weight:600;font-size:15px;color:var(--t)}
+.act-file{font-size:13px;color:var(--m);margin-bottom:12px;word-break:break-word}
+.act-bar{height:6px;background:#222;border-radius:3px;overflow:hidden;margin-bottom:8px}
+.act-fill{height:100%;background:var(--ac);border-radius:3px;box-shadow:0 0 15px color-mix(in srgb,var(--ac) 40%,transparent);transition:width .4s ease}
+.act-run .act-fill{animation:act-pulse 2s infinite alternate}
+.act-done .act-fill{background:var(--gr);box-shadow:none}.act-bad .act-fill{background:var(--rd);box-shadow:none}
+@keyframes act-pulse{from{opacity:.7}to{opacity:1}}
+.act-st{display:flex;justify-content:space-between;gap:10px;font:400 12px/1.3 'Courier New',Courier,monospace;color:var(--m)}
+
+/* provider dashboard: one card per engine */
+.pdrow{display:flex!important;align-items:center;justify-content:space-between;gap:12px;background:var(--p2)!important;border:1px solid var(--b)!important;border-radius:12px!important;padding:12px 14px!important;margin:0 0 8px}
+.pdrow.pd-dim{opacity:.6}
+.pdinfo{display:flex;flex-direction:column;min-width:0;flex:1;margin-left:2px}
+.pdrow .pdinfo small{grid-column:auto;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pdright{text-align:right;flex-shrink:0;font-family:'Courier New',Courier,monospace}
+.pdlat{font-size:12px;color:var(--t)}
+.pdlat.pdl-am{color:var(--am)}.pdlat.pdl-rd{color:var(--rd)}.pdlat.pdl-mut{color:var(--m)}
+.pdcost{font-size:10px;color:var(--m);margin-top:2px}
+
+/* modifier pills (Chill / Sharp / Deep and the tool toggles) */
+.comp .modes{background:none;border:none;padding:0;gap:8px;flex-wrap:wrap}
+.comp .modes button,.comp .tools button{background:transparent;color:var(--m);border:1px solid var(--b);border-radius:20px;font-weight:500;transition:all .2s ease;user-select:none}
+.comp .modes button{padding:6px 12px;font-size:13px}
+.comp .modes button.on,.comp .tools button.on{background:color-mix(in srgb,var(--ac) 15%,transparent);color:var(--ac);border-color:var(--ac);box-shadow:0 0 15px color-mix(in srgb,var(--ac) 30%,transparent);font-weight:600}
+.comp .modes button:active,.comp .tools button:active{transform:scale(.95)}
+
+/* V1.9.30: the + button, its menu and the active-feature chips */
+.row{position:relative;padding-left:5px}
+.row .plus{flex-shrink:0;width:40px;height:40px;border-radius:50%;background:#1a1a1a;border:1px solid var(--b);color:var(--ac);font-size:26px;font-weight:300;line-height:1;display:flex;align-items:center;justify-content:center;padding:0 0 3px;cursor:pointer;transition:transform .2s ease,background .2s,border-color .2s}
+.row .plus.open{transform:rotate(45deg);background:color-mix(in srgb,var(--ac) 18%,transparent);border-color:var(--ac)}
+.row .plus.has{border-color:var(--ac)}
+.row .plus.rec{background:#ff2d2d;border-color:#ff2d2d;color:#fff;animation:recpulse 1.1s infinite}
+.pmenu{position:absolute;left:0;bottom:calc(100% + 10px);z-index:30;width:min(320px,calc(100vw - 24px));max-height:60vh;overflow-y:auto;padding:6px;background:#0a0a0a;border:1px solid color-mix(in srgb,var(--ac) 40%,var(--b));border-radius:18px;box-shadow:0 12px 32px rgba(0,0,0,.75)}
+.pmenu.hidden{display:none}
+.pm-h{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--m);padding:8px 10px 4px}
+.pm-i{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:8px 10px;background:transparent;border:none;border-radius:12px;color:var(--t);text-align:left;cursor:pointer;font:inherit}
+.pm-i:active{background:#1c1c1c}
+.pm-ic{font-size:20px;width:26px;text-align:center;flex-shrink:0}
+.pm-tx{display:flex;flex-direction:column;min-width:0;flex:1}
+.pm-tx b{font-size:14px;font-weight:600}
+.pm-tx small{font-size:11.5px;color:var(--m);line-height:1.3}
+.pm-sw{width:34px;height:20px;border-radius:99px;background:#2a2a2a;position:relative;flex-shrink:0;transition:background .2s}
+.pm-sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#8a8a8a;transition:transform .2s,background .2s}
+.pm-i.on .pm-sw{background:color-mix(in srgb,var(--ac) 35%,#000)}
+.pm-i.on .pm-sw::after{transform:translateX(14px);background:var(--ac)}
+.pchips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.pchips.hidden{display:none}
+.pchip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:3px 4px 3px 10px;border-radius:99px;background:rgba(255,107,0,.15);color:var(--ac);border:1px solid rgba(255,107,0,.3)}
+.pchip button{background:transparent;border:none;color:var(--ac);font-size:16px;line-height:1;width:24px;height:24px;border-radius:50%;cursor:pointer;padding:0}
+.pchips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.pchips::-webkit-scrollbar{display:none}
+.pchip{flex-shrink:0;height:28px;min-height:0;white-space:nowrap}
+.pchip button{min-height:0;min-width:0;height:24px;width:24px;margin:0}
+
 /* ================= V1.9.20: live thinking timeline (ember_timeline.js) ================= */
-.msg.tlive{width:100%;max-width:92%;padding:12px 14px;background:#0c0c0c;border:1px solid #262626;border-left:3px solid var(--ac)}
-.tl-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.tl-h b{font-size:13px;font-weight:700;color:var(--t)}.tl-h small{color:var(--m);font-weight:500;margin-left:4px}
-.tl-x{background:none;border:none;color:var(--m);font-size:20px;line-height:1;padding:0 4px;cursor:pointer;min-width:28px;min-height:28px}
-.tl-line{position:relative;display:flex;flex-direction:column;margin-top:12px;padding-left:2px}
-.tl-line::before{content:'';position:absolute;top:8px;bottom:14px;left:10px;width:2px;background-image:linear-gradient(to bottom,#3a3a3a 50%,transparent 50%);background-size:2px 8px;background-repeat:repeat-y;z-index:0}
-.tl-i{display:flex;align-items:flex-start;margin-bottom:14px;position:relative;z-index:1}
-.tl-i:last-child{margin-bottom:2px}
-.tl-ic{width:20px;height:20px;display:flex;justify-content:center;align-items:center;margin-right:12px;flex-shrink:0;background:#0c0c0c;border-radius:50%}
-.tl-dot{width:8px;height:8px;border-radius:50%;background:#555}
-.tl-tool{width:22px;height:22px;border-radius:6px;border:1px solid #333;background:#0c0c0c;color:var(--t);display:flex;justify-content:center;align-items:center}
-.tl-tool svg{width:12px;height:12px}
-.tl-c{font-size:13.5px;line-height:1.4;color:var(--m);padding-top:1px;min-width:0;overflow-wrap:anywhere}
-.tl-i.act .tl-c{color:var(--t);font-weight:500;font-size:14px;padding-top:2px}
-.tl-i.act.run .tl-tool{border-color:var(--ac);color:var(--ac)}
-.tl-pill{display:inline-block;font:700 10px/1 'Courier New',monospace;padding:3px 6px;border-radius:4px;margin-left:8px;vertical-align:middle}
-.tl-pill.ok{background:#0f2a18;color:var(--gr)}.tl-pill.bad{background:#2c0f0d;color:var(--rd)}
-.tl-i.think .tl-c{color:var(--ac);font-weight:600}
-.tl-act{width:20px;height:20px;display:flex;justify-content:center;align-items:center;margin-right:12px;flex-shrink:0;position:relative}
-.tl-adot{width:10px;height:10px;border-radius:50%;background:var(--ac);position:relative;z-index:2}
-.tl-adot::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;background:var(--ac);animation:tlradar 1.5s infinite ease-out}
-@keyframes tlradar{0%{width:10px;height:10px;opacity:.8}100%{width:30px;height:30px;opacity:0}}
-.tlsaved{align-self:flex-start;max-width:92%;margin:0 0 -4px;background:#0c0c0c;border:1px solid #262626;border-radius:14px;padding:8px 12px}
-.tlsaved summary{font-size:12.5px;color:var(--m);cursor:pointer;list-style:none}
-.tlsaved summary::-webkit-details-marker{display:none}
-.tlsaved summary::before{content:'▸ ';color:var(--ac)}.tlsaved[open] summary::before{content:'▾ '}
-@media (prefers-reduced-motion:reduce){.tl-adot::after{animation:none}}
+.msg.etlive{width:100%;max-width:92%;padding:12px 14px;background:#0c0c0c;border:1px solid #262626;border-left:3px solid var(--ac)}
+.et-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.et-h b{font-size:13px;font-weight:700;color:var(--t)}.et-h small{color:var(--m);font-weight:500;margin-left:4px}
+.et-x{background:none;border:none;color:var(--m);font-size:20px;line-height:1;padding:0 4px;cursor:pointer;min-width:28px;min-height:28px}
+.et-line{position:relative;display:flex;flex-direction:column;margin-top:12px;padding-left:2px}
+.et-line::before{content:'';position:absolute;top:8px;bottom:14px;left:10px;width:2px;background-image:linear-gradient(to bottom,#3a3a3a 50%,transparent 50%);background-size:2px 8px;background-repeat:repeat-y;z-index:0}
+.et-i{display:flex;align-items:flex-start;margin-bottom:14px;position:relative;z-index:1}
+.et-i:last-child{margin-bottom:2px}
+.et-ic{width:20px;height:20px;display:flex;justify-content:center;align-items:center;margin-right:12px;flex-shrink:0;background:#0c0c0c;border-radius:50%}
+.et-dot{width:8px;height:8px;border-radius:50%;background:#555}
+.et-tool{width:22px;height:22px;border-radius:6px;border:1px solid #333;background:#0c0c0c;color:var(--t);display:flex;justify-content:center;align-items:center}
+.et-tool svg{width:12px;height:12px}
+.et-c{font-size:13.5px;line-height:1.4;color:var(--m);padding-top:1px;min-width:0;overflow-wrap:anywhere}
+.et-i.act .et-c{color:var(--t);font-weight:500;font-size:14px;padding-top:2px}
+.et-i.act.run .et-tool{border-color:var(--ac);color:var(--ac)}
+.et-pill{display:inline-block;font:700 10px/1 'Courier New',monospace;padding:3px 6px;border-radius:4px;margin-left:8px;vertical-align:middle}
+.et-pill.ok{background:#0f2a18;color:var(--gr)}.et-pill.bad{background:#2c0f0d;color:var(--rd)}
+.et-i.think .et-c{color:var(--ac);font-weight:600}
+.et-act{width:20px;height:20px;display:flex;justify-content:center;align-items:center;margin-right:12px;flex-shrink:0;position:relative}
+.et-adot{width:10px;height:10px;border-radius:50%;background:var(--ac);position:relative;z-index:2}
+.et-adot::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;background:var(--ac);animation:etradar 1.5s infinite ease-out}
+@keyframes etradar{0%{width:10px;height:10px;opacity:.8}100%{width:30px;height:30px;opacity:0}}
+.etsaved{align-self:flex-start;max-width:92%;margin:0 0 -4px;background:#0c0c0c;border:1px solid #262626;border-radius:14px;padding:8px 12px}
+.etsaved summary{font-size:12.5px;color:var(--m);cursor:pointer;list-style:none}
+.etsaved summary::-webkit-details-marker{display:none}
+.etsaved summary::before{content:'▸ ';color:var(--ac)}.etsaved[open] summary::before{content:'▾ '}
+
+.et-hide{display:none!important}
+@media (prefers-reduced-motion:reduce){.et-adot::after{animation:none}}
