@@ -148,10 +148,15 @@ function bub(x, last, i) {
 }
 function renderLog() {
   const m = conv ? conv.msgs : [];
-  $('empty').classList.toggle('hidden', m.length > 0);
+  // Keep the live card across unrelated chat/download rerenders. Replacing its
+  // DOM restarts the spinner and resets an expanded history's scroll position.
+  const timelineLive = window.EmberTimeline && window.EmberTimeline._live && window.EmberTimeline._live();
+  const liveCard = timelineLive ? $('typ') : null;
+  $('empty').classList.toggle('hidden', m.length > 0 || !!timelineLive);
   $('noKey').classList.toggle('hidden', Prov.hasKeys());
   $('log').innerHTML = m.map((x, i) => bub(x, i == m.length - 1, i)).join('') + (window.EmberAgentAddon ? window.EmberAgentAddon.cardsHtml() : '') + (window.EmberTimeline ? window.EmberTimeline.liveHtml() : '') + (busy && streamText ? '<div class="msg a stream-preview" id="streamPreview"><div>' + fmt(streamText) + '</div><small>Live response</small></div>' : '') +
     (lastErr ? '<div class="msg e"><div>' + esc(lastErr) + '</div><div class="mt"><button data-act="retry">Try again</button><button data-act="keys">Open Keys</button></div></div>' : '');
+  const freshCard = $('typ'); if (liveCard && freshCard) freshCard.replaceWith(liveCard);
   if (Safety.lastLevel() >= 3 && m.length) $('log').insertAdjacentHTML('beforeend', Safety.crisisCard());
   down(); renderTop(); paintSay();
 }
@@ -284,7 +289,15 @@ const toolOn = tool => toolCatalog().some(t => t.name == tool);
 async function runTool(tool, args) { // every call (chat, plan, ReAct) shows on the thinking timeline
   const TL = window.EmberTimeline, h = TL ? TL.tool(tool, args) : null;
   let res; try { res = await runToolRaw(tool, args); } catch (e) { res = { error: (e && e.message) || 'Tool failed.' }; }
-  if (h) h.end(res); return res;
+  if (h) h.end(res);
+  // Only show a download stage after the native downloader returns real job ids.
+  // A model saying “downloading” or a failed dispatch must never create this status.
+  if (TL && !((res && res.error) || (res && res.ok === false))) {
+    const ids = tool == 'youtube_download' && res && res.jobId ? [res.jobId]
+      : tool == 'playlist_download' && res && Array.isArray(res.jobs) ? res.jobs.map(j => j && j.jobId).filter(Boolean) : [];
+    ids.forEach(id => TL.upsert('download:' + id, 'Downloading audio', 'a', 'run', { pill: 'LIVE DOWNLOAD' }));
+  }
+  return res;
 }
 async function runToolRaw(tool, args) {
   const A = window, scrapeOn = !!(A.EmberScraper && A.EmberScraper.enabled());
@@ -1232,8 +1245,16 @@ $('bWipe').onclick = async () => {
 })();
 window.addEventListener('error', e => { try { console.error('Ember error:', e.message); } catch (x) {} });
 // ---------- V1.6.2: download progress cards + "it is done" message from the agent ----------
+function paintRealDownloadThought(j) {
+  const TL = window.EmberTimeline;
+  if (!TL || !j || !j.id || !TL._live || !TL._live()) return;
+  const pct = Math.max(0, Math.min(100, +j.pct || 0));
+  const done = j.state === 'done', bad = j.state === 'failed';
+  const text = done ? 'Saved to Music/Ember' : bad ? 'Download failed' : 'Downloading' + (j.title ? ': ' + String(j.title).slice(0, 70) : '') + (pct ? ' (' + pct + '%)' : '');
+  TL.upsert('download:' + j.id, text, 'a', done ? 'ok' : bad ? 'bad' : 'run', { pill: done ? 'SAVED' : bad ? 'FAILED' : 'LIVE DOWNLOAD', err: bad ? (j.detail || '') : '' });
+}
 window.addEventListener('ember-dl', e => {
-  const j = e.detail || {}; if (j.silent) return; // started from the Music > Get tab: shown there, not in the chat
+  const j = e.detail || {}; paintRealDownloadThought(j); if (j.silent) return; // started from the Music > Get tab: shown there, not in the chat
   const el = document.getElementById('dl-' + j.id);
   if (el && window.EmberAgentAddon) el.outerHTML = window.EmberAgentAddon.cardHtml(j);
   else if (conv && window.EmberAgentAddon) renderLog();

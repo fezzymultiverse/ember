@@ -1,4 +1,6 @@
-// Ember V1.9.45 - ember_timeline.js: thought-by-thought reveal queue (rv flags) for every style; 'claude' style is now a spinner + rotating status line (no dropdown)
+// Ember V1.9.51 - rotating status first; tap it to expand the dots/icons timeline.
+// Ember V1.9.50 - stable status text: update one node in place; only the spinner moves.
+// Ember V1.9.45 - thought-by-thought reveal queue (rv flags) for every style.
 // Ember V1.9.42 - ember_timeline.js (single owner of the live thinking card; ReAct feeds it via upsert())
 // Ember V1.9.31 - ember_timeline.js
 // "Summary" card while Ember works on a reply: grey dot = thought, terminal icon = tool call
@@ -49,6 +51,7 @@
       case 'youtube_search':      return 'Searching YouTube' + (q ? ': \u201c' + clip(q, 40) + '\u201d' : '');
       case 'run_react':           return 'Working it out step by step';
       case 'youtube_download':    return 'Downloading audio';
+      case 'playlist_download':   return 'Downloading playlist audio';
       case 'see_image':           return 'Looking at the image';
       case 'find_in_app':         return 'Looking in the app' + (q ? ': \u201c' + clip(q, 36) + '\u201d' : '');
       default: return clip(String(tool || '').replace(/_/g, ' ').replace(/^./, c => c.toUpperCase()) + (q ? ': \u201c' + clip(q, 36) + '\u201d' : ''), 90);
@@ -89,7 +92,7 @@
   // ---------- core ----------
   function begin() {
     if (rvTimer) { clearTimeout(rvTimer); rvTimer = null; } lastRv = 0;
-    live = { lines: [], t0: Date.now(), open: true, seen: {}, toolRan: false };
+    live = { lines: [], t0: Date.now(), open: getStyle() !== 'claude', seen: {}, toolRan: false };
     // Hide the welcome hero as soon as a turn starts; otherwise it can sit behind
     // the live Summary card while the first user/assistant rows are being rendered.
     const empty = $('empty'); if (empty) empty.classList.add('hidden');
@@ -102,8 +105,11 @@
 
   function paint() {
     const el = $('typ'); if (!el || !live) return;
+    const log = $('log');
+    // Check before changing the card height; do not pull someone reading older messages back down.
+    const follow = log && log.scrollHeight - log.clientHeight - log.scrollTop <= 48;
     el.className = 'et-think' + (reactOn() ? ' et-hide' : '');
-    if (getStyle() === 'claude' && paintSpin(el)) { const lg = $('log'); if (lg) lg.scrollTop = lg.scrollHeight; return; }
+    if (getStyle() === 'claude' && paintSpin(el)) { if (follow) log.scrollTop = log.scrollHeight; return; }
     el.innerHTML = innerHtml();
     if (el.querySelectorAll) { // V1.9.45: each revealed row drops in once; a repaint mid-drop carries on from where it was
       const items = el.querySelectorAll('.tl-item:not(.tl-now)'), v = vis(), now = Date.now();
@@ -113,20 +119,24 @@
         if (age < 460) { it.classList.add('tl-new'); it.style.animationDelay = '-' + age + 'ms'; }
       });
     }
-    const log = $('log'); if (log) log.scrollTop = log.scrollHeight;
+    if (follow) log.scrollTop = log.scrollHeight;
   }
 
-  // V1.9.45: 'claude' style = spinner + one status line that rotates to the next. The DOM is kept (never rebuilt)
-  // so the spinner turns smoothly; only the status line is swapped.
+  // Keep both the spinner and status node. Overlapping old/new grid items and rotateX/translateY
+  // made the text jump on Android, especially when statuses wrapped to different line counts.
   const statusOf = () => { const v = vis(), last = v[v.length - 1]; return last ? { t: clip(last.text, 100), bad: !!last.bad } : { t: 'Preparing your response', bad: false }; };
-  const statusSpan = (st, cls) => '<span class="et-status ' + (cls || '') + (st.bad ? ' et-bad' : '') + '" data-s="' + esc(st.t) + '">' + esc(st.t) + '</span>';
+  const statusSpan = st => '<span class="et-status' + (st.bad ? ' et-bad' : '') + '" data-s="' + esc(st.t) + '" title="' + esc(st.t) + '">' + esc(st.t) + '</span>';
   function paintSpin(el) {
     if (!el.querySelector) return false;
     const stage = el.querySelector('.et-stage'); if (!stage) return false;
-    const st = statusOf(), cur = stage.querySelector('.et-status:not(.et-rot-out)');
-    if (cur && cur.getAttribute('data-s') === st.t) return true;
-    if (cur) { cur.classList.add('et-rot-out'); setTimeout(() => { if (cur.parentNode) cur.parentNode.removeChild(cur); }, 400); }
-    stage.insertAdjacentHTML('beforeend', statusSpan(st, 'et-rot-in'));
+    const st = statusOf(), cur = stage.querySelector('.et-status'); if (!cur) return false;
+    if (cur.getAttribute('data-s') !== st.t) {
+      cur.textContent = st.t;
+      cur.setAttribute('data-s', st.t);
+      cur.setAttribute('title', st.t);
+    }
+    // A tool can change from RUNNING to FAILED without changing its label.
+    cur.classList.toggle('et-bad', st.bad);
     return true;
   }
 
@@ -205,9 +215,12 @@
   const SPIN = '<svg class="et-spinner" viewBox="0 0 24 24" aria-hidden="true"><circle class="et-sp-track" cx="12" cy="12" r="9.5"/><circle class="et-sp-arc" cx="12" cy="12" r="9.5"/><circle class="et-sp-arc2" cx="12" cy="12" r="5.2"/></svg>';
   function innerHtml() { // live only
     const V = vis();
-    if (getStyle() === 'claude') { // V1.9.45: spinner that turns + status line that rotates; no dropdown, no chevron
-      return '<div class="et-inner et-claude et-spin">'
-        + '<div class="et-hdr">' + SPIN + '<span class="et-stage">' + statusSpan(statusOf(), '') + '</span>' + SW + '</div></div>';
+    if (getStyle() === 'claude') { // Rotating status first; tapping the row reveals the richer timeline.
+      return '<div class="et-inner et-claude et-spin' + (live.open ? ' et-open' : '') + '">'
+        + '<div class="et-hdr" data-et="toggle" role="button" aria-expanded="' + (live.open ? 'true' : 'false') + '" tabindex="0">'
+        + SPIN + '<span class="et-stage">' + statusSpan(statusOf()) + '</span>' + SW
+        + '<span class="et-drop-hint" aria-hidden="true">' + DOWN + '</span></div>'
+        + '<div class="et-body"><div class="et-lines et-timeline-lines">' + linesHtml(V, true) + '</div></div></div>';
     }
     if (getStyle() === 'dd') {
       return '<div class="et-inner' + (live.open ? ' et-open' : '') + '">'
@@ -251,6 +264,13 @@
     live.open = !live.open;
     const c = b.closest('.tl-card'); if (c) c.classList.toggle('tl-open', live.open);
     const d = b.closest('.et-inner'); if (d) d.classList.toggle('et-open', live.open);
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const b = e.target.closest && e.target.closest('[data-et="toggle"]');
+    if (!b || !live) return;
+    e.preventDefault(); b.click();
   });
 
   document.addEventListener('click', e => { // V1.9.39: saved "Thought for Xs" card opens / closes

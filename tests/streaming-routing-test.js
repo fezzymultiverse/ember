@@ -18,8 +18,7 @@ const headers = { get: () => null };
     chatCount++;
     const sse = [
       'data: ' + JSON.stringify({ choices: [{ delta: { content: 'Hello ' } }] }) + '\n\n',
-      'data: ' + JSON.stringify({ choices: [{ delta: { content: 'from stream.' } }] }) + '\n\n',
-      'data: [DONE]\n\n'
+      'data: ' + JSON.stringify({ choices: [{ delta: { content: 'from stream.' } }] })
     ].join('');
     const bytes = new TextEncoder().encode(sse);
     if (chatCount === 1) return { ok: true, status: 200, headers, body: new ReadableStream({ start(c) { c.enqueue(bytes); c.close(); } }) };

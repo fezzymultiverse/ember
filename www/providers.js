@@ -75,7 +75,7 @@ async function jfetch(url, opt, timeout) {
   const r = await net(url, opt, timeout);
   if (!r.ok) {
     let body = ''; try { body = await r.text(); } catch (e) {}
-    let msg = '', parsed = null; try { parsed = JSON.parse(body); msg = (parsed.error && (parsed.error.message || parsed.error)) || parsed.message || ''; } catch (e) {}
+    let msg = '', parsed = null; try { parsed = JSON.parse(body); if (parsed && typeof parsed == 'object') msg = (parsed.error && (parsed.error.message || parsed.error)) || parsed.message || ''; } catch (e) {}
     // Providers send Retry-After as seconds or an HTTP date; some return retry_after in JSON.
     const retryHeader = r.headers && r.headers.get && (r.headers.get('retry-after') || r.headers.get('Retry-After'));
     let retryAfter = Number(retryHeader) || 0;
@@ -240,28 +240,30 @@ async function streamOAI(url, key, body, o, timeout) {
   const r = await net(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key, Accept: 'text/event-stream' }, body: JSON.stringify(body) }, timeout || 40000);
   if (!r.ok) {
     let raw = ''; try { raw = await r.text(); } catch (_) {}
-    let parsed = null, msg = ''; try { parsed = JSON.parse(raw); msg = (parsed.error && (parsed.error.message || parsed.error)) || parsed.message || ''; } catch (_) {}
+        let parsed = null, msg = ''; try { parsed = JSON.parse(raw); if (parsed && typeof parsed == 'object') msg = (parsed.error && (parsed.error.message || parsed.error)) || parsed.message || ''; } catch (_) {}
     const h = r.headers && r.headers.get && r.headers.get('retry-after'); let retryAfter = Number(h) || 0;
     if (h && !retryAfter) { const at = Date.parse(h); if (Number.isFinite(at)) retryAfter = Math.max(0, Math.ceil((at-Date.now())/1000)); }
     throw Object.assign(new Error(String(msg || raw || ('HTTP '+r.status)).slice(0,200)), {status:r.status,retryAfter});
   }
   if (!r.body || !r.body.getReader) { const j = await r.json(); return (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || ''; }
   const reader = r.body.getReader(), decoder = new TextDecoder(); activeReaders.add(reader); let buffer = '', out = '';
+  const consume = line => {
+    if (!line.startsWith('data:')) return;
+    const data = line.slice(5).trim(); if (!data || data === '[DONE]') return;
+    let packet; try { packet = JSON.parse(data); } catch (_) { return; }
+    const choice = packet.choices && packet.choices[0], delta = choice && choice.delta;
+    const piece = delta && typeof delta.content === 'string' ? delta.content : '';
+    if (piece) { out += piece; if (typeof o.onToken === 'function') { try { o.onToken(piece, out); } catch (_) {} } }
+  };
   try {
     while (true) {
       if (routeCancelled) throw Object.assign(new Error('Stopped by user.'), {code:'cancelled'});
       const part = await reader.read(); if (part.done) break;
       buffer += decoder.decode(part.value, {stream:true});
       const lines = buffer.split(/\r?\n/); buffer = lines.pop() || '';
-      for (const line of lines) {
-        if (!line.startsWith('data:')) continue;
-        const data = line.slice(5).trim(); if (!data || data === '[DONE]') continue;
-        let packet; try { packet = JSON.parse(data); } catch (_) { continue; }
-        const choice = packet.choices && packet.choices[0], delta = choice && choice.delta;
-        const piece = delta && typeof delta.content === 'string' ? delta.content : '';
-        if (piece) { out += piece; if (typeof o.onToken === 'function') { try { o.onToken(piece, out); } catch (_) {} } }
-      }
+      lines.forEach(consume);
     }
+    consume(buffer.trim());
   } finally { activeReaders.delete(reader); try { reader.releaseLock(); } catch (_) {} }
   if (routeCancelled) throw Object.assign(new Error('Stopped by user.'), {code:'cancelled'});
   return out;
@@ -477,7 +479,7 @@ const withFacts = (o, lane, id, model, failed) => (lane == 'util' || o.json) ? o
 // Every model the engine's keys can see (cached 12h unless fresh). OpenRouter free models first. Chat models only.
 async function modelsOf(id, fresh) {
   const cache = LS.get('ember_models', {});
-  let list = !fresh && cache[id] && cache[id].list && cache[id].list.length ? cache[id].list : null;
+  let list = !fresh && cache[id] && cache[id].list && cache[id].list.length && Date.now() - (cache[id].at || 0) < MC ? cache[id].list : null;
   if (!list) {
     const e = keys[id].find(x => !x.bad) || keys[id][0];
     if (!e) throw Object.assign(new Error('No ' + CFG[id].name + ' key saved.'), { status: 0 });

@@ -1,6 +1,6 @@
 {
   "name": "ember",
-  "version": "1.9.48",
+  "version": "1.9.53",
   "private": true,
   "license": "UNLICENSED",
   "description": "Ember - a companion to talk to about anything (PWA, APK-ready via Capacitor)",
@@ -8,7 +8,9 @@
     "test": "node tests/routing-fallback-test.js && node tests/streaming-routing-test.js && node tests/term-test.js && node tests/app-test.js && node tests/safety-test.js && node tests/voice-native-test.js && node tests/agent-test.js && node tests/context-test.js && node tests/music-test.js && node tests/speaker-test.js && node tests/scrape-test.js && node tests/keyscan-test.js && node tests/handoff-test.js && node tests/v183-test.js && node tests/v198-test.js && node tests/v1915-test.js && node tests/v1924-test.js && node tests/v1925-test.js && node tests/v1927-test.js && node tests/v1927b-test.js && node tests/v1928-test.js && node tests/v1929-test.js && node tests/v1930-test.js && node tests/v1932-test.js && node tests/v1933-test.js",
     "serve": "node serve.js 8080",
     "sync": "cap sync android",
-    "patch:android": "python3 scripts/apply_android_patch.py android android_patch"
+    "patch:android": "python3 scripts/apply_android_patch.py android android_patch",
+    "test:ui-stability": "node tests/v1950-ui-stability-test.js",
+    "test:api-audit": "node tests/v1951-api-audit-test.js"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",

@@ -40,7 +40,7 @@ const KEYS = { groq: [{ key: 'gsk_AAAAAAAAAAAAAAAAAAAAAAAAAAAA' }, { key: 'gsk_B
   ok('util/json prompt untouched', sent.find(s => s.body && s.body.messages).body.messages[0].content == 'JSONONLY');
 
   // 3. pinned Gemini with a rejected key: falls back, says so, and tells the model
-  ({ P, sent } = boot({ ember_keys: KEYS, ember_pin: 'gemini' }, handler));
+  ({ P, sent } = boot({ ember_keys: KEYS, ember_pin: 'gemini', ember_pin_strict: false }, handler));
   r = await P.run('fast', { system: 'BASE', messages: [{ role: 'user', content: 'hi' }] });
   const gsys = sent.filter(s => s.body && s.body.messages).pop().body.messages[0].content;
   ok('pin miss reported to the UI', r.pinMiss && r.pinMiss.want == 'gemini' && r.provider != 'gemini');

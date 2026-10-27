@@ -1152,15 +1152,24 @@ header .who b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:el
    1) 'claude' style: a spinner that turns + ONE status line that rotates to the next (no dropdown, no chevron).
    2) Summary card ('tl') and compact dropdown ('dd'): rows drop in one at a time, thought by thought (reveal queue in ember_timeline.js). */
 .et-spin .et-hdr{cursor:default;gap:11px;align-items:center;min-height:30px}
+.et-spin .et-hdr{cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}
 .et-spin .et-sw{flex-shrink:0;margin-left:auto}
+.et-spin .et-drop-hint{display:flex;align-items:center;justify-content:center;width:24px;height:24px;flex:0 0 24px;border-radius:50%;color:#aaa;transition:transform .25s ease,background .2s}
+.et-spin .et-drop-hint .tl-chv{width:16px;height:16px}
+.et-spin.et-open .et-drop-hint{transform:rotate(180deg);background:rgba(255,255,255,.08)}
+.et-spin .et-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s ease,opacity .2s ease;opacity:0;overflow:hidden}
+.et-spin.et-open .et-body{grid-template-rows:1fr;opacity:1}
+.et-spin .et-timeline-lines{min-height:0;overflow:hidden;padding:6px 0 8px 0;max-height:250px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.et-spin .et-timeline-lines .tl{padding-top:3px}
+.et-spin .et-timeline-lines .tl-item:last-child{margin-bottom:4px}
 .et-spinner{width:20px;height:20px;flex-shrink:0;overflow:visible}
 .et-spinner circle{fill:none;stroke-width:2.4;transform-origin:12px 12px}
 .et-sp-track{stroke:#3a3a3a}
 .et-sp-arc{stroke:var(--ac);stroke-linecap:round;stroke-dasharray:22 38;animation:et-spin 0.9s linear infinite}
 .et-sp-arc2{stroke:#bdbdbd;stroke-linecap:round;stroke-dasharray:9 24;animation:et-spin 1.35s linear infinite reverse}
 @keyframes et-spin{to{transform:rotate(360deg)}}
-.et-stage{display:grid;flex:1;min-width:0;overflow:hidden;perspective:340px}
-.et-stage .et-status{grid-area:1/1;min-width:0;color:#d4d4d4;font-style:italic;font-size:14px;font-weight:500;line-height:1.45;overflow-wrap:anywhere;transform-origin:50% 50%;backface-visibility:hidden}
+.et-stage{display:block;flex:1;min-width:0;height:1.45em;overflow:hidden}
+.et-stage .et-status{display:block;min-width:0;color:#d4d4d4;font-style:italic;font-size:14px;font-weight:500;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:none!important;transform:none!important}
 .et-stage .et-status.et-bad{color:var(--rd)}
 .et-rot-in{animation:et-rot-in .4s cubic-bezier(.2,.85,.25,1) both}
 .et-rot-out{animation:et-rot-out .34s cubic-bezier(.5,0,.8,.4) both;pointer-events:none}
@@ -1208,3 +1217,59 @@ header .who b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:el
 .tl-card.tl-open .tl-body{max-height:250px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:8px}
 .et-saved[open] .et-lines{max-height:250px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .et-claude-saved .et-claude-log{max-height:250px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+
+/* V1.9.50 — stable Thinking text and aligned add control.
+   Smooth scroll was restarted on every progress update; flex shrinking and text
+   drop animations could also move the live row. Keep layout still, spinner live. */
+#log{min-height:0;scroll-behavior:auto}
+.et-think{flex-shrink:0}
+.et-spin .et-hdr{height:30px;min-height:30px}
+.et-lines .et-line{animation:none}
+.tl-new{animation:et-fade .46s ease both!important}
+.comp .row > #bPlus.plus{flex:0 0 38px;width:38px;height:38px;min-width:0;min-height:0;padding:0;align-self:center;transform-origin:50% 50%;appearance:none;-webkit-appearance:none}
+@media(prefers-reduced-motion:reduce){
+  .tl-new{animation:none!important}
+  .et-sp-arc,.et-sp-arc2{animation:none}
+}
+
+/* V1.9.52 — clean Ember replies: no enclosing chat bubble; actions remain below. */
+.msg.a:not(.egg):not(.stream-preview){
+  align-self:stretch;
+  width:100%;
+  max-width:none;
+  padding:8px 4px 4px;
+  background:transparent!important;
+  border:0!important;
+  border-left:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+.msg.a:not(.egg):not(.stream-preview)>div:first-of-type{padding:0 4px}
+.msg.a:not(.egg):not(.stream-preview)>.mt{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:9px 4px 0;
+  padding-top:6px;
+  border-top:1px solid #292929;
+  color:var(--m);
+}
+.msg.a:not(.egg):not(.stream-preview)>.mt button{color:var(--m)}
+
+/* V1.9.53 — grey polish for Thinking: calm graphite surfaces, readable text, restrained contrast. */
+.et-think .et-inner,.et-think .tl-card{
+  background:#151719!important;
+  border-color:#4a4d50!important;
+  box-shadow:0 5px 18px rgba(0,0,0,.18)!important;
+}
+.et-think .et-hdr,.et-think .tl-hdr{color:#d8dadd}
+.et-think .et-status,.et-think .tl-title,.et-think .tl-txt{color:#d3d5d7}
+.et-think .et-body,.et-think .tl-body{border-top-color:#303336}
+.et-think .tl-dot,.et-think .tl-live{background:#aeb3b8!important;box-shadow:0 0 7px rgba(174,179,184,.24)!important}
+.et-think .tl-tool{background:#303438!important;border-color:#666b70!important;color:#e2e4e6!important}
+.et-think .tl-pill-run{background:#303438!important;border-color:#6b7075!important;color:#e1e3e5!important}
+.et-think .tl-pill-ok{background:#26302b!important;border-color:#728078!important;color:#c9d1cc!important}
+.et-think .tl-pill-bad{background:#352b2b!important;border-color:#8a6b6b!important;color:#e3caca!important}
+.et-think .tl-spark{fill:#c6c9cc!important}
+.et-think .et-sp-track{stroke:#3d4145!important}.et-think .et-sp-arc{stroke:#c8ccd0!important}.et-think .et-sp-arc2{stroke:#777d82!important}
+.et-think .et-drop-hint{background:rgba(210,214,218,.08)!important;color:#c6c9cc}

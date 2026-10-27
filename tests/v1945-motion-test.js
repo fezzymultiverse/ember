@@ -1,4 +1,4 @@
-// V1.9.45: thinking motion. Run: node tests/v1945-motion-test.js
+// V1.9.51: rotating-first thinking view with expandable timeline. Run: node tests/v1945-motion-test.js
 const fs = require('fs'), assert = require('assert'), vm = require('vm');
 const read = f => fs.readFileSync(__dirname + '/../' + f, 'utf8');
 const css = read('www/style.css'), js = read('www/ember_timeline.js');
@@ -46,9 +46,9 @@ const shown = () => TL._live().lines.filter(l => l.rv).length;
   TL.note('late one'); assert(TL.snapshot().lines.some(l => l[0] === 'late one'));
   TL.drop();
 
-  // Spinner style: status follows revealed lines only, first paint is the spinner, no body/chevron
+  // Spinner style: status follows revealed lines, first paint is the spinner, details expand in place.
   TL.setStyle('claude'); TL.begin();
-  assert(els.typ.innerHTML.includes('et-spinner') && !els.typ.innerHTML.includes('et-body') && !els.typ.innerHTML.includes('et-chev'));
+  assert(els.typ.innerHTML.includes('et-spinner') && els.typ.innerHTML.includes('et-body') && els.typ.innerHTML.includes('et-drop-hint'));
   assert(els.typ.innerHTML.includes('Preparing your response'));
   TL.note('Step A'); TL.note('Step B');
   await sleep(40);
