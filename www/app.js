@@ -91,7 +91,27 @@ window.addEventListener('pagehide', saveSession);
 // ---------- small helpers ----------
 let tt = 0;
 function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2400); }
-function fmt(t) { return esc(t).replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>').replace(/\n/g, '<br>'); }
+function fmtInline(t) { return esc(t).replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>').replace(/\n/g, '<br>'); }
+// V1.9.20: fenced code blocks get their own box with a Copy button; everything else renders exactly as before
+function fmt(t) {
+  const src = String(t == null ? '' : t); if (src.indexOf('```') < 0) return fmtInline(src);
+  const out = [], re = /```[^\n`]*\n?([\s\S]*?)```/g; let last = 0, m;
+  const text = a => { a = a.replace(/^\n+|\n+$/g, ''); if (a.trim()) out.push(fmtInline(a)); };
+  while ((m = re.exec(src))) {
+    text(src.slice(last, m.index));
+    out.push('<div class="cb"><div class="cbh"><button type="button" data-act="cpcode" aria-label="Copy code">⧉ Copy code</button></div><pre><code>' + esc(m[1].replace(/\n$/, '')) + '</code></pre></div>');
+    last = m.index + m[0].length;
+  }
+  text(src.slice(last)); return out.join('');
+}
+// V1.9.20: copy to the clipboard, with a fallback for webviews that block navigator.clipboard
+function copyTxt(t, btn) {
+  t = String(t == null ? '' : t); if (!t) { toast('Nothing to copy'); return; }
+  const flash = () => { toast('Copied'); if (btn && btn.isConnected) { const o = btn.textContent; btn.textContent = '✓ Copied'; setTimeout(() => { if (btn.isConnected) btn.textContent = o; }, 1300); } };
+  const old = () => { try { const ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0'; document.body.appendChild(ta); ta.focus(); ta.select(); const ok = document.execCommand('copy'); ta.remove(); if (ok) flash(); else toast('Could not copy'); } catch (e) { toast('Could not copy'); } };
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(flash, old); return; } } catch (e) { /* use the fallback */ }
+  old();
+}
 function dlg(o) {
   return new Promise(res => {
     $('dT').textContent = o.title || ''; $('dX').textContent = o.text || '';
@@ -107,6 +127,7 @@ function dlg(o) {
 const sure = (title, text) => dlg({ title, text, ok: 'Yes', danger: true });
 
 // ---------- chat ----------
+let talkOn = false, talkWait = false, talkMiss = 0; // V1.9.20 Talk mode state (declared early: setSay and reply read it)
 function newConv(priv) { return { id: uid(), title: 'New chat', auto: true, created: Date.now(), updated: Date.now(), priv: !!priv, msgs: [], sum: '' }; }
 function ensure() { if (!conv) conv = newConv(false); }
 async function persist() { if (conv && conv.msgs.length) { conv.updated = Date.now(); const ok = await Store.put(conv); if (!ok) toast('Could not save this chat (storage full?)'); } }
@@ -114,8 +135,9 @@ function bub(x, last, i) {
   const eng = x.eng ? ' · ' + Prov.label(x.eng.p) + (S.showEng && x.eng.m ? ' ' + esc(String(x.eng.m).replace(/^.*\//, '').slice(0, 34)) : '') + (S.showEng && x.eng.ms ? ' ' + x.eng.ms + 'ms' : '') + (x.eng.pm ? ' · ' + Prov.label(x.eng.pm) + ' pin failed' : '') : '';
   const regen = last && x.r == 'a' ? '<button data-act="regen">↻ again</button>' : '';
   const say = x.r == 'a' ? '<button data-act="say" data-i="' + i + '" aria-label="Read aloud" title="Read aloud"' + (sayIdx === i ? ' class="talking"' : '') + '>' + (sayIdx === i ? '■ Stop' : '🔊') + '</button>' : '';
+  const cp = x.egg ? '' : '<button data-act="copy" data-i="' + i + '" aria-label="Copy message" title="Copy this message">⧉ Copy</button>';
   const eggImg = x.egg == 'bojack' ? '<img src="ember-icon.svg" alt="" class="msg-egg-icon">' : '';
-  return '<div class="msg ' + x.r + (x.egg ? ' egg' : '') + '">' + eggImg + '<div>' + fmt(x.t) + '</div><div class="mt"><span>' + U.time(x.ts) + (x.deep ? ' · 💡' : '') + eng + '</span>' + say + regen + '</div></div>';
+  return '<div class="msg ' + x.r + (x.egg ? ' egg' : '') + '">' + eggImg + '<div>' + fmt(x.t) + '</div><div class="mt"><span>' + U.time(x.ts) + (x.deep ? ' · 💡' : '') + eng + '</span>' + say + cp + regen + '</div></div>';
 }
 function renderLog() {
   const m = conv ? conv.msgs : [];
@@ -319,7 +341,7 @@ async function reply(o) {
     if (finalText && !bgWon()) {
       conv.msgs.push({ r: 'a', t: finalText, ts: Date.now(), turn: turnId, deep: L.deep || undefined, eng: { p: r.provider, m: r.model, ms: r.ms, pm: r.pinMiss ? r.pinMiss.want : undefined } });
       if (window.EmberNative && window.EmberNative.aiAvailable) window.EmberNative.aiCancel(turnId);
-      if (S.autoRead) speakText(finalText, conv.msgs.length - 1);
+      if (S.autoRead || talkOn) { speakText(finalText, conv.msgs.length - 1); if (talkOn) talkWait = true; }
       if (window.EmberNative) window.EmberNative.notifyReply(finalText);
     }
     await persist();
@@ -331,6 +353,7 @@ async function reply(o) {
     if (curTurn === turnId) lastErr = e.message || 'Something broke.';
   }
   if (curTurn === turnId) { busy = false; $('bSend').disabled = false; typing(false); curTurn = null; }
+  if (talkOn && lastErr) talkOff('Talk mode off: that reply failed');
   renderLog();
   saveSession(); // persist session state after every reply
   after();
@@ -394,6 +417,8 @@ $('log').addEventListener('click', e => {
   if (a.dataset.act == 'keys') openSettings();
   else if (a.dataset.act == 'retry') { if (conv && conv.msgs.length) reply({ directive: conv.msgs[conv.msgs.length - 1].r == 'a' ? SPARK : undefined }); }
   else if (a.dataset.act == 'say') speakMsg(+a.dataset.i);
+  else if (a.dataset.act == 'copy') { const m = conv && conv.msgs[+a.dataset.i]; copyTxt(m && m.t, a); }
+  else if (a.dataset.act == 'cpcode') { const c = a.closest('.cb'), code = c && c.querySelector('code'); copyTxt(code ? code.textContent : '', a); }
   else if (a.dataset.act == 'regen' && conv && !busy) {
     const last = conv.msgs[conv.msgs.length - 1]; if (!last || last.r != 'a') return;
     conv.msgs.pop(); const prevUser = conv.msgs.length && conv.msgs[conv.msgs.length - 1].r == 'u';
@@ -451,8 +476,43 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const nativeSpeech = () => (window.EmberNative && window.EmberNative.speech) || null;
 let rec = null, recOn = false;
 function micUI(on) { recOn = on; const mb = $('bMic'); if (mb) { mb.classList.toggle('rec', on); mb.setAttribute('aria-pressed', on ? 'true' : 'false'); } if (!on) $('inp').focus(); }
+// ---------- V1.9.20: Talk mode (hands free): listen, send when you stop talking, read the reply aloud, listen again ----------
+function talkUI() { const b = $('bTalk'); if (b) { b.classList.toggle('rec', talkOn); b.setAttribute('aria-pressed', talkOn ? 'true' : 'false'); } }
+function talkOff(msg) {
+  talkOn = false; talkWait = false; talkMiss = 0;
+  const h = window.__gemRec; if (h) { window.__gemRec = null; try { h.cancel(); } catch (e) { /* already stopped */ } }
+  micUI(false); talkUI(); if (msg) toast(msg);
+}
+async function talkListen() {
+  if (!talkOn || busy || recOn) return;
+  const EV = window.EmberVoice;
+  if (!EV || !EV.canListen || !EV.canListen()) { talkOff('Talk mode needs a Gemini key (Settings > Keys) and microphone access'); return; }
+  stopSpeak();
+  try {
+    const h = await EV.listen({ auto: true, onSilence: () => talkHear(h) });
+    if (!talkOn) { h.cancel(); return; }
+    h.base = ''; window.__gemRec = h; micUI(true); toast('Listening');
+  } catch (e) { talkOff(String((e && e.message) || e).slice(0, 140)); }
+}
+async function talkHear(h) {
+  if (window.__gemRec !== h) return;
+  window.__gemRec = null; micUI(false);
+  let t = ''; try { t = await h.stop(); } catch (e) { talkOff(String((e && e.message) || e).slice(0, 140)); return; }
+  if (!talkOn) return;
+  t = String(t || '').trim();
+  if (!t) { if (++talkMiss >= 3) { talkOff('Talk mode off: nothing heard'); return; } talkListen(); return; }
+  talkMiss = 0; $('inp').value = t; grow(); send();
+}
+if ($('bTalk')) $('bTalk').onclick = () => {
+  if (talkOn) { talkOff('Talk mode off'); stopSpeak(); return; }
+  const EV = window.EmberVoice;
+  if (!EV || !EV.canListen || !EV.canListen()) { toast('Talk mode needs a Gemini key (Settings > Keys) and microphone access'); return; }
+  if (recOn) return;
+  talkOn = true; talkMiss = 0; talkUI(); talkListen();
+};
 if ($('bMic')) $('bMic').onclick = async () => {
   const EV = window.EmberVoice;
+  if (talkOn) { talkOff('Talk mode off'); return; }
   if (recOn && window.__gemRec) {
     const h = window.__gemRec; window.__gemRec = null; micUI(false); toast('Writing it down');
     try { const t = await h.stop(); if (t) { $('inp').value = h.base + t; grow(); } else toast('Heard nothing, try again'); } catch (e) { toast(String((e && e.message) || e).slice(0, 140)); }
@@ -513,7 +573,11 @@ window.addEventListener('load', () => setTimeout(() => {
 }, 800));
 let sayIdx = -1, speakTok = 0;
 // V1.8.1: the 🔊 of the reply being read turns red and says Stop; tap it to stop, and it goes back to 🔊 when the voice finishes or is stopped.
-function setSay(i) { sayIdx = i; paintSay(); }
+function setSay(i) {
+  sayIdx = i; paintSay();
+  // V1.9.20 Talk mode: when a spoken reply ends, listen again (re-checked after a beat: a fallback voice may start right after)
+  if (i === -1 && talkOn && talkWait) setTimeout(() => { if (talkOn && talkWait && sayIdx === -1) { talkWait = false; talkListen(); } }, 450);
+}
 function paintSay() {
   document.querySelectorAll('#log [data-act="say"]').forEach(b => {
     const on = +b.dataset.i === sayIdx;
@@ -530,7 +594,20 @@ function livelyShape(c) {
   else if (t.length < 28) { r -= 0.04; }
   return { r, p };
 }
-const plainSpeech = t => String(t || '').replace(/```[\s\S]*?```/g, ' ').replace(/https?:\/\/\S+/g, 'link').replace(/[*_`#>]+/g, '').replace(/\s+/g, ' ').trim();
+// V1.9.20: text prepared for the voice. Markdown symbols, links and code are not read out; headings, list items and line ends become pauses.
+const plainSpeech = t => String(t || '')
+  .replace(/```[\s\S]*?```/g, ' The code is in the chat. ')
+  .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+  .replace(/https?:\/\/\S+/g, 'link')
+  .replace(/^\s{0,3}#{1,6}\s*(.+)$/gm, '$1.')
+  .replace(/^\s*(?:[-*\u2022]|\d+[.)])\s+/gm, '')
+  .replace(/`([^`]*)`/g, '$1')
+  .replace(/(\w)_(?=\w)/g, '$1 ')
+  .replace(/[*_~>|#]+/g, '')
+  .replace(/\be\.g\./gi, 'for example').replace(/\bi\.e\./gi, 'that is')
+  .replace(/([^.!?:;,\s])[ \t]*\n+/g, '$1. ')
+  .replace(/\s*\n+\s*/g, ' ')
+  .replace(/\s+/g, ' ').trim();
 function stopSpeak() {
   speakTok++; const N = nativeTTS(); if (N) { try { N.stop(); } catch (e) { } }
   if (window.EmberVoice) { try { window.EmberVoice.stop(); } catch (e) { } }
@@ -726,11 +803,14 @@ $('txAsk') && ($('txAsk').onclick = async () => {
 });
 
 // ---------- V1.6.1: TTS voice picker + pre-warm (cuts the first-read delay) ----------
-async function paintVoices() {
-  const sel = $('sVoice'); if (!sel) return;
+let voiceBusy = false;
+async function paintVoices(force) {
+  const sel = $('sVoice'); if (!sel || voiceBusy) return;
   const N = nativeTTS();
   if (N && N.voices) {
-    const vs = (await N.voices()).slice(), me = (navigator.language || 'en-US').toLowerCase().split(/[-_]/)[0];
+    voiceBusy = true; let vs; try { vs = (await N.voices(force === true)).slice(); } finally { voiceBusy = false; }
+    if ($('vCount')) $('vCount').textContent = vs.length ? vs.length + ' voices found on this phone.' : 'The phone returned no voices. Open Android Settings > Text-to-speech, check an engine (for example Google) and install voice data, then tap Reload.';
+    const me = (navigator.language || 'en-US').toLowerCase().split(/[-_]/)[0];
     vs.sort((a, b) => ((b.lang.toLowerCase().indexOf(me) == 0) - (a.lang.toLowerCase().indexOf(me) == 0)) || a.lang.localeCompare(b.lang) || a.name.localeCompare(b.name));
     sel.innerHTML = '<option value="">Phone default</option>' + vs.map(v => '<option value="' + esc(v.uri) + '">' + esc(v.name) + ' (' + esc(v.lang) + (v.local ? '' : ', online') + ')</option>').join('');
     sel.value = S.ttsVoiceN || ''; return;
@@ -740,6 +820,8 @@ async function paintVoices() {
   sel.innerHTML = '<option value="">Default</option>' + vs.map(v => '<option value="' + esc(v.voiceURI) + '">' + esc(v.name) + ' (' + v.lang + ')' + '</option>').join('');
   sel.value = S.ttsVoice || '';
 }
+if ($('bVoiceReload')) $('bVoiceReload').onclick = async () => { toast('Loading voices…'); await paintVoices(true); toast($('vCount') ? $('vCount').textContent : 'Done'); };
+if ($('bVoicePlay')) $('bVoicePlay').onclick = () => speakText('Hey, this is how I sound. Pretty decent for a phone, right?', null, true);
 $('sVoice') && $('sVoice').addEventListener('change', () => { if (nativeTTS() && nativeTTS().voices) S.ttsVoiceN = $('sVoice').value; else S.ttsVoice = $('sVoice').value; saveS(); });
 const paintVoiceTune = () => { if ($('sRate')) { $('sRate').value = S.ttsRate || 1; $('sPitch').value = S.ttsPitch || 1; $('vRate').textContent = (+(S.ttsRate || 1)).toFixed(2) + '×'; $('vPitch').textContent = (+(S.ttsPitch || 1)).toFixed(2); $('swLively').classList.toggle('on', S.ttsLively !== false); } };
 $('sRate') && ($('sRate').oninput = () => { S.ttsRate = +$('sRate').value; saveS(); paintVoiceTune(); });
@@ -1069,14 +1151,14 @@ $('bWipe').onclick = async () => {
 window.addEventListener('error', e => { try { console.error('Ember error:', e.message); } catch (x) {} });
 // ---------- V1.6.2: download progress cards + "it is done" message from the agent ----------
 window.addEventListener('ember-dl', e => {
-  const j = e.detail || {};
+  const j = e.detail || {}; if (j.silent) return; // started from the Music > Get tab: shown there, not in the chat
   const el = document.getElementById('dl-' + j.id);
   if (el && window.EmberAgentAddon) el.outerHTML = window.EmberAgentAddon.cardHtml(j);
   else if (conv && window.EmberAgentAddon) renderLog();
 });
 window.addEventListener('ember-dl-final', e => {
   const text = (e.detail && e.detail.text) || '';
-  if (!text) return;
+  if (!text || (e.detail && e.detail.silent)) return;
   ensure(); conv.msgs.push({ r: 'a', t: text, ts: Date.now() }); renderLog(); persist();
 });
 

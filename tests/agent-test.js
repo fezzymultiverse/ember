@@ -199,6 +199,23 @@ const srv = http.createServer((q, r) => {
   r = await A('youtube_download', { url: 'https://www.youtube.com/watch?v=AAAAAAAAAAA' });
   ok('an unrelated question after a download request does not authorise one', /did not ask/.test(r.error || ''), r);
 
+  // V1.9.21: plain-talk requests open the gate
+  await intent('get me Song A', '');
+  r = await A('youtube_download', { url: 'https://www.youtube.com/watch?v=AAAAAAAAAAA' });
+  ok('"get me Song A" authorises a download (natural talk)', r.ok === true, r);
+  await intent('can you put Song A on my phone', '');
+  r = await A('youtube_download', { url: 'https://www.youtube.com/watch?v=AAAAAAAAAAA' });
+  ok('"put Song A on my phone" authorises a download', r.ok === true, r);
+  await intent('yes the first one', 'get me Song A');
+  r = await A('youtube_download', { url: 'https://www.youtube.com/watch?v=AAAAAAAAAAA' });
+  ok('a short follow-up after a plain "get me" request counts', r.ok === true, r);
+  await intent('what is the weather like', '');
+  r = await A('youtube_download', { url: 'https://www.youtube.com/watch?v=AAAAAAAAAAA' });
+  ok('an unrelated message still does not authorise one', /did not ask/.test(r.error || ''), r);
+  await intent('get me Song A', '');
+  r = await A('youtube_download', { url: 'https://www.youtube.com/watch?v=ZZZZZZZZZZZ' });
+  ok('natural talk still cannot download a video id that was never seen', /did not come from him/.test(r.error || ''), r);
+
   // ---------- 5. settings UI + prompt ----------
   await pg.click('#bSet').catch(() => {}); await pg.waitForTimeout(200);
   const hasUi = await ev(() => ['swAgent', 'swYoutube', 'swVision', 'keyTavily', 'agentStatus'].every(i => !!document.getElementById(i)));
