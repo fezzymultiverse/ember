@@ -1,3 +1,6 @@
+// Ember V1.9.42: when the main thinking card (EmberTimeline) is live this file no longer draws a second card.
+// It feeds the ReAct thoughts, skipped / repeated / blocked actions, approval waits and the final step into that one card.
+// The card below is only the fallback for runs that start with no live timeline.
 // Ember V1.9.29 - ember_think_inline.js
 // Live "Summary" timeline in the chat log while a run_react loop is active:
 //   grey dot      = a thought
@@ -102,9 +105,30 @@
     return h + '</div></div>';
   }
 
+
+  // V1.9.42: feed ReAct into the one live card. Tool calls that really run already reach it through runTool();
+  // this adds what runTool never sees: the model's thoughts, actions that were not run, approval waits and the final step.
+  const NOT_RUN = /^(Not run|Error: (there is no tool|"))/;
+  function feed(TL, s) {
+    s.entries.forEach(en => {
+      if (en.type === 'note') { TL.upsert('rn' + (en.n || 0) + clip(en.text, 12), 'Your note: ' + clip(en.text, 100), 't', ''); return; }
+      if (en.type !== 'step') return;
+      if (en.thought) TL.upsert('rt' + en.n, clip(en.thought, 160), 't', '', { max: 160 });
+      if (en.tool && ['skipped', 'repeat', 'blocked'].includes(en.status) || (en.tool && en.status === 'failed' && NOT_RUN.test(en.observation || ''))) {
+        const pill = en.status === 'skipped' ? 'SKIPPED' : en.status === 'repeat' ? 'REPEAT' : 'BLOCKED';
+        TL.upsert('ra' + en.n, label(en), 'a', 'warn', { pill, err: en.observation });
+      }
+      if (en.final) TL.upsert('rf' + en.n, 'Writing the answer', 't', '');
+    });
+    if (s.waiting) TL.upsert('rwait', 'Waiting for your approval', 'a', 'warn', { pill: 'WAITING' }); else TL.unkey('rwait');
+  }
+  function liveTL() { const TL = window.EmberTimeline; return TL && TL.upsert && TL._live && TL._live() ? TL : null; }
+
   function render() {
     const log = $('log'); if (!log) return;
     const s = RX.state(), ex = getCard();
+    const TL = liveTL();
+    if (TL && s && s.status !== undefined && s.id !== dismissedId) { try { feed(TL, s); } catch (e) { /* the card must never break the run */ } if (ex) ex.remove(); return; }
     if (!s || !['running', 'done', 'stopped', 'failed'].includes(s.status) || s.id === dismissedId) { if (ex) ex.remove(); return; }
     if (!ex || ex.dataset.run !== s.id) { open = true; if (ex) ex.remove(); }
     const html = buildHtml(s);
@@ -156,7 +180,8 @@
     if (!['start', 'thought', 'acting', 'obs', 'final', 'end', 'wait', 'resume', 'stopping', 'note'].includes(t)) return;
     if (t === 'start') { clearTimeout(closeT); open = true; }
     render(); ticker();
-    if (t === 'end') { clearTimeout(closeT); closeT = setTimeout(() => { open = false; const c = getCard(); if (c) { c.classList.remove('tl-open'); const ch = c.querySelector('.tl-chev'); if (ch) ch.textContent = '▾'; } }, 800); }
+    if (t === 'end' && liveTL()) { clearTimeout(closeT); closeT = setTimeout(() => { const L = liveTL(); if (L) L.collapse(); }, 800); }
+    else if (t === 'end') { clearTimeout(closeT); closeT = setTimeout(() => { open = false; const c = getCard(); if (c) { c.classList.remove('tl-open'); const ch = c.querySelector('.tl-chev'); if (ch) ch.textContent = '▾'; } }, 800); }
   });
 
   window.EmberThinkInline = { _build: buildHtml, _render: render };

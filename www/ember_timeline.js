@@ -1,3 +1,4 @@
+// Ember V1.9.42 - ember_timeline.js (single owner of the live thinking card; ReAct feeds it via upsert())
 // Ember V1.9.31 - ember_timeline.js
 // "Summary" card while Ember works on a reply: grey dot = thought, terminal icon = tool call
 // (SUCCESS / FAILED pill), orange radar = active "Thinking...". Does NOT touch ember_think_inline.js
@@ -28,10 +29,7 @@
     ? '<span class="tl-shimmer">' + (tooling ? 'Executing Tool\u2026' : 'Thinking\u2026') + '</span>'
     : '<span class="tl-done-t">Thought for ' + secsOf(ms) + '</span>') + '</h2>';
 
-  const reactOn = () => {
-    try { const s = window.EmberEngine && window.EmberEngine.react && window.EmberEngine.react.state && window.EmberEngine.react.state(); return !!(s && s.status === 'running'); }
-    catch (e) { return false; }
-  };
+  const reactOn = () => false; // V1.9.42: one card for every run; ember_think_inline.js feeds ReAct steps into it
 
   // ---------- tool label helpers ----------
   const host = u => { try { return new URL(/^https?:/i.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, ''); } catch (e) { return clip(u, 30); } };
@@ -48,6 +46,7 @@
       case 'get_document_outline':return 'Reading the document outline';
       case 'list_documents':      return 'Listing your documents';
       case 'youtube_search':      return 'Searching YouTube' + (q ? ': \u201c' + clip(q, 40) + '\u201d' : '');
+      case 'run_react':           return 'Working it out step by step';
       case 'youtube_download':    return 'Downloading audio';
       case 'see_image':           return 'Looking at the image';
       case 'find_in_app':         return 'Looking in the app' + (q ? ': \u201c' + clip(q, 36) + '\u201d' : '');
@@ -118,21 +117,48 @@
     };
   }
 
+  // V1.9.42: keyed lines so ReAct can add a step once and update it as it moves thinking -> running -> done
+  function upsert(key, text, k, st, opt) {
+    if (!live || !key || !text) return null;
+    opt = opt || {};
+    live.keyed = live.keyed || {};
+    let line = live.keyed[key];
+    if (!line) {
+      line = { text: '', bad: false, k: 't', st: '', key };
+      live.keyed[key] = line; live.lines.push(line);
+      if (live.lines.length > MAX) live.lines.shift();
+    }
+    line.text = clip(text, opt.max || 120); line.k = k || line.k || 't'; line.st = st || '';
+    line.bad = st === 'bad'; line.pill = opt.pill || ''; line.err = opt.err ? clip(opt.err, 140) : '';
+    if (line.k === 'a') live.toolRan = true;
+    paint();
+    return line;
+  }
+  function unkey(key) {
+    if (!live || !live.keyed || !live.keyed[key]) return;
+    const l = live.keyed[key]; live.lines = live.lines.filter(x => x !== l); delete live.keyed[key]; paint();
+  }
+  function collapse() { if (!live) return; live.open = false; paint(); }
   function snapshot() {
     if (!live || (!live.toolRan && live.lines.length < 2)) return null;
-    return { ms: Date.now() - live.t0, lines: live.lines.slice(-MAX).map(l => [l.text, l.bad ? 1 : 0, l.k || 't']) };
+    return { ms: Date.now() - live.t0, lines: live.lines.slice(-MAX).map(l => [l.text, l.bad ? 1 : 0, l.k || 't', l.pill || '', l.err || '']) };
   }
 
   // ---------- html ----------
   const TERM = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l6-6-6-6M12 19h8"/></svg>';
-  const row = (text, k, st) => k === 'a'
-    ? '<div class="tl-item tl-act' + (st === 'bad' ? ' tl-end-bad' : '') + '"><div class="tl-ico"><div class="tl-tool">' + TERM + '</div></div><div class="tl-txt">' + esc(text)
-      + (st === 'ok' ? '<span class="tl-pill tl-pill-ok">SUCCESS</span>' : st === 'bad' ? '<span class="tl-pill tl-pill-bad">FAILED</span>' : '<span class="tl-pill tl-pill-run">RUNNING</span>') + '</div></div>'
-    : '<div class="tl-item"><div class="tl-ico"><div class="tl-dot"></div></div><div class="tl-txt">' + esc(text) + '</div></div>';
+  const row = (text, k, st, pill, err) => {
+    if (k !== 'a') return '<div class="tl-item"><div class="tl-ico"><div class="tl-dot"></div></div><div class="tl-txt">' + esc(text) + '</div></div>';
+    const p = pill ? '<span class="tl-pill tl-pill-warn">' + esc(pill) + '</span>'
+      : st === 'ok' ? '<span class="tl-pill tl-pill-ok">SUCCESS</span>'
+      : st === 'bad' ? '<span class="tl-pill tl-pill-bad">FAILED</span>'
+      : '<span class="tl-pill tl-pill-run">RUNNING</span>';
+    return '<div class="tl-item tl-act' + (st === 'bad' ? ' tl-end-bad' : '') + '"><div class="tl-ico"><div class="tl-tool">' + TERM + '</div></div><div class="tl-txt"><span class="tl-name">' + esc(text) + '</span>' + p
+      + (err ? '<div class="tl-err">' + esc(err) + '</div>' : '') + '</div></div>';
+  };
   const nowRow = '<div class="tl-item tl-now"><div class="tl-ico"><div class="tl-live"></div></div><div class="tl-txt">Thinking<span class="tl-ell"></span></div></div>';
 
   function linesHtml(lines, active) {
-    return '<div class="tl">' + (lines || []).map(l => row(l.text, l.k, l.st)).join('') + (active ? nowRow : '') + '</div>';
+    return '<div class="tl">' + (lines || []).map(l => row(l.text, l.k, l.st, l.pill, l.err)).join('') + (active ? nowRow : '') + '</div>';
   }
 
   const SW = '<button class="tl-x et-sw" data-et="style" aria-label="Switch thinking display" title="Switch thinking display">\u21c4</button>';
@@ -173,7 +199,7 @@
       const lns = tl.lines.map(l => '<p class="et-line' + (l[1] ? ' et-bad' : '') + '">' + esc(l[0]) + '</p>').join('');
       return '<details class="et-saved"><summary>' + CHEV + '<span>Thought for ' + secs + '</span></summary><div class="et-lines">' + lns + '</div></details>';
     }
-    const rows = tl.lines.map(l => row(l[0], l[2] === 'a' ? 'a' : 't', l[2] === 'a' ? (l[1] ? 'bad' : 'ok') : '')).join('');
+    const rows = tl.lines.map(l => row(l[0], l[2] === 'a' ? 'a' : 't', l[2] === 'a' ? (l[1] ? 'bad' : 'ok') : '', l[3], l[4])).join('');
     return '<div class="et-saved et-think"><div class="tl-card tl-saved"><div class="tl-hdr" data-et="saved">' + titleHtml(false, false, tl.ms) + '<span class="tl-meta">' + tl.lines.length + ' steps</span><span class="tl-chev2">' + DOWN + '</span></div><div class="tl-body"><div class="tl">' + rows + '</div></div></div></div>';
   }
 
@@ -201,5 +227,5 @@
   });
 
   window.addEventListener('ember-try', e => { const d = e.detail || {}; note('Asking ' + d.name + (d.model && d.model != 'openai' ? ' (' + d.model + ')' : '') + '…'); });
-  window.EmberTimeline = { getStyle, setStyle, begin, drop, note, tool, snapshot, liveHtml, savedHtml, label, _failed: failed, _live: () => live };
+  window.EmberTimeline = { getStyle, setStyle, begin, drop, note, tool, upsert, unkey, collapse, snapshot, liveHtml, savedHtml, label, _failed: failed, _live: () => live };
 })();

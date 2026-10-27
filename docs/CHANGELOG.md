@@ -1,3 +1,10 @@
+## V1.9.42
+- **Fixed: "Thinking..." title losing letters ("Thi king...").** The animated gradient text (background-clip:text) rendered as a grey box on some Android WebViews. The title is now plain text with a colour pulse; reduced-motion respected.
+- **One thinking card for every run.** The ReAct "Summary" card (ember_think_inline.js) used to be a second card that was wiped by every chat re-render and never saved. It now feeds the main card (EmberTimeline): thoughts, skipped / repeat / blocked actions, approval waits and the final step. Real tool calls still arrive through runTool(). The old card remains only as a fallback when no live timeline exists.
+- **Dropdown behaviour.** Open while working, collapses 0.8s after a ReAct run ends and when the reply lands (saved "Thought for Xs" row, tap to re-open). Bigger header tap target and chevron button, soft open/close, accent sweep on the top edge while running.
+- ReAct steps now persist in the saved row, including SKIPPED / REPEAT / BLOCKED pills and error text.
+- Tests: `tests/v1942-thought-test.js` added, `tests/v1941-thought-test.js` made version-agnostic, `tests/v1928-test.js` still passes (20/20). Not tested on a device.
+
 ## V1.9.41
 - Added a third optional Claude-like thinking display: animated three-dot indicator, live status line, expandable progress log, and a completed “Thought for Xs” summary.
 - Preserved the existing Summary timeline and compact dropdown; the switch cycles through all three styles and saves the selected style.

@@ -1124,3 +1124,26 @@ header .who b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:el
 .et-claude-saved .et-dots i{width:5px;height:5px;border-radius:50%;background:#999;display:block}
 .et-claude-saved .et-lines{padding:5px 0 7px 20px}
 @media(prefers-reduced-motion:reduce){.et-claude .et-dots i{animation:none;opacity:.8}.et-claude .et-body{transition:none}}
+
+
+/* V1.9.42 - thinking card repair + polish.
+   Fix: the "Thinking..." title lost letters ("Thi king...") because background-clip:text with an animated gradient renders as a
+   grey box on some Android WebViews. The title is now plain text with a colour pulse, so it can never clip or disappear. */
+.tl-shimmer,.tl-title .tl-shimmer,.et-shimmer{display:inline-block;background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;-webkit-text-fill-color:currentColor!important;color:#8d8d8d;animation:tl-glow 1.6s ease-in-out infinite}
+@keyframes tl-glow{0%,100%{color:#7a7a7a}50%{color:#fff}}
+/* live card: dropdown feel - taller tap target, clear chevron, soft open/close, accent sweep on the top edge */
+.tl-card{position:relative;border-radius:16px!important}
+.tl-card .tl-hdr{min-height:48px;-webkit-tap-highlight-color:transparent;user-select:none}
+.tl-card .tl-chev2{width:32px;height:32px;align-items:center;justify-content:center;border-radius:50%;background:color-mix(in srgb,var(--ac) 10%,transparent);transition:background .2s}
+.tl-card .tl-chev2:active{background:color-mix(in srgb,var(--ac) 28%,transparent)}
+.tl-card .tl-body{transition:max-height .38s cubic-bezier(.4,0,.2,1),padding .3s ease,opacity .25s ease;opacity:0}
+.tl-card.tl-open .tl-body,.et-saved .tl-card.tl-saved.tl-open .tl-body{opacity:1}
+.et-saved .tl-card:not(.tl-open) .tl-body{opacity:0}
+.tl-card.tl-run::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent 0%,var(--ac) 50%,transparent 100%);background-size:60% 100%;background-repeat:no-repeat;animation:tl-sweep 2.2s ease-in-out infinite;pointer-events:none}
+@keyframes tl-sweep{0%{background-position:-60% 0}100%{background-position:160% 0}}
+.tl-card.tl-run .tl-spark{animation:tl-spark 1.8s ease-in-out infinite;transform-origin:50% 50%}
+@keyframes tl-spark{0%,100%{transform:scale(1) rotate(0);opacity:.85}50%{transform:scale(1.18) rotate(45deg);opacity:1}}
+.tl-card.tl-saved .tl-done-t{color:var(--m);font-weight:600}
+.tl-pill-warn{letter-spacing:.3px}
+.tl-err{overflow-wrap:anywhere}
+@media (prefers-reduced-motion:reduce){.tl-shimmer,.tl-title .tl-shimmer,.et-shimmer{animation:none;color:var(--m)}.tl-card.tl-run::before,.tl-card.tl-run .tl-spark{animation:none}.tl-card .tl-body{transition:none}}

@@ -1,4 +1,7 @@
-# Ember V1.9.41 HANDOVER
+# Ember V1.9.42 HANDOVER
+Status: thinking-card repair. Title clipping fixed (no background-clip text), ReAct now feeds the single live card via EmberTimeline.upsert(), card collapses as a dropdown when the run/reply ends. README not touched.
+
+## Previous (V1.9.41)
 Status: added a third, optional Claude-like animated status-line thinking display. The existing Summary timeline and compact dropdown remain available and are cycled through using the switch icon. The new style shows observable progress/status updates already emitted by Ember, not private internal chain-of-thought. Existing tool actions and saved summaries remain wired to the same timeline data.
 
 ## Verification
