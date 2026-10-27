@@ -48,6 +48,7 @@
       case 'read_document':       return 'Reading your document' + (a.chunk ? ' (chunk #' + a.chunk + ')' : '');
       case 'get_document_outline':return 'Reading the document outline';
       case 'list_documents':      return 'Listing your documents';
+      case 'map_knowledge':       return 'Mapping connections';
       case 'youtube_search':      return 'Searching YouTube' + (q ? ': \u201c' + clip(q, 40) + '\u201d' : '');
       case 'run_react':           return 'Working it out step by step';
       case 'youtube_download':    return 'Downloading audio';
@@ -90,9 +91,14 @@
   function flush() { if (!live) return; if (rvTimer) { clearTimeout(rvTimer); rvTimer = null; } live.lines.forEach(l => { if (!l.rv) { l.rv = true; l.rvAt = 0; } }); paint(); }
 
   // ---------- core ----------
+  function activity(active, text) {
+    try { window.dispatchEvent(new CustomEvent('ember-activity', { detail: { active: !!active, text: clip(text || '', 54) } })); } catch (_) {}
+  }
   function begin() {
+    activity(true, 'Thinking…');
     if (rvTimer) { clearTimeout(rvTimer); rvTimer = null; } lastRv = 0;
-    live = { lines: [], t0: Date.now(), open: getStyle() !== 'claude', seen: {}, toolRan: false };
+    // Keep the useful activity stream visible while Ember works. The header still toggles it closed when he wants a compact view.
+    live = { lines: [], t0: Date.now(), open: true, seen: {}, toolRan: false };
     // Hide the welcome hero as soon as a turn starts; otherwise it can sit behind
     // the live Summary card while the first user/assistant rows are being rendered.
     const empty = $('empty'); if (empty) empty.classList.add('hidden');
@@ -101,7 +107,7 @@
     log.insertAdjacentHTML('beforeend', outerHtml());
     log.scrollTop = log.scrollHeight;
   }
-  function drop() { if (rvTimer) { clearTimeout(rvTimer); rvTimer = null; } live = null; const old = $('typ'); if (old) old.remove(); }
+  function drop() { activity(false, ''); if (rvTimer) { clearTimeout(rvTimer); rvTimer = null; } live = null; const old = $('typ'); if (old) old.remove(); }
 
   function paint() {
     const el = $('typ'); if (!el || !live) return;
@@ -109,7 +115,17 @@
     // Check before changing the card height; do not pull someone reading older messages back down.
     const follow = log && log.scrollHeight - log.clientHeight - log.scrollTop <= 48;
     el.className = 'et-think' + (reactOn() ? ' et-hide' : '');
-    if (getStyle() === 'claude' && paintSpin(el)) { if (follow) log.scrollTop = log.scrollHeight; return; }
+    // The compact rotating header updates in place. When open, refresh only the body
+    // so provider/tool/download duties appear without replacing the spinner/status nodes.
+    if (getStyle() === 'claude' && paintSpin(el)) {
+      if (live.open) {
+        const body = el.querySelector('.et-timeline-lines');
+        if (body) body.innerHTML = linesHtml(vis(), true);
+        if (follow || live.open) log.scrollTop = log.scrollHeight;
+        return;
+      } else { if (follow) log.scrollTop = log.scrollHeight; return; }
+    }
+    activity(true, statusOf().t);
     el.innerHTML = innerHtml();
     if (el.querySelectorAll) { // V1.9.45: each revealed row drops in once; a repaint mid-drop carries on from where it was
       const items = el.querySelectorAll('.tl-item:not(.tl-now)'), v = vis(), now = Date.now();
@@ -119,7 +135,9 @@
         if (age < 460) { it.classList.add('tl-new'); it.style.animationDelay = '-' + age + 'ms'; }
       });
     }
-    if (follow) log.scrollTop = log.scrollHeight;
+    // While the live stream is intentionally open, keep its latest rows in view;
+    // this prevents the card/header from being nudged by the growing activity list.
+    if (follow || live.open) log.scrollTop = log.scrollHeight;
   }
 
   // Keep both the spinner and status node. Overlapping old/new grid items and rotateX/translateY
@@ -130,6 +148,7 @@
     if (!el.querySelector) return false;
     const stage = el.querySelector('.et-stage'); if (!stage) return false;
     const st = statusOf(), cur = stage.querySelector('.et-status'); if (!cur) return false;
+    activity(true, st.t);
     if (cur.getAttribute('data-s') !== st.t) {
       cur.textContent = st.t;
       cur.setAttribute('data-s', st.t);
@@ -142,7 +161,7 @@
 
   function addLine(text, bad) {
     if (!live) return null;
-    const line = { text, bad: !!bad, k: 't', st: '' };
+    const line = { text, bad: !!bad, k: 't', st: '', tool: '' };
     live.lines.push(line);
     if (live.lines.length > MAX) live.lines.shift();
     pump();
@@ -161,6 +180,7 @@
   function tool(name, args) {
     if (live) live.toolRan = true;
     const line = live ? addLine(label(name, args), false) : null;
+    if (line) line.tool = name;
     if (line) { line.k = 'a'; line.st = 'run'; paint(); pump(); } // V1.9.39: repaint so the RUNNING pill / "Executing Tool…" show while the tool works (they were set after the paint)
     return {
       end(res) { if (line) { line.bad = failed(res); line.st = line.bad ? 'bad' : 'ok'; paint(); } }
@@ -180,6 +200,7 @@
     }
     line.text = clip(text, opt.max || 120); line.k = k || line.k || 't'; line.st = st || '';
     line.bad = st === 'bad'; line.pill = opt.pill || ''; line.err = opt.err ? clip(opt.err, 140) : '';
+    if (live.open) { line.rv = true; line.rvAt = 0; }
     if (line.k === 'a') live.toolRan = true;
     paint(); pump();
     return line;
@@ -191,26 +212,37 @@
   function collapse() { if (!live) return; live.open = false; paint(); }
   function snapshot() {
     if (!live || (!live.toolRan && live.lines.length < 2)) return null;
-    return { ms: Date.now() - live.t0, lines: live.lines.slice(-MAX).map(l => [l.text, l.bad ? 1 : 0, l.k || 't', l.pill || '', l.err || '']) };
+    return { ms: Date.now() - live.t0, lines: live.lines.slice(-MAX).map(l => [l.text, l.bad ? 1 : 0, l.k || 't', l.pill || '', l.err || '', l.tool || '']) };
   }
 
   // ---------- html ----------
   const TERM = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l6-6-6-6M12 19h8"/></svg>';
-  const row = (text, k, st, pill, err) => {
+  const TOOL_ICON = (tool, text) => {
+    const x = String(tool || '').toLowerCase() + ' ' + String(text || '').toLowerCase();
+    if (/youtube|playlist|download/.test(x)) return '<span class="tl-tool-symbol" aria-hidden="true">▶</span>';
+    if (/document|file|chunk|outline|searching your/.test(x)) return '<span class="tl-tool-symbol" aria-hidden="true">▤</span>';
+    if (/web|scrape|page|searching the|browser/.test(x)) return '<span class="tl-tool-symbol" aria-hidden="true">◎</span>';
+    if (/graph|mapping|connection/.test(x)) return '<span class="tl-tool-symbol" aria-hidden="true">⌘</span>';
+    if (/image|photo|vision/.test(x)) return '<span class="tl-tool-symbol" aria-hidden="true">◉</span>';
+    if (/engine|api|asking /.test(x)) return '<span class="tl-tool-symbol" aria-hidden="true">✦</span>';
+    return TERM;
+  };
+  const row = (text, k, st, pill, err, tool) => {
     if (k !== 'a') return '<div class="tl-item"><div class="tl-ico"><div class="tl-dot"></div></div><div class="tl-txt">' + esc(text) + '</div></div>';
     const p = pill ? '<span class="tl-pill tl-pill-warn">' + esc(pill) + '</span>'
       : st === 'ok' ? '<span class="tl-pill tl-pill-ok">SUCCESS</span>'
       : st === 'bad' ? '<span class="tl-pill tl-pill-bad">FAILED</span>'
       : '<span class="tl-pill tl-pill-run">RUNNING</span>';
-    return '<div class="tl-item tl-act' + (st === 'bad' ? ' tl-end-bad' : '') + '"><div class="tl-ico"><div class="tl-tool">' + TERM + '</div></div><div class="tl-txt"><span class="tl-name">' + esc(text) + '</span>' + p
+    return '<div class="tl-item tl-act' + (st === 'bad' ? ' tl-end-bad' : '') + '"><div class="tl-ico"><div class="tl-tool">' + TOOL_ICON(tool, text) + '</div></div><div class="tl-txt"><span class="tl-name">' + esc(text) + '</span>' + p
       + (err ? '<div class="tl-err">' + esc(err) + '</div>' : '') + '</div></div>';
   };
   const nowRow = '<div class="tl-item tl-now"><div class="tl-ico"><div class="tl-live"></div></div><div class="tl-txt">Thinking<span class="tl-ell"></span></div></div>';
 
   function linesHtml(lines, active) {
-    return '<div class="tl">' + (lines || []).map(l => row(l.text, l.k, l.st, l.pill, l.err)).join('') + (active ? nowRow : '') + '</div>';
+    return '<div class="tl">' + (lines || []).map(l => row(l.text, l.k, l.st, l.pill, l.err, l.tool)).join('') + (active ? nowRow : '') + '</div>';
   }
 
+  const STOP = '<button class="tl-stop" data-et="stop" aria-label="Stop current response" title="Stop current response">STOP</button>';
   const SW = '<button class="tl-x et-sw" data-et="style" aria-label="Switch thinking display" title="Switch thinking display">\u21c4</button>';
   const SPIN = '<svg class="et-spinner" viewBox="0 0 24 24" aria-hidden="true"><circle class="et-sp-track" cx="12" cy="12" r="9.5"/><circle class="et-sp-arc" cx="12" cy="12" r="9.5"/><circle class="et-sp-arc2" cx="12" cy="12" r="5.2"/></svg>';
   function innerHtml() { // live only
@@ -218,7 +250,7 @@
     if (getStyle() === 'claude') { // Rotating status first; tapping the row reveals the richer timeline.
       return '<div class="et-inner et-claude et-spin' + (live.open ? ' et-open' : '') + '">'
         + '<div class="et-hdr" data-et="toggle" role="button" aria-expanded="' + (live.open ? 'true' : 'false') + '" tabindex="0">'
-        + SPIN + '<span class="et-stage">' + statusSpan(statusOf()) + '</span>' + SW
+        + SPIN + '<span class="et-stage">' + statusSpan(statusOf()) + '</span>' + STOP + SW
         + '<span class="et-drop-hint" aria-hidden="true">' + DOWN + '</span></div>'
         + '<div class="et-body"><div class="et-lines et-timeline-lines">' + linesHtml(V, true) + '</div></div></div>';
     }
@@ -228,7 +260,7 @@
         + '<div class="et-body"><div class="et-lines">' + (V.length ? V.map(l => '<p class="et-line' + (l.bad ? ' et-bad' : '') + '">' + esc(l.text) + '</p>').join('') : '<p class="et-line et-muted">Starting\u2026</p>') + '</div></div></div>';
     }
     return '<div class="tl-card tl-run' + (live.open ? ' tl-open' : '') + '">'
-      + '<div class="tl-hdr" data-et="toggle">' + titleHtml(true, (V[V.length - 1] || {}).st === 'run', 0) + '<span class="tl-meta">' + V.length + ' steps</span>' + SW
+      + '<div class="tl-hdr" data-et="toggle">' + titleHtml(true, (V[V.length - 1] || {}).st === 'run', 0) + '<span class="tl-meta">' + V.length + ' steps</span>' + STOP + SW
       + '<span class="tl-chev2" data-et="toggle" aria-label="Collapse">' + DOWN + '</span></div>'
       + '<div class="tl-body">' + linesHtml(V, true) + '</div></div>';
   }
@@ -250,13 +282,15 @@
       const lns = tl.lines.map(l => '<p class="et-line' + (l[1] ? ' et-bad' : '') + '">' + esc(l[0]) + '</p>').join('');
       return '<details class="et-saved"><summary>' + CHEV + '<span>Thought for ' + secs + '</span></summary><div class="et-lines">' + lns + '</div></details>';
     }
-    const rows = tl.lines.map(l => row(l[0], l[2] === 'a' ? 'a' : 't', l[2] === 'a' ? (l[1] ? 'bad' : 'ok') : '', l[3], l[4])).join('');
+    const rows = tl.lines.map(l => row(l[0], l[2] === 'a' ? 'a' : 't', l[2] === 'a' ? (l[1] ? 'bad' : 'ok') : '', l[3], l[4], l[5])).join('');
     return '<div class="et-saved et-think"><div class="tl-card tl-saved"><div class="tl-hdr" data-et="saved">' + titleHtml(false, false, tl.ms) + '<span class="tl-meta">' + tl.lines.length + ' steps</span><span class="tl-chev2">' + DOWN + '</span></div><div class="tl-body"><div class="tl">' + rows + '</div></div></div></div>';
   }
 
   // ---------- events ----------
   // toggle open/closed: lightweight class flip, no innerHTML rebuild needed
   document.addEventListener('click', e => {
+    const stop = e.target.closest && e.target.closest('[data-et="stop"]');
+    if (stop && live) { e.preventDefault(); e.stopPropagation(); try { window.dispatchEvent(new CustomEvent('ember-stop-request', { detail: { scope: 'turn' } })); } catch (_) {} return; }
     const sw = e.target.closest && e.target.closest('[data-et="style"]');
     if (sw && live) { e.stopPropagation(); setStyle(nextStyle()); paint(); return; }
     const b = e.target.closest && e.target.closest('[data-et="toggle"]');
@@ -307,5 +341,17 @@
       : 'was unavailable';
     note(label(d.from) + ' ' + why + '; switching to ' + label(d.to));
   });
+  // Native download lifecycle: only show these rows when the NewPipe bridge emitted a real job event.
+  window.addEventListener('ember-dl', e => {
+    const d = e.detail || {}; if (!live || !d.id) return;
+    const title = String(d.title || 'track').replace(/\s+/g, ' ').trim().slice(0, 48);
+    const state = d.state === 'done' ? 'ok' : d.state === 'failed' ? 'bad' : 'run';
+    const text = state === 'ok' ? 'Saved ' + title + ' to Music/Ember'
+      : state === 'bad' ? 'NewPipe download failed for ' + title
+      : 'Downloading ' + title + (Number.isFinite(+d.pct) && +d.pct > 0 ? ' (' + Math.round(+d.pct) + '%)' : '');
+    upsert('download:' + d.id, text, 'a', state, { pill: state === 'run' ? 'NEWPIPE' : state === 'ok' ? 'SAVED' : 'FAILED' }); flush();
+  });
+  window.addEventListener('ember-agent-note', e => { if (live && e.detail) note(String(e.detail)); });
+  window.addEventListener('ember-duty', e => { if (live && e.detail && e.detail.text) note(String(e.detail.text), e.detail.key || 'duty'); });
   window.EmberTimeline = { getStyle, setStyle, begin, drop, note, tool, upsert, unkey, collapse, snapshot, liveHtml, savedHtml, label, flush, _failed: failed, _live: () => live };
 })();

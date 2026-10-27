@@ -148,7 +148,7 @@ async function wiki_search(q, n) {
   if (!results.length) return { error: 'Wikipedia had no match.' };
   return { results, source: 'Wikipedia', note: UNTRUSTED };
 }
-const NAME_NOTE = ' If this was a search for a person and nothing relevant came back, say plainly that the free search found no reliable page about that person (private individuals often have none) and ask for a city, employer, username or other detail, or suggest a Tavily key in Settings. Never invent facts about a person.';
+const NAME_NOTE = ' If this was a search for a person or topic and nothing relevant came back, say plainly that every available keyed search engine and the keyless fallbacks returned no reliable result. Ask for a city, employer, username, source domain or other detail. Never invent a real name, identity or topic fact, and never claim a scraper succeeded unless the tool result names its provider.';
 async function keyless_search(q, n) {
   const miss = []; const d = await ddg_search(q, n);
   if (!d.error && ((d.results || []).length || d.answer)) return d;

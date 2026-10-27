@@ -78,6 +78,36 @@ function paintMeta() {
   const peek = P.metaPeek(t, np.source); setArt((peek && peek.art) || t.art || ''); if (peek) { renderAbout(peek); return; } renderAbout('loading');
   P.meta(t, np.source).then(m => { if (metaKey !== k || !m) return; setArt(m.art || t.art || ''); renderAbout(m); }).catch(() => { if (metaKey === k) renderAbout({}); });
 }
+// ---------- Deezer discovery (keyless) + metadata preview ----------
+let dzResults = [], dzPreview = null;
+function renderDzResults() {
+  const box = $('dzRes'); if (!box) return;
+  box.innerHTML = dzResults.length ? dzResults.map((x, i) => '<button class="dzr" data-i="' + i + '">' + (x.art ? '<img src="' + esc(x.art) + '" alt="">' : '<span class="dzr-ph">♪</span>') + '<span><b>' + esc(x.title) + '</b><small>' + esc([x.artist, x.album].filter(Boolean).join(' · ')) + '</small></span><em>' + fmt(x.durationSec) + '</em></button>').join('') : '<p class="hint">Search for a track or artist to begin.</p>';
+}
+function renderDzPreview(m, x) {
+  const card = $('dzPreview'); if (!card) return;
+  if (!m || !x) { card.classList.add('hidden'); return; }
+  $('dzPreviewArt').src = m.art || x.art || ''; $('dzPreviewTitle').textContent = m.title || x.title;
+  $('dzPreviewSub').textContent = [m.artist || x.artist, m.album || x.album].filter(Boolean).join(' · ');
+  const bits = [['Artist', m.artist || x.artist], ['Album', m.album || x.album], ['Year', m.year], ['Genre', m.genre]].filter(v => v[1]);
+  $('dzPreviewAbout').innerHTML = bits.map(v => '<span class="chip2"><i>' + esc(v[0]) + '</i>' + esc(v[1]) + '</span>').join('') + [m.aboutArtist && '<h4>' + esc(m.artist || x.artist) + '</h4><p>' + esc(m.aboutArtist) + '</p>', m.aboutAlbum && '<h4>' + esc(m.album || x.album) + '</h4><p>' + esc(m.aboutAlbum) + '</p>', m.aboutSong && '<p>' + esc(m.aboutSong) + '</p>'].filter(Boolean).join('') || '<p class="hint">Deezer found the track. MusicBrainz background details are not available yet.</p>';
+  card.classList.remove('hidden');
+}
+async function selectDz(x) {
+  dzPreview = x; renderDzPreview({ title: x.title, artist: x.artist, album: x.album, art: x.art }, x);
+  $('dzPreviewAbout').insertAdjacentHTML('beforeend', '<p class="hint">Loading MusicBrainz artist and release context…</p>');
+  try { const m = await P.meta({ id: 'deezer-' + x.id, title: x.title, artist: x.artist, album: x.album, art: x.art }, 'deezer'); if (dzPreview === x) renderDzPreview(m || x, x); } catch (e) { /* preview remains useful without enrichment */ }
+}
+async function searchDz() {
+  const q = $('dzQ').value.trim(); if (!q) return;
+  $('dzRes').innerHTML = '<p class="hint">Searching Deezer…</p>';
+  try { dzResults = await P.searchDeezer(q, 12); renderDzResults(); } catch (e) { $('dzRes').innerHTML = '<p class="hint">Deezer search failed. Check your connection and try again.</p>'; }
+}
+if ($('dzSearch')) $('dzSearch').onclick = searchDz;
+if ($('dzQ')) $('dzQ').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchDz(); } });
+if ($('dzRes')) $('dzRes').addEventListener('click', e => { const b = e.target.closest('.dzr'); if (b && dzResults[+b.dataset.i]) selectDz(dzResults[+b.dataset.i]); });
+if ($('dzToYt')) $('dzToYt').onclick = () => { if (!dzPreview) return; $('gtQ').value = [dzPreview.artist, dzPreview.title].filter(Boolean).join(' '); document.querySelector('.mtab[data-m="get"]').click(); $('gtYt').click(); };
+if ($('dzClear')) $('dzClear').onclick = () => { dzPreview = null; renderDzPreview(); };
 async function refresh() {
   if (busy) return; busy = true;
   try { np = await P.nowPlaying(); npAt = Date.now(); } catch (e) { /* keep the last known state */ }

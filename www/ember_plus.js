@@ -36,6 +36,7 @@ const QUICK = [
   { id: 'bCopyIn', icon: '⧉', label: 'Copy message', hint: 'Copy the text in the composer' },
   { id: 'bDevice', icon: '📟', label: 'Device tools', hint: 'Open device and Termux tools' },
   { id: 'bReact', icon: '🧠', label: 'Reasoning', hint: 'Toggle reasoning mode' },
+  { id: 'bGraph', icon: '🕸', label: 'Knowledge Graph', hint: 'Map local documents, memory and chats' },
   { id: 'bSpark', icon: '✨', label: 'Spark', hint: 'Toggle Spark mode' },
   { id: 'bDeep', icon: '💡', label: 'Go deeper', hint: 'Toggle deeper answers' },
   { id: 'bPriv', icon: '🔓', label: 'Normal mode', hint: 'Toggle normal privacy mode' }

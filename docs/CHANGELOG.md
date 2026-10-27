@@ -1,3 +1,13 @@
+## V1.9.62
+- Added structured artifact cards for assistant <artifact> blocks, with safe filename handling, downloads, text previews, and an isolated sandboxed HTML Live Preview iframe.
+- Added artifact-generation guidance to the assistant prompt for explicit file deliverables; ordinary answers remain normal chat. PDF-tagged content downloads as HTML source because this build has no PDF renderer.
+- Added the artifact module to the service-worker cache and bumped the app version.
+
+## V1.9.61
+- Added a blue live activity indicator/status in the header and a STOP control in both live thinking-card layouts. The control routes to Ember’s existing current-turn cancellation flow; it does not claim per-tool remote cancellation.
+- Limitation: no Manus task-control endpoint is configured in this source project, so Pause and remote per-action stop are not implemented.
+- Validation: JavaScript syntax checks pass. Existing checks requiring Playwright could not run because Playwright is absent in the supplied environment; no Android-device verification performed.
+
 ## V1.9.42
 - **Fixed: "Thinking..." title losing letters ("Thi king...").** The animated gradient text (background-clip:text) rendered as a grey box on some Android WebViews. The title is now plain text with a colour pulse; reduced-motion respected.
 - **One thinking card for every run.** The ReAct "Summary" card (ember_think_inline.js) used to be a second card that was wiped by every chat re-render and never saved. It now feeds the main card (EmberTimeline): thoughts, skipped / repeat / blocked actions, approval waits and the final step. Real tool calls still arrive through runTool(). The old card remains only as a fallback when no live timeline exists.

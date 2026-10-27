@@ -8,14 +8,16 @@ const CFG = {
   groq: { name: 'Groq', base: 'https://api.groq.com/openai/v1', kind: 'oai', color: '#ff6a00' },
   mistral: { name: 'Mistral', base: 'https://api.mistral.ai/v1', kind: 'oai', color: '#ffb020' },
   gemini: { name: 'Gemini', base: 'https://generativelanguage.googleapis.com/v1beta', kind: 'gem', color: '#ffffff' },
-  // prototypes: written from the providers' public docs, never run against a live account yet. Always last in every lane.
-  openrouter: { name: 'OpenRouter', base: 'https://openrouter.ai/api/v1', kind: 'oai', status: 'prototype', color: '#ff8c1a' },
-  cohere: { name: 'Cohere', base: 'https://api.cohere.com', kind: 'cohere', status: 'prototype', color: '#d9d9d9' },
+  openrouter: { name: 'OpenRouter', base: 'https://openrouter.ai/api/v1', kind: 'oai', color: '#ff8c1a' },
+  cohere: { name: 'Cohere', base: 'https://api.cohere.com', kind: 'cohere', color: '#d9d9d9' },
   huggingface: { name: 'HuggingFace', base: 'https://router.huggingface.co/v1', kind: 'oai', status: 'prototype', color: '#ffb800' }
 };
 const IDS = Object.keys(CFG);
+// V1.9.55: active automatic profile for this installation. Legacy Hugging Face keys remain readable in backups,
+// but the router does not select Hugging Face automatically. Mistral stays active because it is working for him.
+const ACTIVE_IDS = ['groq', 'cohere', 'openrouter', 'gemini', 'mistral'];
 // fast = quick everyday replies. deep = slow, careful turns. util = background jobs (memory, titles).
-const ORDER = { fast: ['groq', 'mistral', 'gemini', 'openrouter', 'cohere', 'huggingface'], deep: ['gemini', 'mistral', 'groq', 'openrouter', 'cohere', 'huggingface'], util: ['groq', 'mistral', 'gemini', 'openrouter', 'cohere', 'huggingface'] };
+const ORDER = { fast: ['groq', 'cohere', 'openrouter', 'gemini', 'mistral'], deep: ['gemini', 'cohere', 'mistral', 'groq', 'openrouter'], util: ['groq', 'cohere', 'openrouter', 'gemini', 'mistral'] };
 
 // V1.5.6: pasted keys often carry invisible junk (zero-width chars, quotes, "Bearer ", "key=", a trailing comma). Any of it makes
 // the provider answer 401/403 even though the key itself is fine, so every key is cleaned before it is stored or sent.
@@ -34,7 +36,7 @@ function load() {
 let keys = load();
 let freePref = null; // null = auto (Free Mode on only while the user has no keys); true/false = the user's own choice
 // V1.6.1: engine pin. null/'auto' = router decides (Groq first in fast/util since it's near-instant). Any CFG id = try that engine's keys first, every lane.
-let pinnedEngine = LS.get('ember_pin', null);
+let pinnedEngine = LS.get('ember_pin', null); if (pinnedEngine && !CFG[pinnedEngine]) pinnedEngine = null;
 function setPinned(id) { pinnedEngine = (id && CFG[id]) ? id : null; LS.set('ember_pin', pinnedEngine); }
 // V1.6.8: model pin. {id, model} or null. Strict: when set, that engine only ever uses that exact model (no silent swap to another one).
 let pinnedModel = LS.get('ember_pin_model', null);
@@ -463,7 +465,7 @@ function factsBlock(id, model, failed) {
   else L.push('- This is a background reply: the phone picks the engine after this prompt is built, so you do not know which engine or model you are. Do not name one.');
   const noKey = IDS.filter(x => !keys[x].length).map(x => CFG[x].name);
   if (noKey.length) L.push('- NO key is saved for: ' + noKey.join(', ') + '. You cannot be any of those engines, and you must never say you are one of them.');
-  L.push('- Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
+  L.push('- Automatic AI route in this build: Groq → Cohere → OpenRouter → Gemini → Mistral. Hugging Face is not in the automatic route. Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
   if (pinnedEngine) {
     const miss = id && id != pinnedEngine, why = (failed || []).find(f => f.id == pinnedEngine);
     L.push('- Pinned engine in Settings: ' + CFG[pinnedEngine].name + (pinnedModel && pinnedModel.id == pinnedEngine ? ' (model ' + pinnedModel.model + ')' : '') + ' [' + STATE_TXT[st[pinnedEngine]] + ']' + (miss ? '. It could not answer this message' + (why ? ' (' + String(why.why || '').slice(0, 120) + ')' : '') + ', so ' + (id == 'pollinations' ? 'Free Mode' : CFG[id].name) + ' answered instead. Tell him that plainly if he asks.' : '.'));
@@ -633,5 +635,5 @@ function detail(id) {
 }
 async function pingAll() { await Promise.all(IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); }
 function status() { const o = {}; IDS.forEach(id => { o[id] = stateOf(id); }); return o; }
-window.Prov = { toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
+window.Prov = { toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
 })();

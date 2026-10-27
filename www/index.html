@@ -29,7 +29,7 @@
 <div id="mw" class="mw hidden"><img id="mwArt" class="mwart hidden" alt=""><button id="mwOpen" class="mwt" aria-label="Open the music panel"><b id="mwTitle">—</b><small id="mwSub"></small></button><button id="mwPlay" aria-label="Play or pause">▶</button><button id="mwNext" aria-label="Next">⏭</button></div>
 <footer class="comp">
 <div class="mrow"><div class="modes" id="modes"><button data-m="chill">Chill</button><button data-m="sharp">Sharp</button><button data-m="deep">Deep</button></div><button id="bDocsQuick" aria-label="Open Documents: attach a file or note" title="Documents: attach a file or note">📎 <span>Docs</span></button></div>
-<div class="tools"><button id="bPasteIn" aria-label="Paste into the message box">📋 Paste</button><button id="bCopyIn" aria-label="Copy the message box text">⧉ Copy</button><button id="bDevice">📟 Device</button><button id="bReact">🧠 Reasoning</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
+<div class="tools"><button id="bPasteIn" aria-label="Paste into the message box">📋 Paste</button><button id="bCopyIn" aria-label="Copy the message box text">⧉ Copy</button><button id="bDevice">📟 Device</button><button id="bReact">🧠 Reasoning</button><button id="bGraph">🕸 Graph</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
 <div id="plusChips" class="pchips hidden" aria-live="polite"></div>
 <div class="row"><div id="plusMenu" class="pmenu hidden" role="menu" aria-label="Add to message"></div><button id="bPlus" class="plus" aria-label="Add: tools and attachments" aria-haspopup="menu" aria-expanded="false" title="Add">+</button><textarea id="inp" rows="1" spellcheck="false" autocorrect="off" placeholder="Say anything…" enterkeyhint="send"></textarea><div class="side"><button id="bTalk" aria-label="Talk mode: hands-free conversation" aria-pressed="false" title="Talk mode: just talk. It sends when you stop, reads the reply aloud, then listens again. Tap again to stop.">🗣</button><button id="bMic" aria-label="Dictate: talk and your words are typed here" aria-pressed="false" title="Dictate: tap, talk, tap again. Your words are typed into the message box.">🎤</button><button id="bStop" class="hidden" aria-label="Stop generating" title="Stop response">■</button><button id="bSend" aria-label="Send">➤</button></div></div>
 </footer>
@@ -314,7 +314,7 @@
 <div class="btnrow"><button class="btn" id="bExp">Export backup</button><button class="btn g" id="bImp">Import backup</button></div>
 <input type="file" id="fImp" accept="application/json,.json" hidden>
 <button class="btn g danger" id="bWipe" style="margin-top:10px">Delete everything</button>
-<p class="hint" id="ver">Ember V1.9.53 · S.O.I. × Bojack 999 · 🔥 Orange Build</p></div>
+<p class="hint" id="ver">Ember V1.9.62 · Artifact Studio</p></div>
 </div></section>
 
 <section id="react" class="sheet"><div class="sh"><b>Reasoning</b><button class="hb" id="bRx" aria-label="Close reasoning">✕</button></div>
@@ -328,6 +328,8 @@
 <p class="hint">A reasoning run works one step at a time: Thought, then Action, then what the action returned (Observation), until it can answer. With approval on it pauses before every action so you can change its Thought, the tool or the arguments, skip it, or stop. With observation edit on it pauses after every action so you can cut or fix what it is about to read. Every action still goes through the same tools and switches as normal chat. A run ends at 10 steps, 4 minutes, or when you stop it.</p></div>
 <div id="rxTrace"></div></div></section>
 
+<section id="graph" class="sheet"><div class="sh"><b>Knowledge Graph</b><button class="hb" id="graphX" aria-label="Close graph">✕</button></div><div class="sb"><div class="card graph-card"><div class="ct">Local connections <small id="graphStats">Building…</small></div><p class="hint">Ember maps shared topics between your saved documents, notes, memory and chats. The graph is built on this phone.</p><div id="graphView" class="graph-view"><div class="graph-empty">Mapping connections…</div></div><div class="graph-legend"><span class="document">Document</span><span class="note">Note</span><span class="memory">Memory</span><span class="chat">Chat</span><span class="topic">Shared topic</span></div><button class="btn g" id="graphRefresh">↻ Refresh graph</button></div></div></section>
+
 <section id="music" class="sheet"><div class="sh"><b>Music</b><button class="hb" id="bMx" aria-label="Close music">✕</button></div>
 <div class="sb">
 <div class="card np" id="npCard"><div class="npart"><img id="npArt" class="hidden" alt="Album artwork"><div id="npArtPh" class="npph">🎵</div></div>
@@ -339,6 +341,7 @@
 <p class="hint" id="npErr"></p></div>
 <div class="card lyr hidden" id="npLyr"><div class="ct">Lyrics</div><div class="lbody" id="npLyrBody"></div><small class="asrc">Preview, 3 lines. Lyrics: LRCLIB</small></div>
 <div class="card about hidden" id="npAbout"><div class="ct">About</div><div class="abody" id="npAboutBody"></div></div>
+<div class="card dz-preview hidden" id="dzPreview"><div class="ct">Selected from Deezer <small>metadata preview</small></div><div class="dzp-head"><img id="dzPreviewArt" alt="Selected album artwork"><div><b id="dzPreviewTitle"></b><span id="dzPreviewSub"></span></div></div><div class="abody" id="dzPreviewAbout"></div><div class="btnrow"><button class="btn" id="dzToYt">Find this on YouTube</button><button class="btn g" id="dzClear">Clear</button></div></div>
 <div class="mtabs" role="tablist"><button class="mtab on" data-m="lib" role="tab">🎵 Library</button><button class="mtab" data-m="get" role="tab">⬇ Get</button><button class="mtab" data-m="ai" role="tab">✨ Ember</button></div>
 <div class="mpane" id="mp_lib">
 <div class="btnrow"><button class="btn" id="mUp">＋ Upload music</button><button class="btn g" id="mScan">Scan phone</button></div>
@@ -352,9 +355,11 @@
 <button class="btn g" id="mPlSave" style="margin-top:6px">Save the listed songs as a playlist</button>
 </div>
 <div class="mpane hidden" id="mp_get">
-<p class="hint" id="gtNote">Search YouTube or SoundCloud and save the audio to Music/Ember on this phone. Only save what you have the right to keep.</p>
+<div class="ct">Discover music</div><p class="hint">Search Deezer for instant track, artist, album and artwork metadata. Deezer does not provide playback here; use the native YouTube/NewPipe handoff when you want audio.</p>
+<div class="dz-search"><input type="text" id="dzQ" placeholder="Search Deezer: song or artist…" autocomplete="off" enterkeyhint="search"><button class="btn" id="dzSearch">Search</button></div><div id="dzRes"></div>
+<div class="ct" style="margin-top:16px">Save audio with native YouTube/NewPipe</div><p class="hint" id="gtNote">Search YouTube or SoundCloud and save the audio to Music/Ember on this phone. Only save what you have the right to keep.</p>
 <input type="text" id="gtQ" placeholder="Song or artist…" autocomplete="off" enterkeyhint="search">
-<div class="btnrow" style="margin-top:6px"><button class="btn" id="gtYt">Search YouTube</button><button class="btn g" id="gtSc">Search SoundCloud</button></div>
+<div class="btnrow" style="margin-top:6px"><button class="btn" id="gtYt">Search YouTube</button></div>
 <div id="gtRes"></div>
 <div class="ct" style="margin:14px 0 6px">Or paste a link</div>
 <input type="text" id="gtUrl" placeholder="youtube.com, youtu.be or soundcloud.com link" autocomplete="off" spellcheck="false">
@@ -475,8 +480,9 @@
 
 <div class="modal" id="dlg"><div class="mc"><h2 id="dT"></h2><p id="dX"></p><input type="text" id="dI" class="hidden"><div class="btnrow" style="margin-top:14px"><button class="btn" id="dOk">OK</button><button class="btn g" id="dNo">Cancel</button></div></div></div>
 <div id="toast"></div>
-<script src="store.js"></script><script src="ember_keyscan.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js"></script><script src="ember_timeline.js"></script><script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script><script src="ember_getmusic.js"></script><script src="ember_react_ui.js"></script><script src="ember_think_inline.js"></script><script src="ember_device.js"></script>
+<script src="store.js"></script><script src="ember_keyscan.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js"></script><script src="ember_timeline.js"></script><script src="ember_artifacts.js"></script><script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script><script src="ember_getmusic.js"></script><script src="ember_react_ui.js"></script><script src="ember_think_inline.js"></script><script src="ember_device.js"></script>
 <script src="ember_docs_lib.js"></script>
+<script src="ember_graph.js"></script>
 <script src="ember_find.js"></script><script src="ember_tasks.js"></script><script src="ember_keys.js"></script>
 <script src="ember_browser.js"></script>
 <script src="ember_term.js"></script>

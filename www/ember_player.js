@@ -350,10 +350,11 @@ function jsonp(u, ms) {
   });
 }
 async function dz(path) {
-  const u = DZ + path, j = await jget(u, 6000);
-  if (j && !j.error) return j;
-  const k = await jsonp(u, 7000);
-  return k && !k.error ? k : null;
+  const u = DZ + path;
+  // Deezer's public endpoint is not consistently CORS-enabled in Android WebViews;
+  // JSONP is the quiet browser-safe path, with fetch retained for hosts that block JSONP.
+  const k = await jsonp(u, 7000); if (k && !k.error) return k;
+  const j = await jget(u, 6000); return j && !j.error ? j : null;
 }
 // MusicBrainz asks for at most one request per second, so every call waits its turn.
 let mbChain = Promise.resolve(), mbLast = 0;
@@ -377,6 +378,15 @@ async function fetchDeezer(title, artist, out) {
   out.art = al.cover_xl || al.cover_big || ar.picture_xl || ''; out.artist = ar.name || ''; out.album = al.title || '';
   if (al.id) { const d = await dz('/album/' + encodeURIComponent(al.id)); if (d) { out.year = String(d.release_date || '').slice(0, 4); out.genre = (d.genres && d.genres.data && d.genres.data[0] && d.genres.data[0].name) || ''; } }
   out.sources.push('Deezer');
+}
+async function searchDeezer(q, limit) {
+  q = lq(q); if (!q) return [];
+  const r = await dz('/search/track?limit=' + Math.max(1, Math.min(+limit || 12, 25)) + '&q=' + encodeURIComponent(q));
+  return ((r && r.data) || []).map(x => ({
+    id: String(x.id || ''), title: x.title || x.title_short || '', artist: x.artist && x.artist.name || '',
+    album: x.album && x.album.title || '', art: x.album && (x.album.cover_xl || x.album.cover_big || x.album.cover_medium) || '',
+    durationSec: +x.duration || 0, previewUrl: x.preview || '', link: x.link || ''
+  })).filter(x => x.id && x.title);
 }
 async function fetchBrainz(title, artist, out) {
   const name = lq(out.artist ? firstArtist(out.artist) : firstArtist(artist));
@@ -473,7 +483,7 @@ function updateTrack(id, f) {
   emit('library'); emit('track'); return { ok: true };
 }
 window.EmberPlayer = {
-  init, list, get, brief, addFiles, remove, wipe, scanDevice, playlists, savePlaylist, deletePlaylist, playlistIds, playPlaylist,
+  init, list, get, brief, addFiles, remove, wipe, scanDevice, playlists, savePlaylist, deletePlaylist, playlistIds, playPlaylist, searchDeezer,
   playLocal, control, nowPlaying, snapshot, capabilities, seek, stop, meta, metaPeek, audioBlob, updateTrack,
   on: f => { subs.add(f); return () => subs.delete(f); },
   position: () => (cur ? audio.currentTime || 0 : 0), count: () => lib.length, deviceOk

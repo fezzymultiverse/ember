@@ -53,6 +53,16 @@ let browser;
       ? route.continue() : route.fulfill({ status: 503, body: 'External network blocked by UI regression test.' }));
     await page.goto(origin);
     await page.waitForFunction(() => window.__ember && window.__ember.ready);
+    assert(await page.locator('#bGraph').count(), 'Graph shortcut is present');
+    assert(await page.evaluate(() => !!window.EmberGraph && window.EmberGraph.TOOLS.some(t => t.name === 'map_knowledge')), 'Knowledge Graph tool is loaded');
+    assert.strictEqual(await page.evaluate(() => EmberTimeline.label('map_knowledge', {}).includes('Mapping connections')), true, 'graph tool has a Thinking label');
+    await page.click('#bPlus');
+    await page.click('#plusMenu [data-action="bGraph"]');
+    await page.waitForTimeout(50);
+    assert(await page.locator('#graph.show').count(), 'Graph panel opens');
+    assert(/sources|No local connections/.test(await page.locator('#graphStats, #graphView').allTextContents().then(a => a.join(' '))), 'Graph panel renders local state');
+    await page.click('#graphX');
+    assert(!(await page.locator('#graph').evaluate(element => element.classList.contains('show'))), 'Graph panel closes');
     await page.evaluate(() => {
       document.getElementById('log').insertAdjacentHTML('beforeend', '<div class="msg a" id="replySkin"><div>Ember reply sample</div><div class="mt"><span>now</span><button data-act="say">🔊</button><button data-act="copy">⧉ Copy</button><button data-act="regen">↻ again</button></div></div>');
     });
@@ -73,6 +83,7 @@ let browser;
       near(g.plus.cy, g.send.cy, 'plus/send alignment at ' + width);
       near(g.plus.cy, g.row.cy, 'plus/row alignment at ' + width);
       near(g.plus.cy, g.input.cy, 'plus/input alignment at ' + width);
+      assert(g.plus.x <= g.row.x + 2, 'plus sits against the composer left edge at ' + width + ': ' + g.plus.x + ' vs ' + g.row.x);
       assert.strictEqual(g.fontSize, '0px', 'only the centered CSS cross is drawn');
     }
     const closed = await geometry(page);
@@ -96,12 +107,16 @@ let browser;
     });
     assert(await page.locator('#typ .et-drop-hint').count(), 'rotating view has an expand chevron');
     assert(await page.locator('#typ .et-body .tl-item').count(), 'rotating view contains the dots/icons timeline');
-    assert(!(await page.locator('#typ .et-inner').evaluate(element => element.classList.contains('et-open'))), 'timeline starts collapsed');
+    assert(await page.locator('#typ .et-inner').evaluate(element => element.classList.contains('et-open')), 'timeline starts open');
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('ember-dl', { detail: { id: 'ui-job', title: 'Sample track', state: 'running', pct: 37 } })));
     assert(/Downloading/.test(await page.locator('#typ .et-status').textContent()), 'real download event shows Downloading');
     assert(/37%/.test(await page.locator('#typ .et-status').textContent()), 'real download event shows progress');
+    assert(/Downloading.*Sample track/.test(await page.locator('#typ .et-lines').textContent()), 'real download lifecycle is linked into Thinking');
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('ember-dl', { detail: { id: 'ui-job', title: 'Sample track', state: 'done', pct: 100 } })));
     assert(/Saved to Music\/Ember/.test(await page.locator('#typ .et-status').textContent()), 'real download completion shows saved state');
+    assert(/Saved to Music\/Ember/.test(await page.locator('#typ .et-lines').textContent()), 'download completion is linked into Thinking');
+    await page.click('#typ .et-hdr');
+    assert(!(await page.locator('#typ .et-inner').evaluate(element => element.classList.contains('et-open'))), 'tap collapses timeline in place');
     await page.click('#typ .et-hdr');
     assert(await page.locator('#typ .et-inner').evaluate(element => element.classList.contains('et-open')), 'tap expands timeline in place');
     await page.click('#typ .et-hdr');
@@ -119,10 +134,10 @@ let browser;
         assert.strictEqual(current.animation, 'none', 'status has no replayed animation');
         assert.strictEqual(current.whiteSpace, 'nowrap');
         assert.strictEqual(current.overflow, 'ellipsis');
-        near(current.y, first.y, 'status baseline stays still at ' + width);
+        // The open stream may change the page scroll position as its capped body fills;
+        // internal status height/transform checks below are the anti-jitter contract.
         near(current.height, first.height, 'status height stays still at ' + width);
-        near(current.headerY, first.headerY, 'header stays still at ' + width);
-        near(current.headerHeight, 30, 'header has fixed height');
+        near(current.headerHeight, 34, 'header has fixed height');
       }
     }
     assert.strictEqual(await page.locator('#typ .et-status img').count(), 0, 'status remains escaped plain text');

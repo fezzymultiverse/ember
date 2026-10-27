@@ -140,7 +140,7 @@ async function search(sc) {
   } catch (e) { msg('Search failed: ' + esc(String((e && e.message) || e).slice(0, 140))); }
 }
 $('gtYt').onclick = () => search(false);
-$('gtSc').onclick = () => search(true);
+if ($('gtSc')) $('gtSc').onclick = () => search(true);
 $('gtQ').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); search(false); } });
 $('gtRes').addEventListener('click', async e => {
   const b = e.target.closest('.gtd'); if (!b) return;

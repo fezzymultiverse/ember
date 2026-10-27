@@ -20,7 +20,7 @@ const migrateMem = m => {
 };
 let mem = MEM_DEF();
 let conv = null, busy = false, lastErr = null, backupKeys = false, curTurn = null, handedTurn = '';
-let streamText = '', cancelRequested = false;
+let streamText = '', cancelRequested = false, activityStatus = '';
 function paintRouteStatus(name, model) { const b = $('engs'); if (!b) return; b.classList.add('working'); const sp = b.querySelector('span'); if (sp) sp.textContent = name ? ('Trying ' + name + (model ? ' · ' + model : '')) : 'Connecting…'; b.title = 'Live routing status: ' + (name || 'connecting') + (model ? ' · ' + model : ''); }
 window.addEventListener('ember-try', e => { streamText = ''; const d = e.detail || {}; paintRouteStatus(d.name, d.model); const p = $('streamPreview'); if (p) p.remove(); });
 window.addEventListener('ember-token', e => { streamText = String(e.detail && e.detail.text || ''); let p = $('streamPreview'); if (!p && streamText) { $('log').insertAdjacentHTML('beforeend', '<div class="msg a stream-preview" id="streamPreview"><div></div><small>Live response</small></div>'); p = $('streamPreview'); } if (p) { const d = p.querySelector('div'); if (d) d.innerHTML = fmt(streamText); down(); } });
@@ -139,12 +139,13 @@ function newConv(priv) { return { id: uid(), title: 'New chat', auto: true, crea
 function ensure() { if (!conv) conv = newConv(false); }
 async function persist() { if (conv && conv.msgs.length) { conv.updated = Date.now(); const ok = await Store.put(conv); if (!ok) toast('Could not save this chat (storage full?)'); } }
 function bub(x, last, i) {
+  const artifact = x.r == 'a' && window.EmberArtifacts ? window.EmberArtifacts.render(x.t, i) : null;
   const eng = x.eng ? ' · ' + Prov.label(x.eng.p) + (S.showEng && x.eng.m ? ' ' + esc(String(x.eng.m).replace(/^.*\//, '').slice(0, 34)) : '') + (S.showEng && x.eng.ms ? ' ' + x.eng.ms + 'ms' : '') + (x.eng.pm ? ' · ' + Prov.label(x.eng.pm) + ' pin failed' : '') : '';
   const regen = last && x.r == 'a' ? '<button data-act="regen">↻ again</button>' : '';
   const say = x.r == 'a' ? '<button data-act="say" data-i="' + i + '" aria-label="Read aloud" title="Read aloud"' + (sayIdx === i ? ' class="talking"' : '') + '>' + (sayIdx === i ? '■ Stop' : '🔊') + '</button>' : '';
   const cp = x.egg ? '' : '<button data-act="copy" data-i="' + i + '" aria-label="Copy message" title="Copy this message">⧉ Copy</button>';
   const eggImg = x.egg == 'bojack' ? '<img src="ember-icon.svg" alt="" class="msg-egg-icon">' : '';
-  return (x.tl && window.EmberTimeline ? window.EmberTimeline.savedHtml(x.tl) : '') + '<div class="msg ' + x.r + (x.egg ? ' egg' : '') + '">' + eggImg + '<div>' + fmt(x.t) + '</div><div class="mt"><span>' + U.time(x.ts) + (x.deep ? ' · 💡' : '') + eng + '</span>' + say + cp + regen + '</div></div>';
+  return (x.tl && window.EmberTimeline ? window.EmberTimeline.savedHtml(x.tl) : '') + '<div class="msg ' + x.r + (x.egg ? ' egg' : '') + '">' + eggImg + '<div>' + (artifact ? artifact.html : fmt(x.t)) + '</div><div class="mt"><span>' + U.time(x.ts) + (x.deep ? ' · 💡' : '') + eng + '</span>' + say + cp + regen + '</div></div>';
 }
 function renderLog() {
   const m = conv ? conv.msgs : [];
@@ -178,8 +179,8 @@ function renderTop() {
   const dot = Prov.freeOn() && !okN ? 'free' : okN ? 'ok' : limN ? 'limited' : unkN ? 'none' : Prov.hasKeys() ? 'bad' : 'none';
   const pinM = (() => { try { const x = Prov.getPinnedModel && Prov.getPinnedModel(); return x && x.id == Prov.getPinned() ? shortM(x.model) : ''; } catch (e) { return ''; } })();
   const who = lastEng ? Prov.label(lastEng) + (lastMod ? ' · ' + shortM(lastMod) : '') : (Prov.getPinned() ? Prov.label(Prov.getPinned()) + (pinM ? ' · ' + pinM : '') + ' (pinned)' : (Prov.freeOn() && !okN ? 'Free Mode' : okN ? 'Auto' : 'No key'));
-  $('engs').className = 'engpill ' + dot; $('engs').innerHTML = '<i></i><span>' + esc(who) + '</span>';
-  $('engs').title = (lastEng ? 'Last reply: ' + Prov.label(lastEng) + (lastMod ? ' · ' + lastMod : '') + '. ' : '') + (okN ? okN + ' engine(s) ready' : 'No engine ready') + (limN ? ', ' + limN + ' rate limited' : '') + '. Tap to open Keys.';
+  $('engs').className = 'engpill ' + dot + (activityStatus ? ' activity' : ''); $('engs').innerHTML = '<i></i><span>' + esc(activityStatus ? 'Working · ' + activityStatus : who) + '</span>';
+  $('engs').title = activityStatus ? ('Ember is working: ' + activityStatus + '. Tap Stop in the activity card to cancel this turn.') : (lastEng ? 'Last reply: ' + Prov.label(lastEng) + (lastMod ? ' · ' + lastMod : '') + '. ' : '') + (okN ? okN + ' engine(s) ready' : 'No engine ready') + (limN ? ', ' + limN + ' rate limited' : '') + '. Tap to open Keys.';
   document.querySelectorAll('#modes button').forEach(b => b.classList.toggle('on', b.dataset.m == S.mode));
   const p = conv && conv.priv; $('bPriv').textContent = p ? '🔒 Private' : '🔓 Normal'; $('bPriv').classList.toggle('on', !!p);
   const h = new Date().getHours();
@@ -278,6 +279,7 @@ function toolCatalog() {
   if (A.EmberKnow) sets.push(A.EmberKnow.TOOLS);
   if (A.EmberTasks) sets.push(A.EmberTasks.TOOLS);
   if (A.EmberKeys) sets.push(A.EmberKeys.TOOLS);
+  if (A.EmberGraph) sets.push(A.EmberGraph.TOOLS);
   if (docsOn && A.EmberDocsAddon) sets.push(A.EmberDocsAddon.TOOLS);
   if (A.EmberAgentAddon) sets.push(A.EmberAgentAddon.toolsFor(S));
   if (scrapeOn && A.EmberScraper) sets.push(A.EmberScraper.TOOLS);
@@ -312,6 +314,7 @@ async function runToolRaw(tool, args) {
     if (A.EmberKnow && namesOf(A.EmberKnow).includes(tool)) return await A.EmberKnow.dispatch(tool, args);
     if (A.EmberTasks && namesOf(A.EmberTasks).includes(tool)) return await A.EmberTasks.dispatch(tool, args);
     if (A.EmberKeys && namesOf(A.EmberKeys).includes(tool)) return await A.EmberKeys.dispatch(tool, args);
+    if (A.EmberGraph && namesOf(A.EmberGraph).includes(tool)) return await A.EmberGraph.dispatch(tool, args);
     const docsOn = S.docsAddon || !!(A.EmberPlus && A.EmberPlus.isOn('device')) || !!(A.EmberDocs && A.EmberDocs.count && A.EmberDocs.count() > 0);
     if (docsOn && A.EmberDocsAddon && namesOf(A.EmberDocsAddon).includes(tool)) return await A.EmberDocsAddon.dispatch(tool, args);
     if (A.EmberAgentAddon && A.EmberAgentAddon.toolsFor(S).some(t => t.name == tool)) return await A.EmberAgentAddon.dispatch(tool, args);
@@ -405,7 +408,7 @@ async function reply(o) {
   const turnId = conv.id + ':' + conv.msgs.length; curTurn = turnId;
   const L = o.force ? { lane: 'deep', deep: true } : laneFor();
   const TLn = window.EmberTimeline; // V1.9.35: richer steps in the thinking card
-  if (TLn) { TLn.note('Reading your message', 'r1'); TLn.note(L.deep ? 'Deep lane: taking extra care on this one' : 'Quick lane: answering directly', 'r2'); TLn.note('Loading the chat so far and your settings', 'r3'); TLn.note('Choosing the best engine', 'r4'); }
+  if (TLn) { TLn.note('Reading your message', 'r1'); TLn.note(L.deep ? 'Deep lane: taking extra care on this one' : 'Quick lane: answering directly', 'r2'); TLn.note('Checking memory, conversation context and safety', 'r3'); TLn.note('Preparing enabled tools: web, files, graph and device actions', 'r4'); TLn.note('Choosing the best engine and fallback route', 'r5'); }
   try {
     const lastU = conv.msgs.length ? [...conv.msgs].reverse().find(m => m.r == 'u') : null;
     const call = Persona.respond(conv, { S, mem, directive: o.directive, lane: L.lane, deep: L.deep, uiState: uiStateBlock(), planHint: !o.directive && lastU ? planHint(lastU.t) : '', shouldCancel: () => cancelRequested, onToken: (piece, full) => { try { window.dispatchEvent(new CustomEvent('ember-token', { detail: { piece, text: full } })); } catch (_) {} } });
@@ -451,6 +454,51 @@ async function after() {
     if (j) { if (j.title && c.auto) c.title = j.title; if (j.summary) c.sum = j.summary; await saveMem(); await Store.put(c); }
   } catch (e) { }
 }
+// V1.9.57: explicit NewPipe downloads are native actions, not AI questions.
+// If he gives a media link (or explicitly says NewPipe), search/download locally through
+// EmberYoutube and return the native result without sending the turn through Groq/Gemini/etc.
+async function directNewPipe(t) {
+  const A = window.EmberAgentAddon, hasYt = A && A.dispatch && A.toolsFor && A.toolsFor(S).some(x => x.name == 'youtube_download');
+  if (!hasYt || !/\b(download(?:ing|ed)?|save|grab|rip|keep|store|get|fetch|pull|put|add|newpipe)\b/i.test(t)) return false;
+  const video = (t.match(/https:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com|youtu\.be)\/[^\s<>"']+/i) || [])[0] || '';
+  const playlist = /(?:[?&]list=|\/playlist(?:\/|\?|$))/i.test(video);
+  const soundcloud = (t.match(/https:\/\/(?:www\.|m\.)?soundcloud\.com\/[^\s<>"']+/i) || [])[0] || '';
+  const query = t.replace(video || soundcloud, '').replace(/\b(download(?:ing|ed)?|save|grab|rip|keep|store|get|fetch|pull|put|add|newpipe|this|it|to|my|phone|please)\b/gi, ' ').replace(/\s+/g, ' ').trim();
+  // A bare conversational mention should still go to the normal AI route. Direct mode needs a link or a usable title.
+  if (!video && !soundcloud && query.length < 2) return false;
+  const us = conv.msgs.filter(m => m.r == 'u'), prev = us.length > 1 ? us[us.length - 2].t : '';
+  const turn = conv.id + ':' + conv.msgs.length;
+  busy = true; curTurn = turn; cancelRequested = false; $('bSend').disabled = true; $('bSend').classList.add('hidden'); $('bStop').classList.remove('hidden'); $('bStop').disabled = false; typing(true);
+  const TL = window.EmberTimeline;
+  if (TL) { TL.note('Sending directly to NewPipe', 'np-direct'); TL.note(video || soundcloud ? 'Using the link you gave me' : 'Finding the best match on YouTube'); }
+  try {
+    A.setIntent(t, prev);
+    let r;
+    if (playlist) {
+      const listed = await A.dispatch('playlist_list', { url: video });
+      r = listed && !listed.error ? await A.dispatch('playlist_download', { url: video }) : listed;
+    } else if (video || soundcloud) {
+      r = await A.dispatch('youtube_download', { url: video || soundcloud, title: query || undefined });
+    } else {
+      const found = await A.dispatch('youtube_search', { query });
+      const first = found && found.results && found.results[0];
+      r = first ? await A.dispatch('youtube_download', { url: first.url, title: first.title }) : found;
+    }
+    const failed = !r || r.error || r.ok === false;
+    const text = failed ? 'NewPipe: ' + String(r && (r.error || r.status) || 'I could not start that download.') : 'NewPipe: ' + String(r.status || 'Download started. I’ll show the native progress below.');
+    if (TL) { TL.note(failed ? 'NewPipe could not start the download' : 'NewPipe accepted the download', 'np-result'); TL.flush(); }
+    conv.msgs.push({ r: 'a', t: text, ts: Date.now(), turn, tl: TL ? TL.snapshot() : undefined });
+    await persist();
+  } catch (e) {
+    if (TL) { TL.note('NewPipe could not start the download', 'np-error'); TL.flush(); }
+    conv.msgs.push({ r: 'a', t: 'NewPipe: ' + ((e && e.message) || 'the native downloader failed to start.'), ts: Date.now(), turn, tl: TL ? TL.snapshot() : undefined });
+    await persist();
+  } finally {
+    if (curTurn === turn) { busy = false; $('bSend').disabled = false; $('bSend').classList.remove('hidden'); $('bStop').classList.add('hidden'); $('bStop').disabled = false; typing(false); curTurn = null; }
+    renderLog(); saveSession(); after();
+  }
+  return true;
+}
 async function send() {
   const t = $('inp').value.trim(); if (!t || busy) return;
   ensure();
@@ -463,7 +511,9 @@ async function send() {
     conv.msgs.push({ r: 'a', t: window.NineNine.BOJACK_REPLY, ts: Date.now(), egg: 'bojack' });
     await persist(); renderLog(); return;
   }
-  await persist(); renderLog(); reply();
+  await persist(); renderLog();
+  if (await directNewPipe(t)) return;
+  reply();
 }
 function needKeys() { return false; }
 // Fired by MainActivity when he replies from the notification while the app was backgrounded.
@@ -478,6 +528,8 @@ window.addEventListener('ember-bg-reply', e => {
 window.addEventListener('ember-timer', e => { const t = e.detail && e.detail.text; if (!t) return; ensure(); conv.msgs.push({ r: 'a', t, ts: Date.now() }); persist(); renderLog(); toast(t.slice(0, 80)); });
 $('bSend').onclick = send;
 if ($('bStop')) $('bStop').onclick = () => { if (!busy) return; cancelRequested = true; $('bStop').disabled = true; $('bStop').textContent = '…'; try { Prov.abortInflight(); } catch (_) {} };
+window.addEventListener('ember-stop-request', () => { if ($('bStop') && busy) $('bStop').click(); });
+window.addEventListener('ember-activity', e => { const d = e.detail || {}; activityStatus = d.active ? String(d.text || 'Thinking…').slice(0, 54) : ''; if ($('engs')) renderTop(); });
 // V1.9.24: Paste and Copy for the message box (long-press paste is unreliable in some webviews)
 if ($('bPasteIn')) $('bPasteIn').onclick = async () => {
   const el = $('inp'); let t = '';
@@ -809,7 +861,7 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-link
 function paintEngPin() {
   const sel = $('engPin'); if (!sel) return;
   const dotOf = id => ({ ok: '🟢', limited: '🟡', bad: '🔴', none: '⚪', unknown: '⚪' }[Prov.stateOf(id)] || '⚪');
-  sel.innerHTML = '<option value="">🔄 Auto (fastest working key)</option>' + Prov.IDS.map(id => '<option value="' + id + '">' + dotOf(id) + ' ' + Prov.CFG[id].name + '</option>').join('');
+  sel.innerHTML = '<option value="">🔄 Auto (fastest working key)</option>' + (Prov.ACTIVE_IDS || Prov.IDS).map(id => '<option value="' + id + '">' + dotOf(id) + ' ' + Prov.CFG[id].name + '</option>').join('');
   sel.value = Prov.getPinned() || '';
   paintEngModel();
 }
@@ -1267,7 +1319,7 @@ window.addEventListener('ember-dl-final', e => {
 
 // ---------- V1.6.4: bridge for the Browser, Documents and find_in_app screens ----------
 window.EmberBridge = {
-  getS: () => S, getMem: () => mem,
+  getS: () => S, getMem: () => mem, getConversation: () => conv ? conv.msgs : null,
   enable: k => { S[k] = true; saveS(); try { renderSet(); } catch (e) { /* settings not drawn yet */ } },
   askAbout: async ({ chip, ctx, q, title, degraded }) => {
     if (busy) { toast('Wait for the current reply to finish'); return false; }

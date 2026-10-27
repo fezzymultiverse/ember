@@ -1,0 +1,14 @@
+'use strict';
+const fs = require('fs'), path = require('path'), assert = require('assert');
+const providers = fs.readFileSync(path.join(__dirname, '..', 'www', 'providers.js'), 'utf8');
+const scraper = fs.readFileSync(path.join(__dirname, '..', 'www', 'ai_scraper.js'), 'utf8');
+const agent = fs.readFileSync(path.join(__dirname, '..', 'www', 'ai_agent.js'), 'utf8');
+assert(providers.includes("const ACTIVE_IDS = ['groq', 'cohere', 'openrouter', 'gemini', 'mistral'];"), 'active profile keeps Groq, Cohere, OpenRouter, Gemini and Mistral');
+assert(providers.includes("fast: ['groq', 'cohere', 'openrouter', 'gemini', 'mistral']"), 'fast route uses the requested order');
+assert(providers.includes('Hugging Face is not in the automatic route'), 'Hugging Face is explicitly excluded from automatic routing');
+assert(providers.includes('Automatic AI route in this build: Groq → Cohere → OpenRouter → Gemini → Mistral'), 'Ember prompt facts name the active route');
+assert(scraper.includes('const call = render => id == \'reader\' ? P.reader(u) : onlyKey ? P[id](u, onlyKey, render) : withKeys(id, k => P[id](u, k, render));'), 'scraper uses saved keys and per-provider key rotation');
+assert(/ready = FETCHERS\.filter\(id => av\.includes\(id\) && fetchesPages\(id\)\)/.test(scraper), 'scraper puts ready keyed page providers first');
+assert(scraper.includes("if (dead[id] && dead[id] > Date.now())"), 'scraper skips temporarily rejected providers and continues');
+assert(agent.includes('every available keyed search engine and the keyless fallbacks'), 'name/topic search has an honest all-engine fallback instruction');
+console.log('PASS V1.9.55 active AI profile and scraper fallback checks');
