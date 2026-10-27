@@ -23,6 +23,6 @@ docL.keydown({ key: 'Escape' }); ok('menu markup has 4 toggles and 3 do-it-now i
 // app.js hooks are present
 const app = W('app.js');
 ok('app.js: prompt line, lane and docs switch hooked', /EmberPlus\.stateLine\(\)/.test(app) && /EmberPlus\.lane\(\)/.test(app) && (app.match(/EmberPlus.isOn\('device'\)/g) || []).length == 2);
-ok('sw.js lists ember_plus.js and cache is 1.9.30', /ember_plus\.js/.test(W('sw.js')) && /ember-v1\.9\.30/.test(W('sw.js')));
+ok('sw.js lists ember_plus.js and cache is a 1.9.x build', /ember_plus\.js/.test(W('sw.js')) && /ember-v1\.9\.\d+/.test(W('sw.js')));
 ok('index.html loads ember_plus.js after the markup', W('index.html').indexOf('ember_plus.js') > W('index.html').indexOf('id="bPlus"'));
 console.log(pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);

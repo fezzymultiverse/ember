@@ -1023,3 +1023,35 @@ header .who b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:el
 .et-saved[open] .et-chev{transform:rotate(90deg)}
 .et-saved .et-lines{padding:4px 0 6px 20px;border-left:2px solid #333;margin-left:7px;opacity:1}
 @media (prefers-reduced-motion:reduce){.et-shimmer{animation:none;color:var(--m);-webkit-background-clip:unset;background-clip:unset;background:none}}
+
+/* V1.9.32 Paste keys card */
+.pk-sum{margin:2px 0 10px;font-size:14px}.pk-grp{border-top:1px solid var(--b);padding:8px 0}.pk-name{font-weight:600;margin-bottom:4px}
+.pk-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0}.pk-row code{font-size:12.5px;background:var(--p2);padding:3px 8px;border-radius:8px}
+.pk-tag{font-size:11.5px;padding:2px 8px;border-radius:99px;border:1px solid var(--b)}.pk-tag.ok{color:var(--gr);border-color:var(--gr)}.pk-tag.w{color:var(--am);border-color:var(--am)}.pk-tag.i{color:var(--bl)}
+.pk-sub{font-size:12px;opacity:.7;font-weight:400}.pk-sel{width:auto;padding:8px;font-size:13px}.pk-msg{font-size:12px}.pk-msg.ok{color:var(--gr)}.pk-msg.w{color:var(--am)}
+/* V1.9.34 - restored Summary design inside .et-think */
+.et-think .tl-card{max-width:100%;border-radius:14px;border:1px solid var(--b);border-left:3px solid var(--ac)}
+.et-think .tl-card.tl-open .tl-body{padding:14px 14px 0}
+.et-saved .tl-card{margin:6px 0 4px 0;border-radius:14px;border:1px solid var(--b);border-left:3px solid var(--ac);max-width:100%}
+.et-saved .tl-card .tl-body{max-height:none;padding:14px 14px 0}
+/* V1.9.35 - centered "+" (drawn, not a font glyph) and bigger message box text */
+.row .plus{font-size:0;padding:0;position:relative}
+.row .plus::before,.row .plus::after{content:'';position:absolute;top:50%;left:50%;background:currentColor;border-radius:2px;transform:translate(-50%,-50%)}
+.row .plus::before{width:16px;height:2px}
+.row .plus::after{width:2px;height:16px}
+#inp{font-size:16px;line-height:1.4}
+#inp::placeholder{font-size:16px}
+/* V1.9.36 - style switch button */
+.et-sw{font-size:15px;margin-left:auto;opacity:.7}
+.tl-hdr .et-sw{margin-left:0}
+/* V1.9.37 - modifier bar: every pill stays visible and wraps like the mockup (Spark / Go deeper / Normal were cut off by sideways scrolling). Appended only. */
+.comp .tools{flex-wrap:wrap;overflow:visible;gap:8px}
+.comp .tools button{padding:6px 12px;font-size:13px}
+.comp .mrow{align-items:center;gap:8px;flex-wrap:wrap}
+/* V1.9.38 - white message box: the pill is white, typed text is dark, placeholder is grey. Appended only. */
+.row{background:#fff;border-color:#fff}
+.row:focus-within{border-color:var(--ac)}
+#inp{color:#111;caret-color:var(--ac)}
+#inp::placeholder{color:#777}
+.row .plus{background:#f1f1f1;border-color:#d8d8d8}
+.row .side button{color:#111}

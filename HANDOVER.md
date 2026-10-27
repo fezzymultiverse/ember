@@ -1,5 +1,5 @@
-# Ember V1.9.29 HANDOVER
-Status: tool-execution card, provider dashboard (real latency, retry countdown), pill modifier bar (V1.9.29); "Summary" thinking timeline card (V1.9.28); native tool calling, tags/covers/whole-playlist (V1.9.27); loose tool-call formats now parsed (V1.9.26); name-search fix, Web Search + YouTube defaults on, Paste/Copy bar on the message box. See docs/CHANGELOG.md.
+# Ember V1.9.37 HANDOVER
+Status: modifier bar pills now wrap so none are clipped (V1.9.37); two thinking styles (V1.9.36); tool-execution card, provider dashboard (real latency, retry countdown), pill modifier bar (V1.9.29); "Summary" thinking timeline card (V1.9.28); native tool calling, tags/covers/whole-playlist (V1.9.27); loose tool-call formats now parsed (V1.9.26); name-search fix, Web Search + YouTube defaults on, Paste/Copy bar on the message box. See docs/CHANGELOG.md.
 ## Open items
 1. Not run on a device or APK. The DuckDuckGo web-results parser is only tested against a mock.
 2. CI (.github/workflows/build.yml) has not been seen green past the V1.9.23-1 setup-android fix; downloads need an APK built with the native NewPipe patch.

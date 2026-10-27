@@ -380,15 +380,22 @@ async function resolveAddonCalls(text, L) {
   }
   return stripTags(cur) || 'I tried, but the add-on came back empty.';
 }
+const REPLY_MS = 100000;
 async function reply(o) {
   o = o || {}; if (busy) return;
   busy = true; lastErr = null; $('bSend').disabled = true; typing(true);
   const turnId = conv.id + ':' + conv.msgs.length; curTurn = turnId;
   const L = o.force ? { lane: 'deep', deep: true } : laneFor();
+  const TLn = window.EmberTimeline; // V1.9.35: richer steps in the thinking card
+  if (TLn) { TLn.note('Reading your message', 'r1'); TLn.note(L.deep ? 'Deep lane: taking extra care on this one' : 'Quick lane: answering directly', 'r2'); TLn.note('Loading the chat so far and your settings', 'r3'); TLn.note('Choosing the best engine', 'r4'); }
   try {
     const lastU = conv.msgs.length ? [...conv.msgs].reverse().find(m => m.r == 'u') : null;
     const call = Persona.respond(conv, { S, mem, directive: o.directive, lane: L.lane, deep: L.deep, uiState: uiStateBlock(), planHint: !o.directive && lastU ? planHint(lastU.t) : '' });
-    const r = window.EmberNative ? await window.EmberNative.holdDuringReply(call) : await call;
+    // V1.9.33: no reply may hang the screen. After REPLY_MS the page stops trying engines and shows an error with Resend.
+    let dl; const guard = new Promise((_, no) => { dl = setTimeout(() => { try { if (Prov.abortInflight) Prov.abortInflight(); } catch (e) { /* ignore */ } no(Object.assign(new Error('No reply after ' + Math.round(REPLY_MS / 1000) + ' seconds. An engine is stuck or very slow. Tap resend, or pin a different engine in Settings.'), { code: 'timeout' })); }, REPLY_MS); });
+    call.catch(() => {}); // the race below reports it; a late failure after the deadline must not surface as an unhandled rejection
+    let r; try { r = await Promise.race([window.EmberNative ? window.EmberNative.holdDuringReply(call) : call, guard]); } finally { clearTimeout(dl); }
+    if (TLn && r) TLn.note('Got a reply from ' + (r.provider || 'an engine') + (r.model ? ' (' + r.model + ')' : '') + (r.ms ? ' in ' + (r.ms / 1000).toFixed(1) + 's' : ''), 'got');
     let finalText = r.text;
     const bgWon = () => conv.msgs.some(m => m.turn === turnId); // the background task already delivered this turn's reply
     if (bgWon()) finalText = '';
@@ -819,6 +826,8 @@ $('bModels') && $('bModels').addEventListener('click', async () => {
 function keyRepHtml(rep) {
   return ((rep && rep.lines) || []).map(l => l.t == 'ok' ? '<b>✓</b> ' + esc(l.text) : l.t == 'warn' ? '<span class="w">' + esc(l.text) + '</span>' : esc(l.text)).join('<br>');
 }
+// V1.9.32: ember_pastekeys.js (Paste keys card) toasts and repaints the key lists through these
+window.emberToast = toast; window.emberRenderKeys = () => { renderKeys(); renderTop(); };
 async function runIngestAll(t) {
   if (!window.EmberKeyScan) throw new Error('Key finder not loaded');
   return window.EmberKeyScan.ingestAll(t);

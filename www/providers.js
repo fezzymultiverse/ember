@@ -449,14 +449,15 @@ const cachedModels = id => { const c = LS.get('ember_models', {}); return c[id] 
 const HANDOFF = () => Object.assign(new Error('The background task has this reply.'), { code: 'handoff' });
 async function runInner(lane, o, tok) {
   const pl = lane != 'util', errs = [], failed = [];
-  const halted = () => { if (tok && tok.stop) throw HANDOFF(); }; // V1.8.3: once the native worker took the request, the page makes no further paid calls
+  const halted = () => { if (tok && tok.stop) throw HANDOFF(); if (tok && tok.abort) throw Object.assign(new Error('Stopped: the reply took too long.'), { code: 'fail' }); };
+  const trying = (name, model) => { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-try', { detail: { name, model } })); } catch (e) { /* no listener */ } } }; // V1.8.3: once the native worker took the request, the page makes no further paid calls
   // when an engine failed and a different one answered, tell the UI (ai.js shows a toast). Background jobs stay silent.
   const done = r => { if (pinnedEngine && r.provider != pinnedEngine) { const p0 = failed.find(x => x.id == pinnedEngine); r.pinMiss = { want: pinnedEngine, why: p0 ? (p0.why || '') : 'no usable key' }; } const f = failed.find(x => x.id != r.provider); if (f && pl && !(pinnedEngine && r.provider == pinnedEngine)) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
   let tried = false;
   halted();
   if (pl && freeOn() && !pinnedEngine) { // V1.9.15: with an engine pinned, Free Mode no longer goes first (it was failing, costing seconds and showing a 'Switched to' toast)
     tried = true;
-    try { const o2 = withFacts(o, lane, 'pollinations', 'openai', failed); const r = await callPollinations(flat(o2), o2); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
+    try { trying('Free Mode', 'openai'); const o2 = withFacts(o, lane, 'pollinations', 'openai', failed); const r = await callPollinations(flat(o2), o2); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
     catch (er) { errs.push('Free Mode: ' + er.message); failed.push({ id: 'pollinations', status: er.status, why: er.message }); }
   }
   for (const id of orderFor(lane)) {
@@ -474,7 +475,7 @@ async function runInner(lane, o, tok) {
       const pm = pinnedModel && pinnedModel.id == id ? pinnedModel.model : null;
       for (const m of (pm ? [pm] : models.slice(0, soft ? 5 : 3))) {
         halted();
-        try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
+        trying(CFG[id].name, m); try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
         catch (er) {
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
           if (soft && (er.status == 400 || er.status == 402 || er.status == 403 || er.status == 422) && !pm) continue; // V1.9.15: try the next model, keep the key, the reason stays in failed[]
@@ -488,7 +489,7 @@ async function runInner(lane, o, tok) {
   }
   if (pl && !tried && !onlyPinned(lane)) {
     halted();
-    try { const o2 = withFacts(o, lane, 'pollinations', 'openai', failed); const r = await callPollinations(flat(o2), o2); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
+    try { trying('Free Mode', 'openai'); const o2 = withFacts(o, lane, 'pollinations', 'openai', failed); const r = await callPollinations(flat(o2), o2); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
     catch (er) { errs.push('Free Mode: ' + er.message); failed.push({ id: 'pollinations', status: er.status, why: er.message }); }
   }
   if (onlyPinned(lane)) { // V1.9.15: say what really happened instead of answering from someone else
@@ -513,6 +514,7 @@ async function run(lane, o) {
 }
 function holdInflight(p) { if (inflight) inflight.hold = p; }
 function stopInflight() { if (inflight) inflight.stop = true; }
+function abortInflight() { if (inflight) inflight.abort = true; } // V1.9.33: the page gave up waiting; no further engine is tried
 const pending = () => inflight ? { lane: inflight.lane, o: Object.assign({}, inflight.o, { system: inflight.lane == 'util' || inflight.o.json ? inflight.o.system : String(inflight.o.system || '') + '\n\n' + factsBlock(null, null, []) }) } : null;
 // The engines the router would try for this lane, from the cached model lists only (no network), OpenAI-style providers only.
 function nativePlan(lane) {
@@ -572,5 +574,5 @@ function detail(id) {
 }
 async function pingAll() { await Promise.all(IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); }
 function status() { const o = {}; IDS.forEach(id => { o[id] = stateOf(id); }); return o; }
-window.Prov = { toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, pending, nativePlan, CFG, IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
+window.Prov = { toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
 })();

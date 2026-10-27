@@ -1,5 +1,34 @@
 # Changelog
 
+## V1.9.38
+- **White message box.** The reply box pill is white with dark text, grey placeholder and a light "+" circle; the orange ring shows on focus (`www/style.css`, appended CSS only). Cache `ember-v1.9.38`. NOT tested on a device.
+
+## V1.9.37
+- **Modifier bar shows every pill.** Paste, Copy, Device, Reasoning, Spark, Go deeper and Normal now wrap onto a second line instead of scrolling sideways, so Spark / Go deeper / Normal are no longer cut off at the screen edge (`www/style.css`, appended CSS only; same buttons, same behaviour). Cache `ember-v1.9.37`. NOT tested on a device.
+- Checked against the UI concept in a real browser: Summary timeline (grey dot, terminal icon + pill, orange radar), orange tool card, provider rows (status dot, model, latency, Rate limited / Retry in Ns) and pills with orange glow all render as drawn. Cost per 1k tokens is still not shown: Ember has no real price data.
+
+## V1.9.36
+- **Two thinking styles.** Tap the arrows button on the thinking card to switch between the Summary timeline (dots, terminal icons, pills, radar) and the dropdown (shimmer "Thinking..." with text lines). Your pick is kept. The saved row above a reply follows the same style.
+- **Richer steps on every reply** (`app.js`): Reading your message, Deep or Quick lane, Loading the chat and settings, Choosing the best engine, then "Asking <engine>", then "Got a reply from <engine> (model) in Ns", then the existing results note. Cache `ember-v1.9.36`. NOT tested.
+
+## V1.9.35
+- **Message box:** the "+" is now drawn with two bars (CSS), so it is centred in its circle instead of sitting skewed; it still turns into an x when open. Message box text 15px to 16px. Cache `ember-v1.9.35`. NOT tested.
+
+## V1.9.34
+- **Summary timeline design restored** in `www/ember_timeline.js` (grey dot = thought, terminal icon = tool call with RUNNING / SUCCESS / FAILED pill, orange radar = "Thinking..."). It had been replaced by a shimmer text panel. Saved row reads "Worked through N actions". CSS appended to `style.css`. Cache `ember-v1.9.34`. NOT tested.
+
+## V1.9.33
+- **A reply can no longer freeze on "Thinking…".** Cause found in the code: in Auto mode the router tries Free Mode, then every engine, key and up to 3 models in turn, each with its own 15 to 60 second wait, and the panel showed nothing while it did. Deep lane, Reasoning and long "step by step" asks make that worst. Now: (1) `app.js` gives every reply 100 seconds (`REPLY_MS`), then stops trying engines (`Prov.abortInflight`, new in `providers.js`) and shows "No reply after 100 seconds ... Tap resend, or pin a different engine"; (2) the thinking panel says which engine it is asking ("Asking Groq (model)…") through a new `ember-try` event, so a stuck engine is visible.
+- Not changed: the engines' own timeouts, and the handoff to the background worker (it only runs when the app is in the background).
+- Tests: new `tests/v1933-test.js` (4). NOT tested on a phone; I could not reproduce the freeze here, so the deadline is a safety net and the "Asking ..." line will show you which engine is slow.
+
+## V1.9.32
+- **Paste keys card (Settings > Keys, top)** (`www/ember_pastekeys.js`, markup in `index.html`, `.pk-*` in `style.css`). **Paste & detect** reads the clipboard (or use the box and **Detect** if the phone blocks it), the one key finder (`EmberKeyScan`) works out which key belongs to which provider, and only keys not saved yet are filed (chat engines are tested live, scraper keys join the rotation, Audd.io and EasyVoice go to their own settings). The result is a named list: provider, masked key, **NEW · saved** / **already added** / slot already has a different key.
+- Key-like strings with no provider name beside them are never guessed. Each is listed with a provider picker and a Save button that files it under the one you pick.
+- **Copy named list** copies every saved key as `Provider: key`, one per line, only when you tap it.
+- `app.js`: exposes `window.emberToast` and `window.emberRenderKeys` for the card. Cache `ember-v1.9.32`, `ember_pastekeys.js` added to the service worker list. Existing paste boxes (Keys notes, Notepad, Scraping) are unchanged.
+- Tests: new `tests/v1932-test.js` (13, Node, real key finder and stores, no network). `tests/v1930-test.js` no longer hard-codes the cache version. NOT tested: on a phone or in a real browser (clipboard permission, layout).
+
 ## V1.9.31
 - **Thinking timeline for every reply** (`www/ember_timeline.js`, new add-on, classes `.et-*`). Until now the "Summary" card (`ember_think_inline.js`) only appeared during a `run_react` job. Now, while Ember works on any reply, a card replaces the three typing dots: grey dot = a thought or step, square terminal icon = a tool call with SUCCESS / FAILED, orange radar = "Thinking…". The × collapses it. Tool rows come from `runTool` (chat, plan and ReAct calls).
 - During a `run_react` job the older Summary card stays in charge and the new live card hides, so there is never a double card. When the reply lands, the timeline is saved on that message as a collapsed "Worked through N actions" row; plain answers keep none.
