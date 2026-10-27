@@ -8,7 +8,7 @@ const lsGet = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 
 const CHAT = 'Chat engine. Used automatically for every reply (the router picks one, or the one he pinned). No tool call needed.';
 const SCRAPE = id => 'Web page fetcher. Used by scrape_url (it takes turns with his other scraper keys; pass via:"' + id + '" to force this one). Only runs when Settings > Scraping is switched on.';
 const USE = {
-  groq: CHAT, mistral: CHAT, gemini: CHAT, openrouter: CHAT + ' Prototype.', cohere: CHAT + ' Prototype.', huggingface: CHAT + ' Prototype.', anthropic: 'Claude chat engine (paid). Never used automatically: it answers only while he pins Claude in the Providers chip.',
+  groq: CHAT, mistral: CHAT, gemini: CHAT, cohere: CHAT + ' Prototype.', huggingface: CHAT + ' Prototype.', anthropic: 'Claude chat engine (paid). Never used automatically: it answers only while he pins Claude in the Providers chip.',
   firecrawl: SCRAPE('firecrawl') + ' Also backs up web_search after Tavily.', browserless: SCRAPE('browserless'), scraperapi: SCRAPE('scraperapi'), scraperbee: SCRAPE('scraperbee'), sting: SCRAPE('sting'), zenrows: SCRAPE('zenrows'),
   serpapi: 'Google search results. Backs up web_search after Tavily, and is the last resort inside scrape_url (snippets only, never the page itself).',
   brightdata: 'Bright Data. Google search results through its SERP zone (backs up web_search after SerpApi). With a Web Unlocker zone saved (Settings > Scraping) it also fetches pages inside scrape_url; with only a SERP zone it gives search snippets, never the page itself. Several keys can be saved: extras cover for the first.',

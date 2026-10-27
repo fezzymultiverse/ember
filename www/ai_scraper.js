@@ -245,9 +245,12 @@ const P = {
     const r = await http('https://app.scrapingbee.com/api/v1/?api_key=' + enc(key) + '&url=' + enc(u) + (render === false ? '' : '&render_js=true')); return r.text();
   },
   async sting(u, key) {
-    // Sting has no fixed public endpoint known to this app: set it in Settings > Web Scraping. {key} and {url} are filled in.
-    const ep = get().stingEndpoint.replace('{key}', enc(key)).replace('{url}', enc(u));
-    const r = await http(ep, { headers: { authorization: 'Bearer ' + key } }); return r.text();
+    // V1.9.73: Sting takes a plain generic https:// endpoint (Settings > Web Scraping). The page to read goes on as ?url=..., the key as a Bearer header.
+    // An endpoint saved before this version that still holds {key} / {url} placeholders keeps working: those are filled in and nothing is appended.
+    let ep = String(get().stingEndpoint || '').trim();
+    if (/\{key\}|\{url\}/.test(ep)) ep = ep.split('{key}').join(enc(key)).split('{url}').join(enc(u));
+    else ep += (ep.indexOf('?') < 0 ? '?' : (/[?&]$/.test(ep) ? '' : '&')) + 'url=' + enc(u);
+    const r = await http(ep, { headers: { authorization: 'Bearer ' + key, 'x-api-key': key } }); return r.text();
   },
   async zenrows(u, key, render) {
     const r = await http('https://api.zenrows.com/v1/?apikey=' + enc(key) + '&url=' + enc(u) + (render === false ? '' : '&js_render=true') + '&response_type=markdown'); return r.text();
@@ -456,7 +459,7 @@ async function healthCheck(id) {
   const t0 = Date.now(), done = (state, msg) => ({ id, label: LABEL[id], state, msg: msg + (keyOf(id) ? ' · key ' + mask(keyOf(id)) : ''), ms: Date.now() - t0 });
   if (id == 'reader') { try { const r = await tryProvider('reader', 'https://example.com/', 'check'); return done('ok', 'keyless via ' + lastRoute + ', ' + r.markdown.length + ' chars'); } catch (e) { return done('fail', errMsg(e, id)); } }
   if (!keyOf(id)) return done('none', 'No key set');
-  if (id == 'sting' && !stingOk()) return done('none', 'Endpoint not set');
+  if (id == 'sting' && !stingOk()) return done('none', 'Endpoint not set (needs a https:// URL)');
   if (id == 'octoparse' && !raw().octoTask) return done('info', 'Key stored. Add a Task ID to check it');
   // V1.9.14: every saved key is checked on its own (a provider with a good first key and a dead extra shows both)
   const one = async key => {

@@ -1,4 +1,4 @@
-// Ember V1.6.8 - Groq + Mistral + Gemini (+ OpenRouter, Cohere, HuggingFace as prototypes) behind one door.
+// Ember V1.6.8 - Groq + Mistral + Gemini (+ Cohere, HuggingFace as prototypes) behind one door.
 // Pulls keys out of pasted notes, health-checks every key, picks models from each provider's live model list (no hard-coded names that go stale),
 // and fails over key to key and engine to engine so the chat keeps going when one is rate-limited.
 'use strict';
@@ -8,7 +8,6 @@ const CFG = {
   groq: { name: 'Groq', base: 'https://api.groq.com/openai/v1', kind: 'oai', color: '#ff6a00' },
   mistral: { name: 'Mistral', base: 'https://api.mistral.ai/v1', kind: 'oai', color: '#ffb020' },
   gemini: { name: 'Gemini', base: 'https://generativelanguage.googleapis.com/v1beta', kind: 'gem', color: '#ffffff' },
-  openrouter: { name: 'OpenRouter', base: 'https://openrouter.ai/api/v1', kind: 'oai', color: '#ff8c1a' },
   cohere: { name: 'Cohere', base: 'https://api.cohere.com', kind: 'cohere', color: '#d9d9d9' },
   huggingface: { name: 'HuggingFace', base: 'https://router.huggingface.co/v1', kind: 'oai', status: 'prototype', color: '#ffb800' },
   // V1.9.72: Claude (Anthropic Messages API). PAID, so it is never in the automatic order: it answers only while it is pinned (Providers chip).
@@ -17,9 +16,9 @@ const CFG = {
 const IDS = Object.keys(CFG);
 // V1.9.55: active automatic profile for this installation. Legacy Hugging Face keys remain readable in backups,
 // but the router does not select Hugging Face automatically. Mistral stays active because it is working for him.
-const ACTIVE_IDS = ['groq', 'cohere', 'openrouter', 'gemini', 'mistral', 'anthropic'];
+const ACTIVE_IDS = ['groq', 'cohere', 'gemini', 'mistral', 'anthropic'];
 // fast = quick everyday replies. deep = slow, careful turns. util = background jobs (memory, titles).
-const ORDER = { fast: ['groq', 'cohere', 'openrouter', 'gemini', 'mistral'], deep: ['gemini', 'cohere', 'mistral', 'groq', 'openrouter'], util: ['groq', 'cohere', 'openrouter', 'gemini', 'mistral'] };
+const ORDER = { fast: ['groq', 'cohere', 'gemini', 'mistral'], deep: ['gemini', 'cohere', 'mistral', 'groq'], util: ['groq', 'cohere', 'gemini', 'mistral'] };
 
 // V1.5.6: pasted keys often carry invisible junk (zero-width chars, quotes, "Bearer ", "key=", a trailing comma). Any of it makes
 // the provider answer 401/403 even though the key itself is fine, so every key is cleaned before it is stored or sent.
@@ -199,14 +198,6 @@ function rank(id, list, lane) {
     ok.forEach(m => { if (!out.includes(m)) out.push(m); });
     return out;
   }
-  if (id == 'openrouter') {
-    // free models only: a paid model would spend the user's credits without them noticing
-    const ok = list.filter(m => /:free$/.test(m) && !/embed|moderation|image|vision|audio|tts|whisper|guard|-vl|flux|stable|veo|sora/i.test(m));
-    const pref = [/llama-3\.3-70b/, /llama.*70b/, /gemma/, /mistral/, /qwen/, /deepseek/, /llama/];
-    const out = []; pref.forEach(p => ok.filter(m => p.test(m)).forEach(m => { if (!out.includes(m)) out.push(m); }));
-    ok.forEach(m => { if (!out.includes(m)) out.push(m); });
-    return out;
-  }
   if (id == 'cohere') {
     const ok = list.filter(m => !/embed|rerank|vision|audio|translate|nightly/i.test(m));
     const pref = deep ? [/command-a-0/, /command-r-plus/, /command-a/, /command-r/] : [/command-r7b/, /command-r-08/, /command-a-0/, /command-r/, /command/];
@@ -248,7 +239,7 @@ async function modelsFor(id, key, lane) {
 // ---------- one call ----------
 // ---------- V1.9.27: native function calling ----------
 // o.tools = [{name, description, parameters (loose shorthand like {query:'string', n:'number?'}) or schema (JSON Schema subset)}].
-// The engine's own tool API is used (OpenAI-style tools for Groq/Mistral/OpenRouter/HuggingFace, v2 tools for Cohere, functionDeclarations for Gemini).
+// The engine's own tool API is used (OpenAI-style tools for Groq/Mistral/HuggingFace, v2 tools for Cohere, functionDeclarations for Gemini).
 // A native call comes back as the same <tool_call>{"tool","args"}</tool_call> text the app already runs, so everything after the engine is unchanged,
 // and a model that writes the tag itself still works. If the engine rejects the tools (400/422) the call is repeated once without them.
 const SCH_KEEP = ['type', 'description', 'enum', 'properties', 'items', 'required', 'minimum', 'maximum'];
@@ -437,18 +428,18 @@ function removeKey(id, key) { keys[id] = keys[id].filter(e => e.key !== key); co
 // V1.9.14: the finder lives in ember_keyscan.js (one for every paste box). extract() keeps its old shape so callers and tests keep working.
 const KS = () => window.EmberKeyScan;
 function extract(text, pre) {
-  const out = { groq: [], gemini: [], mistral: [], openrouter: [], huggingface: [], cohere: [], anthropic: [], unknown: [], unknownCohere: [] };
+  const out = { groq: [], gemini: [], mistral: [], huggingface: [], cohere: [], anthropic: [], unknown: [], unknownCohere: [] };
   const ks = KS(); if (!ks) return out;
   const sc = pre || ks.scan(text);
-  for (const id of ['groq', 'gemini', 'mistral', 'openrouter', 'huggingface', 'cohere', 'anthropic']) out[id] = (sc.keys[id] || []).slice();
+  for (const id of ['groq', 'gemini', 'mistral', 'huggingface', 'cohere', 'anthropic']) out[id] = (sc.keys[id] || []).slice();
   out.unknown = (sc.probes && sc.probes.mistral || []).slice();
   out.unknownCohere = (sc.probes && sc.probes.cohere || []).slice();
   return out;
 }
 async function ingest(text, pre) {
   const f = extract(text, pre);
-  const rep = { found: { groq: f.groq.length, gemini: f.gemini.length, mistral: f.mistral.length, openrouter: f.openrouter.length, huggingface: f.huggingface.length, cohere: f.cohere.length, anthropic: f.anthropic.length, unknown: f.unknown.length + f.unknownCohere.length }, added: [], dupes: 0, rejected: 0, rejectedBy: { mistral: 0, cohere: 0 } };
-  for (const id of ['groq', 'gemini', 'mistral', 'openrouter', 'huggingface', 'cohere', 'anthropic']) for (const k of f[id]) {
+  const rep = { found: { groq: f.groq.length, gemini: f.gemini.length, mistral: f.mistral.length, huggingface: f.huggingface.length, cohere: f.cohere.length, anthropic: f.anthropic.length, unknown: f.unknown.length + f.unknownCohere.length }, added: [], dupes: 0, rejected: 0, rejectedBy: { mistral: 0, cohere: 0 } };
+  for (const id of ['groq', 'gemini', 'mistral', 'huggingface', 'cohere', 'anthropic']) for (const k of f[id]) {
     const r = await addKey(id, k);
     if (!r.ok) { rep.dupes++; continue; }
     rep.added.push({ id, key: k, ok: !!(r.e.st && r.e.st.ok), guess: false });
@@ -544,7 +535,7 @@ function factsBlock(id, model, failed) {
   else L.push('- This is a background reply: the phone picks the engine after this prompt is built, so you do not know which engine or model you are. Do not name one.');
   const noKey = IDS.filter(x => !keys[x].length).map(x => CFG[x].name);
   if (noKey.length) L.push('- NO key is saved for: ' + noKey.join(', ') + '. You cannot be any of those engines, and you must never say you are one of them.');
-  L.push('- Automatic AI route in this build: Groq → Cohere → OpenRouter → Gemini → Mistral. Hugging Face is not in the automatic route. Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
+  L.push('- Automatic AI route in this build: Groq → Cohere → Gemini → Mistral. Hugging Face is not in the automatic route. Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
   if (pinnedEngine) {
     const miss = id && id != pinnedEngine, why = (failed || []).find(f => f.id == pinnedEngine);
     L.push('- Pinned engine in Settings: ' + CFG[pinnedEngine].name + (pinnedModel && pinnedModel.id == pinnedEngine ? ' (model ' + pinnedModel.model + ')' : '') + ' [' + STATE_TXT[st[pinnedEngine]] + ']' + (miss ? '. It could not answer this message' + (why ? ' (' + String(why.why || '').slice(0, 120) + ')' : '') + ', so ' + (id == 'pollinations' ? 'Free Mode' : CFG[id].name) + ' answered instead. Tell him that plainly if he asks.' : '.'));
@@ -557,7 +548,7 @@ function factsBlock(id, model, failed) {
   return L.join('\n');
 }
 const withFacts = (o, lane, id, model, failed) => (lane == 'util' || o.json) ? o : Object.assign({}, o, { system: String(o.system || '') + '\n\n' + factsBlock(id, model, failed) });
-// Every model the engine's keys can see (cached 12h unless fresh). OpenRouter free models first. Chat models only.
+// Every model the engine's keys can see (cached 12h unless fresh). Chat models only.
 async function modelsOf(id, fresh) {
   const cache = LS.get('ember_models', {});
   let list = !fresh && cache[id] && cache[id].list && cache[id].list.length && Date.now() - (cache[id].at || 0) < MC ? cache[id].list : null;
@@ -593,7 +584,7 @@ async function runInner(lane, o, tok) {
   const routeIds = o.routeProvider && CFG[o.routeProvider] ? [o.routeProvider] : orderFor(lane);
   for (const id of routeIds) {
     if (!o.routeProvider && onlyPinned(lane) && id != pinnedEngine) break; // V1.9.15: strict pin
-    const soft = id == 'huggingface' || id == 'openrouter'; // prototypes: a 400/402/403/422 on one model must not kill the key or the engine
+    const soft = id == 'huggingface'; // prototypes: a 400/402/403/422 on one model must not kill the key or the engine
     for (const e of keys[id]) {
       if (e.bad || isCool(e.key)) continue;
       halted();

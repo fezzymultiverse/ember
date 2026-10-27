@@ -273,9 +273,13 @@ async function addRef(v) {
 }
 const T_R_OVER = { name: 'repo_overview', description: 'Overview of a linked reference repo: description, language, top-level files and the README start. Read-only. Use it first to learn what a linked repo is and how it is laid out.', parameters: { repo: 'string?' } };
 const T_R_LIST = { name: 'repo_list_files', description: 'Lists files and folders at a path in a linked reference repo. Read-only.', parameters: { repo: 'string?', path: 'string?' } };
-const T_R_READ = { name: 'repo_read_file', description: 'Reads one text file from a linked reference repo (up to 1 MB, long files trimmed; pass start to read further on). Read-only. Use it to study how another project does something, then write your own version: never paste long code from it as-is.', parameters: { repo: 'string?', path: 'string', start: 'number?' } };
-const T_R_FIND = { name: 'repo_search', description: 'Searches code inside a linked reference repo for a word or phrase. Needs his GitHub token saved. Read-only.', parameters: { repo: 'string?', query: 'string' } };
+const T_R_READ = { name: 'repo_read_file', description: 'Reads one text file from a linked reference repo (up to 1 MB, long files trimmed; pass start to read further on). Read-only. Use it to study how another project does something, then write your own version: never paste long code from it as-is. Pass path EXACTLY as repo_search or repo_list_files returned it (never retype, shorten or guess a path).', parameters: { repo: 'string?', path: 'string', start: 'number?' } };
+const T_R_FIND = { name: 'repo_search', description: 'Searches code inside a linked reference repo for a word or phrase. Needs his GitHub token saved. Read-only. It returns file PATHS only, not code: after it lists files you MUST call repo_read_file on the most relevant exact path before you answer or write any code.', parameters: { repo: 'string?', query: 'string' } };
 const REF_TOOLS = [T_R_OVER, T_R_LIST, T_R_READ, T_R_FIND];
+// V1.9.74: exact paths that search / listing handed back, per repo. A read that misses can then point at the real path instead of leaving the AI to invent one.
+const seenPaths = {};
+const noteSeen = (r, paths) => { const a = seenPaths[r] || (seenPaths[r] = []); paths.forEach(p => { if (p && !a.includes(p)) a.push(p); }); if (a.length > 400) a.splice(0, a.length - 400); };
+const baseName = p => String(p || '').split('/').pop().toLowerCase();
 async function repo_overview(a) {
   const r = pickRef(a.repo); if (!r) return noRef(a.repo);
   const [m, l, rd] = await Promise.all([gh('/repos/' + r, { anon: true }), gh('/repos/' + r + '/contents', { anon: true }), gh('/repos/' + r + '/readme', { anon: true })]);
@@ -289,12 +293,20 @@ async function repo_list_files(a) {
   const p = a.path ? cleanPath(a.path) : ''; if (a.path && !p) return { ok: false, error: 'That path is not valid.' };
   const x = await gh('/repos/' + r + '/contents' + (p ? '/' + encPath(p) : ''), { anon: true }); if (!x.ok) return { ok: false, error: x.error };
   if (!Array.isArray(x.json)) return { ok: false, error: 'That path is a file. Use repo_read_file.' };
+  noteSeen(r, x.json.filter(i => i.type != 'dir').map(i => (p ? p + '/' : '') + str(i.name, 120)));
   return { ok: true, repo: r, path: p || '/', count: x.json.length, items: x.json.slice(0, 120).map(i => ({ name: str(i.name, 120), type: i.type == 'dir' ? 'folder' : 'file', size: i.size || 0 })) };
 }
 async function repo_read_file(a) {
   const r = pickRef(a.repo); if (!r) return noRef(a.repo);
   const p = cleanPath(a.path); if (!p) return { ok: false, error: 'path is empty or not valid.' };
-  const x = await gh('/repos/' + r + '/contents/' + encPath(p), { anon: true }); if (!x.ok) return { ok: false, error: x.error };
+  const x = await gh('/repos/' + r + '/contents/' + encPath(p), { anon: true });
+  if (!x.ok) {
+    if (x.status != 404) return { ok: false, error: x.error };
+    // the path does not exist: offer the real paths this repo handed back with the same file name, else search by file name
+    let alt = (seenPaths[r] || []).filter(q => baseName(q) == baseName(p)).slice(0, 5);
+    if (!alt.length && on()) { const f = await gh('/search/code?per_page=5&q=' + encodeURIComponent('filename:' + baseName(p) + ' repo:' + r)); if (f.ok && f.json && Array.isArray(f.json.items)) alt = f.json.items.map(i => str(i.path, 160)).filter(Boolean).slice(0, 5); }
+    return { ok: false, error: '"' + p + '" does not exist in ' + r + '. That path was not returned by repo_search or repo_list_files, so it was probably guessed. Use a path exactly as a search or listing returned it.', did_you_mean: alt, next_step: alt.length ? 'Call repo_read_file again with one of did_you_mean.' : 'Call repo_search or repo_list_files to find the real path first.' };
+  }
   const j = x.json; if (!j || Array.isArray(j) || j.type !== 'file') return { ok: false, error: 'That is a folder. Use repo_list_files.' };
   if ((j.size || 0) > 1000000 || !j.content) return { ok: false, error: 'That file is over 1 MB (or empty), too big to read here.' };
   const text = fromB64(j.content); if (text.indexOf('\u0000') >= 0) return { ok: false, error: 'That looks like a binary file.' };
@@ -306,7 +318,9 @@ async function repo_search(a) {
   if (!on()) return { ok: false, error: 'GitHub code search needs a token. Add a Classic token in Settings > Keys > GitHub, or browse with repo_list_files.' };
   const q = str(a.query, 100).replace(/[^\w .\-:\/"]/g, ' ').trim(); if (!q) return { ok: false, error: 'query is empty.' };
   const x = await gh('/search/code?per_page=12&q=' + encodeURIComponent(q + ' repo:' + r)); if (!x.ok) return { ok: false, error: x.error };
-  return { ok: true, repo: r, total: (x.json && x.json.total_count) || 0, hits: ((x.json && x.json.items) || []).slice(0, 12).map(i => ({ path: str(i.path, 160) })) };
+  const hits = ((x.json && x.json.items) || []).slice(0, 12).map(i => ({ path: str(i.path, 160) }));
+  noteSeen(r, hits.map(h => h.path));
+  return { ok: true, repo: r, total: (x.json && x.json.total_count) || 0, hits, next_step: hits.length ? 'These are file paths only, not code. You MUST now call repo_read_file with the most relevant path below, copied exactly, before you answer or write any code.' : 'No files matched. Try different words, or browse with repo_list_files.' };
 }
 const REF_H = { repo_overview, repo_list_files, repo_read_file, repo_search };
 const HANDLERS = { github_status, github_list_files, github_read_file, github_write_file, github_run, github_run_status, github_install_runner };
@@ -319,7 +333,7 @@ async function dispatch(name, args) {
   catch (e) { return { ok: false, error: (e && e.message) || 'GitHub tool failed.' }; }
 }
 function stateBlock() {
-  const rf = refs().length ? 'LINKED REFERENCE REPOS (read-only, no clone needed): ' + refs().join(', ') + '. Use repo_overview first, then repo_list_files / repo_read_file' + (on() ? ' / repo_search' : '') + ' to study how they do something, then write your own version from what you learned. ' : '';
+  const rf = refs().length ? 'LINKED REFERENCE REPOS (read-only, no clone needed): ' + refs().join(', ') + '. Use repo_overview first, then repo_list_files / repo_read_file' + (on() ? ' / repo_search' : '') + ' to study how they do something, then write your own version from what you learned. If repo_search returns a list of files, you MUST use repo_read_file to read the most relevant file before answering, using the path exactly as returned. Never write code based on assumptions. ' : '';
   if (!on()) return rf ? 'GITHUB: ' + rf : '';
   return 'GITHUB: ' + rf + ' a Classic token is saved' + (repo() ? ' for the repo ' + repo() : ' but no repository yet (Settings > Keys > GitHub)') + '. Tools: github_list_files, github_read_file (read-only), github_write_file (commits one file, only when he asks), github_run (runs a shell command on a GitHub Actions cloud machine, only when he asks to run/build/test/compile: use it for heavy work instead of his phone, push the code first), github_run_status, github_install_runner, github_status. Files a cloud command copies into $EMBER_OUT come back as download links. Say only what the tool result says happened.';
 }

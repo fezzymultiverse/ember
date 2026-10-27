@@ -19,7 +19,7 @@ const MOCK = `
   window.fetch = async (u, o) => {
     u = String(u);
     if (/api\\.groq\\.com\\/openai\\/v1\\/models/.test(u)) return new Response(JSON.stringify({ data: [{ id: 'llama-3.3-70b-versatile' }] }), { status: 200, headers: { 'content-type': 'application/json' } });
-    if (/generativelanguage|mistral|openrouter|cohere|huggingface/.test(u)) return new Response('{}', { status: 200 });
+    if (/generativelanguage|mistral|cohere|huggingface/.test(u)) return new Response('{}', { status: 200 });
     return rf(u, o);
   };
   window.__ws = { sent: [], made: 0 };

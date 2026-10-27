@@ -17,6 +17,7 @@
 <button class="hb" id="bSet" aria-label="Settings">⚙</button></div>
 <div id="provDrop" class="provdrop hidden" role="menu" aria-label="Providers"></div>
 </header>
+<div id="projBadge" class="projbadge hidden"><button id="projBadgeOpen" class="pb-main" aria-label="Open the Projects tab"><span class="pb-ico">📁</span><span id="projBadgeName"></span></button><button id="projBadgeX" class="pb-x" aria-label="Close the open project" title="Close project">✕</button></div>
 <div id="fBadge" class="fbadge hidden">Free Mode: no key needed. Replies can be slower.</div>
 <main id="log"></main>
 <div id="empty" class="empty hidden">
@@ -36,11 +37,24 @@
 </div>
 
 <aside id="drawer"><div class="dh"><b>Menu</b><button class="hb" id="bDx">✕</button></div>
-<div class="dtabs"><button class="dtab on" data-d="chats">Chats</button><button class="dtab" data-d="prompts">Prompts</button></div>
+<div class="dtabs"><button class="dtab on" data-d="chats">Chats</button><button class="dtab" data-d="prompts">Prompts</button><button class="dtab" data-d="projects">Projects</button></div>
 <div class="dpane" id="dp_chats">
 <button class="btn" id="bNew">＋ New chat</button>
 <button class="rcbtn" id="hHead" aria-label="Open recent chats"><span class="rci">🕘</span><span class="rct"><b id="hTitle">Recent Chats (0)</b><small>Search, rename, delete</small></span><span class="chev">›</span></button>
 <button class="rcbtn" id="bSitesOpen" aria-label="Open saved sites"><span class="rci">🔖</span><span class="rct"><b>Saved Sites</b><small>Shortcuts the AI can read</small></span><span class="chev">›</span></button>
+</div>
+<div class="dpane hidden" id="dp_projects">
+<div id="pjActive" class="pj-active hidden"><span class="pj-dot"></span><span class="pj-an">Open: <b id="pjActiveName"></b></span><button class="btn g" id="pjClose" aria-label="Close the open project">Close</button></div>
+<div id="pjList"></div>
+<details id="pjFormBox" class="fold"><summary id="pjFormSum">＋ New project</summary>
+<div id="pjForm">
+<input type="text" id="pjName" placeholder="Name (e.g. Ember V2)" autocomplete="off" maxlength="60">
+<textarea id="pjGoal" rows="3" placeholder="Goal: what this project is meant to achieve" maxlength="500"></textarea>
+<input type="url" id="pjRepo" placeholder="GitHub repo (https://github.com/owner/repo)" autocomplete="off" spellcheck="false" maxlength="200">
+<p class="hint pj-err hidden" id="pjErr" role="alert"></p>
+<div class="prow"><button class="btn g" id="pjSave">Save project</button><button class="btn g hidden" id="pjCancel">Cancel</button></div>
+</div></details>
+<p class="hint">Open a project and every message you send carries its name, goal and repo, so Ember keeps the context. Saved on this phone only.</p>
 </div>
 <div class="dpane hidden" id="dp_prompts">
 <input type="text" id="pQ" placeholder="Search prompts…" autocomplete="off">
@@ -75,8 +89,11 @@
       <button id="dmWall" class="hb" aria-label="Change wallpaper" title="Wallpaper" style="width:30px;height:30px;font-size:13px">🖼</button><button id="dmClose" class="hb" style="width:30px;height:30px;font-size:13px">✕</button>
     </div>
     <div id="dmNowPlaying" class="dm-now-playing">
-      <span id="dmTrackName" class="dm-track-name">Nothing playing</span>
-      <span id="dmTrackSub" class="dm-track-sub"></span>
+      <div class="dm-art" aria-hidden="true"><img id="dmArt" class="hidden" alt=""><span id="dmArtPh" class="dm-art-ph">🎵</span></div>
+      <div class="dm-meta">
+        <span id="dmTrackName" class="dm-track-name">Nothing playing</span>
+        <span id="dmTrackSub" class="dm-track-sub"></span>
+      </div>
     </div>
     <div class="dm-controls">
       <button id="dmPrev" aria-label="Previous">⏮</button>
@@ -138,7 +155,7 @@
 <select id="engModel" disabled><option value="">Auto (router picks from the engine's live list)</option></select>
 <button class="btn g" id="bModels" style="margin-top:8px">Load models from my key</button>
 <p class="hint" id="engTruth"></p>
-<p class="hint">Auto tries your engines in the router's order (fastest first) and falls through the rest. Pin an engine to try it first. Pin a model to use only that exact model. If the pinned engine cannot answer, the next one does, and every reply says so. OpenRouter free models (:free) are listed first.</p></div>
+<p class="hint">Auto tries your engines in the router's order (fastest first) and falls through the rest. Pin an engine to try it first. Pin a model to use only that exact model. If the pinned engine cannot answer, the next one does, and every reply says so.</p></div>
 
 <div class="card collapsed" data-tab="keys"><div class="ct">Get a key</div>
 <div class="btnrow" id="getKeyRow" style="flex-wrap:wrap"></div>
@@ -159,7 +176,7 @@
 <div id="kList"></div>
 <div class="btnrow"><button class="btn g" id="bCheckAll">Check all</button></div>
 <div class="ct" style="margin-top:14px">Add one by hand</div>
-<div class="btnrow"><select id="kProv"><option value="groq">Groq</option><option value="mistral">Mistral</option><option value="gemini">Gemini</option><option value="openrouter">OpenRouter (Prototype)</option><option value="cohere">Cohere (Prototype)</option><option value="huggingface">HuggingFace (Prototype)</option><option value="anthropic">Claude (paid · pin to use)</option></select><input type="password" id="kIn" placeholder="Paste a key" autocomplete="off" spellcheck="false"><button class="btn" id="bKAdd" style="width:auto;padding:0 16px">Add</button></div>
+<div class="btnrow"><select id="kProv"><option value="groq">Groq</option><option value="mistral">Mistral</option><option value="gemini">Gemini</option><option value="cohere">Cohere (Prototype)</option><option value="huggingface">HuggingFace (Prototype)</option><option value="anthropic">Claude (paid · pin to use)</option></select><input type="password" id="kIn" placeholder="Paste a key" autocomplete="off" spellcheck="false"><button class="btn" id="bKAdd" style="width:auto;padding:0 16px">Add</button></div>
 <p class="hint">More than one key per engine is fine. When one is rate-limited, the next one takes over, then the next engine.</p></div>
 
 <div class="card" data-tab="keys"><div class="ct">GitHub · Classic token</div>
@@ -312,7 +329,7 @@
 <div class="wtabs"><button class="wtab on" data-t="keys">Keys</button><button class="wtab" data-t="health">Health</button><button class="wtab" data-t="test">Test</button></div>
 <div class="wpane" id="wp_keys"><p class="hint" id="wkStatus"></p>
 <div class="ct">Get a key</div><div class="btnrow" id="getKeyRowScrape" style="flex-wrap:wrap;margin-bottom:10px"></div>
-<label class="lb">Firecrawl</label><input type="password" id="wk_firecrawl" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Browserless</label><input type="password" id="wk_browserless" placeholder="Token" autocomplete="off" spellcheck="false"><label class="lb">ScraperAPI</label><input type="password" id="wk_scraperapi" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">ScraperBee</label><input type="password" id="wk_scraperbee" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Sting</label><input type="password" id="wk_sting" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">ZenRows</label><input type="password" id="wk_zenrows" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Tavily (same key as Web Search; optional)</label><input type="password" id="wk_tavily" placeholder="tvly-..." autocomplete="off" spellcheck="false"><label class="lb">SerpApi (snippets and search)</label><input type="password" id="wk_serpapi" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Bright Data API key (SERP search, optional Web Unlocker)</label><input type="password" id="wk_brightdata" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Bright Data SERP zone (search)</label><input type="text" id="wk_brightZone" placeholder="serp_api1" autocomplete="off" spellcheck="false"><label class="lb">Bright Data Web Unlocker zone (reads pages; leave empty for search only)</label><input type="text" id="wk_brightUnlock" placeholder="web_unlocker1" autocomplete="off" spellcheck="false"><label class="lb">Octoparse API key (op_sk_...)</label><input type="password" id="wk_octoparse" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Octoparse Task ID (the task to read rows from)</label><input type="text" id="wk_octoTask" placeholder="task id" autocomplete="off" spellcheck="false"><div id="wkExtras"></div><label class="lb">Sting endpoint (https, use {key} and {url} as placeholders)</label><input type="text" id="wk_stingEp" placeholder="https://…?key={key}&amp;url={url}" autocomplete="off" spellcheck="false"></div>
+<label class="lb">Firecrawl</label><input type="password" id="wk_firecrawl" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Browserless</label><input type="password" id="wk_browserless" placeholder="Token" autocomplete="off" spellcheck="false"><label class="lb">ScraperAPI</label><input type="password" id="wk_scraperapi" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">ScraperBee</label><input type="password" id="wk_scraperbee" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Sting</label><input type="password" id="wk_sting" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">ZenRows</label><input type="password" id="wk_zenrows" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Tavily (same key as Web Search; optional)</label><input type="password" id="wk_tavily" placeholder="tvly-..." autocomplete="off" spellcheck="false"><label class="lb">SerpApi (snippets and search)</label><input type="password" id="wk_serpapi" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Bright Data API key (SERP search, optional Web Unlocker)</label><input type="password" id="wk_brightdata" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Bright Data SERP zone (search)</label><input type="text" id="wk_brightZone" placeholder="serp_api1" autocomplete="off" spellcheck="false"><label class="lb">Bright Data Web Unlocker zone (reads pages; leave empty for search only)</label><input type="text" id="wk_brightUnlock" placeholder="web_unlocker1" autocomplete="off" spellcheck="false"><label class="lb">Octoparse API key (op_sk_...)</label><input type="password" id="wk_octoparse" placeholder="API key" autocomplete="off" spellcheck="false"><label class="lb">Octoparse Task ID (the task to read rows from)</label><input type="text" id="wk_octoTask" placeholder="task id" autocomplete="off" spellcheck="false"><div id="wkExtras"></div><label class="lb">Sting endpoint (generic https:// URL)</label><input type="text" id="wk_stingEp" placeholder="https://your-sting-endpoint.example/scrape" autocomplete="off" spellcheck="false"></div>
 <div class="wpane hidden" id="wp_health"><p class="hint">Local checks are instant. Provider checks fetch example.com once per provider, so each uses a small amount of that provider's credit.</p>
 <div class="ct" style="margin-top:8px">This phone</div><div id="hLocal"></div>
 <div class="ct" style="margin-top:12px">Providers</div><div id="hProv"></div>
@@ -329,7 +346,7 @@
 <div class="btnrow"><button class="btn" id="bExp">Export backup</button><button class="btn g" id="bImp">Import backup</button></div>
 <input type="file" id="fImp" accept="application/json,.json" hidden>
 <button class="btn g danger" id="bWipe" style="margin-top:10px">Delete everything</button>
-<p class="hint" id="ver">Ember V1.9.72 · White Chat Surface</p></div>
+<p class="hint" id="ver">Ember V1.9.74 · White Chat Surface</p></div>
 </div></section>
 
 <section id="react" class="sheet"><div class="sh"><b>Reasoning</b><button class="hb" id="bRx" aria-label="Close reasoning">✕</button></div>
@@ -501,7 +518,7 @@
 <script src="ember_find.js"></script><script src="ember_tasks.js"></script><script src="ember_keys.js"></script>
 <script src="ember_browser.js"></script>
 <script src="ember_term.js"></script>
-<script src="ember_voice.js"></script><script src="ember_lyrics.js"></script><script src="ember_prov_ui.js"></script><script src="ember_pastekeys.js"></script><script src="ember_plus.js"></script>
+<script src="ember_voice.js"></script><script src="ember_lyrics.js"></script><script src="ember_projects.js"></script><script src="ember_lyric_thoughts.js"></script><script src="ember_prov_ui.js"></script><script src="ember_pastekeys.js"></script><script src="ember_plus.js"></script>
 
 <script src="ember_ui.js"></script><script src="ember_extras.js"></script><script src="ember_create.js"></script>
 <script>
@@ -538,6 +555,7 @@
     console_.classList.toggle('hidden', isOpen);
     btn.classList.toggle('open', !isOpen);
     btn.querySelector('.dm-chevron').textContent = isOpen ? '▲' : '▼';
+    if (isOpen === false) { try { syncTrack(); } catch (e) { /* hoisted below */ } }
   });
   closeBtn && closeBtn.addEventListener('click', () => {
     console_.classList.add('hidden');
@@ -567,12 +585,30 @@
   mirrorClick('dmPrev', ['npPrev']);
   mirrorClick('dmNext', ['npNext']);
 
+  // V1.9.73: artwork in the console. It mirrors whatever cover the full player already found (file tag, Deezer, download thumbnail).
+  const dmArt = document.getElementById('dmArt'), dmArtPh = document.getElementById('dmArtPh');
+  function syncArt() {
+    if (!dmArt) return;
+    let u = '';
+    for (const id of ['npArt', 'mwArt']) {
+      const im = document.getElementById(id);
+      if (im && !im.classList.contains('hidden') && im.getAttribute('src')) { u = im.getAttribute('src'); break; }
+    }
+    if (!u) { dmArt.classList.add('hidden'); dmArt.removeAttribute('src'); if (dmArtPh) dmArtPh.classList.remove('hidden'); return; }
+    if (dmArt.getAttribute('src') !== u) dmArt.setAttribute('src', u);
+    dmArt.classList.remove('hidden'); if (dmArtPh) dmArtPh.classList.add('hidden');
+  }
+  if (dmArt) {
+    dmArt.addEventListener('error', () => { dmArt.classList.add('hidden'); if (dmArtPh) dmArtPh.classList.remove('hidden'); });
+    ['npArt', 'mwArt'].forEach(id => { const im = document.getElementById(id); if (im && window.MutationObserver) new MutationObserver(syncArt).observe(im, { attributes: true, attributeFilter: ['src', 'class'] }); });
+  }
   // Sync track info from the main now-playing title
   function syncTrack() {
     const t = document.getElementById('npTitle');
     const s = document.getElementById('npSub');
     if (t && dmTrack) dmTrack.textContent = t.textContent || 'Nothing playing';
     if (s && dmSub) dmSub.textContent = s.textContent || '';
+    try { syncArt(); } catch (e) { /* art is cosmetic */ }
     // Sync play/pause icon
     const np = document.getElementById('npPlay');
     if (np && dmPlay) dmPlay.textContent = np.textContent || '▶';

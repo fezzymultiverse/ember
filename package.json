@@ -1,6 +1,6 @@
 {
   "name": "ember",
-  "version": "1.9.72",
+  "version": "1.9.74",
   "private": true,
   "license": "UNLICENSED",
   "description": "Ember - a companion to talk to about anything (PWA, APK-ready via Capacitor)",
@@ -9,6 +9,8 @@
     "serve": "node serve.js 8080",
     "sync": "cap sync android",
     "patch:android": "python3 scripts/apply_android_patch.py android android_patch",
+    "test:v1974": "node tests/v1974-test.js",
+    "test:v1973": "node tests/v1973-test.js",
     "test:ui-stability": "node tests/v1950-ui-stability-test.js",
     "test:api-audit": "node tests/v1951-api-audit-test.js",
     "test:api-profile": "node tests/v1955-api-profile-test.js",

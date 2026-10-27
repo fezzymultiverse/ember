@@ -6,7 +6,7 @@
 const clip = (s, n) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, n);
 const lsGet = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
 const mask = k => { k = String(k || ''); return k.length > 10 ? k.slice(0, 4) + '…' + k.slice(-4) : '••••'; };
-const SECRET = /\b(?:gsk_|sk-or-v1-|sk-|hf_|tvly-|AIza|AQ\.)[A-Za-z0-9_\-.]{8,}|[A-Za-z0-9_\-]{36,}/g;
+const SECRET = /\b(?:gsk_|sk-|hf_|tvly-|AIza|AQ\.)[A-Za-z0-9_\-.]{8,}|[A-Za-z0-9_\-]{36,}/g;
 const redact = s => String(s).replace(SECRET, m => mask(m));
 const terms = q => clip(q, 200).toLowerCase().split(/\s+/).filter(Boolean);
 const hit = (text, t) => t.every(x => text.includes(x));

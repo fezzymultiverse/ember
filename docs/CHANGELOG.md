@@ -1,8 +1,25 @@
+# Ember V1.9.74
+- Repo reading: Ember now has to read a file after repo_search. New hard rule in the system prompt (persona.js, only when a repo is linked and repo_read_file is available): if repo_search returns a list of files it MUST use repo_read_file on the most relevant one before answering, and it never writes code based on assumptions. Same rule in the repo state block and in the repo_search / repo_read_file tool descriptions.
+- repo_search results now say, in the result itself, that they are paths only and a repo_read_file call must follow.
+- repo_read_file uses the path exactly as given. If the path does not exist it now fails with a clear reason plus `did_you_mean` (real paths this repo returned earlier, else a file-name search), so a guessed path like lib/scrapy/... gets corrected instead of ending the attempt.
+- Test: tests/v1974-test.js.
+
+# Ember V1.9.73
+- OpenRouter removed entirely: provider entry, router order, key scanner / sorter, Settings dropdown and hints. A saved OpenRouter key or pin is ignored.
+- Bojack easter egg card removed (chat reply, icon card and its CSS).
+- Sting scraper: the endpoint is now a plain generic `https://` URL. Ember calls it with `?url=<page>` and sends the key as a Bearer / x-api-key header. Endpoints saved with the old `{key}` / `{url}` placeholders still work.
+- Left-panel Music Console now shows the cover art (same artwork as the full player, 🎵 fallback).
+- Lyric thought bubbles (`www/ember_lyric_thoughts.js`): while a song plays and lyrics are found, the persona sometimes has a passing thought about the current line. Shown as a thought bubble in the chat, not saved in the conversation. Uses the existing Lyrics switch. First thought 30-70 s into a song, then every 80-200 s, max 5 per song; paused in the background, with a panel open, during a reply or a crisis state. The last thought is given to the AI for 10 minutes so he can reply to it.
+- Project Workspace (`www/ember_projects.js`): new Projects tab in the left drawer. Create a project (Name, Goal, GitHub repo link), open, edit, delete. The open project's name, goal and repo are added to the system prompt on every message (not during a crisis reply). Saved in localStorage `ember_projects`. A chip under the header shows the open project.
+- Tests: `tests/v1973-test.js`; OpenRouter references removed from older tests and tools/diag.js.
+- Not device-tested.
+
 # Ember V1.9.72
 - GitHub Classic token: new card in Settings > Keys (token + owner/name repo, Check token, Install runner). Stored in localStorage `ember_github`, never in backups, never shown to the AI.
 - New `www/ember_github.js` tools (appear only while a token is saved): github_status, github_list_files, github_read_file, github_write_file, github_run, github_run_status, github_install_runner.
 - Cloud runs: github_run dispatches the installed `Ember Run` workflow (Ubuntu, Node 20, Python 3.12, Java 17). The log is committed to the `ember-results` branch, files copied to `$EMBER_OUT` become a Release, and Ember reads both back. Live progress shows as one row in Thinking (GitHub icon, step name, % bar).
 - Gates: writes need a push/save/commit message that mentions GitHub or the repo; runs need a run/build/test/compile message; the runner is only installed when asked (or by the Install runner button). Writes under `.github/` and content that looks like a secret are refused.
+- UI pass (closer to Claude and Manus): warm near-black surface, neutral soft user bubble (was bright orange), Ember's replies as plain book-style text, calmer action row, blue flashing light beside the Thinking status, a steps counter (done/total) and a green tick on every finished step. Artifacts were already supported (<artifact> blocks: markdown, document, PDF, SVG, HTML, code, JSON, CSV).
 - Reference repos: link up to 8 GitHub repos (Settings > Keys > GitHub > Reference repos, with one-tap suggestions: SWE-agent, Aider, OpenHands, github-mcp-server, MCP servers and SDK). Nothing is cloned. Tools repo_overview, repo_list_files, repo_read_file and repo_search read them live; public repos need no token (a saved token only raises the rate limit; repo_search needs it).
 - Claude engine: new provider `anthropic` (Messages API, direct from the phone with the browser-access header). Model list comes live from /v1/models; replies stream; native tool calls work. It is PAID, so it is never in the automatic order: it answers only while pinned in the Providers chip. Pasting an `sk-ant-` key anywhere now files it as a Claude key.
 - Version label, service-worker cache and package.json now agree (1.9.72).

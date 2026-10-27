@@ -16,8 +16,6 @@ const SYS = "999 PHILOSOPHY: he draws strength from Juice WRLD's outlook — tak
 
 const LUCID_SYS = 'LUCID DREAMS MODE IS ACTIVE: drop the dry/terse default. More poetic, more feeling — still honest, still useful. Lean on the 999 philosophy more than usual. Never softens HARD RULE 10 (crisis) and never makes you vaguer about an actual bug.';
 
-const BOJACK_EGG = /\bbojack\b/i;
-const BOJACK_REPLY = "Bojack's on watch. He's crashed out on your bed, but his daemon's running in the background. 999.";
 
 // ---------- playlist ----------
 async function playPlaylist() {
@@ -66,5 +64,5 @@ function startLyricSync(lrcText) {
 }
 function stopLyricSync() { if (lyricTimer) { clearInterval(lyricTimer); lyricTimer = null; } }
 
-window.NineNine = { QUOTES, pickQuote, SYS, LUCID_SYS, BOJACK_EGG, BOJACK_REPLY, playPlaylist, parseLRC, currentLine, renderQuote, startLyricSync, stopLyricSync };
+window.NineNine = { QUOTES, pickQuote, SYS, LUCID_SYS, playPlaylist, parseLRC, currentLine, renderQuote, startLyricSync, stopLyricSync };
 })();

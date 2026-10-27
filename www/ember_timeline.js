@@ -320,6 +320,7 @@
     let box = body.querySelector('.ek-rows');
     if (!box) { body.innerHTML = '<div class="ek-rows"></div>'; box = body.querySelector('.ek-rows'); }
     const v = vis(), ids = new Set(v.map(l => String(l.id)));
+    try { const c = body.parentNode && body.parentNode.querySelector('.et-count'); if (c) c.textContent = countTxt(v); } catch (e) { /* header not drawn */ }
     Array.from(box.children).forEach(n => { if (!ids.has(n.getAttribute('data-id'))) n.remove(); });
     const have = {}; Array.from(box.children).forEach(n => { have[n.getAttribute('data-id')] = n; });
     v.forEach(l => {
@@ -334,12 +335,14 @@
   const SW = '<button class="tl-x et-sw" data-et="style" aria-label="Switch thinking display" title="Switch thinking display">\u21c4</button>';
   // V1.9.70: the egg is the app icon (ember-icon.svg); an orange arc orbits it while Ember works.
   const SPIN = '<span class="et-egg" aria-hidden="true"><img class="et-egg-img" src="ember-icon.svg" alt=""><svg class="et-egg-ring" viewBox="0 0 40 40"><circle class="et-egg-arc" cx="20" cy="20" r="18"/></svg></span>';
+  // V1.9.72: Manus-style progress, steps finished / steps started (actions only, not plain thoughts)
+  const countTxt = V => { const a = (V || []).filter(l => l.k === 'a'); return a.length ? a.filter(l => l.st !== 'run').length + '/' + a.length : ''; };
   function innerHtml() { // live only
     const V = vis();
     if (getStyle() === 'claude') { // Rotating status first; tapping the row reveals the richer timeline.
       return '<div class="et-inner et-claude et-spin' + (live.open ? ' et-open' : '') + '">'
         + '<div class="et-hdr" data-et="toggle" role="button" aria-expanded="' + (live.open ? 'true' : 'false') + '" tabindex="0">'
-        + SPIN + '<span class="et-stage">' + statusSpan(statusOf()) + '</span>' + STOP + SW
+        + SPIN + '<span class="et-led" aria-hidden="true"></span><span class="et-stage">' + statusSpan(statusOf()) + '</span><span class="et-count" aria-label="Steps done">' + countTxt(V) + '</span>' + STOP + SW
         + '<span class="et-drop-hint" aria-hidden="true">' + DOWN + '</span></div>'
         + '<div class="et-body"><div class="et-lines et-timeline-lines">' + rowsHtml(V, false) + '</div></div></div>';
     }

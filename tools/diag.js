@@ -18,7 +18,7 @@ const rnd = (alpha, n, seed) => { let o = '', c = 0; while (o.length < n) { cons
 const B62 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', HEX = '0123456789abcdef', UP = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 const K = {
   groq: 'gsk_' + rnd(B62, 52, 1), gemini: 'AIza' + rnd(B62 + '_-', 35, 2), geminiAQ: 'AQ.Ab8' + rnd(B62 + '_-', 40, 3), mistral: rnd(B62, 32, 4), mistral2: rnd(B62, 32, 44),
-  openrouter: 'sk-or-v1-' + rnd(HEX, 64, 5), hf: 'hf_' + rnd(B62, 34, 6), cohere: rnd(B62, 40, 7),
+  hf: 'hf_' + rnd(B62, 34, 6), cohere: rnd(B62, 40, 7),
   firecrawl: 'fc-' + rnd(HEX, 32, 8), tavily: 'tvly-dev-' + rnd(B62, 32, 9), serpapi: rnd(HEX, 64, 10), scraperapi: rnd(HEX, 32, 11),
   scraperbee: rnd(UP, 80, 12), zenrows: rnd(HEX, 40, 13), browserless: rnd(B62, 36, 14), bright: rnd(HEX, 64, 15), octo: 'op_sk_' + rnd(B62, 30, 16)
 };
@@ -34,7 +34,6 @@ if (require.main === module) {
     'AI: Mistral table': '| Mistral | ' + K.mistral + ' |',
     'AI: two groq keys glued with comma': K.groq + ',' + 'gsk_' + rnd(B62, 52, 77),
     'AI: Gemini in URL ?key=': 'curl "https://generativelanguage.googleapis.com/v1beta/models?key=' + K.gemini + '"',
-    'AI: openrouter w/ dashes': 'sk-or-v1-' + rnd(HEX, 32, 5) + '-' + rnd(HEX, 32, 6),
     'AI: Mistral key all letters': 'Mistral: ' + rnd('abcdefghijklmnopqrstuvwxyzABCDEFGH', 32, 9),
     'AI: Mistral 4 line gap': 'Mistral API\nurl: x\nplan: free\nowner: me\nkey: ' + K.mistral,
     'AI: env export Mistral arr': 'export MISTRAL_KEYS=("' + K.mistral + '" "' + K.mistral2 + '")',

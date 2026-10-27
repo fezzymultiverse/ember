@@ -143,11 +143,10 @@ function bub(x, last, i) {
   const eng = x.eng ? ' · ' + Prov.label(x.eng.p) + (S.showEng && x.eng.m ? ' ' + esc(String(x.eng.m).replace(/^.*\//, '').slice(0, 34)) : '') + (S.showEng && x.eng.ms ? ' ' + x.eng.ms + 'ms' : '') + (x.eng.pm ? ' · ' + Prov.label(x.eng.pm) + ' pin failed' : '') : '';
   const regen = last && x.r == 'a' ? '<button data-act="regen">↻ again</button>' : '';
   const say = x.r == 'a' ? '<button data-act="say" data-i="' + i + '" aria-label="Read aloud" title="Read aloud"' + (sayIdx === i ? ' class="talking"' : '') + '>' + (sayIdx === i ? '■ Stop' : '🔊') + '</button>' : '';
-  const cp = x.egg ? '' : '<button data-act="copy" data-i="' + i + '" aria-label="Copy message" title="Copy this message">⧉ Copy</button>';
-  const eggImg = x.egg == 'bojack' ? '<img src="ember-icon.svg" alt="Ember app icon" class="msg-egg-icon">' : '';
+  const cp = '<button data-act="copy" data-i="' + i + '" aria-label="Copy message" title="Copy this message">⧉ Copy</button>';
   const context = x.ctx ? '<span class="context-chip" title="This message includes extra context">'+(/image|photo|vision/i.test(x.ctx)?'Image context':/document|file|attachment/i.test(x.ctx)?'Document context':'Extra context')+'</span>' : '';
   const makeArtifact = x.r === 'a' && !artifact ? '<button data-act="artifact" data-i="'+i+'" title="Save this reply as a Markdown artifact">Save .md</button>' : '';
-  return (x.tl && window.EmberTimeline ? window.EmberTimeline.savedHtml(x.tl) : '') + '<div class="msg ' + x.r + (x.egg ? ' egg' : '') + '">' + eggImg + '<div>' + (artifact ? artifact.html : fmt(x.t)) + '</div><div class="mt">' + context + '<span>' + U.time(x.ts) + (x.deep ? ' · 💡' : '') + eng + '</span>' + say + cp + regen + makeArtifact + '</div></div>';
+  return (x.tl && window.EmberTimeline ? window.EmberTimeline.savedHtml(x.tl) : '') + '<div class="msg ' + x.r + '"><div>' + (artifact ? artifact.html : fmt(x.t)) + '</div><div class="mt">' + context + '<span>' + U.time(x.ts) + (x.deep ? ' · 💡' : '') + eng + '</span>' + say + cp + regen + makeArtifact + '</div></div>';
 }
 function renderLog() {
   const m = conv ? conv.msgs : [];
@@ -157,12 +156,13 @@ function renderLog() {
   const liveCard = timelineLive ? $('typ') : null;
   $('empty').classList.toggle('hidden', m.length > 0 || !!timelineLive);
   $('noKey').classList.toggle('hidden', Prov.hasKeys());
-  $('log').innerHTML = m.map((x, i) => bub(x, i == m.length - 1, i)).join('') + (window.EmberArtifacts && conv ? window.EmberArtifacts.shelf(conv.msgs) : '') + (window.EmberAgentAddon ? window.EmberAgentAddon.cardsHtml() : '') + (window.EmberTimeline ? window.EmberTimeline.liveHtml() : '') + (busy && streamText ? '<div class="msg a stream-preview" id="streamPreview"><div>' + fmt(streamText) + '</div><small>Live response</small></div>' : '') +
+  $('log').innerHTML = m.map((x, i) => bub(x, i == m.length - 1, i) + (window.EmberLyricThoughts && conv ? window.EmberLyricThoughts.after(conv.id, i) : '')).join('') + (window.EmberArtifacts && conv ? window.EmberArtifacts.shelf(conv.msgs) : '') + (window.EmberAgentAddon ? window.EmberAgentAddon.cardsHtml() : '') + (window.EmberTimeline ? window.EmberTimeline.liveHtml() : '') + (busy && streamText ? '<div class="msg a stream-preview" id="streamPreview"><div>' + fmt(streamText) + '</div><small>Live response</small></div>' : '') +
     (lastErr ? '<div class="msg e"><div>' + esc(lastErr) + '</div><div class="mt"><button data-act="retry">Try again</button><button data-act="keys">Open Keys</button></div></div>' : '');
   const freshCard = $('typ'); if (liveCard && freshCard) freshCard.replaceWith(liveCard);
   if (Safety.lastLevel() >= 3 && m.length) $('log').insertAdjacentHTML('beforeend', Safety.crisisCard());
   down(); renderTop(); paintSay();
 }
+window.EmberChatState = { conv: () => conv, busy: () => busy }; // V1.9.73: read-only view for the lyric thought bubbles
 function down() { const l = $('log'); l.scrollTop = l.scrollHeight; }
 function typing(on) {
   const old = $('typ'); if (old) old.remove();
@@ -349,7 +349,7 @@ async function resolveAddonCalls(text, L, route) {
     base.push({ role: 'assistant', content: stripTags(cur) });
     base.push({ role: 'user', content: '[SYSTEM CHECK, not from him: you just wrote that you searched, looked up, read or downloaded something, but NO tool ran this turn, so that is false. If a tool for it is listed, reply with ONLY its tool_call block now. If none is available or it is switched off, tell him plainly what is off or missing and that nothing was done. Never claim an action without a tool result.]' });
     try {
-      const sys0 = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, uiState: uiStateBlock() }), Safety.lastLevel());
+      const sys0 = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, noAmbient: Safety.lastLevel() >= 3, uiState: uiStateBlock() }), Safety.lastLevel());
       const fix = await Prov.run(L.lane, Object.assign({ system: sys0, messages: base, temp: 0.3, max: 450, tools: toolCatalog() }, route ? { routeProvider: route.provider, routeModel: route.model } : {}));
       const t2 = String(fix.text || ''), c2 = parseCalls(t2);
       if (c2.length) { cur = t2; calls = c2; }
@@ -392,7 +392,7 @@ async function resolveAddonCalls(text, L, route) {
         'If you still need another tool (for example scrape_url after list_sites), reply with ONLY that tool_call block. Otherwise answer him in your own voice. ') +
       'No JSON, no code blocks, no raw data dump — tell him what it means, in your own voice, the way a person would after actually looking at it. Only claim what the result actually says: if it holds an error, ok:false, or nothing, say that plainly in one line and do not pretend it worked. If a result says a bridge or key is missing or empty, say so plainly in one line.]\n\n' + ctx });
     try {
-      const sys = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, noTools: last, uiState: uiStateBlock(), actionHistory: historyLines(rounds) }), Safety.lastLevel());
+      const sys = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, noTools: last, noAmbient: Safety.lastLevel() >= 3, uiState: uiStateBlock(), actionHistory: historyLines(rounds) }), Safety.lastLevel());
       const synth = await Prov.run(L.lane, Object.assign({ system: sys, messages: msgs, temp: 0.85, max: 450, tools: last ? null : toolCatalog() }, route ? { routeProvider: route.provider, routeModel: route.model } : {}));
       cur = String(synth.text || '');
     } catch (e) { return stripTags(cur) || 'I tried, but the add-on came back empty.'; }
@@ -514,11 +514,6 @@ async function send() {
   Safety.mark(Safety.detect(t).level);
   if (conv.auto && conv.title == 'New chat') conv.title = t.length > 38 ? t.slice(0, 38).trim() + '…' : t;
   $('inp').value = ''; grow();
-  const egg = window.NineNine && window.NineNine.BOJACK_EGG && window.NineNine.BOJACK_EGG.test(t);
-  if (egg) {
-    conv.msgs.push({ r: 'a', t: window.NineNine.BOJACK_REPLY, ts: Date.now(), egg: 'bojack' });
-    await persist(); renderLog(); return;
-  }
   await persist(); renderLog();
   if (await directNewPipe(t)) return;
   reply();
@@ -861,7 +856,7 @@ function renderKeys() {
 $('kList').addEventListener('click', e => { const b = e.target.closest('[data-fold]'); if (!b) return; toggleFold(b.dataset.fold); renderKeys(); });
 
 // ---------- V1.6.1: Get Key buttons ----------
-const KEY_LINKS = { groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', openrouter: 'https://openrouter.ai/settings/keys', cohere: 'https://dashboard.cohere.com/api-keys', huggingface: 'https://huggingface.co/settings/tokens', anthropic: 'https://console.anthropic.com/settings/keys' };
+const KEY_LINKS = { groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', huggingface: 'https://huggingface.co/settings/tokens', anthropic: 'https://console.anthropic.com/settings/keys' };
 const SCRAPE_LINKS = { firecrawl: 'https://www.firecrawl.dev/app/api-keys', browserless: 'https://www.browserless.io/', scraperapi: 'https://www.scraperapi.com/', scraperbee: 'https://app.scrapingbee.com/account/manage', zenrows: 'https://app.zenrows.com/builder', tavily: 'https://app.tavily.com/home', serpapi: 'https://serpapi.com/manage-api-key', brightdata: 'https://brightdata.com/cp', sting: '', octoparse: 'https://www.octoparse.com/' };
 function paintGetKeyRow(el, links) { if (!el) return; el.innerHTML = Object.keys(links).filter(k => links[k]).map(k => '<button class="btn g" data-link="' + esc(links[k]) + '" style="width:auto;padding:7px 12px;font-size:12px">' + (Prov.CFG[k] ? Prov.CFG[k].name : (window.EmberScraper && window.EmberScraper.LABEL[k]) || k) + ' ↗</button>').join(''); }
 document.addEventListener('click', e => { const b = e.target.closest('[data-link]'); if (b) window.open(b.dataset.link, '_blank', 'noopener'); });
