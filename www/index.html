@@ -159,8 +159,23 @@
 <div id="kList"></div>
 <div class="btnrow"><button class="btn g" id="bCheckAll">Check all</button></div>
 <div class="ct" style="margin-top:14px">Add one by hand</div>
-<div class="btnrow"><select id="kProv"><option value="groq">Groq</option><option value="mistral">Mistral</option><option value="gemini">Gemini</option><option value="openrouter">OpenRouter (Prototype)</option><option value="cohere">Cohere (Prototype)</option><option value="huggingface">HuggingFace (Prototype)</option></select><input type="password" id="kIn" placeholder="Paste a key" autocomplete="off" spellcheck="false"><button class="btn" id="bKAdd" style="width:auto;padding:0 16px">Add</button></div>
+<div class="btnrow"><select id="kProv"><option value="groq">Groq</option><option value="mistral">Mistral</option><option value="gemini">Gemini</option><option value="openrouter">OpenRouter (Prototype)</option><option value="cohere">Cohere (Prototype)</option><option value="huggingface">HuggingFace (Prototype)</option><option value="anthropic">Claude (paid · pin to use)</option></select><input type="password" id="kIn" placeholder="Paste a key" autocomplete="off" spellcheck="false"><button class="btn" id="bKAdd" style="width:auto;padding:0 16px">Add</button></div>
 <p class="hint">More than one key per engine is fine. When one is rate-limited, the next one takes over, then the next engine.</p></div>
+
+<div class="card" data-tab="keys"><div class="ct">GitHub · Classic token</div>
+<p class="hint">Lets Ember read and write files in one repo and run builds, compiles and tests on GitHub Actions, so the heavy work stays off your battery. Make a Classic token at github.com/settings/tokens with the <b>repo</b> and <b>workflow</b> scopes. It stays on this phone, is never put in a backup, and Ember only writes or runs when you ask.</p>
+<label class="lb">Classic token</label>
+<input type="password" id="keyGithub" placeholder="ghp_..." autocomplete="off" spellcheck="false">
+<label class="lb">Repository (owner/name)</label>
+<input type="text" id="repoGithub" placeholder="fezzywrld/ember-builds" autocomplete="off" autocapitalize="off" spellcheck="false">
+<div class="btnrow" style="margin-top:8px"><button class="btn g" id="bGithubTest">Check token</button><button class="btn g" id="bGithubInstall">Install runner</button></div>
+<p class="hint" id="githubOut"></p>
+<label class="lb">Reference repos · read-only, no clone, no token needed</label>
+<div class="btnrow"><input type="text" id="refIn" placeholder="owner/name, like Aider-AI/aider" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="btn" id="bRefAdd" style="width:auto;padding:0 16px">Link</button></div>
+<div id="refList"></div>
+<p class="hint">Linked repos stay on GitHub. Ember reads them live to study how other projects work (public repos need nothing; a saved token only raises GitHub's rate limit). Suggested:</p>
+<div id="refSuggest"></div>
+<p class="hint">A public repo makes run logs and Release files public. Use a private repo for anything you do not want seen.</p></div>
 
 <div class="card collapsed" data-tab="keys"><div class="ct">Notepad · paste anything, pull the keys out</div>
 <textarea id="padText" class="pad" placeholder="Paste a note, a doc dump, anything with keys buried in it…" spellcheck="false"></textarea>
@@ -314,7 +329,7 @@
 <div class="btnrow"><button class="btn" id="bExp">Export backup</button><button class="btn g" id="bImp">Import backup</button></div>
 <input type="file" id="fImp" accept="application/json,.json" hidden>
 <button class="btn g danger" id="bWipe" style="margin-top:10px">Delete everything</button>
-<p class="hint" id="ver">Ember V1.9.62 · Artifact Studio</p></div>
+<p class="hint" id="ver">Ember V1.9.72 · White Chat Surface</p></div>
 </div></section>
 
 <section id="react" class="sheet"><div class="sh"><b>Reasoning</b><button class="hb" id="bRx" aria-label="Close reasoning">✕</button></div>
@@ -342,7 +357,7 @@
 <div class="card lyr hidden" id="npLyr"><div class="ct">Lyrics</div><div class="lbody" id="npLyrBody"></div><small class="asrc">Preview, 3 lines. Lyrics: LRCLIB</small></div>
 <div class="card about hidden" id="npAbout"><div class="ct">About</div><div class="abody" id="npAboutBody"></div></div>
 <div class="card dz-preview hidden" id="dzPreview"><div class="ct">Selected from Deezer <small>metadata preview</small></div><div class="dzp-head"><img id="dzPreviewArt" alt="Selected album artwork"><div><b id="dzPreviewTitle"></b><span id="dzPreviewSub"></span></div></div><div class="abody" id="dzPreviewAbout"></div><div class="btnrow"><button class="btn" id="dzToYt">Find this on YouTube</button><button class="btn g" id="dzClear">Clear</button></div></div>
-<div class="mtabs" role="tablist"><button class="mtab on" data-m="lib" role="tab">🎵 Library</button><button class="mtab" data-m="get" role="tab">⬇ Get</button><button class="mtab" data-m="ai" role="tab">✨ Ember</button></div>
+<div class="mtabs" role="tablist"><button class="mtab on" data-m="lib" role="tab"><span class="tab-glyph" aria-hidden="true">🎵</span> Library</button><button class="mtab" data-m="get" role="tab"><span class="tab-glyph" aria-hidden="true">⬇</span> Get</button><button class="mtab" data-m="ai" role="tab"><span class="tab-glyph" aria-hidden="true">✨</span> Ember</button></div>
 <div class="mpane" id="mp_lib">
 <div class="btnrow"><button class="btn" id="mUp">＋ Upload music</button><button class="btn g" id="mScan">Scan phone</button></div>
 <input type="file" id="mFile" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac" multiple hidden>
@@ -480,9 +495,9 @@
 
 <div class="modal" id="dlg"><div class="mc"><h2 id="dT"></h2><p id="dX"></p><input type="text" id="dI" class="hidden"><div class="btnrow" style="margin-top:14px"><button class="btn" id="dOk">OK</button><button class="btn g" id="dNo">Cancel</button></div></div></div>
 <div id="toast"></div>
-<script src="store.js"></script><script src="ember_keyscan.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js"></script><script src="ember_timeline.js"></script><script src="ember_artifacts.js"></script><script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script><script src="ember_getmusic.js"></script><script src="ember_react_ui.js"></script><script src="ember_think_inline.js"></script><script src="ember_device.js"></script>
+<script src="store.js"></script><script src="ember_keyscan.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js"></script><script src="ember_timeline.js"></script><script src="ember_pdf.js"></script><script src="ember_artifacts.js"></script><script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script><script src="ember_getmusic.js"></script><script src="ember_react_ui.js"></script><script src="ember_think_inline.js"></script><script src="ember_device.js"></script>
 <script src="ember_docs_lib.js"></script>
-<script src="ember_graph.js"></script>
+<script src="ember_graph.js"></script><script src="ember_github.js"></script>
 <script src="ember_find.js"></script><script src="ember_tasks.js"></script><script src="ember_keys.js"></script>
 <script src="ember_browser.js"></script>
 <script src="ember_term.js"></script>

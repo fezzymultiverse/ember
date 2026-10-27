@@ -31,6 +31,7 @@ const CAT = {
   openrouter:  { kind: 'chat',   label: 'OpenRouter',   rx: 'open[\\s_-]?router', prefixed: true },
   huggingface: { kind: 'chat',   label: 'HuggingFace',  rx: 'hugging[\\s_-]?face', weak: 'hf', prefixed: true },
   cohere:      { kind: 'chat',   label: 'Cohere',       rx: 'cohere', weak: 'co(?=[_-](?:api[_-]?)?(?:key|token))', shape: /^[A-Za-z0-9]{40}$/, strict: true, noHex: true },
+  anthropic:   { kind: 'chat',   label: 'Claude',       rx: 'anthropic|claude', prefixed: true },
   firecrawl:   { kind: 'scrape', label: 'Firecrawl',    rx: 'firecrawl', prefixed: true },
   browserless: { kind: 'scrape', label: 'Browserless',  rx: 'browserless', shape: /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[A-Za-z0-9]{20,64})$/i },
   scraperapi:  { kind: 'scrape', label: 'ScraperAPI',   rx: 'scraper[\\s_-]?api', shape: HEX(32) },
@@ -62,12 +63,12 @@ const STRONG = [
   ['firecrawl', new RegExp(B + 'fc-[A-Za-z0-9]{16,}', 'g')],
   ['tavily', new RegExp(B + 'tvly-[A-Za-z0-9_-]{16,}', 'g')],
   ['octoparse', new RegExp(B + 'op_sk_[A-Za-z0-9_-]{8,}', 'g')],
+  ['anthropic', new RegExp(B + 'sk-ant-[A-Za-z0-9_-]{20,}', 'g')],
   ['easyvoice', new RegExp(B + 'ev_[A-Za-z0-9_-]{12,}', 'g')]
 ];
 // keys of services Ember cannot use: only counted (by service name), never stored
 const OTHER_KEYS = [
   ['OpenAI', new RegExp(B + 'sk-(?!or-v1-|ant-)(?:proj-|svcacct-|admin-)?[A-Za-z0-9_-]{32,}', 'g')],
-  ['Anthropic', new RegExp(B + 'sk-ant-[A-Za-z0-9_-]{20,}', 'g')],
   ['xAI', new RegExp(B + 'xai-[A-Za-z0-9]{20,}', 'g')],
   ['Perplexity', new RegExp(B + 'pplx-[A-Za-z0-9]{20,}', 'g')],
   ['Cerebras', new RegExp(B + 'csk-[A-Za-z0-9]{20,}', 'g')],

@@ -8,12 +8,13 @@ const lsGet = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 
 const CHAT = 'Chat engine. Used automatically for every reply (the router picks one, or the one he pinned). No tool call needed.';
 const SCRAPE = id => 'Web page fetcher. Used by scrape_url (it takes turns with his other scraper keys; pass via:"' + id + '" to force this one). Only runs when Settings > Scraping is switched on.';
 const USE = {
-  groq: CHAT, mistral: CHAT, gemini: CHAT, openrouter: CHAT + ' Prototype.', cohere: CHAT + ' Prototype.', huggingface: CHAT + ' Prototype.',
+  groq: CHAT, mistral: CHAT, gemini: CHAT, openrouter: CHAT + ' Prototype.', cohere: CHAT + ' Prototype.', huggingface: CHAT + ' Prototype.', anthropic: 'Claude chat engine (paid). Never used automatically: it answers only while he pins Claude in the Providers chip.',
   firecrawl: SCRAPE('firecrawl') + ' Also backs up web_search after Tavily.', browserless: SCRAPE('browserless'), scraperapi: SCRAPE('scraperapi'), scraperbee: SCRAPE('scraperbee'), sting: SCRAPE('sting'), zenrows: SCRAPE('zenrows'),
   serpapi: 'Google search results. Backs up web_search after Tavily, and is the last resort inside scrape_url (snippets only, never the page itself).',
   brightdata: 'Bright Data. Google search results through its SERP zone (backs up web_search after SerpApi). With a Web Unlocker zone saved (Settings > Scraping) it also fetches pages inside scrape_url; with only a SERP zone it gives search snippets, never the page itself. Several keys can be saved: extras cover for the first.',
   octoparse: 'Reads the exported rows of an Octoparse task he built (task id in Settings > Scraping). Used only by scrape_url with via:"octoparse"; it cannot read a url, so it never joins the normal rotation. Needs a Standard plan or higher for API access.',
   tavily: 'Live web search with full results (web_search, needs Settings > Music > Agent & API Tools > Web search ON) and page reading (scrape_url, Extract, takes turns with his other scraper keys when Settings > Scraping is on). Optional: without it web_search still works through DuckDuckGo, but only for encyclopedia-style answers, not news.',
+  github: 'GitHub Classic token. Used by the github_* tools: read and write files in his saved repo and run builds on GitHub Actions (github_run).',
   audd: 'Song identification. Used by the identify_song tool and the Identify button in the Music panel.'
 };
 const WHERE = id => (window.Prov && window.Prov.CFG && window.Prov.CFG[id]) ? 'Settings > Keys' : (id == 'tavily' ? 'Settings > Music > Agent & API Tools (or Settings > Scraping: same key)' : id == 'audd' ? 'Settings > Music' : 'Settings > Scraping');
@@ -26,6 +27,7 @@ function inventory() {
   });
   if (SC && SC.KEY_IDS) { const k = (SC.get() || {}).keys || {}; const cnt = id => (SC.keysOf ? SC.keysOf(id).length : (k[id] ? 1 : 0)); SC.KEY_IDS.filter(id => id != 'tavily').forEach(id => out.push({ id, name: (SC.LABEL && SC.LABEL[id]) || id, kind: 'scraper', saved: cnt(id), usable: cnt(id), use: USE[id], where: WHERE(id) })); }
   const A = window.EmberAgentAddon, tn = SC && SC.keysOf ? SC.keysOf('tavily').length : (A && A.hasTavilyKey && A.hasTavilyKey() ? 1 : 0); out.push({ id: 'tavily', name: 'Tavily', kind: 'web search', saved: tn, usable: tn, use: USE.tavily, where: WHERE('tavily') });
+  const GH = window.EmberGithub; out.push({ id: 'github', name: 'GitHub', kind: 'code host', saved: GH && GH.on() ? 1 : 0, usable: GH && GH.on() ? 1 : 0, use: USE.github, where: 'Settings > Keys > GitHub' });
   const D = window.EmberAudd; const hasAudd = !!(D && D.hasKey && D.hasKey()); out.push({ id: 'audd', name: 'Audd.io', kind: 'song id', saved: hasAudd ? 1 : 0, usable: hasAudd ? 1 : 0, use: USE.audd, where: WHERE('audd') });
   return out;
 }

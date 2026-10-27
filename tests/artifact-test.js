@@ -12,4 +12,9 @@ assert.match(r.html,/artifact-card/); assert.match(r.html,/data-artifact-view="0
 p=A.parse('<artifact type="code" language="python" title="rename.py">print(1)</artifact>'); assert.equal(p.items[0].language,'python'); assert.equal(p.items[0].title,'rename.py');
 const hostile=A.parse('<artifact type="json" title="<img src=x>.json">{"x":1}</artifact>'); assert.equal(hostile.items[0].title,'data.json'); assert.doesNotMatch(A.render('<artifact type="json" title="<img src=x>.json">{"x":1}</artifact>',0).html,/<img/);
 assert.equal(A.render('plain response',0),null);
-console.log('PASS artifact parse/render tests (5 assertions)');
+const md=A.markdownHtml('# Title\n\n- One\n- Two\n\n|A|B|\n|---|---|\n|1|2|\n\n[bad](javascript:alert(1))'); assert.match(md,/<h1>Title<\/h1>/); assert.match(md,/<ul>/); assert.match(md,/<table>/); assert.doesNotMatch(md,/href=\"javascript:/);
+assert.equal(A.shelf([{r:'a',t:'<artifact type=\"json\" title=\"a.json\">{}<\/artifact>'}]).includes('Artifact shelf'),true);
+assert.match(A.highlightCode('const answer = 42;','js'),/code-keyword/);
+assert.match(A.render('<artifact type="markdown" title="guide.md"># X</artifact>',0).html,/data-artifact-pdf="0"/);
+assert.match(A.render('<artifact type="code" language="python" title="x.py">print(1)</artifact>',0).html,/data-artifact-copy="0"/);
+console.log('PASS artifact parse/render tests (22 assertions)');

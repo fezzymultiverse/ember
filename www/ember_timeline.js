@@ -54,6 +54,37 @@
       case 'youtube_download':    return 'Downloading audio';
       case 'playlist_download':   return 'Downloading playlist audio';
       case 'see_image':           return 'Looking at the image';
+      case 'playlist_list':       return 'Reading the playlist';
+      case 'play_song':           return 'Playing' + (q ? ' \u201c' + clip(q, 40) + '\u201d' : ' a song');
+      case 'play_playlist':       return 'Playing playlist' + (a.name ? ' \u201c' + clip(a.name, 36) + '\u201d' : '');
+      case 'get_library':         return 'Checking your music library' + (q ? ': \u201c' + clip(q, 30) + '\u201d' : '');
+      case 'get_current_track':   return 'Checking what is playing';
+      case 'identify_song':       return 'Identifying the song';
+      case 'create_playlist':     return 'Saving a playlist' + (a.name ? ': ' + clip(a.name, 30) : '');
+      case 'control_player': {
+        const act = String(a.action || '').toLowerCase(), v = a.value;
+        let song = ''; try { if (a.songId && window.EmberPlayer) { const t = window.EmberPlayer.get(a.songId); if (t && t.title) song = ' \u201c' + clip(t.title, 34) + '\u201d'; } } catch (e) { /* label only */ }
+        return ({ play: a.songId ? 'Playing' + song : 'Resuming the music', pause: 'Pausing the music', toggle: 'Play / pause', next: 'Skipping to the next song', prev: 'Going back a song', stop: 'Stopping the music', seek: 'Jumping to ' + (v == null ? 'a spot' : v + 's'), volume: 'Setting volume' + (v == null ? '' : ' to ' + v), shuffle: 'Switching shuffle', repeat: 'Switching repeat' })[act] || 'Controlling the player';
+      }
+      case 'set_timer':           return 'Setting a timer' + (q ? ': ' + clip(q, 30) : '');
+      case 'list_timers':         return 'Checking your timers';
+      case 'cancel_timer':        return 'Cancelling a timer';
+      case 'list_sites':          return 'Checking your saved sites';
+      case 'save_site':           return 'Saving a site';
+      case 'summarize_document':  return 'Summarising your document';
+      case 'run_plan':            return 'Working through a plan';
+      case 'key_map':             return 'Checking your saved keys';
+      case 'repo_overview':       return 'Studying ' + (a.repo ? clip(a.repo, 40) : 'a linked repo');
+      case 'repo_list_files':     return 'Browsing ' + (a.repo ? clip(a.repo, 30) : 'a linked repo') + (a.path ? '/' + clip(a.path, 30) : '');
+      case 'repo_read_file':      return 'Reading ' + (a.path ? clip(a.path, 40) : 'a repo file') + (a.repo ? ' from ' + clip(a.repo, 28) : '');
+      case 'repo_search':          return 'Searching ' + (a.repo ? clip(a.repo, 30) : 'a linked repo') + (q ? ': \u201c' + clip(q, 30) + '\u201d' : '');
+      case 'github_status':       return 'Checking GitHub';
+      case 'github_list_files':   return 'Listing GitHub files' + (a.path ? ': ' + clip(a.path, 36) : '');
+      case 'github_read_file':    return 'Reading ' + (a.path ? clip(a.path, 40) : 'a GitHub file');
+      case 'github_write_file':   return 'Pushing ' + (a.path ? clip(a.path, 40) : 'a file') + ' to GitHub';
+      case 'github_run':          return 'Running on GitHub Actions' + (a.command ? ': ' + clip(a.command, 34) : '');
+      case 'github_run_status':   return 'Checking the GitHub run';
+      case 'github_install_runner': return 'Installing the GitHub runner';
       case 'find_in_app':         return 'Looking in the app' + (q ? ': \u201c' + clip(q, 36) + '\u201d' : '');
       default: return clip(String(tool || '').replace(/_/g, ' ').replace(/^./, c => c.toUpperCase()) + (q ? ': \u201c' + clip(q, 36) + '\u201d' : ''), 90);
     }
@@ -61,10 +92,11 @@
   const failed = r => !!(r && typeof r === 'object' && (r.error || r.ok === false));
 
   // ---------- styles: 'tl' = existing Summary card, 'dd' = compact dropdown, 'claude' = animated status line ----------
-  const SK = 'ember_think_style_v2'; // V1.9.43: start with the requested Claude-style dropdown by default
-  const getStyle = () => { try { const v = localStorage.getItem(SK); return ['tl', 'dd', 'claude'].includes(v) ? v : 'claude'; } catch (e) { return 'claude'; } };
-  const setStyle = v => { try { localStorage.setItem(SK, v); } catch (e) { /* private mode */ } };
-  const nextStyle = () => ({ tl: 'dd', dd: 'claude', claude: 'tl' }[getStyle()] || 'tl');
+  // V1.9.70: one design only - the borderless egg-spinner header with icon rows that drop in one by one.
+  const getStyle = () => 'claude';
+  const setStyle = () => {};
+  const nextStyle = () => 'claude';
+  let uidc = 0;
 
   // ---------- state ----------
   const MAX = 20;
@@ -120,7 +152,7 @@
     if (getStyle() === 'claude' && paintSpin(el)) {
       if (live.open) {
         const body = el.querySelector('.et-timeline-lines');
-        if (body) body.innerHTML = linesHtml(vis(), true);
+        if (body) syncRows(body); // V1.9.70: add only new rows (they drop in); update changed rows in place
         if (follow || live.open) log.scrollTop = log.scrollHeight;
         return;
       } else { if (follow) log.scrollTop = log.scrollHeight; return; }
@@ -161,7 +193,7 @@
 
   function addLine(text, bad) {
     if (!live) return null;
-    const line = { text, bad: !!bad, k: 't', st: '', tool: '' };
+    const line = { id: ++uidc, text, bad: !!bad, k: 't', st: '', tool: '' };
     live.lines.push(line);
     if (live.lines.length > MAX) live.lines.shift();
     pump();
@@ -194,13 +226,13 @@
     live.keyed = live.keyed || {};
     let line = live.keyed[key];
     if (!line) {
-      line = { text: '', bad: false, k: 't', st: '', key };
+      line = { id: ++uidc, text: '', bad: false, k: 't', st: '', key };
       live.keyed[key] = line; live.lines.push(line);
       if (live.lines.length > MAX) live.lines.shift();
     }
     line.text = clip(text, opt.max || 120); line.k = k || line.k || 't'; line.st = st || '';
-    line.bad = st === 'bad'; line.pill = opt.pill || ''; line.err = opt.err ? clip(opt.err, 140) : '';
-    if (live.open) { line.rv = true; line.rvAt = 0; }
+    line.bad = st === 'bad'; line.pill = opt.pill || ''; line.err = opt.err ? clip(opt.err, 140) : ''; line.pct = +opt.pct || 0;
+    // V1.9.70: new keyed lines wait their turn in the reveal queue so they drop in one by one like the rest.
     if (line.k === 'a') live.toolRan = true;
     paint(); pump();
     return line;
@@ -212,7 +244,7 @@
   function collapse() { if (!live) return; live.open = false; paint(); }
   function snapshot() {
     if (!live || (!live.toolRan && live.lines.length < 2)) return null;
-    return { ms: Date.now() - live.t0, lines: live.lines.slice(-MAX).map(l => [l.text, l.bad ? 1 : 0, l.k || 't', l.pill || '', l.err || '', l.tool || '']) };
+    return { ms: Date.now() - live.t0, lines: live.lines.slice(-MAX).map(l => [l.text, l.bad ? 1 : 0, l.k || 't', l.pill || '', l.err || '', l.tool || '', l.key || '']) };
   }
 
   // ---------- html ----------
@@ -242,9 +274,66 @@
     return '<div class="tl">' + (lines || []).map(l => row(l.text, l.k, l.st, l.pill, l.err, l.tool)).join('') + (active ? nowRow : '') + '</div>';
   }
 
+  // ---------- V1.9.70: icon rows (no grid, no border). YouTube / Files / Termux / Globe are real glyphs. ----------
+  const IC = {
+    youtube: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.6" y="5.4" width="18.8" height="13.2" rx="4"/><path class="ek-fill" d="M10.1 9.3v5.4l4.7-2.7z"/></svg>',
+    files: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.2 6.8A1.8 1.8 0 0 1 5 5h4.2l2 2.3h7.8a1.8 1.8 0 0 1 1.8 1.8v8.1A1.8 1.8 0 0 1 19 19H5a1.8 1.8 0 0 1-1.8-1.8z"/></svg>',
+    termux: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M7 9.6l3 2.4-3 2.4M12.6 15h4.4"/></svg>',
+    globe: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.9 5.6 3.9 9s-1.3 6.4-3.9 9c-2.6-2.6-3.9-5.6-3.9-9S9.4 5.6 12 3z"/></svg>',
+    music: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg>',
+    image: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 3.5 3L16 12l4 4"/></svg>',
+    github: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.2"/><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="9" r="2.2"/><path d="M6 8.2v7.6M18 11.2c0 3.6-6 2.4-12 5.6"/></svg>',
+    graph: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="7" r="2.3"/><circle cx="18" cy="8" r="2.3"/><circle cx="12" cy="18" r="2.3"/><path d="M8 8l8 .6M7.3 9l3.7 7M16.8 10l-3.8 6.2"/></svg>',
+    egg: '<img class="ek-egg-mini" src="ember-icon.svg" alt="">'
+  };
+  const iconKey = (tool, text, k) => {
+    const x = String(tool || '').toLowerCase() + ' ' + String(text || '').toLowerCase();
+    if (k !== 'a') return /^(asking |got a reply|.* switching to )/.test(x.trim()) ? 'egg' : ''; // plain thoughts keep a small dot
+    if (/github|actions run|pushing .* to github|linked repo|studying |browsing /.test(x) || /^repo_/.test(String(tool || ''))) return 'github';
+    if (/youtube|playlist|download|newpipe/.test(x) && !/^play_song|\bplaying\b/.test(x)) return 'youtube';
+    if (/play_song|control_player|play_playlist|get_current_track|identify_song|create_playlist|get_library|\bplaying\b|pausing|resuming|skipping|going back a song|stopping the music|shuffle|repeat|volume|music library/.test(x)) return 'music';
+    if (/termux|terminal|shell|bash|script|command|device|\.sh\b|launch|open app/.test(x)) return 'termux';
+    if (/web|scrape|page|url|browser|site|http|searching the|reading [a-z0-9-]+\.[a-z]{2,}/.test(x)) return 'globe';
+    if (/document|file|chunk|outline|notes?\b|writing |saved |\.pdf|\.md\b|\.svg|\.html?\b|searching your|library/.test(x)) return 'files';
+    if (/music|song|track|player|lyrics/.test(x)) return 'music';
+    if (/image|photo|vision/.test(x)) return 'image';
+    if (/graph|mapping|connection/.test(x)) return 'graph';
+    if (k === 'a') return 'egg';
+    if (/^(asking |got a reply|.* switching to )/.test(x.trim())) return 'egg';
+    return '';
+  };
+  const ekRowHtml = (l, drop) => {
+    const act = l.k === 'a', key = iconKey(l.tool, l.text, l.k);
+    const ico = key ? '<span class="ek-ico">' + IC[key] + '</span>' : '<span class="ek-ico"><i class="ek-dot"></i></span>';
+    const pillCls = /^(saved|done|playing)$/i.test(l.pill || '') ? 'tl-pill-ok' : /^failed$/i.test(l.pill || '') ? 'tl-pill-bad' : 'tl-pill-warn';
+    const pill = !act ? '' : l.pill ? '<span class="tl-pill ' + pillCls + '">' + esc(l.pill) + '</span>'
+      : l.st === 'ok' ? '<span class="tl-pill tl-pill-ok">SUCCESS</span>'
+      : l.st === 'bad' ? '<span class="tl-pill tl-pill-bad">FAILED</span>'
+      : l.st === 'run' ? '<span class="tl-pill tl-pill-run">RUNNING</span>' : '';
+    const sig = [l.text, l.st, l.pill, l.err, l.bad ? 1 : 0, l.pct || 0].join('|');
+    return '<div class="ek-row' + (act ? ' ek-act' : '') + (l.st === 'run' ? ' ek-run' : '') + (l.bad ? ' ek-bad' : '') + (drop ? ' ek-drop' : '') + '" data-id="' + esc(l.id == null ? '' : l.id) + '"' + (l.key ? ' data-key="' + esc(l.key) + '"' : '') + ' data-sig="' + esc(sig) + '">'
+      + ico + '<div class="ek-txt">' + esc(l.text) + pill + (l.err ? '<div class="tl-err">' + esc(l.err) + '</div>' : '') + (l.st === 'run' && l.pct > 0 ? '<div class="ek-bar"><i style="width:' + Math.min(100, Math.round(l.pct)) + '%"></i></div>' : '') + '</div></div>';
+  };
+  const rowsHtml = (lines, drop) => '<div class="ek-rows">' + (lines || []).map(l => ekRowHtml(l, drop)).join('') + '</div>';
+  // Add rows that are new (they drop in), refresh rows whose state changed, never rebuild the rest.
+  function syncRows(body) {
+    let box = body.querySelector('.ek-rows');
+    if (!box) { body.innerHTML = '<div class="ek-rows"></div>'; box = body.querySelector('.ek-rows'); }
+    const v = vis(), ids = new Set(v.map(l => String(l.id)));
+    Array.from(box.children).forEach(n => { if (!ids.has(n.getAttribute('data-id'))) n.remove(); });
+    const have = {}; Array.from(box.children).forEach(n => { have[n.getAttribute('data-id')] = n; });
+    v.forEach(l => {
+      const cur = have[String(l.id)], fresh = ekRowHtml(l, !cur);
+      if (!cur) { box.insertAdjacentHTML('beforeend', fresh); return; }
+      const sig = [l.text, l.st, l.pill, l.err, l.bad ? 1 : 0, l.pct || 0].join('|');
+      if (cur.getAttribute('data-sig') !== sig) { const t = document.createElement('div'); t.innerHTML = fresh; const nn = t.firstChild; nn.classList.remove('ek-drop'); cur.replaceWith(nn); }
+    });
+  }
+
   const STOP = '<button class="tl-stop" data-et="stop" aria-label="Stop current response" title="Stop current response">STOP</button>';
   const SW = '<button class="tl-x et-sw" data-et="style" aria-label="Switch thinking display" title="Switch thinking display">\u21c4</button>';
-  const SPIN = '<svg class="et-spinner" viewBox="0 0 24 24" aria-hidden="true"><circle class="et-sp-track" cx="12" cy="12" r="9.5"/><circle class="et-sp-arc" cx="12" cy="12" r="9.5"/><circle class="et-sp-arc2" cx="12" cy="12" r="5.2"/></svg>';
+  // V1.9.70: the egg is the app icon (ember-icon.svg); an orange arc orbits it while Ember works.
+  const SPIN = '<span class="et-egg" aria-hidden="true"><img class="et-egg-img" src="ember-icon.svg" alt=""><svg class="et-egg-ring" viewBox="0 0 40 40"><circle class="et-egg-arc" cx="20" cy="20" r="18"/></svg></span>';
   function innerHtml() { // live only
     const V = vis();
     if (getStyle() === 'claude') { // Rotating status first; tapping the row reveals the richer timeline.
@@ -252,7 +341,7 @@
         + '<div class="et-hdr" data-et="toggle" role="button" aria-expanded="' + (live.open ? 'true' : 'false') + '" tabindex="0">'
         + SPIN + '<span class="et-stage">' + statusSpan(statusOf()) + '</span>' + STOP + SW
         + '<span class="et-drop-hint" aria-hidden="true">' + DOWN + '</span></div>'
-        + '<div class="et-body"><div class="et-lines et-timeline-lines">' + linesHtml(V, true) + '</div></div></div>';
+        + '<div class="et-body"><div class="et-lines et-timeline-lines">' + rowsHtml(V, false) + '</div></div></div>';
     }
     if (getStyle() === 'dd') {
       return '<div class="et-inner' + (live.open ? ' et-open' : '') + '">'
@@ -275,8 +364,8 @@
     if (!tl || !Array.isArray(tl.lines) || !tl.lines.length) return '';
     const secs = tl.ms ? (tl.ms / 1000).toFixed(1) + 's' : '\u2013';
     if (getStyle() === 'claude') {
-      const lns = tl.lines.map(l => '<p class="et-line' + (l[1] ? ' et-bad' : '') + '">' + esc(l[0]) + '</p>').join('');
-      return '<details class="et-saved et-claude-saved"><summary><span class="et-dots et-done" aria-hidden="true"><i></i><i></i><i></i></span><span>Thought for ' + secs + '</span></summary><div class="et-lines"><div class="et-claude-log">' + lns + '</div></div></details>';
+      const saved = tl.lines.map(l => ({ id: '', text: l[0], bad: !!l[1], k: l[2] === 'a' ? 'a' : 't', st: l[2] === 'a' ? (l[1] ? 'bad' : 'ok') : '', pill: l[3], err: l[4], tool: l[5], key: l[6] || '' }));
+      return '<details class="et-saved et-claude-saved ek-saved"><summary><span class="et-egg et-egg-static" aria-hidden="true"><img class="et-egg-img" src="ember-icon.svg" alt=""></span><span class="ek-done-t">Thought for ' + secs + '</span>' + DOWN + '</summary><div class="et-lines">' + rowsHtml(saved, false) + '</div></details>';
     }
     if (getStyle() === 'dd') {
       const lns = tl.lines.map(l => '<p class="et-line' + (l[1] ? ' et-bad' : '') + '">' + esc(l[0]) + '</p>').join('');
@@ -341,17 +430,33 @@
       : 'was unavailable';
     note(label(d.from) + ' ' + why + '; switching to ' + label(d.to));
   });
-  // Native download lifecycle: only show these rows when the NewPipe bridge emitted a real job event.
-  window.addEventListener('ember-dl', e => {
-    const d = e.detail || {}; if (!live || !d.id) return;
-    const title = String(d.title || 'track').replace(/\s+/g, ' ').trim().slice(0, 48);
+  // Native download lifecycle: rows come only from real job events from the NewPipe bridge.
+  // While the turn is live the row updates in the live card; after the turn ended the same row is updated inside the saved "Thought for Xs".
+  const dlText = d => {
+    const title = String(d.title || 'track').replace(/\s+/g, ' ').trim().slice(0, 48), pct = Math.round(+d.pct || 0);
     const state = d.state === 'done' ? 'ok' : d.state === 'failed' ? 'bad' : 'run';
-    const text = state === 'ok' ? 'Saved ' + title + ' to Music/Ember'
-      : state === 'bad' ? 'NewPipe download failed for ' + title
-      : 'Downloading ' + title + (Number.isFinite(+d.pct) && +d.pct > 0 ? ' (' + Math.round(+d.pct) + '%)' : '');
-    upsert('download:' + d.id, text, 'a', state, { pill: state === 'run' ? 'NEWPIPE' : state === 'ok' ? 'SAVED' : 'FAILED' }); flush();
+    return { state, text: state === 'ok' ? 'Saved ' + title + ' to Music/Ember' : state === 'bad' ? 'Download failed: ' + title : 'Downloading ' + title + (pct > 0 ? ' (' + pct + '%)' : ''), pill: state === 'run' ? 'NEWPIPE' : state === 'ok' ? 'SAVED' : 'FAILED', err: state === 'bad' ? String(d.detail || '').slice(0, 140) : '', pct };
+  };
+  function patchSaved(msgs, key, f) { // finished turn: update the saved row in the message AND on screen
+    let hit = null;
+    (msgs || []).forEach(m => { if (m && m.tl && Array.isArray(m.tl.lines)) m.tl.lines.forEach(l => { if (l[6] === key) { l[0] = f.text; l[1] = f.state === 'bad' ? 1 : 0; l[3] = f.pill; l[4] = f.err || ''; hit = m; } }); });
+    const el = document.querySelector('[data-key="' + String(key).replace(/"/g, '') + '"]');
+    if (el) { const t = document.createElement('div'); t.innerHTML = ekRowHtml({ id: '', text: f.text, bad: f.state === 'bad', k: 'a', st: f.state, pill: f.pill, err: f.err, tool: 'youtube_download', key, pct: f.pct }, false); if (t.firstChild) el.replaceWith(t.firstChild); }
+    return hit;
+  }
+  window.addEventListener('ember-dl', e => {
+    const d = e.detail || {}; if (!d.id) return;
+    const f = dlText(d), key = 'download:' + d.id;
+    if (live) {
+      // the real job row replaces the generic "Downloading audio" tool line, so one download is one row
+      live.lines = live.lines.filter(l => !((l.tool === 'youtube_download' || l.tool === 'playlist_download') && !l.key));
+      upsert(key, f.text, 'a', f.state, { pill: f.pill, err: f.err, pct: f.pct }); flush(); return;
+    }
+    let msgs = null; try { msgs = window.EmberBridge && window.EmberBridge.getConversation && window.EmberBridge.getConversation(); } catch (_) { msgs = null; }
+    const hit = patchSaved(msgs, key, f);
+    if (hit && f.state !== 'run') { try { window.dispatchEvent(new CustomEvent('ember-saved-row-changed')); } catch (_) {} }
   });
   window.addEventListener('ember-agent-note', e => { if (live && e.detail) note(String(e.detail)); });
   window.addEventListener('ember-duty', e => { if (live && e.detail && e.detail.text) note(String(e.detail.text), e.detail.key || 'duty'); });
-  window.EmberTimeline = { getStyle, setStyle, begin, drop, note, tool, upsert, unkey, collapse, snapshot, liveHtml, savedHtml, label, flush, _failed: failed, _live: () => live };
+  window.EmberTimeline = { patchSaved, getStyle, setStyle, begin, drop, note, tool, upsert, unkey, collapse, snapshot, liveHtml, savedHtml, label, flush, _failed: failed, _live: () => live };
 })();

@@ -1341,3 +1341,200 @@ header .who b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:el
 .artifact-viewer-body{flex:1;min-height:0;background:#fff}.artifact-frame{display:block;width:100%;height:100%;border:0;background:#fff}
 .artifact-text{height:100%;overflow:auto;box-sizing:border-box;margin:0;padding:16px;background:#111;color:#eee;white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.55 ui-monospace,monospace}
 @media(max-width:420px){.artifact-list{min-width:0}.artifact-card{gap:6px;padding:8px}.artifact-action{padding:8px 7px;font-size:10px}.artifact-viewer{height:94dvh}}
+.context-chip{display:inline-flex;align-items:center;border:1px solid rgba(78,155,255,.35);background:rgba(78,155,255,.1);color:#acd4ff;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:700;white-space:nowrap}
+.artifact-markdown{height:100%;overflow:auto;box-sizing:border-box;padding:20px 24px;color:#20242a;background:#fff;font:15px/1.65 system-ui,sans-serif}.artifact-markdown h1,.artifact-markdown h2,.artifact-markdown h3{line-height:1.25;margin:1.2em 0 .45em}.artifact-markdown p{margin:.65em 0}.artifact-markdown pre{overflow:auto;padding:12px;background:#f2f4f7;border-radius:9px}.artifact-markdown code{font-family:ui-monospace,monospace;background:#f1f2f4;padding:1px 4px;border-radius:4px}.artifact-markdown pre code{padding:0;background:none}.artifact-markdown table{border-collapse:collapse;width:100%;display:block;overflow-x:auto}.artifact-markdown td,.artifact-markdown th{border:1px solid #cbd0d7;padding:6px 10px;text-align:left}.artifact-shelf{margin:5px 0;padding:10px 12px;border:1px solid color-mix(in srgb,var(--ac) 30%,var(--b));border-radius:12px;background:var(--p)}.artifact-shelf summary{font-weight:800;color:var(--cy);cursor:pointer}.artifact-shelf summary span{font-size:11px;color:var(--m);margin-left:5px}.artifact-shelf-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--b);margin-top:8px}.artifact-shelf-row b{flex:1;min-width:0;overflow-wrap:anywhere;font-size:12px}
+@keyframes artifact-arrive{0%{transform:translateY(5px) scale(.99);opacity:.72}60%{box-shadow:0 0 0 4px rgba(22,217,255,.15)}100%{transform:none;opacity:1;box-shadow:none}}
+.artifact-card{animation:artifact-arrive .55s ease-out both}@media(prefers-reduced-motion:reduce){.artifact-card{animation:none}}
+
+/* V1.9.64 — white chat composer restored against the dark Ember canvas. */
+.comp .row{background:#fff!important;border-color:#e4e7eb!important;box-shadow:0 6px 22px rgba(0,0,0,.24)}
+.comp .row:focus-within{background:#fff!important;border-color:var(--ac)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 24%,transparent),0 8px 24px rgba(0,0,0,.28)}
+.comp #inp{background:transparent!important;color:#17191c!important;caret-color:#087f9b!important}
+.comp #inp::placeholder{color:#747980!important;opacity:1}
+.comp .row > #bPlus.plus{background:#eef0f2!important;color:#30343a!important;border-color:#d7dade!important}
+.comp .row .side button:not(#bSend):not(#bStop){background:#f1f2f4!important;color:#272b31!important;border-color:#d9dce0!important}
+.comp .row .side #bStop{background:#fff0ee!important;color:#b42318!important;border-color:#e2a5a0!important}
+.comp .row .side #bSend{background:var(--ac)!important;color:#071116!important}
+
+/* V1.9.65 — tabs share one solid accent; no multicolor active gradients. */
+.stab,.mtab,.wtab,.dtab,.dvtab,.ptag{background:var(--p2)!important;color:var(--m)!important;border-color:var(--b)!important;box-shadow:none!important}
+.stab.on,.mtab.on,.wtab.on,.dtab.on,.dvtab.on,.ptag.on{background:var(--ac)!important;background-image:none!important;color:var(--on)!important;border-color:var(--ac)!important;box-shadow:0 0 0 1px color-mix(in srgb,var(--ac) 20%,transparent)!important}
+/* Premium Thinking card adapted to .et-think/.tl-card rather than placeholder classes. */
+.et-think .tl-card{background:linear-gradient(110deg,rgba(255,106,0,.035),transparent 45%),#0a0a0a!important;border:1px solid #242424!important;border-left:3px solid var(--ac)!important;border-radius:13px!important;box-shadow:0 5px 18px rgba(0,0,0,.28)!important;overflow:hidden}
+.et-think .tl-card.tl-run{border-left-color:var(--ac)!important;box-shadow:0 5px 20px rgba(0,0,0,.3),0 0 12px color-mix(in srgb,var(--ac) 10%,transparent)!important}
+.et-think .tl-card .tl-hdr{background:linear-gradient(90deg,color-mix(in srgb,var(--ac) 7%,transparent),transparent 70%);color:#f2f2f2}
+.et-think .tl-card .tl-body{border-top-color:#292929}
+.et-think .tl{--b:#323232}.et-think .tl::before{background-image:linear-gradient(to bottom,#444 50%,transparent 50%);background-size:2px 8px}
+.et-think .tl-item .tl-ico{background:#0a0a0a}
+.et-think .tl-dot{background:#8b8b8b!important;box-shadow:0 0 6px rgba(255,255,255,.08)}
+.et-think .tl-tool{background:#191919!important;border-color:#383838!important}
+.et-think .tl-item.tl-now .tl-live{background:var(--ac)!important;box-shadow:0 0 8px color-mix(in srgb,var(--ac) 45%,transparent)!important}
+.et-think .tl-card .tl-stop{border-radius:999px;padding:5px 10px}
+@media(prefers-reduced-motion:reduce){.et-think .tl-live::after{animation:none}}
+
+/* Keep the Chill/Sharp/Deep lane switch consistent with the single-color tabs. */
+.modes button{background:var(--p2)!important;background-image:none!important;color:var(--m)!important;border-color:var(--b)!important}
+.modes button.on{background:var(--ac)!important;background-image:none!important;color:var(--on)!important;border-color:var(--ac)!important;box-shadow:none!important}
+
+/* V1.9.67 — enforce one accent across every tab family, including Termux. */
+.ettabs button{background:var(--p2)!important;background-image:none!important;color:var(--m)!important;border-color:var(--b)!important;box-shadow:none!important}
+.ettabs button.on{background:var(--ac)!important;background-image:none!important;color:var(--on)!important;border-color:var(--ac)!important;box-shadow:none!important}
+.tab-glyph{display:inline-block;filter:grayscale(1);opacity:.88}
+
+/* V1.9.68 — bright blue live indicator immediately beside Thinking/current task. */
+.et-think .tl-item.tl-now .tl-live{background:#4e9bff!important;box-shadow:0 0 0 3px rgba(78,155,255,.14),0 0 12px rgba(78,155,255,.75)!important;animation:ember-blue-pulse 1.35s ease-in-out infinite}
+.et-think .tl-item.tl-now .tl-live::after{background:#4e9bff!important;animation:tl-radar 1.35s ease-out infinite}
+@media(prefers-reduced-motion:reduce){.et-think .tl-item.tl-now .tl-live,.et-think .tl-item.tl-now .tl-live::after{animation:none!important}}
+
+/* V1.9.69 — keep Ember orange out of the chat surface; white composer, blue interaction accents. */
+#app{background:#08090b!important}
+.comp .row{background:#fff!important;border-color:#e1e3e7!important}
+.comp .row:focus-within{background:#fff!important;border-color:#4e9bff!important;box-shadow:0 0 0 3px rgba(78,155,255,.2),0 8px 24px rgba(0,0,0,.25)!important}
+.comp #inp{background:#fff!important;color:#17191c!important;caret-color:#1677d2!important;border-radius:12px!important}
+.comp #inp::placeholder{color:#747980!important}
+.comp .row .side #bSend{background:#4e9bff!important;color:#07111d!important;box-shadow:0 3px 12px rgba(78,155,255,.24)!important}
+
+/* ================= V1.9.70 - white on black, ORANGE highlights; borderless thinking; egg spinner; icon rows; artifacts ================= */
+:root{--bg:#000;--p:#0a0a0a;--p2:#141414;--b:#262626;--t:#fff;--m:#b8b8b8;--ac:#ff6a00;--ac2:#c24e00;--cy:#ff9a4d;--pu:#ff6a00;--on:#140600;--bl:#ff6a00}
+html,body,#app{background:#000!important}
+header{background:rgba(0,0,0,.94)!important;border-bottom-color:#1c1c1c!important}
+#drawer{background:#050505!important}
+.msg.u{background:var(--ac)!important;color:#000!important;font-weight:500}
+.flame{background:radial-gradient(ellipse at 50% 70%,#ffe3c8,var(--ac) 45%,#c24e00 72%,transparent 74%)!important;box-shadow:0 0 40px rgba(255,106,0,.5)!important}
+#bSend,.dz-search .btn{background:var(--ac)!important;background-image:none!important;color:#140600!important}
+.comp .row:focus-within{border-color:var(--ac)!important;box-shadow:0 0 0 3px rgba(255,106,0,.28),0 8px 24px rgba(0,0,0,.3)!important}
+.comp #inp{caret-color:var(--ac)!important}
+.comp .row .side #bSend{background:var(--ac)!important;color:#140600!important;box-shadow:0 3px 12px rgba(255,106,0,.3)!important}
+.engpill.activity{border-color:var(--ac)!important;color:#ffd9bd!important}
+.engpill.activity i{background:var(--ac)!important;box-shadow:0 0 0 4px rgba(255,106,0,.2),0 0 10px rgba(255,106,0,.6)!important}
+.context-chip{border-color:rgba(255,106,0,.4)!important;background:rgba(255,106,0,.1)!important;color:#ffc9a0!important}
+a{color:var(--ac)}
+
+/* ---- thinking: no border, no grid, no card ---- */
+.et-think,.et-think .et-inner,.et-think .et-inner.et-open{background:transparent!important;border:0!important;border-left:0!important;box-shadow:none!important;padding-left:0!important;border-radius:0!important}
+.et-think .tl::before,.et-think .et-body{border:0!important}
+.et-spin .et-hdr{height:34px!important;min-height:34px!important;gap:10px!important;color:#fff!important}
+.et-stage .et-status{color:#fff!important;font-style:normal!important;font-weight:500!important;animation:ek-pulse 1.7s ease-in-out infinite!important}
+@keyframes ek-pulse{0%,100%{opacity:.62}50%{opacity:1}}
+.et-spin .et-drop-hint{color:#fff!important}
+.et-spin .et-drop-hint .tl-chv{fill:#fff}
+.et-spin.et-open .et-drop-hint{background:rgba(255,106,0,.18)!important;color:var(--ac)!important}
+.et-spin.et-open .et-body{height:auto!important;max-height:262px!important}
+.et-spin.et-open .et-timeline-lines{height:auto!important;max-height:250px}
+.et-think .tl-stop{background:transparent!important;border:0!important;color:var(--ac)!important;padding:5px 8px!important}
+/* the egg = app icon; an orange arc orbits it */
+.et-egg{position:relative;width:28px;height:28px;flex:0 0 28px;display:inline-block}
+.et-egg-img{position:absolute;left:5px;top:5px;width:18px;height:18px;border-radius:5px;display:block;animation:ek-egg-in .9s cubic-bezier(.2,.8,.2,1) both,ek-beat 1.8s ease-in-out .9s infinite}
+.et-egg-ring{position:absolute;inset:0;width:100%;height:100%;animation:et-spin .95s linear infinite;transform-origin:50% 50%;overflow:visible}
+.et-egg-arc{fill:none;stroke:var(--ac);stroke-width:2.6;stroke-linecap:round;stroke-dasharray:30 84}
+.et-egg-static .et-egg-img{animation:none}
+@keyframes ek-egg-in{from{transform:rotate(-360deg) scale(.3);opacity:0}to{transform:none;opacity:1}}
+@keyframes ek-beat{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+/* rows: icon + text, no lines, no boxes; each one drops in */
+.ek-rows{display:flex;flex-direction:column;gap:11px;padding:6px 0 8px 3px}
+.ek-row{display:flex;align-items:flex-start;gap:12px;font-size:13.5px;line-height:1.4;color:#d6d6d6}
+.ek-ico{width:20px;height:20px;flex:0 0 20px;display:flex;align-items:center;justify-content:center;color:#fff}
+.ek-ico svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ek-ico svg .ek-fill{fill:currentColor;stroke:none}
+.ek-egg-mini{width:17px;height:17px;border-radius:5px;display:block}
+.ek-dot{width:6px;height:6px;border-radius:50%;background:#8c8c8c;display:block}
+.ek-txt{min-width:0;padding-top:1px;overflow-wrap:anywhere}
+.ek-act .ek-txt{color:#fff;font-weight:500}
+.ek-run .ek-ico{color:var(--ac);animation:ek-pulse 1.1s ease-in-out infinite}
+.ek-bad .ek-ico{color:var(--rd)}
+.ek-bad .ek-txt{color:#ff8a80}
+.ek-row .tl-pill{border:0!important;margin-left:8px;background:rgba(255,255,255,.1)!important;color:#fff!important}
+.ek-row .tl-pill-ok{background:rgba(46,232,107,.16)!important;color:#46e981!important}
+.ek-row .tl-pill-bad{background:rgba(255,59,48,.18)!important;color:#ff7a70!important}
+.ek-row .tl-pill-run,.ek-row .tl-pill-warn{background:rgba(255,106,0,.2)!important;color:#ffa05a!important}
+.ek-drop{animation:ek-drop .46s cubic-bezier(.2,.85,.25,1) both}
+@keyframes ek-drop{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:none}}
+/* saved "Thought for Xs" */
+.ek-saved{margin:0 0 4px}
+.ek-saved summary{display:flex;align-items:center;gap:10px;cursor:pointer;color:#d0d0d0;font-size:13.5px;padding:2px 0;list-style:none}
+.ek-saved summary::-webkit-details-marker{display:none}
+.ek-saved .tl-chv{fill:#fff;opacity:.7;margin-left:2px;transition:transform .25s}
+.ek-saved[open] .tl-chv{transform:rotate(180deg)}
+.ek-saved .et-egg{width:24px;height:24px;flex-basis:24px}
+.ek-saved .et-egg-img{left:3px;top:3px;width:18px;height:18px}
+.ek-saved .et-lines{opacity:1;border:0;margin:0;padding:0;max-height:250px;overflow-y:auto;overscroll-behavior:contain}
+.ek-saved .ek-row{animation:none}
+@media(prefers-reduced-motion:reduce){.et-egg-ring{animation-duration:3s}.et-egg-img,.ek-run .ek-ico,.et-stage .et-status{animation:none!important}.ek-drop{animation:ek-fade .2s ease both}}
+
+/* ---- artifacts: orange cards, dark markdown, paper pages for documents/PDF, SVG stage ---- */
+.artifact-card{border:0!important;background:#111!important;animation:artifact-arrive .55s ease-out both}
+@keyframes artifact-arrive{0%{transform:translateY(5px) scale(.99);opacity:.72}60%{box-shadow:0 0 0 4px rgba(255,106,0,.18)}100%{transform:none;opacity:1;box-shadow:none}}
+.artifact-icon{background:rgba(255,106,0,.14)!important;color:var(--ac)!important}
+.artifact-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.artifact-action{background:var(--ac)!important;border:0!important;color:#140600!important;font-weight:800!important}
+.artifact-action.secondary{background:#1c1c1c!important;color:#fff!important}
+.artifact-card{flex-wrap:wrap}
+.artifact-card .artifact-info{flex:1 1 140px}
+.artifact-viewer{background:#000!important;border:0!important}
+.artifact-viewer-head,.artifact-viewer-foot{background:#0a0a0a!important;border:0!important}
+.artifact-viewer-head{border-bottom:1px solid #1c1c1c!important}
+.artifact-close{background:#1c1c1c!important;border:0!important}
+.artifact-viewer-foot{display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;border-top:1px solid #1c1c1c}
+.artifact-viewer-body{background:#000!important;overflow:auto}
+.artifact-viewer-body.is-html{background:#fff!important}
+.artifact-dark .artifact-markdown{background:#000;color:#f2f2f2;height:auto;min-height:100%}
+.artifact-dark .artifact-markdown h1,.artifact-dark .artifact-markdown h2{color:#fff;border-bottom:1px solid #2a2a2a;padding-bottom:6px}
+.artifact-dark .artifact-markdown h1{border-bottom:2px solid var(--ac)}
+.artifact-dark .artifact-markdown a{color:var(--ac)}
+.artifact-dark .artifact-markdown code{background:#1a1a1a;color:#ffa05a;padding:1px 5px;border-radius:5px}
+.artifact-dark .artifact-markdown pre{background:#111;padding:12px;border-radius:10px;overflow:auto}
+.artifact-dark .artifact-markdown pre code{background:none;padding:0}
+.artifact-dark .artifact-markdown blockquote{border-left:3px solid var(--ac);margin:.8em 0;padding-left:12px;color:#cfcfcf}
+.artifact-dark .artifact-markdown table{border-collapse:collapse;width:100%}
+.artifact-dark .artifact-markdown td,.artifact-dark .artifact-markdown th{border:1px solid #2e2e2e;padding:6px 10px;text-align:left}
+.artifact-dark .artifact-markdown th{background:#1a1a1a}
+.artifact-paper-wrap{padding:16px 10px;min-height:100%;background:#0a0a0a}
+.artifact-paper{max-width:780px;margin:0 auto;background:#fff;color:#16161a;padding:44px 48px;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,.6)}
+.artifact-paper .artifact-markdown{height:auto;padding:0;background:transparent;color:#16161a;overflow:visible}
+.artifact-paper h1{border-bottom:2px solid var(--ac);padding-bottom:6px}
+.artifact-paper h2{border-bottom:1px solid #ddd;padding-bottom:4px}
+.artifact-paper table{border-collapse:collapse;width:100%;font-size:14px}
+.artifact-paper td,.artifact-paper th{border:1px solid #d4d4d8;padding:6px 9px;text-align:left}
+.artifact-paper th{background:#ffeedd}
+.artifact-paper pre{background:#f4f4f5;padding:10px 12px;border-radius:6px;overflow:auto}
+.artifact-paper code{font-family:ui-monospace,monospace;font-size:.92em}
+.artifact-paper blockquote{border-left:3px solid var(--ac);margin:.8em 0;padding-left:12px;color:#444}
+.artifact-paper a{color:#b84a00}
+.artifact-svg{min-height:100%;display:flex;align-items:center;justify-content:center;padding:18px;background:#fff}
+.artifact-svg.dark{background:#000}
+.artifact-svg img{max-width:100%;max-height:100%;display:block}
+@media(max-width:520px){.artifact-paper{padding:24px 18px}}
+@keyframes ek-fade{from{opacity:0}to{opacity:1}}
+
+/* ================= V1.9.71 - composer, plus button, knowledge graph, download progress ================= */
+/* One clean white pill. The + sits inset on the left exactly like the send button on the right, and every control shares the same 40px baseline. */
+.comp .row{display:flex!important;align-items:flex-end!important;gap:4px!important;padding:5px!important;min-height:52px;box-sizing:border-box;border-radius:28px!important;background:#fff!important;border:1px solid #ececec!important;box-shadow:0 8px 28px rgba(0,0,0,.4)!important}
+.comp .row:focus-within{border-color:var(--ac)!important;box-shadow:0 0 0 3px rgba(255,106,0,.26),0 8px 28px rgba(0,0,0,.4)!important}
+.comp .row > #bPlus.plus{flex:0 0 40px!important;width:40px!important;height:40px!important;min-width:0!important;min-height:0!important;margin:0!important;padding:0!important;align-self:flex-end!important;border-radius:50%!important;background:#f2f2f2!important;border:0!important;color:#1b1b1b!important;transform:none!important;transition:transform .22s ease,background .2s,color .2s!important}
+.comp .row > #bPlus.plus:active{background:#e4e4e4!important}
+.comp .row > #bPlus.plus.open{transform:rotate(45deg)!important;background:#ffe8d6!important;color:var(--ac)!important}
+.comp .row > #bPlus.plus.has{color:var(--ac)!important;box-shadow:inset 0 0 0 2px var(--ac)!important}
+.comp .row > #bPlus.plus.rec{background:#ff3b30!important;color:#fff!important}
+.comp .row > #bPlus.plus::before{width:16px!important;height:2.2px!important}.comp .row > #bPlus.plus::after{width:2.2px!important;height:16px!important}
+.comp #inp{flex:1 1 auto!important;min-width:0!important;align-self:stretch;box-sizing:border-box;min-height:40px;max-height:140px;margin:0!important;padding:9px 6px 9px 8px!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;color:#141414!important;font-size:16px!important;line-height:22px!important}
+.comp #inp::placeholder{color:#8a8a8a!important;font-size:16px!important}
+.comp .row .side{display:flex!important;align-items:flex-end!important;gap:2px!important;flex:0 0 auto!important}
+.comp .row .side button:not(#bSend):not(#bStop){width:36px!important;height:40px!important;border:0!important;border-radius:50%!important;background:transparent!important;font-size:19px!important;line-height:1}
+.comp .row .side button:not(#bSend):not(#bStop):active{background:#f0f0f0!important}
+.comp .row .side button.rec:not(#bSend):not(#bStop){background:#ffe1de!important}
+.comp .row .side #bStop{width:40px!important;background:#ffe9e6!important;color:#c0261b!important}
+.comp .row .side #bSend{width:40px!important;height:40px!important;border-radius:50%!important;margin-left:2px}
+/* typing: hands-free Talk steps aside so the text column gets the room */
+.comp .row:has(#inp:not(:placeholder-shown)) #bTalk:not(.rec){display:none!important}
+.pchip{font-weight:600}
+
+/* Knowledge graph: readable labels, topic names beside their dots */
+.graph-view svg{min-width:520px}
+.gn text{font-size:12.5px!important}.gn text.gt{font-weight:600;fill:#fff!important;font-size:13px!important}
+.gn.topic circle{fill:#2a1a0e;stroke:var(--ac)}
+.gedges line{stroke:#ff6a00;opacity:.28}
+
+/* Download progress inside the Thinking row */
+.ek-bar{height:3px;max-width:220px;margin-top:7px;border-radius:3px;background:rgba(255,255,255,.16);overflow:hidden}
+.ek-bar i{display:block;height:100%;border-radius:3px;background:var(--ac);transition:width .5s ease}
+@media(prefers-reduced-motion:reduce){.ek-bar i,.comp .row > #bPlus.plus{transition:none!important}}

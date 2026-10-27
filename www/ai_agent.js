@@ -53,13 +53,14 @@ const T_YT_DL = { name: 'youtube_download', description: 'Downloads the AUDIO of
 const T_PL_LIST = { name: 'playlist_list', description: 'Lists the tracks of a YouTube or SoundCloud playlist or set (up to 100): title, url, artist, durationSec. Use it to look at a playlist before downloading.', parameters: { url: 'string' } };
 const T_PL_DL = { name: 'playlist_download', description: 'Downloads every track of a YouTube or SoundCloud playlist or set (up to 100, one after another) to Music/Ember, in the background, with progress in the chat. Only when he asks to download the whole playlist or set. url must be a link he gave you or one from playlist_list.', parameters: { url: 'string' } };
 const T_SEE = { name: 'see_image', description: 'Looks at an image and describes it or answers a question about it. image_url must be an https link he gave you (or a data:image base64 URL). prompt says what to look for.', parameters: { image_url: 'string', prompt: 'string?' } };
-const ALL = [T_SEARCH, T_SAR, T_YT_SEARCH, T_YT_DL, T_PL_LIST, T_PL_DL, T_SEE];
+const T_PLAY = { name: 'play_song', description: 'Plays a song on his phone through Ember\'s own player. It looks in his library first; if the song is not there it finds it on YouTube with the built-in NewPipe engine, saves it to Music/Ember, then plays it. Use it when he says play / put on / spin a song, artist or link. query is the song and artist in plain words (or a youtube.com / youtu.be link he gave you).', parameters: { query: 'string' } };
+const ALL = [T_SEARCH, T_SAR, T_YT_SEARCH, T_YT_DL, T_PL_LIST, T_PL_DL, T_PLAY, T_SEE];
 const SCR = () => window.EmberScraper;
 const scraperOn = () => { try { return !!(SCR() && SCR().enabled()); } catch (e) { return false; } };
 const toolsFor = S => {
   S = S || {}; const o = [];
   if (S.agentAddon) { o.push(T_SEARCH); if (scraperOn()) o.push(T_SAR); }
-  if (S.youtubeAddon) o.push(T_YT_SEARCH, T_YT_DL, T_PL_LIST, T_PL_DL);
+  if (S.youtubeAddon) o.push(T_YT_SEARCH, T_YT_DL, T_PL_LIST, T_PL_DL, T_PLAY);
   if (S.visionAddon) o.push(T_SEE);
   return o;
 };
@@ -243,7 +244,6 @@ async function youtube_download(a) {
   try {
     const r = await P.downloadVideo({ url: key, title: str(a.title, 120) });
     if (r && r.jobId) trackJob(r.jobId, a.title || '');
-    emitEv('ember-agent-note', 'Download started');
     return { ok: true, status: 'Download started. The chat shows live progress and posts a message when it is saved to Music/Ember.', jobId: r && r.jobId };
   } catch (e) { return { ok: false, error: 'Could not start the download: ' + ((e && e.message) || e) }; }
 }
@@ -266,7 +266,65 @@ async function playlist_download(a) {
   let r; try { r = await P.downloadPlaylist({ url: raw, limit: 100 }); } catch (e) { return { error: 'Could not start the playlist download: ' + ((e && e.message) || e) }; }
   const list = (r && r.jobs) || [];
   list.forEach(j => trackJob(j.jobId, j.title));
-  return { ok: true, count: list.length, playlist: str(r && r.title, 140), status: list.length + ' tracks queued. The chat shows each one and posts a message as each lands in Music/Ember.' };
+  return { ok: true, count: list.length, playlist: str(r && r.title, 140), jobs: list.map(j => ({ jobId: j.jobId, title: str(j.title, 120) })), status: list.length + ' tracks queued. The chat shows each one and posts a message as each lands in Music/Ember.' };
+}
+// ---------- V1.9.71: play_song. Library first; otherwise NewPipe finds it, it is saved to Music/Ember, then Ember's player plays it ----------
+const PLAY_INTENT = /\b(play|put on|spin|queue|listen to|blast|throw on|stream)\b/i;
+const playAllowed = () => PLAY_INTENT.test(intent) || (intent.length <= 60 && !NOT_FOLLOW.test(intent) && PLAY_INTENT.test(prevIntent));
+const normT = s => String(s == null ? '' : s).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
+function findLocal(query) {
+  const Pl = window.EmberPlayer; if (!Pl || !Pl.list) return null;
+  const words = normT(query).split(' ').filter(w => w.length > 1); if (!words.length) return null;
+  let best = null, bestScore = 0;
+  (Pl.list('', 8000) || []).forEach(t => {
+    const hay = ' ' + normT((t.title || '') + ' ' + (t.artist || '')) + ' ';
+    const hit = words.filter(w => hay.includes(' ' + w + ' ') || hay.includes(w)).length, score = hit / words.length;
+    if (score > bestScore) { best = t; bestScore = score; }
+  });
+  return bestScore >= 0.75 ? best : null;
+}
+function waitForJob(jobId, ms) {
+  return new Promise(res => {
+    let to = null;
+    const on = e => { const d = e.detail || {}; if (d.id === jobId && (d.state === 'done' || d.state === 'failed')) { clearTimeout(to); window.removeEventListener('ember-dl', on); res(d); } };
+    to = setTimeout(() => { window.removeEventListener('ember-dl', on); res({ state: 'running' }); }, ms);
+    window.addEventListener('ember-dl', on);
+  });
+}
+async function play_song(a) {
+  const Pl = window.EmberPlayer; if (!Pl) return { ok: false, error: 'The music player did not load. Reload the app.' };
+  if (!playAllowed()) return { ok: false, error: 'He did not ask to play anything in his latest message, so nothing was played.' };
+  const raw = str(a.query || a.url || a.title, 200); if (!raw) return { ok: false, error: 'query is empty.' };
+  const sayEv = t => emitEv('ember-agent-note', t);
+  const playTrack = async t => { const r = await Pl.playLocal(t.id); sayEv('Playing ' + str(t.title, 60)); return r && r.ok === false ? { ok: false, error: r.error || 'The player could not start it.' } : { ok: true, playing: str(t.title, 100), artist: str(t.artist, 80), from: 'library' }; };
+  const local = /^https?:\/\//i.test(raw) ? null : findLocal(raw);
+  if (local) return playTrack(local);
+  const P = yt();
+  if (!P) return { ok: false, error: 'That song is not in his library, and fetching it needs the installed Ember APK (the NewPipe engine is not available here).' };
+  sayEv('Not in the library, asking NewPipe');
+  let url = '', title = '';
+  if (/^https:\/\/(www\.|m\.|music\.)?(youtube\.com|youtu\.be)\//i.test(raw)) { const m = VID.exec(raw); if (!m) return { ok: false, error: 'That is not a normal YouTube video link.' }; seen.add(m[1]); url = 'https://www.youtube.com/watch?v=' + m[1]; }
+  else {
+    let r; try { r = await P.search({ query: raw, limit: 3 }); } catch (e) { return { ok: false, error: 'YouTube search failed: ' + ((e && e.message) || e) }; }
+    const first = r && r.results && r.results[0]; if (!first) return { ok: false, error: 'NewPipe found nothing for "' + raw + '".' };
+    const m = VID.exec(first.url || ''); if (!m) return { ok: false, error: 'The top result was not a normal video.' };
+    seen.add(m[1]); url = 'https://www.youtube.com/watch?v=' + m[1]; title = str(first.title, 120);
+  }
+  try { if (window.EmberNative && window.EmberNative.ensureNotifyPermission) await window.EmberNative.ensureNotifyPermission(); } catch (e) { /* optional */ }
+  let job; try { job = await P.downloadVideo({ url, title }); } catch (e) { return { ok: false, error: 'Could not start the download: ' + ((e && e.message) || e) }; }
+  if (!job || !job.jobId) return { ok: false, error: 'The downloader did not return a job.' };
+  trackJob(job.jobId, title);
+  const end = await waitForJob(job.jobId, 150000);
+  if (end.state === 'failed') return { ok: false, error: 'The download failed' + (end.detail ? ': ' + str(end.detail, 120) : '.') };
+  if (end.state !== 'done') return { ok: true, status: 'Still downloading. It will land in Music/Ember; ask him to say play again when it is saved.', jobId: job.jobId };
+  const shown = (dlJobs.get(job.jobId) || {}).title || title || raw;
+  for (let i = 0; i < 4; i++) {
+    try { if (Pl.deviceOk && Pl.deviceOk() && Pl.scanDevice) await Pl.scanDevice(); } catch (e) { /* the retry below covers it */ }
+    const t = findLocal(shown) || findLocal(raw);
+    if (t) return playTrack(t);
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  return { ok: true, status: 'Saved to Music/Ember but it has not shown up in the library yet. Open Music > Library and tap scan, then ask again.', jobId: job.jobId };
 }
 async function see_image(a) {
   const url = String(a.image_url || '').trim();
@@ -332,7 +390,7 @@ async function pollJobs() {
   if (![...dlJobs.values()].some(j => j.state !== 'done' && j.state !== 'failed')) { clearInterval(dlTimer); dlTimer = null; }
 }
 
-const HANDLERS = { web_search, search_and_read, youtube_search, youtube_download, playlist_list, playlist_download, see_image };
+const HANDLERS = { web_search, search_and_read, youtube_search, youtube_download, playlist_list, playlist_download, play_song, see_image };
 async function dispatch(name, args) {
   if (!Object.prototype.hasOwnProperty.call(HANDLERS, name)) return { error: 'Unknown agent tool: ' + name };
   try { return await HANDLERS[name](args && typeof args == 'object' && !Array.isArray(args) ? args : {}); }
@@ -344,7 +402,7 @@ function stateBlock(S) {
   S = S || {}; const o = [];
   if (S.agentAddon) o.push(extraEngines().length ? 'web_search works. Engines in order: ' + searchChain().join(' > ') + '. An engine that fails or finds nothing is skipped to the next; the result says which one answered (source) and which were skipped (tried).' : tavilyKey() ? 'web_search works (Tavily key is set; DuckDuckGo is the backup if Tavily fails).' : 'web_search works through DuckDuckGo (no Tavily key): it gives encyclopedia-style answers and related links, NOT news or full search results, so an empty result is normal for current events and you must say so, never invent results. If he needs news or full results, tell him a Tavily key in Settings > Music > Agent & API Tools gives full web search.');
   if (S.agentAddon && scraperOn()) o.push('search_and_read(query) searches and opens the top pages in one call: use it when he wants an answer from the real pages, and report any page that failed to open.');
-  if (S.youtubeAddon) o.push(yt() ? 'YouTube and SoundCloud search, playlist listing and audio download work on this phone (SoundCloud: track links, set links and search). Download only when he asks, and plain talk counts as asking: "get me X", "grab X", "put X on my phone", "add X", "I want X" all mean download it, he does not have to say the word download. For a song name, run youtube_search, pick the best match, then call youtube_download with that url. Only for links he gave you or a listing returned, and tell him it saves to Music/Ember. Progress shows in the chat by itself, and a message appears when each track is saved, so you can confirm it is done.' : 'YouTube is on but the native downloader is not in this build, so those tools will fail.'); if (dlLast) o.push('Last download result: ' + dlLast);
+  if (S.youtubeAddon) o.push(yt() ? 'YouTube and SoundCloud search, playlist listing and audio download work on this phone (SoundCloud: track links, set links and search). Download only when he asks, and plain talk counts as asking: "get me X", "grab X", "put X on my phone", "add X", "I want X" all mean download it, he does not have to say the word download. For a song name, run youtube_search, pick the best match, then call youtube_download with that url. Only for links he gave you or a listing returned, and tell him it saves to Music/Ember. Progress shows in the chat by itself, and a message appears when each track is saved, so you can confirm it is done. To PLAY a song on his phone ("play X", "put on X"), call play_song with the song and artist: it checks his library, and if the song is missing it finds it with NewPipe, saves it to Music/Ember and plays it in Ember\'s player. Say only what the tool result says happened.' : 'YouTube is on but the native downloader is not in this build, so those tools will fail.'); if (dlLast) o.push('Last download result: ' + dlLast);
   if (S.visionAddon) o.push('see_image only works on https image links he pastes; you cannot see images he has not linked. Never describe an image you did not get a description for.');
   return o.length ? 'AGENT TOOLS STATE: ' + o.join(' ') : '';
 }

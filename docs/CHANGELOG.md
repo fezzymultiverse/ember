@@ -1,7 +1,46 @@
-## V1.9.62
-- Added structured artifact cards for assistant <artifact> blocks, with safe filename handling, downloads, text previews, and an isolated sandboxed HTML Live Preview iframe.
-- Added artifact-generation guidance to the assistant prompt for explicit file deliverables; ordinary answers remain normal chat. PDF-tagged content downloads as HTML source because this build has no PDF renderer.
-- Added the artifact module to the service-worker cache and bumped the app version.
+# Ember V1.9.72
+- GitHub Classic token: new card in Settings > Keys (token + owner/name repo, Check token, Install runner). Stored in localStorage `ember_github`, never in backups, never shown to the AI.
+- New `www/ember_github.js` tools (appear only while a token is saved): github_status, github_list_files, github_read_file, github_write_file, github_run, github_run_status, github_install_runner.
+- Cloud runs: github_run dispatches the installed `Ember Run` workflow (Ubuntu, Node 20, Python 3.12, Java 17). The log is committed to the `ember-results` branch, files copied to `$EMBER_OUT` become a Release, and Ember reads both back. Live progress shows as one row in Thinking (GitHub icon, step name, % bar).
+- Gates: writes need a push/save/commit message that mentions GitHub or the repo; runs need a run/build/test/compile message; the runner is only installed when asked (or by the Install runner button). Writes under `.github/` and content that looks like a secret are refused.
+- Reference repos: link up to 8 GitHub repos (Settings > Keys > GitHub > Reference repos, with one-tap suggestions: SWE-agent, Aider, OpenHands, github-mcp-server, MCP servers and SDK). Nothing is cloned. Tools repo_overview, repo_list_files, repo_read_file and repo_search read them live; public repos need no token (a saved token only raises the rate limit; repo_search needs it).
+- Claude engine: new provider `anthropic` (Messages API, direct from the phone with the browser-access header). Model list comes live from /v1/models; replies stream; native tool calls work. It is PAID, so it is never in the automatic order: it answers only while pinned in the Providers chip. Pasting an `sk-ant-` key anywhere now files it as a Claude key.
+- Version label, service-worker cache and package.json now agree (1.9.72).
+- Not device-tested. Needs a Classic token with `repo` + `workflow` scopes. A public repo makes logs and Release files public.
+
+# Ember V1.9.70
+- UI: white on black with orange highlights everywhere (blue/cyan/purple accents removed).
+- Thinking: no card, border or grid. The egg is the app icon (ember-icon.svg) with an orange arc orbiting it; it spins, then each step drops in one by one. Real icons per step: YouTube, Files, Termux, Globe (plus music, image, graph, egg for engines). Finished turns collapse to "Thought for Xs" with the same icon rows.
+- Artifacts: real PDF files (new ember_pdf.js, offline, no libraries), Word (.doc) export, SVG preview + PNG export, documents shown as paper pages, dark Markdown viewer. Ember's prompt now creates pdf / document / svg / markdown artifacts.
+- Bojack egg uses ember-icon.svg instead of the PNG.
+
+## V1.9.69
+- Removed the warm multicolor glow from the main chat canvas, made the textarea itself explicitly white, and changed composer focus/send accents to blue so the reply surface no longer reads orange.
+
+## V1.9.68
+- The live header now shows the current activity label directly, and the Thinking timeline gets a visibly pulsing blue light immediately beside its label (reduced-motion respected).
+
+## V1.9.67
+- Unified the Termux tab family with the same single active accent as other tabs and desaturated the music-tab emoji glyphs.
+- Updated the chat easter egg to use the exact 512px launcher app icon asset.
+
+## V1.9.66
+- Extended the single-color active state to the Chill/Sharp/Deep lane selector as well as settings and navigation tabs.
+
+## V1.9.65
+- Unified tab styling to a single solid accent color, removing multicolor active gradients.
+- Refined Ember’s actual Thinking timeline with a soft rounded dark panel, subtle orange accent, dashed connector, clearer activity nodes, and reduced-motion-aware active pulse.
+
+## V1.9.64
+- Restored the white reply composer against Ember’s dark canvas, with dark text, legible placeholder, cyan focus ring, and higher-contrast composer controls.
+
+## V1.9.63
+- Added structured artifact cards for assistant <artifact> blocks, safe downloads, sandboxed HTML Live Preview, a per-chat Artifact shelf, and Save .md for ordinary assistant replies.
+- Markdown artifacts render headings, lists, inline links, tables and code; code artifacts include syntax coloring, Copy, and an Android-only Open in Termux action that copies code but never runs it.
+- Added Save PDF via the browser print dialog for Markdown/HTML artifacts, chat context badges, filename-aware Writing activity status, and a reduced-motion-aware completion pulse. Existing Copy/Regenerate/Read-aloud actions remain.
+- Added artifact-generation guidance to the assistant prompt for explicit deliverables. PDF export depends on the device/browser print-to-PDF facility; PDF-tagged output itself remains source content.
+- Ember already offers Gemini and EasyVoice TTS voices with voice audition controls; no cloned/custom voice was generated or added.
+- Added artifact regression tests, service-worker cache entry and app version bump.
 
 ## V1.9.61
 - Added a blue live activity indicator/status in the header and a STOP control in both live thinking-card layouts. The control routes to Ember’s existing current-turn cancellation flow; it does not claim per-tool remote cancellation.
@@ -28,6 +67,15 @@
 - Kept YouTube search/download tool labels in the timeline so real tool calls show search followed by download when both run.
 
 # Changelog
+
+# Ember V1.9.71
+- Composer: + button inset and aligned with send; flat mic/talk icons; wider text column (Talk hides while typing).
+- Knowledge Graph: Unicode-aware words (no broken fragments), no code/links/ids, English+Afrikaans filler skipped, only topics shared by 2+ sources, cleaner layout.
+- Downloads: playlist jobs returned to Thinking; one row per download with live % bar; row keeps updating inside the saved "Thought for Xs" after the turn ends; direct NewPipe route only fires on real download requests.
+- Thinking labels/icons now match the real action (play, pause, skip, library, timers, etc.).
+- New tool play_song: library first, else NewPipe search -> save to Music/Ember -> play in Ember's player.
+- Not device-tested.
+
 
 ## V1.9.45
 - **Spinner style (the first card) now spins and rotates instead of dropping down.** The status-line display is a turning two-ring spinner with ONE status line. When the status changes, the old line rotates away and the next one rotates in (3D flip). The dropdown body, chevron and tap-to-open are gone from this style; the full list still shows in the saved "Thought for Xs" row after the reply. The DOM is kept between updates so the spinner never restarts or jitters. Reduced-motion: slow spinner + plain fade.

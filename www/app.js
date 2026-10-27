@@ -144,8 +144,10 @@ function bub(x, last, i) {
   const regen = last && x.r == 'a' ? '<button data-act="regen">↻ again</button>' : '';
   const say = x.r == 'a' ? '<button data-act="say" data-i="' + i + '" aria-label="Read aloud" title="Read aloud"' + (sayIdx === i ? ' class="talking"' : '') + '>' + (sayIdx === i ? '■ Stop' : '🔊') + '</button>' : '';
   const cp = x.egg ? '' : '<button data-act="copy" data-i="' + i + '" aria-label="Copy message" title="Copy this message">⧉ Copy</button>';
-  const eggImg = x.egg == 'bojack' ? '<img src="ember-icon.svg" alt="" class="msg-egg-icon">' : '';
-  return (x.tl && window.EmberTimeline ? window.EmberTimeline.savedHtml(x.tl) : '') + '<div class="msg ' + x.r + (x.egg ? ' egg' : '') + '">' + eggImg + '<div>' + (artifact ? artifact.html : fmt(x.t)) + '</div><div class="mt"><span>' + U.time(x.ts) + (x.deep ? ' · 💡' : '') + eng + '</span>' + say + cp + regen + '</div></div>';
+  const eggImg = x.egg == 'bojack' ? '<img src="ember-icon.svg" alt="Ember app icon" class="msg-egg-icon">' : '';
+  const context = x.ctx ? '<span class="context-chip" title="This message includes extra context">'+(/image|photo|vision/i.test(x.ctx)?'Image context':/document|file|attachment/i.test(x.ctx)?'Document context':'Extra context')+'</span>' : '';
+  const makeArtifact = x.r === 'a' && !artifact ? '<button data-act="artifact" data-i="'+i+'" title="Save this reply as a Markdown artifact">Save .md</button>' : '';
+  return (x.tl && window.EmberTimeline ? window.EmberTimeline.savedHtml(x.tl) : '') + '<div class="msg ' + x.r + (x.egg ? ' egg' : '') + '">' + eggImg + '<div>' + (artifact ? artifact.html : fmt(x.t)) + '</div><div class="mt">' + context + '<span>' + U.time(x.ts) + (x.deep ? ' · 💡' : '') + eng + '</span>' + say + cp + regen + makeArtifact + '</div></div>';
 }
 function renderLog() {
   const m = conv ? conv.msgs : [];
@@ -155,7 +157,7 @@ function renderLog() {
   const liveCard = timelineLive ? $('typ') : null;
   $('empty').classList.toggle('hidden', m.length > 0 || !!timelineLive);
   $('noKey').classList.toggle('hidden', Prov.hasKeys());
-  $('log').innerHTML = m.map((x, i) => bub(x, i == m.length - 1, i)).join('') + (window.EmberAgentAddon ? window.EmberAgentAddon.cardsHtml() : '') + (window.EmberTimeline ? window.EmberTimeline.liveHtml() : '') + (busy && streamText ? '<div class="msg a stream-preview" id="streamPreview"><div>' + fmt(streamText) + '</div><small>Live response</small></div>' : '') +
+  $('log').innerHTML = m.map((x, i) => bub(x, i == m.length - 1, i)).join('') + (window.EmberArtifacts && conv ? window.EmberArtifacts.shelf(conv.msgs) : '') + (window.EmberAgentAddon ? window.EmberAgentAddon.cardsHtml() : '') + (window.EmberTimeline ? window.EmberTimeline.liveHtml() : '') + (busy && streamText ? '<div class="msg a stream-preview" id="streamPreview"><div>' + fmt(streamText) + '</div><small>Live response</small></div>' : '') +
     (lastErr ? '<div class="msg e"><div>' + esc(lastErr) + '</div><div class="mt"><button data-act="retry">Try again</button><button data-act="keys">Open Keys</button></div></div>' : '');
   const freshCard = $('typ'); if (liveCard && freshCard) freshCard.replaceWith(liveCard);
   if (Safety.lastLevel() >= 3 && m.length) $('log').insertAdjacentHTML('beforeend', Safety.crisisCard());
@@ -179,7 +181,7 @@ function renderTop() {
   const dot = Prov.freeOn() && !okN ? 'free' : okN ? 'ok' : limN ? 'limited' : unkN ? 'none' : Prov.hasKeys() ? 'bad' : 'none';
   const pinM = (() => { try { const x = Prov.getPinnedModel && Prov.getPinnedModel(); return x && x.id == Prov.getPinned() ? shortM(x.model) : ''; } catch (e) { return ''; } })();
   const who = lastEng ? Prov.label(lastEng) + (lastMod ? ' · ' + shortM(lastMod) : '') : (Prov.getPinned() ? Prov.label(Prov.getPinned()) + (pinM ? ' · ' + pinM : '') + ' (pinned)' : (Prov.freeOn() && !okN ? 'Free Mode' : okN ? 'Auto' : 'No key'));
-  $('engs').className = 'engpill ' + dot + (activityStatus ? ' activity' : ''); $('engs').innerHTML = '<i></i><span>' + esc(activityStatus ? 'Working · ' + activityStatus : who) + '</span>';
+  $('engs').className = 'engpill ' + dot + (activityStatus ? ' activity' : ''); $('engs').innerHTML = '<i></i><span>' + esc(activityStatus || who) + '</span>';
   $('engs').title = activityStatus ? ('Ember is working: ' + activityStatus + '. Tap Stop in the activity card to cancel this turn.') : (lastEng ? 'Last reply: ' + Prov.label(lastEng) + (lastMod ? ' · ' + lastMod : '') + '. ' : '') + (okN ? okN + ' engine(s) ready' : 'No engine ready') + (limN ? ', ' + limN + ' rate limited' : '') + '. Tap to open Keys.';
   document.querySelectorAll('#modes button').forEach(b => b.classList.toggle('on', b.dataset.m == S.mode));
   const p = conv && conv.priv; $('bPriv').textContent = p ? '🔒 Private' : '🔓 Normal'; $('bPriv').classList.toggle('on', !!p);
@@ -280,6 +282,7 @@ function toolCatalog() {
   if (A.EmberTasks) sets.push(A.EmberTasks.TOOLS);
   if (A.EmberKeys) sets.push(A.EmberKeys.TOOLS);
   if (A.EmberGraph) sets.push(A.EmberGraph.TOOLS);
+  if (A.EmberGithub) sets.push(A.EmberGithub.toolsFor());
   if (docsOn && A.EmberDocsAddon) sets.push(A.EmberDocsAddon.TOOLS);
   if (A.EmberAgentAddon) sets.push(A.EmberAgentAddon.toolsFor(S));
   if (scrapeOn && A.EmberScraper) sets.push(A.EmberScraper.TOOLS);
@@ -292,13 +295,7 @@ async function runTool(tool, args) { // every call (chat, plan, ReAct) shows on 
   const TL = window.EmberTimeline, h = TL ? TL.tool(tool, args) : null;
   let res; try { res = await runToolRaw(tool, args); } catch (e) { res = { error: (e && e.message) || 'Tool failed.' }; }
   if (h) h.end(res);
-  // Only show a download stage after the native downloader returns real job ids.
-  // A model saying “downloading” or a failed dispatch must never create this status.
-  if (TL && !((res && res.error) || (res && res.ok === false))) {
-    const ids = tool == 'youtube_download' && res && res.jobId ? [res.jobId]
-      : tool == 'playlist_download' && res && Array.isArray(res.jobs) ? res.jobs.map(j => j && j.jobId).filter(Boolean) : [];
-    ids.forEach(id => TL.upsert('download:' + id, 'Downloading audio', 'a', 'run', { pill: 'LIVE DOWNLOAD' }));
-  }
+  // Download rows come from the real 'ember-dl' job events (ember_timeline.js), so a model saying "downloading" or a failed start never creates one.
   return res;
 }
 async function runToolRaw(tool, args) {
@@ -315,6 +312,7 @@ async function runToolRaw(tool, args) {
     if (A.EmberTasks && namesOf(A.EmberTasks).includes(tool)) return await A.EmberTasks.dispatch(tool, args);
     if (A.EmberKeys && namesOf(A.EmberKeys).includes(tool)) return await A.EmberKeys.dispatch(tool, args);
     if (A.EmberGraph && namesOf(A.EmberGraph).includes(tool)) return await A.EmberGraph.dispatch(tool, args);
+    if (A.EmberGithub && A.EmberGithub.toolsFor().some(t => t.name == tool)) return await A.EmberGithub.dispatch(tool, args);
     const docsOn = S.docsAddon || !!(A.EmberPlus && A.EmberPlus.isOn('device')) || !!(A.EmberDocs && A.EmberDocs.count && A.EmberDocs.count() > 0);
     if (docsOn && A.EmberDocsAddon && namesOf(A.EmberDocsAddon).includes(tool)) return await A.EmberDocsAddon.dispatch(tool, args);
     if (A.EmberAgentAddon && A.EmberAgentAddon.toolsFor(S).some(t => t.name == tool)) return await A.EmberAgentAddon.dispatch(tool, args);
@@ -336,6 +334,7 @@ async function resolveAddonCalls(text, L, route) {
     // the music tools only run if HIS latest message is about music (ai_music.js checks this), never because the AI wants to
     const us = conv.msgs.filter(m => m.r == 'u'); window.EmberMusicAddon.setIntent(us.length ? us[us.length - 1].t : '', us.length > 1 ? us[us.length - 2].t : '');
   }
+  if (window.EmberGithub && window.EmberGithub.setIntent) { const us = conv.msgs.filter(m => m.r == 'u'); window.EmberGithub.setIntent(us.length ? us[us.length - 1].t : '', us.length > 1 ? us[us.length - 2].t : ''); }
   if (window.EmberTasks && window.EmberTasks.setIntent) { const us = conv.msgs.filter(m => m.r == 'u'); window.EmberTasks.setIntent(us.length ? us[us.length - 1].t : '', us.length > 1 ? us[us.length - 2].t : ''); }
   if (window.EmberAgentAddon && window.EmberAgentAddon.setIntent) { // YouTube downloads only run if HIS latest message asks for one (ai_agent.js checks this)
     const us = conv.msgs.filter(m => m.r == 'u'); window.EmberAgentAddon.setIntent(us.length ? us[us.length - 1].t : '', us.length > 1 ? us[us.length - 2].t : '');
@@ -421,6 +420,7 @@ async function reply(o) {
     const bgWon = () => conv.msgs.some(m => m.turn === turnId); // the background task already delivered this turn's reply
     if (bgWon()) finalText = '';
     else if (finalText) finalText = await resolveAddonCalls(finalText, L, { provider: r.provider, model: r.model });
+    if (finalText && TLn && window.EmberArtifacts) { const made=window.EmberArtifacts.parse(finalText).items; if(made.length) TLn.note('Writing ' + made.map(a=>a.title).join(', ')); }
     if (finalText && !bgWon()) {
       const tlSnap = window.EmberTimeline ? window.EmberTimeline.snapshot() : null;
       conv.msgs.push({ r: 'a', t: finalText, ts: Date.now(), turn: turnId, tl: tlSnap || undefined, deep: L.deep || undefined, eng: { p: r.provider, m: r.model, ms: r.ms, pm: r.pinMiss ? r.pinMiss.want : undefined } });
@@ -459,34 +459,42 @@ async function after() {
 // EmberYoutube and return the native result without sending the turn through Groq/Gemini/etc.
 async function directNewPipe(t) {
   const A = window.EmberAgentAddon, hasYt = A && A.dispatch && A.toolsFor && A.toolsFor(S).some(x => x.name == 'youtube_download');
-  if (!hasYt || !/\b(download(?:ing|ed)?|save|grab|rip|keep|store|get|fetch|pull|put|add|newpipe)\b/i.test(t)) return false;
+  if (!hasYt) return false;
   const video = (t.match(/https:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com|youtu\.be)\/[^\s<>"']+/i) || [])[0] || '';
   const playlist = /(?:[?&]list=|\/playlist(?:\/|\?|$))/i.test(video);
   const soundcloud = (t.match(/https:\/\/(?:www\.|m\.)?soundcloud\.com\/[^\s<>"']+/i) || [])[0] || '';
-  const query = t.replace(video || soundcloud, '').replace(/\b(download(?:ing|ed)?|save|grab|rip|keep|store|get|fetch|pull|put|add|newpipe|this|it|to|my|phone|please)\b/gi, ' ').replace(/\s+/g, ' ').trim();
-  // A bare conversational mention should still go to the normal AI route. Direct mode needs a link or a usable title.
-  if (!video && !soundcloud && query.length < 2) return false;
+  const hasLink = !!(video || soundcloud);
+  // A real download request: a media link with a save/download verb, or the word download/rip/newpipe, or "save|grab|get ... song|track|audio|mp3|music".
+  // Everyday talk ("get me a recipe", "save money") and questions about downloading stay with the normal AI route, as does "play ..." (play_song handles that).
+  const verb = /\b(download(?:ing|ed)?|save|grab|rip|keep|store|get|fetch|pull|put|add|newpipe)\b/i.test(t);
+  const explicit = /\b(download(?:ing|ed)?|rip|newpipe)\b/i.test(t) || (verb && /\b(songs?|tracks?|audio|mp3|music|album|playlist)\b/i.test(t));
+  if (!verb || (!hasLink && !explicit)) return false;
+  if (!hasLink && (/^\s*(how|why|what|when|where|can'?t|cannot|does|do|is|are)\b/i.test(t) || /\bplay(?:ing)?\b/i.test(t))) return false;
+  const query = t.replace(video || soundcloud, '').replace(/\b(download(?:ing|ed)?|save|grab|rip|keep|store|get|fetch|pull|put|add|newpipe|this|it|that|to|my|phone|please|can|could|you|would|will|me|the|a|an|song|songs|track|tracks|audio|mp3|music|from|youtube|soundcloud|for|i|want|need|and|then|on|onto|into|off)\b/gi, ' ').replace(/[?!.,]+/g, ' ').replace(/\s+/g, ' ').trim();
+  // Direct mode needs a link or a usable title.
+  if (!hasLink && query.length < 2) return false;
   const us = conv.msgs.filter(m => m.r == 'u'), prev = us.length > 1 ? us[us.length - 2].t : '';
   const turn = conv.id + ':' + conv.msgs.length;
   busy = true; curTurn = turn; cancelRequested = false; $('bSend').disabled = true; $('bSend').classList.add('hidden'); $('bStop').classList.remove('hidden'); $('bStop').disabled = false; typing(true);
   const TL = window.EmberTimeline;
-  if (TL) { TL.note('Sending directly to NewPipe', 'np-direct'); TL.note(video || soundcloud ? 'Using the link you gave me' : 'Finding the best match on YouTube'); }
+  if (TL) { TL.note(playlist ? 'Reading the playlist link' : video || soundcloud ? 'Using the link you gave me' : 'Looking for \u201c' + query.slice(0, 50) + '\u201d on YouTube', 'np-direct'); }
   try {
     A.setIntent(t, prev);
     let r;
     if (playlist) {
-      const listed = await A.dispatch('playlist_list', { url: video });
-      r = listed && !listed.error ? await A.dispatch('playlist_download', { url: video }) : listed;
+      const listed = await runTool('playlist_list', { url: video });
+      r = listed && !listed.error ? await runTool('playlist_download', { url: video }) : listed;
     } else if (video || soundcloud) {
-      r = await A.dispatch('youtube_download', { url: video || soundcloud, title: query || undefined });
+      r = await runTool('youtube_download', { url: video || soundcloud, title: query || undefined });
     } else {
-      const found = await A.dispatch('youtube_search', { query });
+      const found = TL ? await runTool('youtube_search', { query }) : await A.dispatch('youtube_search', { query });
       const first = found && found.results && found.results[0];
-      r = first ? await A.dispatch('youtube_download', { url: first.url, title: first.title }) : found;
+      if (first && TL) TL.note('Best match: ' + String(first.title || '').slice(0, 70));
+      r = first ? await runTool('youtube_download', { url: first.url, title: first.title }) : (found && found.error ? found : { error: 'NewPipe found nothing for \u201c' + query + '\u201d.' });
     }
     const failed = !r || r.error || r.ok === false;
-    const text = failed ? 'NewPipe: ' + String(r && (r.error || r.status) || 'I could not start that download.') : 'NewPipe: ' + String(r.status || 'Download started. I’ll show the native progress below.');
-    if (TL) { TL.note(failed ? 'NewPipe could not start the download' : 'NewPipe accepted the download', 'np-result'); TL.flush(); }
+    const text = failed ? 'I could not start that download. ' + String(r && (r.error || r.status) || '') : 'Download started' + (r.count ? ' for ' + r.count + ' tracks' : '') + '. The progress is in the thought above and in the card below; it lands in Music/Ember.';
+    if (TL) { if (failed) TL.note('Could not start the download', 'np-result'); TL.flush(); }
     conv.msgs.push({ r: 'a', t: text, ts: Date.now(), turn, tl: TL ? TL.snapshot() : undefined });
     await persist();
   } catch (e) {
@@ -563,6 +571,7 @@ $('log').addEventListener('click', e => {
   else if (a.dataset.act == 'retry') { if (conv && conv.msgs.length) reply({ directive: conv.msgs[conv.msgs.length - 1].r == 'a' ? SPARK : undefined }); }
   else if (a.dataset.act == 'say') speakMsg(+a.dataset.i);
   else if (a.dataset.act == 'copy') { const m = conv && conv.msgs[+a.dataset.i]; copyTxt(m && m.t, a); }
+  else if (a.dataset.act == 'artifact') { const m=conv&&conv.msgs[+a.dataset.i]; if(m&&m.r==='a'&&window.EmberArtifacts){const original=m.t; m.t='Saved response as a Markdown file.\n<artifact type="markdown" title="ember-notes.md">\n'+original+'\n</artifact>'; persist().then(renderLog); toast('Saved to Artifact shelf');} }
   else if (a.dataset.act == 'cpcode') { const c = a.closest('.cb'), code = c && c.querySelector('code'); copyTxt(code ? code.textContent : '', a); }
   else if (a.dataset.act == 'regen' && conv && !busy) {
     const last = conv.msgs[conv.msgs.length - 1]; if (!last || last.r != 'a') return;
@@ -852,7 +861,7 @@ function renderKeys() {
 $('kList').addEventListener('click', e => { const b = e.target.closest('[data-fold]'); if (!b) return; toggleFold(b.dataset.fold); renderKeys(); });
 
 // ---------- V1.6.1: Get Key buttons ----------
-const KEY_LINKS = { groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', openrouter: 'https://openrouter.ai/settings/keys', cohere: 'https://dashboard.cohere.com/api-keys', huggingface: 'https://huggingface.co/settings/tokens' };
+const KEY_LINKS = { groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', openrouter: 'https://openrouter.ai/settings/keys', cohere: 'https://dashboard.cohere.com/api-keys', huggingface: 'https://huggingface.co/settings/tokens', anthropic: 'https://console.anthropic.com/settings/keys' };
 const SCRAPE_LINKS = { firecrawl: 'https://www.firecrawl.dev/app/api-keys', browserless: 'https://www.browserless.io/', scraperapi: 'https://www.scraperapi.com/', scraperbee: 'https://app.scrapingbee.com/account/manage', zenrows: 'https://app.zenrows.com/builder', tavily: 'https://app.tavily.com/home', serpapi: 'https://serpapi.com/manage-api-key', brightdata: 'https://brightdata.com/cp', sting: '', octoparse: 'https://www.octoparse.com/' };
 function paintGetKeyRow(el, links) { if (!el) return; el.innerHTML = Object.keys(links).filter(k => links[k]).map(k => '<button class="btn g" data-link="' + esc(links[k]) + '" style="width:auto;padding:7px 12px;font-size:12px">' + (Prov.CFG[k] ? Prov.CFG[k].name : (window.EmberScraper && window.EmberScraper.LABEL[k]) || k) + ' ↗</button>').join(''); }
 document.addEventListener('click', e => { const b = e.target.closest('[data-link]'); if (b) window.open(b.dataset.link, '_blank', 'noopener'); });
@@ -1280,7 +1289,7 @@ $('fImp').onchange = async e => {
 $('bWipe').onclick = async () => {
   if (!(await sure('Delete everything?', 'All chats, memory, settings, chat and scraping keys, the Tavily key, the notepad, uploaded music, playlists and the Audd.io token on this device. This cannot be undone.'))) return;
   try { if (window.EmberPlayer) await window.EmberPlayer.wipe(); if (window.EmberAudd) window.EmberAudd.wipe(); if (window.EmberDocs) { for (const d of await window.EmberDocs.all()) await window.EmberDocs.remove(d.id); } } catch (e) { /* storage already blocked */ }
-  await Store.wipe(); ['ember_set', 'ember_keys', 'ember_models', 'ember_voice', 'ember_voice_gm', 'ember_scrape', 'ember_scrape_rot', 'ember_agent', 'ember_pad', 'ember_saved', 'ember_imagine'].forEach(k => LS.del(k)); location.reload();
+  await Store.wipe(); ['ember_set', 'ember_keys', 'ember_models', 'ember_voice', 'ember_voice_gm', 'ember_scrape', 'ember_scrape_rot', 'ember_agent', 'ember_github', 'ember_pad', 'ember_saved', 'ember_imagine'].forEach(k => LS.del(k)); location.reload();
 };
 
 // ---------- start ----------
@@ -1297,20 +1306,13 @@ $('bWipe').onclick = async () => {
 })();
 window.addEventListener('error', e => { try { console.error('Ember error:', e.message); } catch (x) {} });
 // ---------- V1.6.2: download progress cards + "it is done" message from the agent ----------
-function paintRealDownloadThought(j) {
-  const TL = window.EmberTimeline;
-  if (!TL || !j || !j.id || !TL._live || !TL._live()) return;
-  const pct = Math.max(0, Math.min(100, +j.pct || 0));
-  const done = j.state === 'done', bad = j.state === 'failed';
-  const text = done ? 'Saved to Music/Ember' : bad ? 'Download failed' : 'Downloading' + (j.title ? ': ' + String(j.title).slice(0, 70) : '') + (pct ? ' (' + pct + '%)' : '');
-  TL.upsert('download:' + j.id, text, 'a', done ? 'ok' : bad ? 'bad' : 'run', { pill: done ? 'SAVED' : bad ? 'FAILED' : 'LIVE DOWNLOAD', err: bad ? (j.detail || '') : '' });
-}
 window.addEventListener('ember-dl', e => {
-  const j = e.detail || {}; paintRealDownloadThought(j); if (j.silent) return; // started from the Music > Get tab: shown there, not in the chat
+  const j = e.detail || {}; if (j.silent) return; // started from the Music > Get tab: shown there, not in the chat
   const el = document.getElementById('dl-' + j.id);
   if (el && window.EmberAgentAddon) el.outerHTML = window.EmberAgentAddon.cardHtml(j);
   else if (conv && window.EmberAgentAddon) renderLog();
 });
+window.addEventListener('ember-saved-row-changed', () => { try { persist(); } catch (_) { /* chat not ready */ } });
 window.addEventListener('ember-dl-final', e => {
   const text = (e.detail && e.detail.text) || '';
   if (!text || (e.detail && e.detail.silent)) return;

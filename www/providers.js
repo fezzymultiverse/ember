@@ -10,12 +10,14 @@ const CFG = {
   gemini: { name: 'Gemini', base: 'https://generativelanguage.googleapis.com/v1beta', kind: 'gem', color: '#ffffff' },
   openrouter: { name: 'OpenRouter', base: 'https://openrouter.ai/api/v1', kind: 'oai', color: '#ff8c1a' },
   cohere: { name: 'Cohere', base: 'https://api.cohere.com', kind: 'cohere', color: '#d9d9d9' },
-  huggingface: { name: 'HuggingFace', base: 'https://router.huggingface.co/v1', kind: 'oai', status: 'prototype', color: '#ffb800' }
+  huggingface: { name: 'HuggingFace', base: 'https://router.huggingface.co/v1', kind: 'oai', status: 'prototype', color: '#ffb800' },
+  // V1.9.72: Claude (Anthropic Messages API). PAID, so it is never in the automatic order: it answers only while it is pinned (Providers chip).
+  anthropic: { name: 'Claude', base: 'https://api.anthropic.com/v1', kind: 'claude', color: '#d97757' }
 };
 const IDS = Object.keys(CFG);
 // V1.9.55: active automatic profile for this installation. Legacy Hugging Face keys remain readable in backups,
 // but the router does not select Hugging Face automatically. Mistral stays active because it is working for him.
-const ACTIVE_IDS = ['groq', 'cohere', 'openrouter', 'gemini', 'mistral'];
+const ACTIVE_IDS = ['groq', 'cohere', 'openrouter', 'gemini', 'mistral', 'anthropic'];
 // fast = quick everyday replies. deep = slow, careful turns. util = background jobs (memory, titles).
 const ORDER = { fast: ['groq', 'cohere', 'openrouter', 'gemini', 'mistral'], deep: ['gemini', 'cohere', 'mistral', 'groq', 'openrouter'], util: ['groq', 'cohere', 'openrouter', 'gemini', 'mistral'] };
 
@@ -118,11 +120,59 @@ async function gemFetch(url, key, opt, timeout) {
   }
 }
 
+// ---------- Claude (Anthropic) ----------
+// The header below is what lets a browser or WebView call the API directly (CORS). The key stays on this phone.
+const claudeHeaders = key => ({ 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'Content-Type': 'application/json' });
+const vkey = m => (String(m).match(/\d+/g) || []).slice(0, 2).map(Number);
+const vcmp = (a, b) => { const x = vkey(a), y = vkey(b); for (let i = 0; i < 2; i++) { const d = (y[i] || 0) - (x[i] || 0); if (d) return d; } return a.length - b.length; };
+function claudeMsgs(messages) { // the Messages API wants alternating user/assistant turns that start with a user turn
+  const out = [];
+  (messages || []).forEach(m => { const role = m.role == 'assistant' ? 'assistant' : 'user', t = String(m.content == null ? '' : m.content); if (!t.trim()) return; const last = out[out.length - 1]; if (last && last.role == role) last.content += '\n\n' + t; else out.push({ role, content: t }); });
+  if (!out.length || out[0].role != 'user') out.unshift({ role: 'user', content: '(continue)' });
+  return out;
+}
+async function streamClaude(url, body, key, o, timeout) {
+  body.stream = true;
+  const r = await net(url, { method: 'POST', headers: Object.assign({ Accept: 'text/event-stream' }, claudeHeaders(key)), body: JSON.stringify(body) }, timeout || 60000);
+  if (!r.ok) {
+    let raw = ''; try { raw = await r.text(); } catch (_) {}
+    let msg = ''; try { const p = JSON.parse(raw); msg = (p.error && (p.error.message || p.error)) || p.message || ''; } catch (_) {}
+    const h = r.headers && r.headers.get && r.headers.get('retry-after'); const retryAfter = Math.max(0, Math.min(900, Number(h) || 0));
+    throw Object.assign(new Error(String(msg || raw || ('HTTP ' + r.status)).slice(0, 200)), { status: r.status, retryAfter });
+  }
+  if (!r.body || !r.body.getReader) { const j = await r.json(); return (j.content || []).map(p => p.text || '').join(''); }
+  const reader = r.body.getReader(), decoder = new TextDecoder(); activeReaders.add(reader); let buffer = '', out = '';
+  const consume = line => {
+    if (!line.startsWith('data:')) return;
+    const data = line.slice(5).trim(); if (!data) return;
+    let p; try { p = JSON.parse(data); } catch (_) { return; }
+    if (p.type == 'error') throw Object.assign(new Error(String(p.error && p.error.message || 'stream error').slice(0, 200)), { status: p.error && p.error.type == 'overloaded_error' ? 529 : 0 });
+    const piece = p.type == 'content_block_delta' && p.delta && p.delta.type == 'text_delta' ? p.delta.text : '';
+    if (piece) { out += piece; if (typeof o.onToken == 'function') { try { o.onToken(piece, out); } catch (_) {} } }
+  };
+  try {
+    while (true) {
+      if (routeCancelled) throw Object.assign(new Error('Stopped by user.'), { code: 'cancelled' });
+      const part = await reader.read(); if (part.done) break;
+      buffer += decoder.decode(part.value, { stream: true });
+      const lines = buffer.split(/\r?\n/); buffer = lines.pop() || '';
+      lines.forEach(consume);
+    }
+    consume(buffer.trim());
+  } finally { activeReaders.delete(reader); try { reader.releaseLock(); } catch (_) {} }
+  if (routeCancelled) throw Object.assign(new Error('Stopped by user.'), { code: 'cancelled' });
+  return out;
+}
+
 // ---------- models ----------
 async function listModels(id, key) {
   const c = CFG[id];
   if (c.kind == 'oai') {
     const j = await jfetch(c.base + '/models', { headers: { Authorization: 'Bearer ' + key } }, 15000);
+    return (j.data || []).map(m => m.id).filter(Boolean);
+  }
+  if (c.kind == 'claude') {
+    const j = await jfetch(c.base + '/models?limit=100', { headers: claudeHeaders(key) }, 15000);
     return (j.data || []).map(m => m.id).filter(Boolean);
   }
   if (c.kind == 'cohere') {
@@ -161,6 +211,13 @@ function rank(id, list, lane) {
     const ok = list.filter(m => !/embed|rerank|vision|audio|translate|nightly/i.test(m));
     const pref = deep ? [/command-a-0/, /command-r-plus/, /command-a/, /command-r/] : [/command-r7b/, /command-r-08/, /command-a-0/, /command-r/, /command/];
     const out = []; pref.forEach(p => ok.filter(m => p.test(m)).forEach(m => { if (!out.includes(m)) out.push(m); }));
+    ok.forEach(m => { if (!out.includes(m)) out.push(m); });
+    return out;
+  }
+  if (id == 'anthropic') {
+    const ok = list.filter(m => /^claude-/.test(m));
+    const pref = deep ? [/opus/, /sonnet/, /haiku/] : [/haiku/, /sonnet/, /opus/];
+    const out = []; pref.forEach(p => ok.filter(m => p.test(m)).sort(vcmp).forEach(m => { if (!out.includes(m)) out.push(m); }));
     ok.forEach(m => { if (!out.includes(m)) out.push(m); });
     return out;
   }
@@ -288,6 +345,28 @@ async function call(id, key, model, o) {
       text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content || '';
       const nc = decl.length ? oaiNative(j) : null; if (nc) text = joinCall(text, nc.tool, nc.args);
     }
+  } else if (c.kind == 'claude') {
+    const decl = (!o.json && o.tools && o.tools.length) ? toolDecls(o.tools, false) : [];
+    const body = { model, system: String(o.system || '') + (o.json ? '\n\nReply with one valid JSON object and nothing else.' : ''), messages: claudeMsgs(o.messages), max_tokens: Math.max(64, o.max || 400) };
+    if (o.temp != null || !o.json) body.temperature = Math.max(0, Math.min(1, o.temp == null ? 0.8 : o.temp));
+    if (decl.length) body.tools = decl.map(f => ({ name: f.name, description: f.description, input_schema: f.parameters }));
+    const retry = er => {
+      if (er.code === 'cancelled') throw er;
+      if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null }));
+      if (er.status == 400 && /temperature/i.test(er.message) && body.temperature !== undefined) { delete body.temperature; return null; }
+      throw er;
+    };
+    for (let pass = 0; pass < 2 && !text; pass++) {
+      try {
+        if (typeof o.onToken == 'function' && !decl.length && !o.json) { text = await streamClaude(c.base + '/messages', body, key, o, 60000); }
+        else {
+          const j = await jfetch(c.base + '/messages', { method: 'POST', headers: claudeHeaders(key), body: JSON.stringify(body) }, 60000);
+          const blocks = Array.isArray(j.content) ? j.content : [];
+          text = blocks.filter(p => p.type == 'text').map(p => p.text || '').join('');
+          const tu = decl.length && blocks.find(p => p.type == 'tool_use' && p.name); if (tu) text = joinCall(text, tu.name, tu.input);
+        }
+      } catch (er) { const again = retry(er); if (again) return again; }
+    }
   } else if (c.kind == 'cohere') {
     const body = { model, messages: [{ role: 'system', content: o.system }].concat(o.messages), temperature: o.temp == null ? 0.8 : o.temp, max_tokens: o.max || 400 };
     if (o.json) body.response_format = { type: 'json_object' };
@@ -358,18 +437,18 @@ function removeKey(id, key) { keys[id] = keys[id].filter(e => e.key !== key); co
 // V1.9.14: the finder lives in ember_keyscan.js (one for every paste box). extract() keeps its old shape so callers and tests keep working.
 const KS = () => window.EmberKeyScan;
 function extract(text, pre) {
-  const out = { groq: [], gemini: [], mistral: [], openrouter: [], huggingface: [], cohere: [], unknown: [], unknownCohere: [] };
+  const out = { groq: [], gemini: [], mistral: [], openrouter: [], huggingface: [], cohere: [], anthropic: [], unknown: [], unknownCohere: [] };
   const ks = KS(); if (!ks) return out;
   const sc = pre || ks.scan(text);
-  for (const id of ['groq', 'gemini', 'mistral', 'openrouter', 'huggingface', 'cohere']) out[id] = (sc.keys[id] || []).slice();
+  for (const id of ['groq', 'gemini', 'mistral', 'openrouter', 'huggingface', 'cohere', 'anthropic']) out[id] = (sc.keys[id] || []).slice();
   out.unknown = (sc.probes && sc.probes.mistral || []).slice();
   out.unknownCohere = (sc.probes && sc.probes.cohere || []).slice();
   return out;
 }
 async function ingest(text, pre) {
   const f = extract(text, pre);
-  const rep = { found: { groq: f.groq.length, gemini: f.gemini.length, mistral: f.mistral.length, openrouter: f.openrouter.length, huggingface: f.huggingface.length, cohere: f.cohere.length, unknown: f.unknown.length + f.unknownCohere.length }, added: [], dupes: 0, rejected: 0, rejectedBy: { mistral: 0, cohere: 0 } };
-  for (const id of ['groq', 'gemini', 'mistral', 'openrouter', 'huggingface', 'cohere']) for (const k of f[id]) {
+  const rep = { found: { groq: f.groq.length, gemini: f.gemini.length, mistral: f.mistral.length, openrouter: f.openrouter.length, huggingface: f.huggingface.length, cohere: f.cohere.length, anthropic: f.anthropic.length, unknown: f.unknown.length + f.unknownCohere.length }, added: [], dupes: 0, rejected: 0, rejectedBy: { mistral: 0, cohere: 0 } };
+  for (const id of ['groq', 'gemini', 'mistral', 'openrouter', 'huggingface', 'cohere', 'anthropic']) for (const k of f[id]) {
     const r = await addKey(id, k);
     if (!r.ok) { rep.dupes++; continue; }
     rep.added.push({ id, key: k, ok: !!(r.e.st && r.e.st.ok), guess: false });
