@@ -20,6 +20,14 @@
 
   const CHEV = '<svg class="et-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>';
 
+  // V1.9.39: header like the mockup - spark icon + shimmering "Thinking…" / "Executing Tool…", then "Thought for Xs"
+  const SPARK = '<svg class="tl-spark" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z"/></svg>';
+  const DOWN = '<svg class="tl-chv" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>';
+  const secsOf = ms => ms ? (ms / 1000).toFixed(1) + 's' : '\u2013';
+  const titleHtml = (running, tooling, ms) => '<h2 class="tl-title">' + SPARK + (running
+    ? '<span class="tl-shimmer">' + (tooling ? 'Executing Tool\u2026' : 'Thinking\u2026') + '</span>'
+    : '<span class="tl-done-t">Thought for ' + secsOf(ms) + '</span>') + '</h2>';
+
   const reactOn = () => {
     try { const s = window.EmberEngine && window.EmberEngine.react && window.EmberEngine.react.state && window.EmberEngine.react.state(); return !!(s && s.status === 'running'); }
     catch (e) { return false; }
@@ -71,6 +79,11 @@
     const el = $('typ'); if (!el || !live) return;
     el.className = 'et-think' + (reactOn() ? ' et-hide' : '');
     el.innerHTML = innerHtml();
+    if (el.querySelectorAll) { // V1.9.39: only the new rows animate in
+      const items = el.querySelectorAll('.tl-item:not(.tl-now)'), seen = live.shown || 0;
+      items.forEach((it, i) => { if (i >= seen) it.classList.add('tl-new'); });
+      live.shown = items.length;
+    }
     const log = $('log'); if (log) log.scrollTop = log.scrollHeight;
   }
 
@@ -95,7 +108,7 @@
   function tool(name, args) {
     if (live) live.toolRan = true;
     const line = live ? addLine(label(name, args), false) : null;
-    if (line) { line.k = 'a'; line.st = 'run'; }
+    if (line) { line.k = 'a'; line.st = 'run'; paint(); } // V1.9.39: repaint so the RUNNING pill / "Executing Tool…" show while the tool works (they were set after the paint)
     return {
       end(res) { if (line) { line.bad = failed(res); line.st = line.bad ? 'bad' : 'ok'; paint(); } }
     };
@@ -126,8 +139,8 @@
         + '<div class="et-body"><div class="et-lines">' + (live.lines.length ? live.lines.map(l => '<p class="et-line' + (l.bad ? ' et-bad' : '') + '">' + esc(l.text) + '</p>').join('') : '<p class="et-line et-muted">Starting\u2026</p>') + '</div></div></div>';
     }
     return '<div class="tl-card tl-run' + (live.open ? ' tl-open' : '') + '">'
-      + '<div class="tl-hdr" data-et="toggle"><h2>Summary</h2><span class="tl-meta">' + live.lines.length + ' steps</span>' + SW
-      + '<button class="tl-x" data-et="toggle" aria-label="Collapse">&times;</button></div>'
+      + '<div class="tl-hdr" data-et="toggle">' + titleHtml(true, (live.lines[live.lines.length - 1] || {}).st === 'run', 0) + '<span class="tl-meta">' + live.lines.length + ' steps</span>' + SW
+      + '<span class="tl-chev2" data-et="toggle" aria-label="Collapse">' + DOWN + '</span></div>'
       + '<div class="tl-body">' + linesHtml(live.lines, true) + '</div></div>';
   }
 
@@ -144,9 +157,8 @@
       const lns = tl.lines.map(l => '<p class="et-line' + (l[1] ? ' et-bad' : '') + '">' + esc(l[0]) + '</p>').join('');
       return '<details class="et-saved"><summary>' + CHEV + '<span>Thought for ' + secs + '</span></summary><div class="et-lines">' + lns + '</div></details>';
     }
-    const n = tl.lines.filter(l => l[2] === 'a').length;
     const rows = tl.lines.map(l => row(l[0], l[2] === 'a' ? 'a' : 't', l[2] === 'a' ? (l[1] ? 'bad' : 'ok') : '')).join('');
-    return '<details class="et-saved"><summary>' + CHEV + '<span>' + (n ? 'Worked through ' + n + ' action' + (n == 1 ? '' : 's') : tl.lines.length + ' steps') + ' \u00b7 ' + secs + '</span></summary><div class="tl-card tl-open"><div class="tl-body"><div class="tl">' + rows + '</div></div></div></details>';
+    return '<div class="et-saved et-think"><div class="tl-card tl-saved"><div class="tl-hdr" data-et="saved">' + titleHtml(false, false, tl.ms) + '<span class="tl-meta">' + tl.lines.length + ' steps</span><span class="tl-chev2">' + DOWN + '</span></div><div class="tl-body"><div class="tl">' + rows + '</div></div></div></div>';
   }
 
   // ---------- events ----------
@@ -159,6 +171,11 @@
     live.open = !live.open;
     const c = b.closest('.tl-card'); if (c) c.classList.toggle('tl-open', live.open);
     const d = b.closest('.et-inner'); if (d) d.classList.toggle('et-open', live.open);
+  });
+
+  document.addEventListener('click', e => { // V1.9.39: saved "Thought for Xs" card opens / closes
+    const h = e.target.closest && e.target.closest('[data-et="saved"]'); if (!h) return;
+    const c = h.closest('.tl-card'); if (c) c.classList.toggle('tl-open');
   });
 
   // hide/show when ReAct starts or ends

@@ -69,9 +69,17 @@
       + '<div class="tl-txt">' + esc(label) + '<span class="tl-ell"></span></div></div>';
   }
 
+  // V1.9.39: header like the mockup - spark + shimmering "Thinking…" / "Executing Tool…", then "Thought for Xs"
+  const SPARK = '<svg class="tl-spark" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z"/></svg>';
+  function titleHtml(s, last) {
+    if (s.status === 'running') return '<h2 class="tl-title">' + SPARK + '<span class="tl-shimmer">' + (last && last.status === 'running' ? 'Executing Tool…' : 'Thinking…') + '</span></h2>';
+    return '<h2 class="tl-title">' + SPARK + '<span class="tl-done-t">' + (s.status === 'done' ? 'Thought for ' + elapsed(s) : s.status === 'stopped' ? 'Stopped after ' + elapsed(s) : 'Ended after ' + elapsed(s)) + '</span></h2>';
+  }
+
   function buildHtml(s) {
     const running = s.status === 'running', waiting = !!s.waiting;
-    let h = '<div class="tl-hdr"><h2>Summary</h2><span class="tl-meta">' + esc(metaText(s)) + '</span>'
+    const lastStep = [...s.entries].reverse().find(e => e.type === 'step') || null;
+    let h = '<div class="tl-hdr">' + titleHtml(s, lastStep) + '<span class="tl-meta">' + esc(metaText(s)) + '</span>'
       + (running ? '' : '<span class="tl-chev">' + (open ? '▴' : '▾') + '</span>')
       + '<button class="tl-x" aria-label="Close">&times;</button></div>';
     h += '<div class="tl-body"><div class="tl">';
@@ -109,6 +117,11 @@
       if (typ) typ.insertAdjacentElement('beforebegin', card); else log.appendChild(card);
     }
     card.innerHTML = html;
+    if (card.querySelectorAll) { // V1.9.39: only new rows drop in
+      const rows = card.querySelectorAll('.tl-item:not(.tl-now)'), seen = +card.dataset.n || 0;
+      rows.forEach((it, i) => { if (i >= seen) it.classList.add('tl-new'); });
+      card.dataset.n = rows.length;
+    }
     card.classList.toggle('tl-open', open || s.status === 'running');
     card.classList.toggle('tl-run', s.status === 'running');
     scrollDown();
@@ -143,7 +156,7 @@
     if (!['start', 'thought', 'acting', 'obs', 'final', 'end', 'wait', 'resume', 'stopping', 'note'].includes(t)) return;
     if (t === 'start') { clearTimeout(closeT); open = true; }
     render(); ticker();
-    if (t === 'end') { clearTimeout(closeT); closeT = setTimeout(() => { open = false; const c = getCard(); if (c) { c.classList.remove('tl-open'); const ch = c.querySelector('.tl-chev'); if (ch) ch.textContent = '▾'; } }, 1800); }
+    if (t === 'end') { clearTimeout(closeT); closeT = setTimeout(() => { open = false; const c = getCard(); if (c) { c.classList.remove('tl-open'); const ch = c.querySelector('.tl-chev'); if (ch) ch.textContent = '▾'; } }, 800); }
   });
 
   window.EmberThinkInline = { _build: buildHtml, _render: render };

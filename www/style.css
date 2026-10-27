@@ -1055,3 +1055,20 @@ header .who b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:el
 #inp::placeholder{color:#777}
 .row .plus{background:#f1f1f1;border-color:#d8d8d8}
 .row .side button{color:#111}
+
+/* V1.9.39 - thinking card behaves like the mockup: glow + shimmering "Thinking…" / "Executing Tool…" while it works,
+   rows drop in one by one, then "Thought for Xs" (muted) and it collapses. Appended only. */
+.tl-card.tl-run{border-color:var(--ac)!important;box-shadow:0 0 20px color-mix(in srgb,var(--ac) 18%,transparent);transition:border-color .4s ease,box-shadow .4s ease}
+.tl-title{display:flex;align-items:center;gap:10px;margin:0;flex:1;min-width:0;font-size:14px;font-weight:600}
+.tl-spark{fill:var(--ac);flex-shrink:0}
+.tl-shimmer{background:linear-gradient(90deg,#888 0%,#fff 50%,#888 100%);background-size:200% auto;color:transparent;-webkit-background-clip:text;background-clip:text;animation:et-shimmer 2s linear infinite}
+.tl-done-t{color:var(--m)}
+.tl-new{animation:tl-in .4s ease both}
+@keyframes tl-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.tl-chev2{display:flex;flex-shrink:0;cursor:pointer}
+.tl-chv{width:16px;height:16px;fill:var(--m);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.tl-card.tl-open .tl-chv{transform:rotate(180deg)}
+.et-saved .tl-card:not(.tl-open) .tl-body{max-height:0;padding:0}
+.et-saved .tl-card.tl-saved .tl-hdr{cursor:pointer}
+.et-saved .tl-card.tl-saved.tl-open .tl-body{max-height:3000px;padding:14px 14px 0}
+@media (prefers-reduced-motion:reduce){.tl-shimmer{animation:none;color:var(--m);background:none;-webkit-background-clip:unset;background-clip:unset}.tl-new{animation:none}}

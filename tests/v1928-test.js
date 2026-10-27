@@ -16,7 +16,7 @@ const card = () => reg.get('amber-think');
 const base = { id: 'r1', status: 'running', startedAt: Date.now() - 2500, waiting: null, entries: [] };
 
 S = Object.assign({}, base); fire('start');
-ok('card inserted on start', !!card() && /Summary/.test(card().innerHTML) && /tl-live/.test(card().innerHTML), card() && card().innerHTML);
+ok('card inserted on start', !!card() && /Thinking/.test(card().innerHTML) && /tl-live/.test(card().innerHTML), card() && card().innerHTML);
 ok('card is a chat message with the timeline class', card().className === 'msg a tl-card' && card().cls.has('tl-open') && card().cls.has('tl-run'));
 S = Object.assign({}, base, { entries: [
   { n: 1, type: 'step', thought: 'Need to find the song first.', tool: 'youtube_search', args: { query: 'gunna' }, observation: '3 results', status: 'done' },

@@ -1,5 +1,10 @@
 # Changelog
 
+## V1.9.39
+- **Thinking card now follows the mockup.** While Ember works the card glows orange, the header shows a spark and shimmering "Thinking…", which switches to "Executing Tool…" while a tool runs. Rows drop in one by one. When the reply lands the header becomes a muted "Thought for Xs" and the card stays above the reply, collapsed (tap to open). Same look for the ReAct card (`ember_think_inline.js`), which now collapses 0.8 s after the run ends. Files: `ember_timeline.js`, `ember_think_inline.js`, CSS appended to `style.css`. Cache `ember-v1.9.39`.
+- **Bug fixed:** the RUNNING pill and "Executing Tool…" never showed while a tool ran (the line was marked running after the repaint). `tool()` now repaints.
+- Test `tests/v1928-test.js` updated for the new header text. NOT tested on a device.
+
 ## V1.9.38
 - **White message box.** The reply box pill is white with dark text, grey placeholder and a light "+" circle; the orange ring shows on focus (`www/style.css`, appended CSS only). Cache `ember-v1.9.38`. NOT tested on a device.
 
