@@ -1,3 +1,6 @@
+# Ember V1.9.75 HANDOVER
+Status: GitHub Hub (slots, token sync, live feed, files, activity). Verification: node --check on every www/*.js only. Run `node tests/v1974-test.js` first on the next machine; the Hub has no dedicated test yet.
+
 # Ember V1.9.45 HANDOVER
 Status: thinking motion. Spinner style = turning spinner + rotating status line (no dropdown). Summary card and compact dropdown reveal one thought at a time through a queue in ember_timeline.js (rv / rvAt flags, pump(), flush()).
 

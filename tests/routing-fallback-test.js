@@ -21,5 +21,15 @@ const res = (status, data, headers={}) => ({ ok: status >= 200 && status < 300, 
   ok('503 advances to next configured provider', r.provider === 'mistral', r.provider);
   ok('fallback returns the successful response', /recovered/.test(r.text), r.text);
   ok('both providers were attempted', sent.some(x => x.url.includes('groq')) && sent.some(x => x.url.includes('mistral')));
+
+  const strict = boot((url, opt) => {
+    if (url.endsWith('/models')) return res(200, { data: [{ id: 'llama-3.3-70b-versatile' }] });
+    return res(400, { error: { message: 'invalid request payload' } });
+  });
+  let permanentError = null;
+  try { await strict.P.run('fast', { system: 'test', messages: [{ role: 'user', content: 'hello' }] }); }
+  catch (e) { permanentError = e; }
+  ok('permanent 400 returns the original provider error', permanentError && /invalid request payload/.test(permanentError.message), permanentError && permanentError.message);
+  ok('permanent 400 does not cascade to another engine', !strict.sent.some(x => x.url.includes('mistral')));
   console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);
 })();

@@ -230,7 +230,7 @@ class TermCore {
 // Mask things that look like keys or passwords before the screen is shown to an AI engine.
 function redact(line) {
   return String(line)
-    .replace(/\b(gsk_|sk-|sk_|AIza|ghp_|gho_|glpat-|xox[bap]-|hf_|pk_live_|rk_live_)[A-Za-z0-9_\-]{12,}/g, '[hidden key]')
+    .replace(/\b(gsk_|sk-|sk_|AIza|ghp_|gho_|glpat-|xox[bap]-|pk_live_|rk_live_)[A-Za-z0-9_\-]{12,}/g, '[hidden key]')
     .replace(/\b(pass(word|wd)?|token|secret|api[_-]?key|auth|bearer)(\s*[=:]\s*|\s+)\S+/gi, (m, a) => a + '=[hidden]')
     .replace(/\b[A-Za-z0-9+\/_\-]{40,}={0,2}/g, '[hidden]');
 }

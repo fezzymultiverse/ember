@@ -19,12 +19,11 @@ ok('0% card says looking it up', /Looking it up/.test(start) && /Fetching track 
 // ---- provider dashboard ----
 const els = {}; const mk = id => els[id] = { id, innerHTML: '', classList: { toggle() {}, add() {}, remove() {} }, setAttribute() {}, addEventListener() {} };
 ['provDrop', 'bProv', 'bDocsQuick'].forEach(mk);
-const st = { groq: 'ok', mistral: 'ok', cohere: 'limited', gemini: 'none', huggingface: 'bad' };
+const st = { groq: 'ok', mistral: 'ok', cohere: 'limited', gemini: 'none' };
 const det = { groq: { keys: 2, model: 'llama3-70b', lat: 120, retry: 0, msg: '' }, mistral: { keys: 1, model: 'mistral-large', lat: 450, retry: 0, msg: '' },
-  cohere: { keys: 1, model: 'command-r-plus', lat: 0, retry: 30, msg: '' }, gemini: { keys: 0, model: '', lat: 0, retry: 0, msg: '' },
-  huggingface: { keys: 1, model: '', lat: 0, retry: 0, msg: 'key rejected (401)' } };
+  cohere: { keys: 1, model: 'command-r-plus', lat: 0, retry: 30, msg: '' }, gemini: { keys: 0, model: '', lat: 0, retry: 0, msg: '' } };
 const IDS = Object.keys(st);
-const P = { IDS, CFG: Object.fromEntries(IDS.map(i => [i, { name: i[0].toUpperCase() + i.slice(1), status: i == 'huggingface' ? 'prototype' : 'ok' }])), stateOf: i => st[i], detail: i => det[i], entries: i => new Array(det[i].keys).fill(0), freeOn: () => true, hasKeys: () => true, pingAll: async () => {} };
+const P = { IDS, CFG: Object.fromEntries(IDS.map(i => [i, { name: i[0].toUpperCase() + i.slice(1), status: 'ok' }])), stateOf: i => st[i], detail: i => det[i], entries: i => new Array(det[i].keys).fill(0), freeOn: () => true, hasKeys: () => true, pingAll: async () => {} };
 const doc = { getElementById: id => els[id] || null, addEventListener() {} };
 const w = { Prov: P, addEventListener() {}, dispatchEvent() {} };
 const c2 = { window: w, document: doc, setTimeout: () => 0, setInterval: () => 1, clearInterval() {}, Event: function () {}, Date, Number, String };
@@ -37,12 +36,12 @@ vm.runInContext(W('ember_prov_ui.js'), c2);
 handler && handler({ stopPropagation() {} });
 await new Promise(r => setTimeout(r, 30)); // let the (mock) health check finish and the rows repaint
 const html = els.provDrop.innerHTML;
-ok('six rows (five engines + Free Mode)', (html.match(/class="pdrow/g) || []).length === 6, html.length);
+ok('five rows (four engines + Free Mode)', (html.match(/class="pdrow/g) || []).length === 5, html.length);
 ok('working row shows model, real latency, key count', /llama3-70b/.test(html) && /⚡ 120ms/.test(html) && /2 keys/.test(html) && /⚡ 450ms/.test(html));
 ok('limited row dims, says Rate limited and Retry in 30s', /pd-dim[^]*?Cohere[^]*?Rate limited[^]*?Retry in 30s/.test(html));
 ok('no key row says no key saved', /Gemini[^]*?no key saved/.test(html) && /No key/.test(html));
-ok('rejected row shows the reason, never a price', /Rejected/.test(html) && /key rejected \(401\)/.test(html) && !/\$\d/.test(html));
-ok('prototype tag kept', /prototype/.test(html));
+ok('provider rows do not display a price', !/\$\d/.test(html));
+ok('removed engine is absent from the provider dashboard', !/HuggingFace|Hugging Face/.test(html));
 ok('status dots kept for every row', (html.match(/class="pdd /g) || []).length >= 7);
 if (process.env.DUMP) console.log(html);
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

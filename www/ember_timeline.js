@@ -78,10 +78,14 @@
       case 'repo_list_files':     return 'Browsing ' + (a.repo ? clip(a.repo, 30) : 'a linked repo') + (a.path ? '/' + clip(a.path, 30) : '');
       case 'repo_read_file':      return 'Reading ' + (a.path ? clip(a.path, 40) : 'a repo file') + (a.repo ? ' from ' + clip(a.repo, 28) : '');
       case 'repo_search':          return 'Searching ' + (a.repo ? clip(a.repo, 30) : 'a linked repo') + (q ? ': \u201c' + clip(q, 30) + '\u201d' : '');
-      case 'github_status':       return 'Checking GitHub';
-      case 'github_list_files':   return 'Listing GitHub files' + (a.path ? ': ' + clip(a.path, 36) : '');
-      case 'github_read_file':    return 'Reading ' + (a.path ? clip(a.path, 40) : 'a GitHub file');
-      case 'github_write_file':   return 'Pushing ' + (a.path ? clip(a.path, 40) : 'a file') + ' to GitHub';
+      case 'github_status':       return 'Checking the GitHub token and repo slots';
+      case 'github_repos':        return 'Checking your repo slots';
+      case 'github_sync':         return 'Syncing ' + (a.repo ? clip(a.repo, 36) : 'your repos') + ' from GitHub' + (a.force ? ' (re-reading everything)' : '');
+      case 'github_repo_map':      return 'Mapping ' + (a.repo ? clip(a.repo, 30) : 'the repo') + (a.path ? '/' + clip(a.path, 30) : '') + ' from the synced index';
+      case 'github_find':          return (String(a.mode || '').toLowerCase() == 'code' ? 'Searching the code of ' : 'Finding files in ') + (a.repo ? clip(a.repo, 28) : 'the repo') + (q ? ': \u201c' + clip(q, 30) + '\u201d' : '');
+      case 'github_list_files':   return 'Listing ' + (a.repo ? clip(a.repo, 28) + '/' : 'GitHub files ') + (a.path ? clip(a.path, 36) : '');
+      case 'github_read_file':    return 'Reading ' + (a.path ? clip(a.path, 40) : 'a GitHub file') + (a.repo ? ' from ' + clip(a.repo, 28) : '');
+      case 'github_write_file':   return 'Pushing ' + (a.path ? clip(a.path, 40) : 'a file') + ' to ' + (a.repo ? clip(a.repo, 28) : 'GitHub');
       case 'github_run':          return 'Running on GitHub Actions' + (a.command ? ': ' + clip(a.command, 34) : '');
       case 'github_run_status':   return 'Checking the GitHub run';
       case 'github_install_runner': return 'Installing the GitHub runner';

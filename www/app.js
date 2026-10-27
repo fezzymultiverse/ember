@@ -282,6 +282,7 @@ function toolCatalog() {
   if (A.EmberTasks) sets.push(A.EmberTasks.TOOLS);
   if (A.EmberKeys) sets.push(A.EmberKeys.TOOLS);
   if (A.EmberGraph) sets.push(A.EmberGraph.TOOLS);
+  if (A.EmberLearn) sets.push(A.EmberLearn.TOOLS);
   if (A.EmberGithub) sets.push(A.EmberGithub.toolsFor());
   if (docsOn && A.EmberDocsAddon) sets.push(A.EmberDocsAddon.TOOLS);
   if (A.EmberAgentAddon) sets.push(A.EmberAgentAddon.toolsFor(S));
@@ -312,6 +313,7 @@ async function runToolRaw(tool, args) {
     if (A.EmberTasks && namesOf(A.EmberTasks).includes(tool)) return await A.EmberTasks.dispatch(tool, args);
     if (A.EmberKeys && namesOf(A.EmberKeys).includes(tool)) return await A.EmberKeys.dispatch(tool, args);
     if (A.EmberGraph && namesOf(A.EmberGraph).includes(tool)) return await A.EmberGraph.dispatch(tool, args);
+    if (A.EmberLearn && namesOf(A.EmberLearn).includes(tool)) return await A.EmberLearn.dispatch(tool, args);
     if (A.EmberGithub && A.EmberGithub.toolsFor().some(t => t.name == tool)) return await A.EmberGithub.dispatch(tool, args);
     const docsOn = S.docsAddon || !!(A.EmberPlus && A.EmberPlus.isOn('device')) || !!(A.EmberDocs && A.EmberDocs.count && A.EmberDocs.count() > 0);
     if (docsOn && A.EmberDocsAddon && namesOf(A.EmberDocsAddon).includes(tool)) return await A.EmberDocsAddon.dispatch(tool, args);
@@ -856,7 +858,7 @@ function renderKeys() {
 $('kList').addEventListener('click', e => { const b = e.target.closest('[data-fold]'); if (!b) return; toggleFold(b.dataset.fold); renderKeys(); });
 
 // ---------- V1.6.1: Get Key buttons ----------
-const KEY_LINKS = { groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', huggingface: 'https://huggingface.co/settings/tokens', anthropic: 'https://console.anthropic.com/settings/keys' };
+const KEY_LINKS = { groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', anthropic: 'https://console.anthropic.com/settings/keys' };
 const SCRAPE_LINKS = { firecrawl: 'https://www.firecrawl.dev/app/api-keys', browserless: 'https://www.browserless.io/', scraperapi: 'https://www.scraperapi.com/', scraperbee: 'https://app.scrapingbee.com/account/manage', zenrows: 'https://app.zenrows.com/builder', tavily: 'https://app.tavily.com/home', serpapi: 'https://serpapi.com/manage-api-key', brightdata: 'https://brightdata.com/cp', sting: '', octoparse: 'https://www.octoparse.com/' };
 function paintGetKeyRow(el, links) { if (!el) return; el.innerHTML = Object.keys(links).filter(k => links[k]).map(k => '<button class="btn g" data-link="' + esc(links[k]) + '" style="width:auto;padding:7px 12px;font-size:12px">' + (Prov.CFG[k] ? Prov.CFG[k].name : (window.EmberScraper && window.EmberScraper.LABEL[k]) || k) + ' ↗</button>').join(''); }
 document.addEventListener('click', e => { const b = e.target.closest('[data-link]'); if (b) window.open(b.dataset.link, '_blank', 'noopener'); });
@@ -1284,7 +1286,7 @@ $('fImp').onchange = async e => {
 $('bWipe').onclick = async () => {
   if (!(await sure('Delete everything?', 'All chats, memory, settings, chat and scraping keys, the Tavily key, the notepad, uploaded music, playlists and the Audd.io token on this device. This cannot be undone.'))) return;
   try { if (window.EmberPlayer) await window.EmberPlayer.wipe(); if (window.EmberAudd) window.EmberAudd.wipe(); if (window.EmberDocs) { for (const d of await window.EmberDocs.all()) await window.EmberDocs.remove(d.id); } } catch (e) { /* storage already blocked */ }
-  await Store.wipe(); ['ember_set', 'ember_keys', 'ember_models', 'ember_voice', 'ember_voice_gm', 'ember_scrape', 'ember_scrape_rot', 'ember_agent', 'ember_github', 'ember_pad', 'ember_saved', 'ember_imagine'].forEach(k => LS.del(k)); location.reload();
+  await Store.wipe(); ['ember_set', 'ember_keys', 'ember_models', 'ember_voice', 'ember_voice_gm', 'ember_scrape', 'ember_scrape_rot', 'ember_agent', 'ember_github', 'ember_gh_digest', 'ember_gh_log', 'ember_pad', 'ember_saved', 'ember_imagine'].forEach(k => LS.del(k)); location.reload();
 };
 
 // ---------- start ----------

@@ -1,4 +1,4 @@
-// Ember V1.9.15 test: pure Node, no network. Strict pin, no silent swap to Groq, Free Mode not first when pinned, soft HuggingFace errors,
+// Ember V1.9.15 test: pure Node, no network. Strict pin, no silent swap to another engine, Free Mode not first when pinned,
 // one Ember voice per engine, automatic document retrieval. Run: node tests/v1915-test.js
 const fs = require('fs'), path = require('path'), vm = require('vm');
 let pass = 0, fail = 0;
@@ -14,29 +14,16 @@ function boot(store, handler) {
   ctx.window = Object.assign(ctx.window, ctx); vm.createContext(ctx); vm.runInContext(W('providers.js'), ctx);
   return { P: ctx.window.Prov, sent, mem, events };
 }
-const eng = u => /groq/.test(u) ? 'groq' : /huggingface/.test(u) ? 'hf' : /pollinations/.test(u) ? 'free' : /mistral/.test(u) ? 'mistral' : 'other';
-const models = { groq: [{ id: 'llama-3.3-70b-versatile' }], hf: [{ id: 'meta-llama/Llama-3.3-70B-Instruct' }, { id: 'Qwen/Qwen2.5-72B-Instruct' }] };
-const KEYS = { groq: [{ key: 'gsk_AAAAAAAAAAAAAAAAAAAAAAAAAAAA' }], huggingface: [{ key: 'hf_' + 'B'.repeat(34) }] };
-const base = hfChat => (url, body) => {
+const eng = u => /groq/.test(u) ? 'groq' : /pollinations/.test(u) ? 'free' : /mistral/.test(u) ? 'mistral' : 'other';
+const models = { groq: [{ id: 'llama-3.3-70b-versatile' }] };
+const KEYS = { groq: [{ key: 'gsk_AAAAAAAAAAAAAAAAAAAAAAAAAAAA' }] };
+const base = () => (url, body) => {
   if (/\/models(\?|$)/.test(url)) return res(200, { data: models[eng(url)] || [] });
-  if (eng(url) == 'hf') return hfChat(url, body);
   if (eng(url) == 'free') return res(429, { error: 'busy' });
   return res(200, { choices: [{ message: { content: 'hi from ' + eng(url) } }] });
 };
 (async () => {
-  // 1. pinned HF fails with 403: strict pin shows the real reason and never calls Groq
-  let t = boot({ ember_keys: KEYS, ember_pin: 'huggingface' }, base(() => res(403, { error: { message: 'This token lacks the Inference Providers permission' } })));
-  let err = null; try { await t.P.run('fast', { system: 's', messages: [{ role: 'user', content: 'yo' }] }); } catch (e) { err = e; }
-  ok('strict pin: HF failure throws', !!err);
-  ok('strict pin: real reason in the message', err && /Inference Providers permission/.test(err.message) && /pinned/.test(err.message), err && err.message);
-  ok('strict pin: Groq never called', !t.sent.some(s => eng(s.url) == 'groq'));
-  ok('strict pin: a 403 on a chat call does not mark the HF key rejected', !t.P.keys().huggingface[0].bad);
-  ok('strict pin: HF tried several models', t.sent.filter(s => eng(s.url) == 'hf' && s.body && s.body.messages).length >= 2);
-  // 2. same, strict off: falls over to Groq
-  t = boot({ ember_keys: KEYS, ember_pin: 'huggingface', ember_pin_strict: false }, base(() => res(403, { error: { message: 'nope' } })));
-  let r = await t.P.run('fast', { system: 's', messages: [{ role: 'user', content: 'yo' }] });
-  ok('strict off: Groq answers', r.provider == 'groq');
-  ok('strict off: switch event carries the reason', t.events.some(e => e.detail && e.detail.from == 'huggingface' && e.detail.to == 'groq' && /nope/.test(e.detail.why)));
+  let t, err = null, r;
   // 3. pinned Groq, Free Mode on: Free is not tried first, no switch toast
   t = boot({ ember_keys: KEYS, ember_pin: 'groq' }, base(() => res(200, {})));
   t.P.setFree(true);
@@ -49,7 +36,7 @@ const base = hfChat => (url, body) => {
   err = null; try { await t.P.run('fast', { system: 's', messages: [{ role: 'user', content: 'yo' }] }); } catch (e) { err = e; }
   ok('strict pin without a key says so', err && /no Mistral key is saved/.test(err.message), err && err.message);
   // 5. util lane keeps failing over even when strict
-  t = boot({ ember_keys: KEYS, ember_pin: 'huggingface' }, base(() => res(403, { error: { message: 'x' } })));
+  t = boot({ ember_keys: KEYS, ember_pin: 'groq' }, base());
   r = await t.P.run('util', { system: 's', messages: [{ role: 'user', content: 'title' }] });
   ok('background (util) jobs still fail over', r.provider == 'groq');
   // 6. one voice: identity line and an engine note per engine

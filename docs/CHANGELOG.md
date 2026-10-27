@@ -1,3 +1,29 @@
+# Ember V1.9.77
+- Interface pass, Manus-style: calmer black canvas, wider gutters, softer cards, pill buttons, one orange accent. Pure CSS (final layer at the end of style.css), no logic changed.
+- Chat box is black again (an old white-composer rule was winning). Header buttons are an even 38px round set: the Termux icon is no longer squeezed and the engine name is never cut.
+- Replies: clean sans text, 1.75 line height, real spacing between paragraphs, lists and code; bullets no longer hang off the edge; action row wraps into thumb-sized buttons. Your own messages are a soft right-aligned bubble.
+- Music > Get: the three tabs stay on one row, Track / List playlist / Whole playlist and the Downloads and Saved cards no longer crush; sections have room.
+- Drawer, Prompts, Projects, Settings tabs and cards: roomier padding and consistent radii.
+
+# Ember V1.9.76
+- Learn add-on (www/ember_learn.js): teach Ember from links. Plus menu > Learn, or just ask in chat. Pages are read through the existing scraper (your keys and provider order apply) and saved into Documents, so the normal document search finds them. Nothing is trained.
+- Learn from a document: pick a saved document (e.g. a research .md) and Ember learns every link in it. GitHub repo links become Reference repo slots (needs your GitHub token, then sync in Settings > GitHub); without a token the repo page is read as a plain page. github.com/.../blob/... links are fetched as the raw file.
+- New tools: learn_url, learn_from_document, list_learned, refresh_learned, forget_learned. Learned documents start with an untrusted-content header. Re-learning a link updates its document instead of duplicating it. Refresh all / Forget in the panel.
+- Wired with one line each in app.js (tool catalog + dispatcher), persona.js (tool list), ember_plus.js (menu), index.html and sw.js. Nothing existing was changed.
+
+# Ember V1.9.75
+- GitHub Hub: new Settings > GitHub tab with Home, Repos, Sync, Files, Activity and Setup views (www/ember_github_ui.js). The old GitHub card in Keys now points to it.
+- Repo SLOTS (12): add owner/name or a github.com link, or pick from your own account. Per slot: nickname, branch, Mine (read+write) or Reference (read-only), write switch, sync switch, depth (Map only / Key files / Deep read).
+- Sync runs straight from the token, no runner: branch head check, full file tree (the index), only changed files re-read, then a repo profile built by code (stack, folders, key files). Master sync switch, auto-sync with interval, Sync all, Stop, Re-read all, Clear cache.
+- Live view: per-repo progress and a live feed of every file indexed, read, new, changed or removed, with filters and recent sync history.
+- Files view: browse the synced index, search paths or code, open a file, copy it, open it as an artifact. "Open report as artifact" on Home.
+- AI knowledge: the repo profiles and hard rules go into her instructions (ground truth, read before explaining or editing, no invented paths, no placeholder pushes, say only what tool results say, professional report style, deliver as artifacts).
+- New tools: github_repos, github_sync, github_repo_map, github_find. github_read_file / list_files / write_file take a repo and pick the slot from his words. Writes refuse files not read this session, files changed since, truncated or placeholder content, and big accidental shrinks.
+- Activity tab logs every GitHub call the AI makes. Thinking card shows live labels for the new tools.
+- The Actions runner is now OPTIONAL and off by default (Settings > GitHub > Setup).
+- Secrets in cached file text are masked; .env and key files are never read.
+- Not run or device-tested in this build (syntax check only).
+
 # Ember V1.9.74
 - Repo reading: Ember now has to read a file after repo_search. New hard rule in the system prompt (persona.js, only when a repo is linked and repo_read_file is available): if repo_search returns a list of files it MUST use repo_read_file on the most relevant one before answering, and it never writes code based on assumptions. Same rule in the repo state block and in the repo_search / repo_read_file tool descriptions.
 - repo_search results now say, in the result itself, that they are paths only and a repo_read_file call must follow.

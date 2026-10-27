@@ -3,7 +3,7 @@
 // dropped keys that were really there. This module replaces both. It is pure text in, plain object out: no DOM, no storage, no network.
 //
 // How a key is recognised, strongest evidence first:
-//   1. its own prefix, anywhere in the text (gsk_, AIza, AQ., hf_, fc-, tvly-, op_sk_, ev_)
+//   1. its own prefix, anywhere in the text (gsk_, AIza, AQ., fc-, tvly-, op_sk_, ev_)
 //   2. an explicit assignment (GROQ_API_KEY=..., "zenrows_api_key": "...", export MISTRAL_KEYS=("a" "b"))
 //   3. a provider NAME (or its domain) on the same line, or on one of the next two lines (blank lines do not count), and the key-shaped
 //      token that follows it. Several providers on one line each get the tokens after their own name. A key that sits BEFORE the name on
@@ -28,7 +28,6 @@ const CAT = {
   groq:        { kind: 'chat',   label: 'Groq',         rx: 'groq', prefixed: true },
   gemini:      { kind: 'chat',   label: 'Gemini',       rx: 'gemini|genai|ai[\\s_-]?studio|generativelanguage', weak: 'google', prefixed: true },
   mistral:     { kind: 'chat',   label: 'Mistral',      rx: 'mistral', shape: /^[A-Za-z0-9]{32}$/, strict: true, noHex: true },
-  huggingface: { kind: 'chat',   label: 'HuggingFace',  rx: 'hugging[\\s_-]?face', weak: 'hf', prefixed: true },
   cohere:      { kind: 'chat',   label: 'Cohere',       rx: 'cohere', weak: 'co(?=[_-](?:api[_-]?)?(?:key|token))', shape: /^[A-Za-z0-9]{40}$/, strict: true, noHex: true },
   anthropic:   { kind: 'chat',   label: 'Claude',       rx: 'anthropic|claude', prefixed: true },
   firecrawl:   { kind: 'scrape', label: 'Firecrawl',    rx: 'firecrawl', prefixed: true },
@@ -57,7 +56,6 @@ const STRONG = [
   ['groq', new RegExp(B + 'gsk_[A-Za-z0-9]{20,}', 'g')],
   ['gemini', new RegExp(B + 'AIza[0-9A-Za-z_-]{30,}', 'g')],
   ['gemini', new RegExp(B + 'AQ\\.[0-9A-Za-z_.-]{20,}', 'g')],
-  ['huggingface', new RegExp(B + 'hf_[A-Za-z0-9]{20,}', 'g')],
   ['firecrawl', new RegExp(B + 'fc-[A-Za-z0-9]{16,}', 'g')],
   ['tavily', new RegExp(B + 'tvly-[A-Za-z0-9_-]{16,}', 'g')],
   ['octoparse', new RegExp(B + 'op_sk_[A-Za-z0-9_-]{8,}', 'g')],
@@ -66,7 +64,7 @@ const STRONG = [
 ];
 // keys of services Ember cannot use: only counted (by service name), never stored
 const OTHER_KEYS = [
-  ['OpenAI', new RegExp(B + 'sk-(?!or-v1-|ant-)(?:proj-|svcacct-|admin-)?[A-Za-z0-9_-]{32,}', 'g')],
+  ['OpenAI', new RegExp(B + 'sk-(?!ant-)(?:proj-|svcacct-|admin-)?[A-Za-z0-9_-]{32,}', 'g')],
   ['xAI', new RegExp(B + 'xai-[A-Za-z0-9]{20,}', 'g')],
   ['Perplexity', new RegExp(B + 'pplx-[A-Za-z0-9]{20,}', 'g')],
   ['Cerebras', new RegExp(B + 'csk-[A-Za-z0-9]{20,}', 'g')],
@@ -75,7 +73,7 @@ const OTHER_KEYS = [
   ['GitHub', new RegExp(B + '(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,})', 'g')],
   ['AWS', new RegExp(B + 'AKIA[0-9A-Z]{16}(?![A-Za-z0-9])', 'g')]
 ];
-const OTHER_PFX = /^(gsk_|AIza|AQ\.|sk-|hf_|fc-|tvly-|op_sk_|ev_|xai-|pplx-|csk-|nvapi-|r8_|gh[pousr]_|github_pat_|AKIA)/;
+const OTHER_PFX = /^(gsk_|AIza|AQ\.|sk-|fc-|tvly-|op_sk_|ev_|xai-|pplx-|csk-|nvapi-|r8_|gh[pousr]_|github_pat_|AKIA)/;
 const KEYSTOP = /^(https?|www|firecrawl|browserless|scraperapi|scraperbee|scrapingbee|zenrows|serpapi|octoparse|tavily|brightdata|authorization|bearer|api|key|token)$/i;
 const PLACEHOLDER = /^(your|my|the|an?|example|sample|test|demo|dummy|fake|placeholder|insert|paste|enter|replace|put|api|key|token|secret|none|null|undefined|changeme|todo|xxx+|redacted)([_-]|$)/i;
 
@@ -243,7 +241,7 @@ function describe(rep, mk) {
   const fo = (rep.scan && rep.scan.foreign) || []; if (fo.length) L.push({ t: 'info', text: 'Not saved, Ember has no engine for them: ' + fo.map(f => f.n + ' ' + f.kind).join(', ') });
   const un = (rep.scan && rep.scan.unlabelled) || 0; if (un) L.push({ t: 'warn', text: un + ' key-like string' + (un == 1 ? ' has' : 's have') + ' no provider name next to ' + (un == 1 ? 'it' : 'them') + ' and ' + (un == 1 ? 'was' : 'were') + ' not saved. Put the name (ZenRows, SerpApi, Bright Data ...) on the line above or beside the key and extract again' });
   (rep.errors || []).forEach(e => L.push({ t: 'warn', text: e }));
-  if (!L.length) L.push({ t: 'warn', text: 'No keys found. Prefixed keys are found on their own (gsk_, AIza or AQ., hf_, fc-, tvly-, op_sk_). Every other key needs the provider name on the same line or on the line above: Mistral, Cohere, ScraperAPI, ZenRows, SerpApi, Bright Data, Browserless, ScraperBee, Sting, Audd.' });
+  if (!L.length) L.push({ t: 'warn', text: 'No keys found. Prefixed keys are found on their own (gsk_, AIza or AQ., fc-, tvly-, op_sk_). Every other key needs the provider name on the same line or on the line above: Mistral, Cohere, ScraperAPI, ZenRows, SerpApi, Bright Data, Browserless, ScraperBee, Sting, Audd.' });
   return L;
 }
 

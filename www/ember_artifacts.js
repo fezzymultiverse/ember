@@ -220,5 +220,5 @@
     if(v) view(a); else if(pdf) (a.type==='html'?printArtifact(a):exportPdf(a)); else if(dc) exportWord(a); else if(pn) svgPng(a); else if(cp) copyContent(a.content).then(ok=>T(ok?'Code copied':'Could not copy code')); else if(tx) copyContent(a.content).then(async ok=>{if(!ok){T('Could not copy code');return;}const N=window.EmberNative;if(N&&N.openTermux){await N.openTermux();T('Code copied. Paste it in Termux; it has not been run.');}else T('Code copied; Termux is unavailable in this view.');}); else download(a);
   });
   document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
-  window.EmberArtifacts={parse,render,shelf,markdownHtml,highlightCode,cleanSvg,exportPdf,svgPng,wordDoc};
+  window.EmberArtifacts={parse,render,shelf,markdownHtml,highlightCode,cleanSvg,exportPdf,svgPng,wordDoc,view,download,copyContent};
 })();

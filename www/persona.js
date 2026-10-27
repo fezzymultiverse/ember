@@ -114,6 +114,7 @@ function toolsBlock(S) {
   if (window.EmberKnow) sets.push(['FIND IN HIS STUFF', window.EmberKnow.TOOLS]);
   if (window.EmberTasks) sets.push(['TIMERS AND REMINDERS', window.EmberTasks.TOOLS]);
   if (window.EmberKeys) sets.push(['API KEYS (what is saved, what uses it)', window.EmberKeys.TOOLS]);
+  if (window.EmberLearn) sets.push(['LEARN FROM LINKS (saves pages into his documents)', window.EmberLearn.TOOLS]);
   if (window.EmberEngine) sets.push(['MULTI-STEP PLANS', window.EmberEngine.TOOLS]);
   const docsHave = !!(window.EmberDocs && window.EmberDocs.count && window.EmberDocs.count() > 0);
   if ((S.docsAddon || docsHave) && window.EmberDocsAddon) sets.push(['DOCUMENTS (his library)', window.EmberDocsAddon.TOOLS]);

@@ -5,7 +5,7 @@ const scraper = fs.readFileSync(path.join(__dirname, '..', 'www', 'ai_scraper.js
 const agent = fs.readFileSync(path.join(__dirname, '..', 'www', 'ai_agent.js'), 'utf8');
 assert(providers.includes("const ACTIVE_IDS = ['groq', 'cohere', 'gemini', 'mistral', 'anthropic'];"), 'active profile keeps Groq, Cohere, Gemini, Mistral and Claude (OpenRouter removed in V1.9.73)');
 assert(providers.includes("fast: ['groq', 'cohere', 'gemini', 'mistral']"), 'fast route uses the requested order');
-assert(providers.includes('Hugging Face is not in the automatic route'), 'Hugging Face is explicitly excluded from automatic routing');
+assert(!providers.includes('huggingface') && !providers.includes('router.huggingface.co'), 'Hugging Face implementation is removed');
 assert(providers.includes('Automatic AI route in this build: Groq → Cohere → Gemini → Mistral'), 'Ember prompt facts name the active route');
 assert(scraper.includes('const call = render => id == \'reader\' ? P.reader(u) : onlyKey ? P[id](u, onlyKey, render) : withKeys(id, k => P[id](u, k, render));'), 'scraper uses saved keys and per-provider key rotation');
 assert(/ready = FETCHERS\.filter\(id => av\.includes\(id\) && fetchesPages\(id\)\)/.test(scraper), 'scraper puts ready keyed page providers first');

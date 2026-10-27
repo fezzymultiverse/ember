@@ -1,4 +1,4 @@
-// Ember V1.6.8 - Groq + Mistral + Gemini (+ Cohere, HuggingFace as prototypes) behind one door.
+// Ember provider router - Groq, Mistral, Gemini, Cohere and Claude behind one door.
 // Pulls keys out of pasted notes, health-checks every key, picks models from each provider's live model list (no hard-coded names that go stale),
 // and fails over key to key and engine to engine so the chat keeps going when one is rate-limited.
 'use strict';
@@ -9,13 +9,11 @@ const CFG = {
   mistral: { name: 'Mistral', base: 'https://api.mistral.ai/v1', kind: 'oai', color: '#ffb020' },
   gemini: { name: 'Gemini', base: 'https://generativelanguage.googleapis.com/v1beta', kind: 'gem', color: '#ffffff' },
   cohere: { name: 'Cohere', base: 'https://api.cohere.com', kind: 'cohere', color: '#d9d9d9' },
-  huggingface: { name: 'HuggingFace', base: 'https://router.huggingface.co/v1', kind: 'oai', status: 'prototype', color: '#ffb800' },
   // V1.9.72: Claude (Anthropic Messages API). PAID, so it is never in the automatic order: it answers only while it is pinned (Providers chip).
   anthropic: { name: 'Claude', base: 'https://api.anthropic.com/v1', kind: 'claude', color: '#d97757' }
 };
 const IDS = Object.keys(CFG);
-// V1.9.55: active automatic profile for this installation. Legacy Hugging Face keys remain readable in backups,
-// but the router does not select Hugging Face automatically. Mistral stays active because it is working for him.
+// Automatic profile for this installation. Mistral stays active because it is working for him.
 const ACTIVE_IDS = ['groq', 'cohere', 'gemini', 'mistral', 'anthropic'];
 // fast = quick everyday replies. deep = slow, careful turns. util = background jobs (memory, titles).
 const ORDER = { fast: ['groq', 'cohere', 'gemini', 'mistral'], deep: ['gemini', 'cohere', 'mistral', 'groq'], util: ['groq', 'cohere', 'gemini', 'mistral'] };
@@ -212,13 +210,6 @@ function rank(id, list, lane) {
     ok.forEach(m => { if (!out.includes(m)) out.push(m); });
     return out;
   }
-  if (id == 'huggingface') {
-    const ok = list.filter(m => !/embed|whisper|flux|stable-diffusion|vision|-vl|ocr|guard|rerank|tts/i.test(m));
-    const pref = [/llama-3\.3-70b-instruct/i, /llama.*instruct/i, /qwen.*instruct/i, /mistral.*instruct/i, /gpt-oss/i];
-    const out = []; pref.forEach(p => ok.filter(m => p.test(m)).forEach(m => { if (!out.includes(m)) out.push(m); }));
-    ok.forEach(m => { if (!out.includes(m)) out.push(m); });
-    return out;
-  }
   const bad = /lite|image|tts|embed|live|audio|native|robotics|computer|imagen|veo|gemma|aqa|learnlm|vision|nano/i;
   let c = list.filter(m => /^gemini-/.test(m) && !bad.test(m));
   const want = deep ? 'pro' : 'flash';
@@ -239,7 +230,7 @@ async function modelsFor(id, key, lane) {
 // ---------- one call ----------
 // ---------- V1.9.27: native function calling ----------
 // o.tools = [{name, description, parameters (loose shorthand like {query:'string', n:'number?'}) or schema (JSON Schema subset)}].
-// The engine's own tool API is used (OpenAI-style tools for Groq/Mistral/HuggingFace, v2 tools for Cohere, functionDeclarations for Gemini).
+// The engine's own tool API is used (OpenAI-style tools for Groq/Mistral, v2 tools for Cohere, functionDeclarations for Gemini).
 // A native call comes back as the same <tool_call>{"tool","args"}</tool_call> text the app already runs, so everything after the engine is unchanged,
 // and a model that writes the tag itself still works. If the engine rejects the tools (400/422) the call is repeated once without them.
 const SCH_KEEP = ['type', 'description', 'enum', 'properties', 'items', 'required', 'minimum', 'maximum'];
@@ -428,18 +419,18 @@ function removeKey(id, key) { keys[id] = keys[id].filter(e => e.key !== key); co
 // V1.9.14: the finder lives in ember_keyscan.js (one for every paste box). extract() keeps its old shape so callers and tests keep working.
 const KS = () => window.EmberKeyScan;
 function extract(text, pre) {
-  const out = { groq: [], gemini: [], mistral: [], huggingface: [], cohere: [], anthropic: [], unknown: [], unknownCohere: [] };
+  const out = { groq: [], gemini: [], mistral: [], cohere: [], anthropic: [], unknown: [], unknownCohere: [] };
   const ks = KS(); if (!ks) return out;
   const sc = pre || ks.scan(text);
-  for (const id of ['groq', 'gemini', 'mistral', 'huggingface', 'cohere', 'anthropic']) out[id] = (sc.keys[id] || []).slice();
+  for (const id of ['groq', 'gemini', 'mistral', 'cohere', 'anthropic']) out[id] = (sc.keys[id] || []).slice();
   out.unknown = (sc.probes && sc.probes.mistral || []).slice();
   out.unknownCohere = (sc.probes && sc.probes.cohere || []).slice();
   return out;
 }
 async function ingest(text, pre) {
   const f = extract(text, pre);
-  const rep = { found: { groq: f.groq.length, gemini: f.gemini.length, mistral: f.mistral.length, huggingface: f.huggingface.length, cohere: f.cohere.length, anthropic: f.anthropic.length, unknown: f.unknown.length + f.unknownCohere.length }, added: [], dupes: 0, rejected: 0, rejectedBy: { mistral: 0, cohere: 0 } };
-  for (const id of ['groq', 'gemini', 'mistral', 'huggingface', 'cohere', 'anthropic']) for (const k of f[id]) {
+  const rep = { found: { groq: f.groq.length, gemini: f.gemini.length, mistral: f.mistral.length, cohere: f.cohere.length, anthropic: f.anthropic.length, unknown: f.unknown.length + f.unknownCohere.length }, added: [], dupes: 0, rejected: 0, rejectedBy: { mistral: 0, cohere: 0 } };
+  for (const id of ['groq', 'gemini', 'mistral', 'cohere', 'anthropic']) for (const k of f[id]) {
     const r = await addKey(id, k);
     if (!r.ok) { rep.dupes++; continue; }
     rep.added.push({ id, key: k, ok: !!(r.e.st && r.e.st.ok), guess: false });
@@ -535,7 +526,7 @@ function factsBlock(id, model, failed) {
   else L.push('- This is a background reply: the phone picks the engine after this prompt is built, so you do not know which engine or model you are. Do not name one.');
   const noKey = IDS.filter(x => !keys[x].length).map(x => CFG[x].name);
   if (noKey.length) L.push('- NO key is saved for: ' + noKey.join(', ') + '. You cannot be any of those engines, and you must never say you are one of them.');
-  L.push('- Automatic AI route in this build: Groq → Cohere → Gemini → Mistral. Hugging Face is not in the automatic route. Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
+  L.push('- Automatic AI route in this build: Groq → Cohere → Gemini → Mistral. Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
   if (pinnedEngine) {
     const miss = id && id != pinnedEngine, why = (failed || []).find(f => f.id == pinnedEngine);
     L.push('- Pinned engine in Settings: ' + CFG[pinnedEngine].name + (pinnedModel && pinnedModel.id == pinnedEngine ? ' (model ' + pinnedModel.model + ')' : '') + ' [' + STATE_TXT[st[pinnedEngine]] + ']' + (miss ? '. It could not answer this message' + (why ? ' (' + String(why.why || '').slice(0, 120) + ')' : '') + ', so ' + (id == 'pollinations' ? 'Free Mode' : CFG[id].name) + ' answered instead. Tell him that plainly if he asks.' : '.'));
@@ -573,7 +564,7 @@ async function runInner(lane, o, tok) {
   const trying = (name, model) => { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-try', { detail: { name, model } })); } catch (e) { /* no listener */ } } }; // V1.8.3: once the native worker took the request, the page makes no further paid calls
   // when an engine failed and a different one answered, tell the UI (ai.js shows a toast). Background jobs stay silent.
   const done = r => { if (pinnedEngine && r.provider != pinnedEngine) { const p0 = failed.find(x => x.id == pinnedEngine); r.pinMiss = { want: pinnedEngine, why: p0 ? (p0.why || '') : 'no usable key' }; } const f = failed.find(x => x.id != r.provider); if (f && pl && !(pinnedEngine && r.provider == pinnedEngine)) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
-  let tried = false;
+  let tried = false, routeStop = null;
   halted();
   if (o.routeProvider && !CFG[o.routeProvider]) throw Object.assign(new Error('The original engine cannot continue this tool result. No other engine was called for this follow-up.'), { code: 'fail' });
   if (pl && !o.routeProvider && freeOn() && !pinnedEngine) { // V1.9.15: with an engine pinned, Free Mode no longer goes first (it was failing, costing seconds and showing a 'Switched to' toast)
@@ -584,7 +575,7 @@ async function runInner(lane, o, tok) {
   const routeIds = o.routeProvider && CFG[o.routeProvider] ? [o.routeProvider] : orderFor(lane);
   for (const id of routeIds) {
     if (!o.routeProvider && onlyPinned(lane) && id != pinnedEngine) break; // V1.9.15: strict pin
-    const soft = id == 'huggingface'; // prototypes: a 400/402/403/422 on one model must not kill the key or the engine
+    const soft = false;
     for (const e of keys[id]) {
       if (e.bad || isCool(e.key)) continue;
       halted();
@@ -593,6 +584,7 @@ async function runInner(lane, o, tok) {
       catch (er) {
         if (er.code === 'cancelled' || routeCancelled) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' });
         if (er.status == 401 || er.status == 403) { e.bad = true; save(); } else if (er.status == 429) coolKey(e.key, er.retryAfter);
+        if (er.status != 429 && !transient(er)) routeStop = { id, error: er };
         errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message }); continue;
       }
       const pm = pinnedModel && pinnedModel.id == id ? pinnedModel.model : null;
@@ -605,6 +597,7 @@ async function runInner(lane, o, tok) {
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
           if (soft && (er.status == 400 || er.status == 402 || er.status == 403 || er.status == 422) && !pm) continue; // V1.9.15: try the next model, keep the key, the reason stays in failed[]
           if (er.status == 429) { coolKey(e.key, er.retryAfter); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: true, code: 429 }); break; }
+          if (!transient(er)) routeStop = { id, error: er };
           if (er.status == 401 || er.status == 403) { e.bad = true; e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: false, limited: false, code: er.status, msg: 'key rejected (' + er.status + ')' }); save(); break; }
           if (er.status == 404 || (er.status == 400 && /model/i.test(er.message)) || transient(er)) continue;
           // A model-specific or transient failure advances through models; auth/permission failures invalidate the key above.
@@ -612,6 +605,11 @@ async function runInner(lane, o, tok) {
         }
       }
     }
+    if (routeStop && !transient(routeStop.error) && Number(routeStop.error.status) != 429) break;
+  }
+  if (routeStop && !transient(routeStop.error) && Number(routeStop.error.status) != 429 && !o.routeProvider && !onlyPinned(lane)) {
+    const nm = CFG[routeStop.id].name, er = routeStop.error;
+    throw Object.assign(new Error(nm + ' failed (' + (er.status || 'error') + '): ' + String(er.message || 'request failed')), { code: 'fail', status: er.status });
   }
   if (pl && !o.routeProvider && !tried && !onlyPinned(lane)) {
     halted();

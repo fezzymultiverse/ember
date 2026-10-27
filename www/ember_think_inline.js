@@ -28,7 +28,7 @@
     search_documents: 'Searching your documents', search_in_document: 'Searching your document', summarize_document: 'Summarising your document',
     get_document_outline: 'Reading the document outline', read_document_chunk: 'Reading your document', list_documents: 'Listing your documents',
     control_player: 'Controlling the player', create_playlist: 'Creating a playlist', play_playlist: 'Playing a playlist',
-    github_run: 'Running on GitHub Actions', github_write_file: 'Pushing to GitHub', github_read_file: 'Reading a GitHub file', github_list_files: 'Listing GitHub files',
+    github_run: 'Running on GitHub Actions', github_sync: 'Syncing repos from GitHub', github_repos: 'Checking repo slots', github_repo_map: 'Mapping the repo', github_find: 'Searching the repo', github_status: 'Checking GitHub', github_write_file: 'Pushing to GitHub', github_read_file: 'Reading a GitHub file', github_list_files: 'Listing GitHub files',
     get_current_track: 'Checking what is playing', get_library: 'Looking in your library', identify_song: 'Identifying the song'
   };
   const label = en => {
