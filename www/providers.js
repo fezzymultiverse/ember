@@ -48,37 +48,40 @@ const onlyPinned = lane => !!(strictPin && pinnedEngine && lane != 'util');
 function orderFor(lane) { const base = ORDER[lane] || ORDER.fast; if (!pinnedEngine) return base; return [pinnedEngine].concat(base.filter(id => id != pinnedEngine)); }
 const save = () => LS.set('ember_keys', keys);
 const cool = new Map(); // key -> timestamp until which it is resting after a 429
+const activeControllers = new Set(), activeReaders = new Set(); let routeCancelled = false;
 const isCool = k => (cool.get(k) || 0) > Date.now();
+const coolKey = (key, seconds) => cool.set(key, Date.now() + Math.max(5, Math.min(900, Number(seconds) || 60)) * 1000);
+// Transient provider failures should advance to another model/key/engine, not terminate the whole route.
+const transient = er => !er || !er.status || [408, 409, 425, 500, 502, 503, 504, 522, 524].includes(Number(er.status));
 const mask = k => k.length > 12 ? k.slice(0, 6) + '…' + k.slice(-4) : k.slice(0, 3) + '…';
 const has = k => IDS.some(id => keys[id].some(e => e.key === k));
 
 // ---------- network: normal fetch, native HTTP as the fallback inside the APK ----------
 async function net(url, opt, timeout) {
-  const ac = new AbortController(), t = setTimeout(() => ac.abort(), timeout || 30000);
+  const ac = new AbortController(), t = setTimeout(() => ac.abort(), timeout || 30000); activeControllers.add(ac);
   try {
     try { return await fetch(url, Object.assign({}, opt, { signal: ac.signal })); }
     catch (e) {
-      if (e && e.name === 'AbortError') throw Object.assign(new Error('timed out'), { status: 0 });
+      if (e && e.name === 'AbortError') throw Object.assign(new Error(routeCancelled ? 'Stopped by user.' : 'timed out'), { status: 0, code: routeCancelled ? 'cancelled' : 'timeout' });
       const H = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.CapacitorHttp;
       if (!H || !H.request) throw Object.assign(new Error('network error or blocked by the browser'), { status: 0 });
       const r = await H.request({ url, method: (opt && opt.method) || 'GET', headers: (opt && opt.headers) || {}, data: opt && opt.body ? JSON.parse(opt.body) : undefined, connectTimeout: timeout || 30000, readTimeout: timeout || 30000 });
       const hd = r.headers || {};
       return { ok: r.status >= 200 && r.status < 300, status: r.status, headers: { get: k => hd[k] || hd[k.toLowerCase()] || null }, text: async () => typeof r.data === 'string' ? r.data : JSON.stringify(r.data), json: async () => typeof r.data === 'string' ? JSON.parse(r.data) : r.data };
     }
-  } finally { clearTimeout(t); }
+  } finally { clearTimeout(t); activeControllers.delete(ac); }
 }
 async function jfetch(url, opt, timeout) {
   const r = await net(url, opt, timeout);
   if (!r.ok) {
     let body = ''; try { body = await r.text(); } catch (e) {}
-    let msg = ''; try { const j = JSON.parse(body); msg = (j.error && (j.error.message || j.error)) || j.message || ''; } catch (e) {}
-    const hdrRetry = +(r.headers && r.headers.get && r.headers.get('retry-after')) || 0;
-    let bodyRetry = 0;
-    try {
-      const parsed = JSON.parse(body);
-      bodyRetry = +(parsed.retry_after || parsed.retryAfter || (parsed.error && (parsed.error.retry_after || parsed.error.retryAfter))) || 0;
-    } catch (e) { /* non-JSON error body */ }
-    const retryAfter = hdrRetry || bodyRetry;
+    let msg = '', parsed = null; try { parsed = JSON.parse(body); msg = (parsed.error && (parsed.error.message || parsed.error)) || parsed.message || ''; } catch (e) {}
+    // Providers send Retry-After as seconds or an HTTP date; some return retry_after in JSON.
+    const retryHeader = r.headers && r.headers.get && (r.headers.get('retry-after') || r.headers.get('Retry-After'));
+    let retryAfter = Number(retryHeader) || 0;
+    if (retryHeader && !retryAfter) { const at = Date.parse(retryHeader); if (Number.isFinite(at)) retryAfter = Math.max(0, Math.ceil((at - Date.now()) / 1000)); }
+    if (!retryAfter && parsed) retryAfter = Number(parsed.retry_after || parsed.retryAfter || (parsed.error && (parsed.error.retry_after || parsed.error.retryAfter)) || (parsed.meta && parsed.meta.retry_after)) || 0;
+    retryAfter = Math.max(0, Math.min(900, retryAfter));
     throw Object.assign(new Error(String(msg || body || ('HTTP ' + r.status)).slice(0, 200)), { status: r.status, retryAfter });
   }
   return r.json();
@@ -232,6 +235,37 @@ function oaiNative(j) { // first tool call of an OpenAI-style answer, or null
   let args = f.arguments; if (typeof args == 'string') { try { args = JSON.parse(args || '{}'); } catch (e) { args = {}; } }
   return { tool: f.name, args };
 }
+async function streamOAI(url, key, body, o, timeout) {
+  body.stream = true;
+  const r = await net(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key, Accept: 'text/event-stream' }, body: JSON.stringify(body) }, timeout || 40000);
+  if (!r.ok) {
+    let raw = ''; try { raw = await r.text(); } catch (_) {}
+    let parsed = null, msg = ''; try { parsed = JSON.parse(raw); msg = (parsed.error && (parsed.error.message || parsed.error)) || parsed.message || ''; } catch (_) {}
+    const h = r.headers && r.headers.get && r.headers.get('retry-after'); let retryAfter = Number(h) || 0;
+    if (h && !retryAfter) { const at = Date.parse(h); if (Number.isFinite(at)) retryAfter = Math.max(0, Math.ceil((at-Date.now())/1000)); }
+    throw Object.assign(new Error(String(msg || raw || ('HTTP '+r.status)).slice(0,200)), {status:r.status,retryAfter});
+  }
+  if (!r.body || !r.body.getReader) { const j = await r.json(); return (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || ''; }
+  const reader = r.body.getReader(), decoder = new TextDecoder(); activeReaders.add(reader); let buffer = '', out = '';
+  try {
+    while (true) {
+      if (routeCancelled) throw Object.assign(new Error('Stopped by user.'), {code:'cancelled'});
+      const part = await reader.read(); if (part.done) break;
+      buffer += decoder.decode(part.value, {stream:true});
+      const lines = buffer.split(/\r?\n/); buffer = lines.pop() || '';
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const data = line.slice(5).trim(); if (!data || data === '[DONE]') continue;
+        let packet; try { packet = JSON.parse(data); } catch (_) { continue; }
+        const choice = packet.choices && packet.choices[0], delta = choice && choice.delta;
+        const piece = delta && typeof delta.content === 'string' ? delta.content : '';
+        if (piece) { out += piece; if (typeof o.onToken === 'function') { try { o.onToken(piece, out); } catch (_) {} } }
+      }
+    }
+  } finally { activeReaders.delete(reader); try { reader.releaseLock(); } catch (_) {} }
+  if (routeCancelled) throw Object.assign(new Error('Stopped by user.'), {code:'cancelled'});
+  return out;
+}
 async function call(id, key, model, o) {
   const c = CFG[id], t0 = performance.now();
   let text = '';
@@ -241,10 +275,15 @@ async function call(id, key, model, o) {
     const decl = (!o.json && o.tools && o.tools.length) ? toolDecls(o.tools, false) : [];
     if (decl.length) { body.tools = decl.map(f => ({ type: 'function', function: f })); body.tool_choice = 'auto'; }
     let j;
-    try { j = await jfetch(c.base + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, 40000); }
-    catch (er) { if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
-    text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content || '';
-    const nc = decl.length ? oaiNative(j) : null; if (nc) text = joinCall(text, nc.tool, nc.args);
+    if (typeof o.onToken === 'function' && !decl.length && !o.json) {
+      try { text = await streamOAI(c.base + '/chat/completions', key, body, o, 40000); }
+      catch (er) { if (er.code === 'cancelled') throw er; if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
+    } else {
+      try { j = await jfetch(c.base + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, 40000); }
+      catch (er) { if (er.code === 'cancelled') throw er; if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
+      text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content || '';
+      const nc = decl.length ? oaiNative(j) : null; if (nc) text = joinCall(text, nc.tool, nc.args);
+    }
   } else if (c.kind == 'cohere') {
     const body = { model, messages: [{ role: 'system', content: o.system }].concat(o.messages), temperature: o.temp == null ? 0.8 : o.temp, max_tokens: o.max || 400 };
     if (o.json) body.response_format = { type: 'json_object' };
@@ -456,7 +495,7 @@ const cachedModels = id => { const c = LS.get('ember_models', {}); return c[id] 
 const HANDOFF = () => Object.assign(new Error('The background task has this reply.'), { code: 'handoff' });
 async function runInner(lane, o, tok) {
   const pl = lane != 'util', errs = [], failed = [];
-  const halted = () => { if (tok && tok.stop) throw HANDOFF(); if (tok && tok.abort) throw Object.assign(new Error('Stopped: the reply took too long.'), { code: 'fail' }); };
+  const halted = () => { if (tok && tok.stop) throw HANDOFF(); if (routeCancelled || (tok && tok.abort)) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' }); };
   const trying = (name, model) => { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-try', { detail: { name, model } })); } catch (e) { /* no listener */ } } }; // V1.8.3: once the native worker took the request, the page makes no further paid calls
   // when an engine failed and a different one answered, tell the UI (ai.js shows a toast). Background jobs stay silent.
   const done = r => { if (pinnedEngine && r.provider != pinnedEngine) { const p0 = failed.find(x => x.id == pinnedEngine); r.pinMiss = { want: pinnedEngine, why: p0 ? (p0.why || '') : 'no usable key' }; } const f = failed.find(x => x.id != r.provider); if (f && pl && !(pinnedEngine && r.provider == pinnedEngine)) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
@@ -476,7 +515,8 @@ async function runInner(lane, o, tok) {
       let models;
       try { models = await modelsFor(id, e.key, lane); }
       catch (er) {
-        if (er.status == 401 || er.status == 403) { e.bad = true; save(); } else if (er.status == 429) cool.set(e.key, Date.now() + Math.max(5, Math.min(900, Number(er.retryAfter) || 60)) * 1000);
+        if (er.code === 'cancelled' || routeCancelled) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' });
+        if (er.status == 401 || er.status == 403) { e.bad = true; save(); } else if (er.status == 429) coolKey(e.key, er.retryAfter);
         errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message }); continue;
       }
       const pm = pinnedModel && pinnedModel.id == id ? pinnedModel.model : null;
@@ -484,11 +524,13 @@ async function runInner(lane, o, tok) {
         halted();
         trying(CFG[id].name, m); try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
         catch (er) {
+          if (er.code === 'cancelled' || routeCancelled) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' });
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
           if (soft && (er.status == 400 || er.status == 402 || er.status == 403 || er.status == 422) && !pm) continue; // V1.9.15: try the next model, keep the key, the reason stays in failed[]
-          if (er.status == 429) { cool.set(e.key, Date.now() + Math.max(5, Math.min(900, Number(er.retryAfter) || 60)) * 1000); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: true, code: 429 }); break; }
+          if (er.status == 429) { coolKey(e.key, er.retryAfter); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: true, code: 429 }); break; }
           if (er.status == 401 || er.status == 403) { e.bad = true; e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: false, limited: false, code: er.status, msg: 'key rejected (' + er.status + ')' }); save(); break; }
-          if (er.status == 404 || (er.status == 400 && /model/i.test(er.message))) continue;
+          if (er.status == 404 || (er.status == 400 && /model/i.test(er.message)) || transient(er)) continue;
+          // A model-specific or transient failure advances through models; auth/permission failures invalidate the key above.
           break;
         }
       }
@@ -511,6 +553,7 @@ async function runInner(lane, o, tok) {
 // V1.5.9: remember the chat request that is in flight so app.js can hand it to the native background task if the app is backgrounded.
 let inflight = null;
 async function run(lane, o) {
+  if (lane !== 'util') routeCancelled = false;
   const tok = { lane, o };
   if (lane != 'util') { inflight = tok; try { window.dispatchEvent(new Event('ember-run-start')); } catch (e) { /* no listener */ } }
   try {
@@ -521,7 +564,7 @@ async function run(lane, o) {
 }
 function holdInflight(p) { if (inflight) inflight.hold = p; }
 function stopInflight() { if (inflight) inflight.stop = true; }
-function abortInflight() { if (inflight) inflight.abort = true; } // V1.9.33: the page gave up waiting; no further engine is tried
+function abortInflight() { routeCancelled = true; if (inflight) inflight.abort = true; activeControllers.forEach(c => { try { c.abort(); } catch (_) {} }); activeReaders.forEach(r => { try { r.cancel(); } catch (_) {} }); } // abort current HTTP/SSE request and prevent fallback
 const pending = () => inflight ? { lane: inflight.lane, o: Object.assign({}, inflight.o, { system: inflight.lane == 'util' || inflight.o.json ? inflight.o.system : String(inflight.o.system || '') + '\n\n' + factsBlock(null, null, []) }) } : null;
 // The engines the router would try for this lane, from the cached model lists only (no network), OpenAI-style providers only.
 function nativePlan(lane) {

@@ -1,4 +1,4 @@
-// Ember V1.9.33 test: a reply can be aborted (no further engines tried) and each engine attempt is announced. Pure Node, no network.
+// Ember V1.9.48 test: a reply can be cancelled (no further engines tried) and each engine attempt is announced. Pure Node, no network.
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const { K } = require('../tools/diag.js');
 let pass = 0, fail = 0;
@@ -14,7 +14,7 @@ vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(__dirname, '..'
   const P = ctx.window.Prov; ok('abortInflight is exported', typeof P.abortInflight == 'function');
   let err = null; try { await P.run('deep', { system: 's', messages: [{ role: 'user', content: 'hi' }], temp: 0.5, max: 50 }); } catch (e) { err = e; }
   const tries = events.filter(e => e.type == 'ember-try');
-  ok('an aborted reply stops with a clear error and not the handoff code', err && /took too long/.test(err.message) && err.code == 'fail', err && { m: err.message, c: err.code });
+  ok('a cancelled reply stops with a clear cancellation error', err && /cancelled/i.test(err.message) && err.code == 'cancelled', err && { m: err.message, c: err.code });
   ok('it did not walk through every engine and model after the abort', urls.length <= 4, urls);
   ok('each engine attempt was announced with its name', tries.every(e => e.detail && e.detail.name), tries.map(e => e.detail));
   console.log(pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);

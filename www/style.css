@@ -1179,21 +1179,23 @@ header .who b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:el
 @keyframes et-fade{from{opacity:0}to{opacity:1}}
 
 
-/* V1.9.46 - softer light surfaces + pill composer polish */
-:root{
-  --bg:#f5f6f8;--p:#ffffff;--p2:#eef0f4;--b:#dfe3e9;--t:#20232a;--m:#697180;
-  --on:#ffffff;
-}
-body{background:var(--bg);color:var(--t)}
-#app{background:radial-gradient(ellipse at 50% -20%,rgba(255,106,0,.09),transparent 62%),var(--bg)}
-header{background:rgba(255,255,255,.94);border-bottom-color:var(--b)}
-.hb{background:#fff;border-color:var(--b);color:var(--t);border-radius:999px}
-#inp{background:#fff;border:1px solid #d9dee7;border-radius:28px;padding:13px 17px;box-shadow:0 2px 8px rgba(20,30,50,.045);transition:border-color .18s,box-shadow .18s}
-#inp:focus{border-color:color-mix(in srgb,var(--ac) 65%,#fff);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 12%,transparent)}
-#bPlus,#bTalk,#bMic{border-radius:999px}
-#bSend{box-shadow:0 3px 10px rgba(255,106,0,.22);transition:transform .15s,box-shadow .15s}
-#bSend:active{transform:scale(.94);box-shadow:none}
-.card,.prm,.tl-card,.et-claude,.et-claude-saved{box-shadow:0 2px 10px rgba(20,30,50,.045)}
-input[type=text],input[type=password],select,textarea.pad{background:#fff;border-color:var(--b);color:var(--t)}
-.btn.g{background:#fff;color:var(--t);border-color:var(--b)}
+/* V1.9.48: restore Ember's original dark/orange palette; keep the requested pill-shaped composer. */
+#inp{border-radius:28px;padding:13px 17px;transition:border-color .18s,box-shadow .18s}
+#inp:focus{border-color:var(--ac);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 18%,transparent)}
+#bPlus,#bTalk,#bMic,.hb{border-radius:999px}
+#bSend{transition:transform .15s,box-shadow .15s}
+#bSend:active{transform:scale(.94)}
 @media(prefers-reduced-motion:reduce){#inp,#bSend{transition:none}}
+
+/* Ember 1.9.48: original charcoal/orange palette, premium pill composer and live status */
+.comp .row{background:#0b0b0b!important;border:1px solid #383838!important;border-radius:30px!important;padding:5px 6px 5px 15px;gap:8px;box-shadow:0 6px 22px rgba(0,0,0,.22)}
+.comp .row:focus-within{border-color:var(--ac)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 18%,transparent),0 8px 24px rgba(0,0,0,.28)}
+.comp #inp{background:transparent!important;color:#f5f5f5!important;caret-color:var(--ac)!important;border:0!important;min-width:0;padding:11px 2px;line-height:1.45}
+.comp #inp::placeholder{color:#a8a8a8!important}.comp .row .side{gap:5px}
+.comp .row .side button{width:38px;height:38px;border-radius:50%;background:#171717!important;color:#f5f5f5!important;border:1px solid #333!important;flex-shrink:0}
+.comp .row .side #bSend{background:var(--ac)!important;color:#111!important;border:0!important;box-shadow:0 3px 12px color-mix(in srgb,var(--ac) 25%,transparent)}
+.comp .row .side #bStop{background:#321716!important;color:#ff7a66!important;border:1px solid #71332c!important;font-size:15px}
+.engpill.working{border-color:var(--ac)!important;color:#ffd1a6!important;animation:ember-route-pulse 1.4s ease-in-out infinite}.engpill.working i{background:var(--ac)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--ac) 20%,transparent)}
+.stream-preview{border-left:2px solid var(--ac);padding-left:12px;white-space:normal}.stream-preview small{display:block;margin-top:8px;color:#999;font-size:11px}
+@keyframes ember-route-pulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 12%,transparent)}}
+@media(prefers-reduced-motion:reduce){.engpill.working{animation:none}}

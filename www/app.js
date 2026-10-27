@@ -20,6 +20,11 @@ const migrateMem = m => {
 };
 let mem = MEM_DEF();
 let conv = null, busy = false, lastErr = null, backupKeys = false, curTurn = null, handedTurn = '';
+let streamText = '', cancelRequested = false;
+function paintRouteStatus(name, model) { const b = $('engs'); if (!b) return; b.classList.add('working'); const sp = b.querySelector('span'); if (sp) sp.textContent = name ? ('Trying ' + name + (model ? ' · ' + model : '')) : 'Connecting…'; b.title = 'Live routing status: ' + (name || 'connecting') + (model ? ' · ' + model : ''); }
+window.addEventListener('ember-try', e => { streamText = ''; const d = e.detail || {}; paintRouteStatus(d.name, d.model); const p = $('streamPreview'); if (p) p.remove(); });
+window.addEventListener('ember-token', e => { streamText = String(e.detail && e.detail.text || ''); let p = $('streamPreview'); if (!p && streamText) { $('log').insertAdjacentHTML('beforeend', '<div class="msg a stream-preview" id="streamPreview"><div></div><small>Live response</small></div>'); p = $('streamPreview'); } if (p) { const d = p.querySelector('div'); if (d) d.innerHTML = fmt(streamText); down(); } });
+window.addEventListener('ember-switch', () => { streamText = ''; const p = $('streamPreview'); if (p) p.remove(); });
 // V1.9.19: spatial awareness — which sheet/tab he is actually looking at right now, so the AI is not guessing
 let curUI = 'Chat';
 const setUI = name => { curUI = name; };
@@ -145,7 +150,7 @@ function renderLog() {
   const m = conv ? conv.msgs : [];
   $('empty').classList.toggle('hidden', m.length > 0);
   $('noKey').classList.toggle('hidden', Prov.hasKeys());
-  $('log').innerHTML = m.map((x, i) => bub(x, i == m.length - 1, i)).join('') + (window.EmberAgentAddon ? window.EmberAgentAddon.cardsHtml() : '') + (window.EmberTimeline ? window.EmberTimeline.liveHtml() : '') +
+  $('log').innerHTML = m.map((x, i) => bub(x, i == m.length - 1, i)).join('') + (window.EmberAgentAddon ? window.EmberAgentAddon.cardsHtml() : '') + (window.EmberTimeline ? window.EmberTimeline.liveHtml() : '') + (busy && streamText ? '<div class="msg a stream-preview" id="streamPreview"><div>' + fmt(streamText) + '</div><small>Live response</small></div>' : '') +
     (lastErr ? '<div class="msg e"><div>' + esc(lastErr) + '</div><div class="mt"><button data-act="retry">Try again</button><button data-act="keys">Open Keys</button></div></div>' : '');
   if (Safety.lastLevel() >= 3 && m.length) $('log').insertAdjacentHTML('beforeend', Safety.crisisCard());
   down(); renderTop(); paintSay();
@@ -383,14 +388,14 @@ async function resolveAddonCalls(text, L) {
 const REPLY_MS = 100000;
 async function reply(o) {
   o = o || {}; if (busy) return;
-  busy = true; lastErr = null; $('bSend').disabled = true; typing(true);
+  busy = true; cancelRequested = false; streamText = ''; lastErr = null; $('bSend').disabled = true; $('bStop').classList.remove('hidden'); $('bStop').disabled = false; $('bStop').textContent = '■'; $('bSend').classList.add('hidden'); typing(true);
   const turnId = conv.id + ':' + conv.msgs.length; curTurn = turnId;
   const L = o.force ? { lane: 'deep', deep: true } : laneFor();
   const TLn = window.EmberTimeline; // V1.9.35: richer steps in the thinking card
   if (TLn) { TLn.note('Reading your message', 'r1'); TLn.note(L.deep ? 'Deep lane: taking extra care on this one' : 'Quick lane: answering directly', 'r2'); TLn.note('Loading the chat so far and your settings', 'r3'); TLn.note('Choosing the best engine', 'r4'); }
   try {
     const lastU = conv.msgs.length ? [...conv.msgs].reverse().find(m => m.r == 'u') : null;
-    const call = Persona.respond(conv, { S, mem, directive: o.directive, lane: L.lane, deep: L.deep, uiState: uiStateBlock(), planHint: !o.directive && lastU ? planHint(lastU.t) : '' });
+    const call = Persona.respond(conv, { S, mem, directive: o.directive, lane: L.lane, deep: L.deep, uiState: uiStateBlock(), planHint: !o.directive && lastU ? planHint(lastU.t) : '', shouldCancel: () => cancelRequested, onToken: (piece, full) => { try { window.dispatchEvent(new CustomEvent('ember-token', { detail: { piece, text: full } })); } catch (_) {} } });
     // V1.9.33: no reply may hang the screen. After REPLY_MS the page stops trying engines and shows an error with Resend.
     let dl; const guard = new Promise((_, no) => { dl = setTimeout(() => { try { if (Prov.abortInflight) Prov.abortInflight(); } catch (e) { /* ignore */ } no(Object.assign(new Error('No reply after ' + Math.round(REPLY_MS / 1000) + ' seconds. An engine is stuck or very slow. Tap resend, or pin a different engine in Settings.'), { code: 'timeout' })); }, REPLY_MS); });
     call.catch(() => {}); // the race below reports it; a late failure after the deadline must not surface as an unhandled rejection
@@ -409,13 +414,14 @@ async function reply(o) {
     }
     await persist();
   } catch (e) {
+    if (e && e.code == 'cancelled' && curTurn === turnId) { lastErr = null; streamText = ''; const sp = $('streamPreview'); if (sp) sp.remove(); toast('Reply stopped'); }
     if (e && e.code == 'handoff' && curTurn === turnId) { // V1.8.3: the native worker is answering this one; stay busy until its reply lands (applyBg clears it), with a safety net
       const keep = turnId; setTimeout(() => { if (curTurn === keep && busy && !conv.msgs.some(m => m.turn === keep)) { lastErr = 'The background reply did not arrive. Tap resend.'; busy = false; $('bSend').disabled = false; typing(false); curTurn = null; renderLog(); } }, 180000);
       return;
     }
     if (curTurn === turnId) lastErr = e.message || 'Something broke.';
   }
-  if (curTurn === turnId) { busy = false; $('bSend').disabled = false; typing(false); curTurn = null; }
+  if (curTurn === turnId) { busy = false; streamText = ''; $('bSend').disabled = false; $('bSend').classList.remove('hidden'); $('bStop').classList.add('hidden'); $('bStop').disabled = false; $('engs').classList.remove('working'); typing(false); curTurn = null; }
   if (talkOn && lastErr) talkOff('Talk mode off: that reply failed');
   renderLog();
   saveSession(); // persist session state after every reply
@@ -458,6 +464,7 @@ window.addEventListener('ember-bg-reply', e => {
 });
 window.addEventListener('ember-timer', e => { const t = e.detail && e.detail.text; if (!t) return; ensure(); conv.msgs.push({ r: 'a', t, ts: Date.now() }); persist(); renderLog(); toast(t.slice(0, 80)); });
 $('bSend').onclick = send;
+if ($('bStop')) $('bStop').onclick = () => { if (!busy) return; cancelRequested = true; $('bStop').disabled = true; $('bStop').textContent = '…'; try { Prov.abortInflight(); } catch (_) {} };
 // V1.9.24: Paste and Copy for the message box (long-press paste is unreliable in some webviews)
 if ($('bPasteIn')) $('bPasteIn').onclick = async () => {
   const el = $('inp'); let t = '';
