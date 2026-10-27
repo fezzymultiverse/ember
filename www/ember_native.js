@@ -219,10 +219,15 @@
     // V1.9.23: an empty answer is NOT cached (the engine is often still starting on the first call), the call is retried, and duplicate names get a unique id
     async voices(force) {
       if (voiceCache && voiceCache.length && !force) return voiceCache;
-      let list = [];
-      for (let k = 0; k < 6 && !list.length; k++) {
-        try { const r = await TTSP.getSupportedVoices(); list = (r && r.voices) || []; } catch (e) { list = []; }
-        if (!list.length) await new Promise(res => setTimeout(res, 700));
+      // V1.9.24: a partial answer is NOT trusted either. Ask until two calls in a row return the same count (max 8 tries), keep the biggest list seen.
+      let list = [], prev = -1;
+      for (let k = 0; k < 8; k++) {
+        let cur = [];
+        try { const r = await TTSP.getSupportedVoices(); cur = (r && r.voices) || []; } catch (e) { cur = []; }
+        if (cur.length > list.length) list = cur;
+        if (cur.length && cur.length === prev) break;
+        prev = cur.length;
+        await new Promise(res => setTimeout(res, 700));
       }
       const seen = {};
       voiceCache = list.map((v, i) => {

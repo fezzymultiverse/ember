@@ -452,6 +452,7 @@ function meta(t, source) {
     if (!cached && (on.art || on.aboutArtist || on.album)) metaSave(k, on);
     (on.sources || []).forEach(x => { if (m.sources.indexOf(x) < 0) m.sources.push(x); });
     if (!m.art || (!m.embedded && !t.art)) m.art = m.art || on.art || '';
+    if (!m.art) { try { const dm = window.EmberDlMeta && window.EmberDlMeta.find(t); if (dm && dm.thumb) m.art = dm.thumb; if (dm && !m.album && dm.album) m.album = dm.album; } catch (e) { /* no saved cover */ } } // V1.9.27: the thumbnail of what he downloaded
     ['album', 'year', 'genre'].forEach(f => { if (!m[f]) m[f] = on[f] || ''; });
     if (!m.artist) m.artist = on.artist || ''; m.aboutArtist = on.aboutArtist || ''; m.aboutSong = on.aboutSong || ''; m.aboutAlbum = on.aboutAlbum || '';
     metaMem.set(id, m); if (metaMem.size > 40) metaMem.delete(metaMem.keys().next().value);

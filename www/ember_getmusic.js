@@ -15,21 +15,105 @@ function yt() {
 }
 const NEED = 'The native downloader is only inside the Ember APK. In a browser, search and download do not work.';
 const LINK = /^https:\/\/(www\.|m\.|music\.)?(youtube\.com|youtu\.be|soundcloud\.com)\/\S+$/i;
-let list = []; // what the results area shows right now: [{ title, url, sub }]
+// V1.9.27: what we know about each track we queued (YouTube thumbnail, artist, album), keyed by a plain form of its title. The library uses it as a
+// cover when no tag or online lookup has one. Mirrors DownloadWorker.splitTitle so the cleaned title the phone saves still matches.
+const MK = 'ember_dlmeta';
+const norm = t => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+function cleanTitle(raw) {
+  let t = String(raw || '').replace(/\s*[(\[][^)\]]*(official|audio|video|lyric|visuali[sz]er|hd|4k|explicit|music video)[^)\]]*[)\]]/ig, '').trim() || String(raw || '').trim();
+  const i = t.indexOf(' - '); return i > 0 && i < t.length - 3 ? { artist: t.slice(0, i).trim(), title: t.slice(i + 3).trim() } : { artist: '', title: t };
+}
+const dlLoad = () => { try { const o = JSON.parse(localStorage.getItem(MK) || '{}'); return (o && typeof o == 'object') ? o : {}; } catch (e) { return {}; } };
+function dlSave(title, m) {
+  if (!title) return; const o = dlLoad(), c = cleanTitle(title);
+  const rec = { thumb: String(m.thumb || '').slice(0, 400), artist: String(m.artist || c.artist || '').slice(0, 120), album: String(m.album || '').slice(0, 160), at: Date.now() };
+  [norm(title), norm(c.title), norm(c.artist + c.title)].forEach(k => { if (k) o[k] = rec; });
+  const ks = Object.keys(o); if (ks.length > 600) ks.sort((a, b) => (o[a].at || 0) - (o[b].at || 0)).slice(0, ks.length - 600).forEach(k => delete o[k]);
+  try { localStorage.setItem(MK, JSON.stringify(o)); } catch (e) { /* storage blocked: covers just fall back to the online lookup */ }
+}
+window.EmberDlMeta = { cleanTitle, save: dlSave, find: t => { if (!t) return null; const o = dlLoad(); return o[norm((t.artist || '') + (t.title || ''))] || o[norm(t.title)] || null; } };
+let list = []; // what the results area shows right now: [{ title, url, sub, thumb }]
 const jobs = new Map(); // jobId -> latest detail from the 'ember-dl' event
+
+// ── Download step definitions (V1.9.28) ───────────────────────────────────────
+// Maps the native plugin's 0-100 pct value onto 5 visible steps so the user can
+// see exactly where their download is at any moment.
+const DL_STEPS = [
+  { id: 'meta',   ico: '🔍', lbl: 'Fetching metadata',    from: 0,  to: 10 },
+  { id: 'stream', ico: '🔗', lbl: 'Resolving stream',     from: 10, to: 20 },
+  { id: 'dl',     ico: '⬇',  lbl: 'Downloading audio',   from: 20, to: 85 },
+  { id: 'proc',   ico: '⚙',  lbl: 'Processing audio',    from: 85, to: 97 },
+  { id: 'save',   ico: '💾', lbl: 'Saving to Music/Ember', from: 97, to: 100 }
+];
+
+// Returns 'done' | 'active' | 'pend' | 'err' for a given step + current state
+function stepSt(step, pct, state) {
+  if (state === 'done')   return 'done';
+  if (state === 'failed') return pct >= step.from ? 'err' : 'pend';
+  if (pct >= step.to)     return 'done';
+  if (pct >= step.from)   return 'active';
+  return 'pend';
+}
 
 const msg = (h) => { $('gtRes').innerHTML = h ? '<p class="hint">' + h + '</p>' : ''; };
 let head = '';
 function paintList() {
-  $('gtRes').innerHTML = (list.length && head ? '<p class="hint">' + esc(head) + '</p>' : '') + (list.length ? list.map((x, i) => '<div class="trk"><button tabindex="-1">' + esc(x.title) + '<small>' + esc(x.sub) + '</small></button><button class="gtd" data-i="' + i + '" aria-label="Download ' + esc(x.title) + '">⬇</button></div>').join('') : '');
+  $('gtRes').innerHTML = (list.length && head ? '<p class="hint">' + esc(head) + '</p>' : '') +
+    (list.length ? list.map((x, i) =>
+      '<div class="trk">' +
+      (/^https:\/\//i.test(x.thumb || '') ? '<img class="gtth" loading="lazy" alt="" src="' + esc(x.thumb) + '">' : '') +
+      '<button tabindex="-1">' + esc(x.title) + '<small>' + esc(x.sub) + '</small></button>' +
+      '<button class="gtd" data-i="' + i + '" aria-label="Download ' + esc(x.title) + '">⬇</button>' +
+      '</div>').join('') : '');
 }
+
 function paintJobs() {
   const a = [...jobs.values()].slice(-8).reverse();
-  $('gtJobs').innerHTML = a.length ? a.map(j => {
-    const pct = j.state === 'done' ? 100 : Math.max(0, Math.min(100, +j.pct || 0));
-    const lab = j.state === 'done' ? 'Saved to Music/Ember' : j.state === 'failed' ? 'Failed' + (j.detail ? ': ' + j.detail : '') : (pct ? 'Downloading ' + pct + '%' : 'Looking it up…');
-    return '<div class="gtj ' + esc(j.state) + '"><b>' + esc(j.title || 'Fetching track info') + '</b><small>' + esc(lab) + '</small><div class="bar"><i style="width:' + pct + '%"></i></div></div>';
-  }).join('') : '<p class="hint">Nothing downloading.</p>';
+  if (!a.length) { $('gtJobs').innerHTML = '<p class="hint">Nothing downloading.</p>'; return; }
+
+  $('gtJobs').innerHTML = a.map(j => {
+    const pct    = j.state === 'done' ? 100 : Math.max(0, Math.min(100, +j.pct || 0));
+    const failed = j.state === 'failed';
+    const done   = j.state === 'done';
+
+    // Status label
+    let statusLbl;
+    if (done)         statusLbl = '<span class="gjst-ok">✓ Saved to Music/Ember</span>';
+    else if (failed)  statusLbl = '<span class="gjst-bad">✗ Failed' + (j.detail ? ': ' + esc(String(j.detail).slice(0, 90)) : '') + '</span>';
+    else if (pct > 0) statusLbl = pct + '% complete';
+    else              statusLbl = 'Starting…';
+
+    // Step timeline
+    const stepsHtml = DL_STEPS.map((step, si) => {
+      const ss  = stepSt(step, pct, j.state);
+      const ico = ss === 'done' ? '✓' : ss === 'err' ? '✗' : ss === 'active' ? step.ico : '○';
+      const pctBadge = (ss === 'active' && step.id === 'dl' && pct > step.from)
+        ? ' <span class="gts-pct">' + pct + '%</span>' : '';
+      const conn = si < DL_STEPS.length - 1
+        ? '<div class="gts-conn gts-conn-' + ss + '"></div>' : '';
+      return '<div class="gts-wrap">'
+        + '<div class="gts gts-' + ss + '">'
+          + '<div class="gts-ico' + (ss === 'active' ? ' gts-ico-spin' : '') + '">' + ico + '</div>'
+          + '<div class="gts-lbl">' + step.lbl + pctBadge + '</div>'
+        + '</div>'
+        + conn
+        + '</div>';
+    }).join('');
+
+    // Progress bar only while running
+    const bar = (!done && !failed)
+      ? '<div class="gtj-bar"><div class="gtj-bar-fill" style="width:' + pct + '%"></div></div>'
+      : '';
+
+    return '<div class="gtj gtj-' + esc(j.state) + '">'
+      + '<div class="gtj-top">'
+        + '<div class="gtj-title">' + esc(j.title || 'Fetching track info') + '</div>'
+        + '<div class="gtj-sub">' + statusLbl + '</div>'
+      + '</div>'
+      + '<div class="gtj-timeline">' + stepsHtml + '</div>'
+      + bar
+      + '</div>';
+  }).join('');
 }
 async function perm() { try { if (window.EmberNative && window.EmberNative.ensureNotifyPermission) await window.EmberNative.ensureNotifyPermission(); } catch (e) { /* notifications are optional */ } }
 function track(id, title) {
@@ -37,11 +121,11 @@ function track(id, title) {
   jobs.set(id, { id, title: title || '', state: 'running', pct: 0, detail: '' }); paintJobs();
   if (window.EmberAgentAddon && window.EmberAgentAddon.trackJob) window.EmberAgentAddon.trackJob(id, title || '', true);
 }
-async function one(url, title) {
+async function one(url, title, meta) {
   const P = yt(); if (!P) { toast(NEED); return false; }
   if (!LINK.test(url)) { toast('That is not a YouTube or SoundCloud link'); return false; }
   await perm();
-  try { const r = await P.downloadVideo({ url, title: title || '' }); if (r && r.jobId) { track(r.jobId, title); toast('Download started'); return true; } toast('The downloader did not start a job'); }
+  try { const m = meta || {}; const r = await P.downloadVideo({ url, title: title || '', artist: m.artist || '', thumb: m.thumb || '' }); if (r && r.jobId) { track(r.jobId, title); dlSave(title, m); toast('Download started'); return true; } toast('The downloader did not start a job'); }
   catch (e) { toast('Could not start: ' + String((e && e.message) || e).slice(0, 120)); }
   return false;
 }
@@ -51,7 +135,7 @@ async function search(sc) {
   head = ''; list = []; paintList(); msg('Searching…');
   try {
     const r = await P.search({ query: q, limit: 10, service: sc ? 'soundcloud' : 'youtube' });
-    list = ((r && r.results) || []).map(x => ({ title: x.title || '(no title)', url: x.url, sub: [x.channel, fmt(x.durationSec)].filter(Boolean).join(' · ') }));
+    list = ((r && r.results) || []).map(x => ({ title: x.title || '(no title)', url: x.url, artist: x.channel || '', thumb: x.thumb || '', sub: [x.channel, fmt(x.durationSec)].filter(Boolean).join(' · ') }));
     if (list.length) paintList(); else msg('Nothing found.');
   } catch (e) { msg('Search failed: ' + esc(String((e && e.message) || e).slice(0, 140))); }
 }
@@ -61,7 +145,7 @@ $('gtQ').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDe
 $('gtRes').addEventListener('click', async e => {
   const b = e.target.closest('.gtd'); if (!b) return;
   const x = list[+b.dataset.i]; if (!x) return;
-  b.disabled = true; const ok = await one(x.url, x.title); b.textContent = ok ? '✓' : '⬇'; b.disabled = ok;
+  b.disabled = true; const ok = await one(x.url, x.title, x); b.textContent = ok ? '✓' : '⬇'; b.disabled = ok;
 });
 $('gtOne').onclick = async () => { const u = $('gtUrl').value.trim(); if (!u) { toast('Paste a link first'); return; } if (await one(u, '')) $('gtUrl').value = ''; };
 $('gtList').onclick = async () => {
@@ -69,17 +153,17 @@ $('gtList').onclick = async () => {
   if (!P) { msg(NEED); return; } if (!LINK.test(u)) { toast('That is not a YouTube or SoundCloud link'); return; }
   list = []; paintList(); msg('Reading the playlist…');
   try {
-    const r = await P.playlist({ url: u, limit: 30 });
-    list = ((r && r.tracks) || []).map(x => ({ title: x.title || '(no title)', url: x.url, sub: [x.artist, fmt(x.durationSec)].filter(Boolean).join(' · ') }));
-    head = (r.title || 'Playlist') + ' · first ' + list.length; if (list.length) paintList(); else msg('That playlist is empty.');
+    const r = await P.playlist({ url: u, limit: 100 });
+    list = ((r && r.tracks) || []).map(x => ({ title: x.title || '(no title)', url: x.url, artist: x.artist || '', thumb: x.thumb || '', sub: [x.artist, fmt(x.durationSec)].filter(Boolean).join(' · ') }));
+    head = (r.title || 'Playlist') + ' · ' + list.length + ' track' + (list.length == 1 ? '' : 's'); if (list.length) paintList(); else msg('That playlist is empty.');
   } catch (e) { msg('Could not read it: ' + esc(String((e && e.message) || e).slice(0, 140))); }
 };
 $('gtAll').onclick = async () => {
   const u = $('gtUrl').value.trim(), P = yt(); if (!u) { toast('Paste a playlist link first'); return; }
   if (!P) { toast(NEED); return; } if (!LINK.test(u)) { toast('That is not a YouTube or SoundCloud link'); return; }
-  if (!window.confirm('Download up to 30 tracks from this playlist?')) return;
+  if (!window.confirm('Download this whole playlist (up to 100 tracks, one after another)? Each track is saved with its title, artist and the playlist name as the album.')) return;
   await perm();
-  try { const r = await P.downloadPlaylist({ url: u, limit: 30 }); ((r && r.jobs) || []).forEach(j => track(j.jobId, j.title)); toast(((r && r.jobs) || []).length + ' downloads queued'); $('gtUrl').value = ''; }
+  try { const r = await P.downloadPlaylist({ url: u, limit: 100 }); ((r && r.jobs) || []).forEach(j => { track(j.jobId, j.title); dlSave(j.title, { thumb: j.thumb, artist: j.artist, album: r.title }); }); toast(((r && r.jobs) || []).length + ' downloads queued'); $('gtUrl').value = ''; }
   catch (e) { toast('Could not queue: ' + String((e && e.message) || e).slice(0, 120)); }
 };
 let scanT = null;

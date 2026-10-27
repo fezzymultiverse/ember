@@ -31,6 +31,18 @@ const srv = http.createServer((q, r) => {
     if (MODE.tavily != 200) return route.fulfill({ status: MODE.tavily, headers: cors, contentType: 'application/json', body: '{"detail":"no"}' });
     route.fulfill({ status: 200, headers: cors, contentType: 'application/json', body: JSON.stringify({ answer: 'Mock answer.', results: [{ title: 'T1', url: 'https://a.example/1', content: 'c1' }, { title: 'T2', url: 'https://b.example/2', content: 'c2' }] }) });
   });
+  // V1.9.24: keyless fallbacks (DuckDuckGo web results, Wikipedia). Default: down, so the older checks behave as before.
+  MODE.html = 'down'; MODE.wiki = 'down';
+  await pg.route('https://html.duckduckgo.com/**', async route => {
+    const req = route.request(); if (req.method() == 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    if (MODE.html != 'ok') return route.fulfill({ status: 500, headers: cors, body: 'x' });
+    route.fulfill({ status: 200, headers: cors, contentType: 'text/html', body: '<div class="result"><a class="result__a" href="//duckduckgo.com/l/?uddg=' + encodeURIComponent('https://example.org/jane-doe') + '&rut=1">Jane Doe - Cape Town</a><a class="result__snippet">Jane Doe is a designer in Cape Town.</a></div><div class="result"><a class="result__a" href="https://example.net/2">Second</a><a class="result__snippet">More.</a></div>' });
+  });
+  await pg.route('https://en.wikipedia.org/**', async route => {
+    const req = route.request(); if (req.method() == 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    if (MODE.wiki != 'ok') return route.fulfill({ status: 500, headers: cors, body: 'x' });
+    route.fulfill({ status: 200, headers: cors, contentType: 'application/json', body: JSON.stringify({ query: { search: [{ title: 'Jane Doe', snippet: 'An <span class="searchmatch">unknown</span> person' }] } }) });
+  });
   await pg.route('https://api.duckduckgo.com/**', async route => {
     const req = route.request(); if (req.method() == 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
     SEEN.ddg.push(req.url());
@@ -81,7 +93,7 @@ const srv = http.createServer((q, r) => {
       downloadVideo: async o => { window.__yt.dl.push(o); return { jobId: 'job-1' }; },
       status: async () => ({ state: 'done', title: 'Song A', detail: 'Music/Ember/Song A.m4a', at: 1 }) }) };
     if (!localStorage.getItem('ember_keys')) localStorage.setItem('ember_keys', JSON.stringify({ groq: [{ key: 'gsk_TESTgroqKEY1234567890abcdefGHIJ', st: null }] }));
-    if (!localStorage.getItem('ember_set')) localStorage.setItem('ember_set', JSON.stringify({ freeMode: false, name: 'Fezzy' }));
+    if (!localStorage.getItem('ember_set')) localStorage.setItem('ember_set', JSON.stringify({ freeMode: false, name: 'Fezzy', defaultsV1924: true }));
   });
   await pg.goto(url); await pg.waitForFunction(() => window.__ember && window.__ember.ready); await pg.waitForTimeout(400);
   const ev = f => pg.evaluate(f), A = (n, a) => pg.evaluate(([n, a]) => window.EmberAgentAddon.dispatch(n, a), [n, a]);
@@ -105,6 +117,13 @@ const srv = http.createServer((q, r) => {
   ok('DuckDuckGo with nothing to say is an honest empty result, not an error', !r.error && r.results.length == 0 && r.source == 'DuckDuckGo' && /not news/.test(r.note), r);
   MODE.ddg = 'http'; r = await A('web_search', { query: 'x' });
   ok('no key and DuckDuckGo down -> one clear error naming both', /^No Tavily key, and DuckDuckGo answered HTTP 500/.test(r.error || ''), r);
+  // V1.9.24: an ordinary name: Instant Answer is empty, the web-results fallback finds the page
+  MODE.ddg = 'empty'; MODE.html = 'ok'; r = await A('web_search', { query: 'Jane Doe Cape Town' });
+  ok('name search: empty Instant Answer falls through to DuckDuckGo web results', !r.error && r.source == 'DuckDuckGo web' && r.results.length == 2 && r.results[0].url == 'https://example.org/jane-doe' && /Cape Town/.test(r.results[0].snippet), r);
+  ok('name search: the note tells the AI not to invent facts about a person', /Never invent facts about a person/.test(r.note || ''), r);
+  MODE.html = 'down'; MODE.wiki = 'ok'; r = await A('web_search', { query: 'Jane Doe' });
+  ok('name search: web results down -> Wikipedia answers', !r.error && r.source == 'Wikipedia' && r.results[0].title == 'Jane Doe' && !/<span/.test(r.results[0].snippet), r);
+  MODE.wiki = 'down'; MODE.html = 'down';
   MODE.ddg = 'ok';
   ok('no key: the AI state text says DuckDuckGo, not "will fail"', await pg.evaluate(() => { const t = window.EmberAgentAddon.stateBlock({ agentAddon: true }); return /DuckDuckGo/.test(t) && !/will fail/.test(t); }));
   ok('no key: the app block says search is ON through DuckDuckGo', await pg.evaluate(() => /Live web search is ON through DuckDuckGo only/.test(window.EmberKnow.block({ agentAddon: true }, {}))));

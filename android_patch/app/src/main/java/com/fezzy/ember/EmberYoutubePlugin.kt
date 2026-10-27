@@ -1,6 +1,7 @@
 package com.fezzy.ember
 
 import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -14,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import org.schabi.newpipe.extractor.Page
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.StreamingService
 import org.schabi.newpipe.extractor.playlist.PlaylistInfo
@@ -51,7 +53,7 @@ class EmberYoutubePlugin : Plugin() {
                 val arr = JSArray()
                 for (item in si.relatedItems.filterIsInstance<StreamInfoItem>().take(limit)) {
                     arr.put(JSObject().put("title", item.name).put("url", item.url)
-                        .put("channel", item.uploaderName ?: "").put("durationSec", item.duration))
+                        .put("channel", item.uploaderName ?: "").put("durationSec", item.duration).put("thumb", thumbOf(item)))
                 }
                 call.resolve(JSObject().put("results", arr))
             } catch (e: Exception) {
@@ -65,15 +67,15 @@ class EmberYoutubePlugin : Plugin() {
     fun playlist(call: PluginCall) {
         val url = call.getString("url")?.trim().orEmpty()
         val svc = serviceFor(url) ?: run { call.reject("A YouTube or SoundCloud playlist link is required"); return }
-        val limit = (call.getInt("limit") ?: 30).coerceIn(1, 50)
+        val limit = (call.getInt("limit") ?: 30).coerceIn(1, 100)
         scope.launch {
             try {
                 EmberYtCore.ensure()
                 val pi = PlaylistInfo.getInfo(svc, url)
                 val arr = JSArray()
-                for (item in pi.relatedItems.filterIsInstance<StreamInfoItem>().take(limit)) {
+                for (item in playlistItems(svc, url, pi, limit)) {
                     arr.put(JSObject().put("title", item.name).put("url", item.url)
-                        .put("artist", item.uploaderName ?: "").put("durationSec", item.duration))
+                        .put("artist", item.uploaderName ?: "").put("durationSec", item.duration).put("thumb", thumbOf(item)))
                 }
                 call.resolve(JSObject().put("title", pi.name ?: "").put("tracks", arr))
             } catch (e: Exception) {
@@ -86,24 +88,28 @@ class EmberYoutubePlugin : Plugin() {
     fun downloadVideo(call: PluginCall) {
         val url = call.getString("url")?.trim().orEmpty()
         if (serviceFor(url) == null) { call.reject("A YouTube or SoundCloud link is required"); return }
-        val req = enqueue(url, call.getString("title") ?: "", serviceName(url))
+        val req = enqueue(url, call.getString("title") ?: "", serviceName(url), call.getString("artist") ?: "", call.getString("album") ?: "", 0, call.getString("thumb") ?: "", null)
         call.resolve(JSObject().put("jobId", req.id.toString()))
     }
 
-    // Queues every track of a playlist (up to 30), each as its own download job with its own progress.
+    // Queues every track of a playlist (up to 100), each as its own download job with its own progress. Tracks of one playlist run one after
+    // another (unique work queue per playlist, so a failed track never blocks the next one) and carry the playlist name as the album.
     @PluginMethod
     fun downloadPlaylist(call: PluginCall) {
         val url = call.getString("url")?.trim().orEmpty()
         val svc = serviceFor(url) ?: run { call.reject("A YouTube or SoundCloud playlist link is required"); return }
-        val limit = (call.getInt("limit") ?: 30).coerceIn(1, 30)
+        val limit = (call.getInt("limit") ?: 30).coerceIn(1, 100)
         scope.launch {
             try {
                 EmberYtCore.ensure()
                 val pi = PlaylistInfo.getInfo(svc, url)
                 val arr = JSArray()
-                for (item in pi.relatedItems.filterIsInstance<StreamInfoItem>().take(limit)) {
-                    val req = enqueue(item.url, item.name ?: "", serviceName(item.url))
-                    arr.put(JSObject().put("jobId", req.id.toString()).put("title", item.name ?: ""))
+                var n = 0
+                val queue = "ember_pl_" + (url.hashCode().toLong() and 0xffffffffL)
+                for (item in playlistItems(svc, url, pi, limit)) {
+                    n++
+                    val req = enqueue(item.url, item.name ?: "", serviceName(item.url), item.uploaderName ?: "", pi.name ?: "", n, thumbOf(item), queue)
+                    arr.put(JSObject().put("jobId", req.id.toString()).put("title", item.name ?: "").put("thumb", thumbOf(item)).put("artist", item.uploaderName ?: ""))
                 }
                 call.resolve(JSObject().put("title", pi.name ?: "").put("jobs", arr))
             } catch (e: Exception) {
@@ -112,10 +118,29 @@ class EmberYoutubePlugin : Plugin() {
         }
     }
 
-    private fun enqueue(url: String, title: String, service: String): OneTimeWorkRequest {
-        val data = Data.Builder().putString("url", url).putString("title", title).putString("service", service).build()
+    private fun thumbOf(item: StreamInfoItem): String =
+        try { item.thumbnails.maxByOrNull { it.height }?.url ?: "" } catch (e: Exception) { "" }
+
+    // First page of a playlist plus further pages until `limit` tracks are collected (YouTube playlists come in pages).
+    private fun playlistItems(svc: StreamingService, url: String, pi: PlaylistInfo, limit: Int): List<StreamInfoItem> {
+        val items = ArrayList<StreamInfoItem>(pi.relatedItems.filterIsInstance<StreamInfoItem>())
+        var page: Page? = pi.nextPage
+        var guard = 0
+        while (items.size < limit && page != null && guard < 10) {
+            guard++
+            val more = PlaylistInfo.getMoreItems(svc, url, page)
+            items.addAll(more.items.filterIsInstance<StreamInfoItem>())
+            page = more.nextPage
+        }
+        return items.take(limit)
+    }
+
+    private fun enqueue(url: String, title: String, service: String, artist: String, album: String, track: Int, thumb: String, queue: String?): OneTimeWorkRequest {
+        val data = Data.Builder().putString("url", url).putString("title", title).putString("service", service)
+            .putString("artist", artist).putString("album", album).putInt("track", track).putString("thumb", thumb).build()
         val req = OneTimeWorkRequestBuilder<DownloadWorker>().setInputData(data).build()
-        WorkManager.getInstance(context).enqueue(req)
+        if (queue != null) WorkManager.getInstance(context).enqueueUniqueWork(queue, ExistingWorkPolicy.APPEND_OR_REPLACE, req)
+        else WorkManager.getInstance(context).enqueue(req)
         return req
     }
 

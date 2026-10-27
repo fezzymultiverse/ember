@@ -29,7 +29,7 @@
 <div id="mw" class="mw hidden"><img id="mwArt" class="mwart hidden" alt=""><button id="mwOpen" class="mwt" aria-label="Open the music panel"><b id="mwTitle">—</b><small id="mwSub"></small></button><button id="mwPlay" aria-label="Play or pause">▶</button><button id="mwNext" aria-label="Next">⏭</button></div>
 <footer class="comp">
 <div class="mrow"><div class="modes" id="modes"><button data-m="chill">Chill</button><button data-m="sharp">Sharp</button><button data-m="deep">Deep</button></div><button id="bDocsQuick" aria-label="Open Documents: attach a file or note" title="Documents: attach a file or note">📎 <span>Docs</span></button></div>
-<div class="tools"><button id="bDevice">📟 Device</button><button id="bReact">🧠 Reasoning</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
+<div class="tools"><button id="bPasteIn" aria-label="Paste into the message box">📋 Paste</button><button id="bCopyIn" aria-label="Copy the message box text">⧉ Copy</button><button id="bDevice">📟 Device</button><button id="bReact">🧠 Reasoning</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
 <div class="row"><textarea id="inp" rows="1" spellcheck="false" autocorrect="off" placeholder="Say anything…" enterkeyhint="send"></textarea><div class="side"><button id="bTalk" aria-label="Talk mode: hands-free conversation" aria-pressed="false" title="Talk mode: just talk. It sends when you stop, reads the reply aloud, then listens again. Tap again to stop.">🗣</button><button id="bMic" aria-label="Dictate: talk and your words are typed here" aria-pressed="false" title="Dictate: tap, talk, tap again. Your words are typed into the message box.">🎤</button><button id="bSend" aria-label="Send">➤</button></div></div>
 </footer>
 </div>
@@ -306,7 +306,7 @@
 <div class="btnrow"><button class="btn" id="bExp">Export backup</button><button class="btn g" id="bImp">Import backup</button></div>
 <input type="file" id="fImp" accept="application/json,.json" hidden>
 <button class="btn g danger" id="bWipe" style="margin-top:10px">Delete everything</button>
-<p class="hint" id="ver">Ember V1.9.18 · S.O.I. × Bojack 999 · 🔥 Orange Build</p></div>
+<p class="hint" id="ver">Ember V1.9.28 · S.O.I. × Bojack 999 · 🔥 Orange Build</p></div>
 </div></section>
 
 <section id="react" class="sheet"><div class="sh"><b>Reasoning</b><button class="hb" id="bRx" aria-label="Close reasoning">✕</button></div>
@@ -350,7 +350,7 @@
 <div id="gtRes"></div>
 <div class="ct" style="margin:14px 0 6px">Or paste a link</div>
 <input type="text" id="gtUrl" placeholder="youtube.com, youtu.be or soundcloud.com link" autocomplete="off" spellcheck="false">
-<div class="btnrow" style="margin-top:6px"><button class="btn" id="gtOne">⬇ Track</button><button class="btn g" id="gtList">📃 List playlist</button><button class="btn g" id="gtAll">⬇ Playlist (30)</button></div>
+<div class="btnrow" style="margin-top:6px"><button class="btn" id="gtOne">⬇ Track</button><button class="btn g" id="gtList">📃 List playlist</button><button class="btn g" id="gtAll">⬇ Whole playlist</button></div>
 <div class="ct" style="margin:14px 0 6px">Downloads</div>
 <div id="gtJobs"><p class="hint">Nothing downloading.</p></div>
 </div>
@@ -391,6 +391,7 @@
 <table><tr><th>Feature</th><th>What is sent</th><th>To</th></tr>
 <tr><td>Every chat reply</td><td>System prompt, your "About you" text, memory facts, persona text and the most recent messages</td><td>The engine that answers: Groq, Mistral or Gemini (your key), or Pollinations (Free Mode)</td></tr>
 <tr><td>Free Mode</td><td>The same chat content, no key. Message text can appear in the request address</td><td>text.pollinations.ai, a free third party with no uptime or privacy promise this project can vouch for</td></tr>
+<tr><td>Imagine (images)</td><td>The prompt you type, only when you tap Make it</td><td>image.pollinations.ai, a free third party with no uptime or privacy promise this project controls</td></tr>
 <tr><td>Memory, titles, summaries</td><td>Recent or older messages</td><td>A key-based engine only. Never Free Mode</td></tr>
 <tr><td>Key checks, model lists</td><td>The key, as the provider's credential</td><td>That key's own provider</td></tr>
 <tr><td>Background replies (on by default)</td><td>The request and the keys of the engines to try, held in private app storage until done, then deleted</td><td>The same engines</td></tr>
@@ -466,14 +467,14 @@
 
 <div class="modal" id="dlg"><div class="mc"><h2 id="dT"></h2><p id="dX"></p><input type="text" id="dI" class="hidden"><div class="btnrow" style="margin-top:14px"><button class="btn" id="dOk">OK</button><button class="btn g" id="dNo">Cancel</button></div></div></div>
 <div id="toast"></div>
-<script src="store.js"></script><script src="ember_keyscan.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js"></script><script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script><script src="ember_getmusic.js"></script><script src="ember_react_ui.js"></script><script src="ember_device.js"></script>
+<script src="store.js"></script><script src="ember_keyscan.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js"></script><script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script><script src="ember_getmusic.js"></script><script src="ember_react_ui.js"></script><script src="ember_think_inline.js"></script><script src="ember_device.js"></script>
 <script src="ember_docs_lib.js"></script>
 <script src="ember_find.js"></script><script src="ember_tasks.js"></script><script src="ember_keys.js"></script>
 <script src="ember_browser.js"></script>
 <script src="ember_term.js"></script>
 <script src="ember_voice.js"></script><script src="ember_lyrics.js"></script><script src="ember_prov_ui.js"></script>
 
-<script src="ember_ui.js"></script>
+<script src="ember_ui.js"></script><script src="ember_extras.js"></script><script src="ember_create.js"></script>
 <script>
 // Apply termux-mode-on class to body when S is available, for CSS theming
 (function pollTermux(){

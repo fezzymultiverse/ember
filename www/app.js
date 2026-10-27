@@ -9,6 +9,8 @@ let S = Object.assign({}, DEF, LS.get('ember_set', {}));
 if (!S.engShownV1915) { S.showEng = true; S.engShownV1915 = true; LS.set('ember_set', S); } // V1.9.15: the engine and model that answered now show under every reply (he can still switch it off in Settings)
 // V1.6.6: the old default accent was pink. Anyone still on it moves to the new cyan once; a colour picked on purpose is kept.
 if (S.accentV !== 190) { if (!ACCENTS.includes(String(S.accent || '').toUpperCase())) S.accent = '#FF6A00'; S.accentV = 190; LS.set('ember_set', S); }
+// V1.9.24: Web Search and YouTube/SoundCloud download were OFF by default, so a name lookup never searched and downloads never started. Switched on once; he can turn them off again.
+if (!S.defaultsV1924) { S.agentAddon = true; S.youtubeAddon = true; S.defaultsV1924 = true; LS.set('ember_set', S); }
 const MEM_DEF = () => ({ facts: [], threads: [], callbacks: [], patterns: {}, moodLog: [], futureLetters: [], deck: [] });
 const migrateMem = m => {
   const base = MEM_DEF();
@@ -158,13 +160,15 @@ function renderTop() {
   $('pName').classList.toggle('support-dot', Safety.lastLevel() >= 2);
   $('fBadge').classList.toggle('hidden', !Prov.freeOn());
   const st = Prov.status();
-  let lastEng = ''; if (conv) for (let k = conv.msgs.length - 1; k >= 0; k--) { const mm = conv.msgs[k]; if (mm.r == 'a' && mm.eng && mm.eng.p) { lastEng = mm.eng.p; break; } }
+  let lastEng = '', lastMod = ''; if (conv) for (let k = conv.msgs.length - 1; k >= 0; k--) { const mm = conv.msgs[k]; if (mm.r == 'a' && mm.eng && mm.eng.p) { lastEng = mm.eng.p; lastMod = mm.eng.m || ''; break; } }
+  const shortM = m => String(m || '').replace(/^.*\//, '').slice(0, 28); // V1.9.24: the pill names the model too, not just the engine
   // V1.9.0: one compact pill instead of a row of chips. Dot = health of your keys, text = who answered last (or the mode).
   const okN = Prov.IDS.filter(id => st[id] == 'ok').length, limN = Prov.IDS.filter(id => st[id] == 'limited').length, unkN = Prov.IDS.filter(id => st[id] == 'unknown').length;
   const dot = Prov.freeOn() && !okN ? 'free' : okN ? 'ok' : limN ? 'limited' : unkN ? 'none' : Prov.hasKeys() ? 'bad' : 'none';
-  const who = lastEng ? Prov.label(lastEng) : (Prov.getPinned() ? Prov.label(Prov.getPinned()) + ' (pinned)' : (Prov.freeOn() && !okN ? 'Free Mode' : okN ? 'Auto' : 'No key'));
+  const pinM = (() => { try { const x = Prov.getPinnedModel && Prov.getPinnedModel(); return x && x.id == Prov.getPinned() ? shortM(x.model) : ''; } catch (e) { return ''; } })();
+  const who = lastEng ? Prov.label(lastEng) + (lastMod ? ' · ' + shortM(lastMod) : '') : (Prov.getPinned() ? Prov.label(Prov.getPinned()) + (pinM ? ' · ' + pinM : '') + ' (pinned)' : (Prov.freeOn() && !okN ? 'Free Mode' : okN ? 'Auto' : 'No key'));
   $('engs').className = 'engpill ' + dot; $('engs').innerHTML = '<i></i><span>' + esc(who) + '</span>';
-  $('engs').title = (okN ? okN + ' engine(s) ready' : 'No engine ready') + (limN ? ', ' + limN + ' rate limited' : '') + '. Tap to open Keys.';
+  $('engs').title = (lastEng ? 'Last reply: ' + Prov.label(lastEng) + (lastMod ? ' · ' + lastMod : '') + '. ' : '') + (okN ? okN + ' engine(s) ready' : 'No engine ready') + (limN ? ', ' + limN + ' rate limited' : '') + '. Tap to open Keys.';
   document.querySelectorAll('#modes button').forEach(b => b.classList.toggle('on', b.dataset.m == S.mode));
   const p = conv && conv.priv; $('bPriv').textContent = p ? '🔒 Private' : '🔓 Normal'; $('bPriv').classList.toggle('on', !!p);
   const h = new Date().getHours();
@@ -206,10 +210,52 @@ function laneFor() {
   return { lane: 'fast', deep: false };
 }
 const TAGRE = () => /<tool_call>([\s\S]*?)<\/tool_call>/gi;
-const stripTags = t => String(t || '').replace(TAGRE(), '').replace(/<\/?tool_call>/gi, '').trim();
+// V1.9.25: weaker engines (Cohere command-r7b, small Groq/Mistral models) write the call as `youtube_search {"query":"x"}` in a code box, as
+// name({...}) or as bare {"name":"x","arguments":{...}} instead of the <tool_call> tag, so the app printed it as chat text and nothing ran.
+// canon() rewrites those loose shapes into the tag form (only for tools that exist right now) before anything else looks at the reply.
+function jsonSpan(t, i) { // balanced {...} starting at t[i], string aware; returns end index (exclusive) or -1
+  let d = 0, inS = false, esc = false;
+  for (let k = i; k < t.length && k < i + 4000; k++) {
+    const c = t[k];
+    if (inS) { if (esc) esc = false; else if (c == '\\') esc = true; else if (c == '"') inS = false; continue; }
+    if (c == '"') inS = true; else if (c == '{') d++; else if (c == '}') { d--; if (d == 0) return k + 1; }
+  }
+  return -1;
+}
+function canon(text) {
+  let t = String(text || ''); if (!t || /<tool_call>/i.test(t)) return t;
+  let names = []; try { names = toolCatalog().map(x => x.name).concat(((window.EmberEngine && window.EmberEngine.TOOLS) || []).map(x => x.name)); } catch (e) { names = []; }
+  if (!names.length) return t;
+  const wrap = (a, b, tool, args) => { // swallow a code fence that directly wraps the span
+    let s0 = a, e0 = b; const before = t.slice(0, a).match(/```[a-z]*\s*$/i), after = t.slice(b).match(/^\s*```/);
+    if (before && after) { s0 = a - before[0].length; e0 = b + after[0].length; }
+    t = t.slice(0, s0) + '<tool_call>' + JSON.stringify({ tool, args }) + '</tool_call>' + t.slice(e0); };
+  const namesRe = new RegExp('(?<![A-Za-z0-9_])(' + names.map(n => n.replace(/[^A-Za-z0-9_]/g, '')).filter(Boolean).join('|') + ')(?![A-Za-z0-9_])', 'g');
+  for (let guard = 0; guard < 3; guard++) {
+    let hit = false, m; namesRe.lastIndex = 0;
+    while ((m = namesRe.exec(t)) !== null) {
+      let i = m.index + m[1].length; const rest = t.slice(i).match(/^\s*\(?\s*/); i += rest[0].length;
+      if (t[i] != '{') { if (/^\s*\(\s*\)/.test(t.slice(m.index + m[1].length))) { const mm = /^\s*\(\s*\)/.exec(t.slice(m.index + m[1].length)); wrap(m.index, m.index + m[1].length + mm[0].length, m[1], {}); hit = true; break; } continue; }
+      const e = jsonSpan(t, i); if (e < 0) continue; let args; try { args = JSON.parse(t.slice(i, e)); } catch (er) { continue; }
+      if (!args || typeof args != 'object' || Array.isArray(args)) continue;
+      let end = e; const cl = t.slice(e).match(/^\s*\)/); if (cl && /\(\s*$/.test(t.slice(m.index + m[1].length, i))) end = e + cl[0].length;
+      wrap(m.index, end, m[1], args); hit = true; break;
+    }
+    if (!hit) break;
+  }
+  if (/<tool_call>/i.test(t)) return t;
+  // bare JSON: {"tool":"x","args":{}} / {"name":"x","arguments":{}} / {"name":"x","parameters":{}}
+  for (let i = t.indexOf('{'); i >= 0 && i < t.length; i = t.indexOf('{', i + 1)) {
+    const e = jsonSpan(t, i); if (e < 0) continue; let o; try { o = JSON.parse(t.slice(i, e)); } catch (er) { continue; }
+    const tool = o && (o.tool || o.name || o.tool_name || o.function), args = o && (o.args || o.arguments || o.parameters || o.input || {});
+    if (typeof tool == 'string' && names.includes(tool) && args && typeof args == 'object') { wrap(i, e, tool, args); break; }
+  }
+  return t;
+}
+const stripTags = t => canon(t).replace(TAGRE(), '').replace(/<\/?tool_call>/gi, '').trim();
 const namesOf = a => ((a && a.TOOLS) || []).map(t => t.name);
 function parseCalls(text) {
-  const re = TAGRE(), calls = []; let m;
+  const re = TAGRE(), calls = []; let m; text = canon(text);
   while ((m = re.exec(text)) !== null) { try { const p = JSON.parse(m[1].trim()); if (p && typeof p.tool == 'string') calls.push(p); } catch (e) { } }
   return calls;
 }
@@ -227,6 +273,7 @@ function toolCatalog() {
   if (scrapeOn && A.EmberSites) sets.push(A.EmberSites.TOOLS);
   return [].concat(...sets.map(x => x || []));
 }
+window.EmberToolCatalog = () => { try { return toolCatalog(); } catch (e) { return []; } }; // V1.9.27: engines get these as native function declarations
 const toolOn = tool => toolCatalog().some(t => t.name == tool);
 async function runTool(tool, args) {
   const A = window, scrapeOn = !!(A.EmberScraper && A.EmberScraper.enabled());
@@ -277,7 +324,7 @@ async function resolveAddonCalls(text, L) {
     base.push({ role: 'user', content: '[SYSTEM CHECK, not from him: you just wrote that you searched, looked up, read or downloaded something, but NO tool ran this turn, so that is false. If a tool for it is listed, reply with ONLY its tool_call block now. If none is available or it is switched off, tell him plainly what is off or missing and that nothing was done. Never claim an action without a tool result.]' });
     try {
       const sys0 = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, uiState: uiStateBlock() }), Safety.lastLevel());
-      const fix = await Prov.run(L.lane, { system: sys0, messages: base, temp: 0.3, max: 450 });
+      const fix = await Prov.run(L.lane, { system: sys0, messages: base, temp: 0.3, max: 450, tools: toolCatalog() });
       const t2 = String(fix.text || ''), c2 = parseCalls(t2);
       if (c2.length) { cur = t2; calls = c2; }
       else return FAKE.test(stripTags(t2)) || !stripTags(t2) ? 'I did not actually do that: no tool ran, so nothing was searched, read or downloaded. Ask me again, and check that Web Scraping / YouTube search & audio download are switched on in Settings.' : stripTags(t2);
@@ -318,7 +365,7 @@ async function resolveAddonCalls(text, L) {
       'No JSON, no code blocks, no raw data dump — tell him what it means, in your own voice, the way a person would after actually looking at it. Only claim what the result actually says: if it holds an error, ok:false, or nothing, say that plainly in one line and do not pretend it worked. If a result says a bridge or key is missing or empty, say so plainly in one line.]\n\n' + ctx });
     try {
       const sys = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, noTools: last, uiState: uiStateBlock(), actionHistory: historyLines(rounds) }), Safety.lastLevel());
-      const synth = await Prov.run(L.lane, { system: sys, messages: msgs, temp: 0.85, max: 450 });
+      const synth = await Prov.run(L.lane, { system: sys, messages: msgs, temp: 0.85, max: 450, tools: last ? null : toolCatalog() });
       cur = String(synth.text || '');
     } catch (e) { return stripTags(cur) || 'I tried, but the add-on came back empty.'; }
     calls = last ? [] : parseCalls(cur);
@@ -395,6 +442,16 @@ window.addEventListener('ember-bg-reply', e => {
 });
 window.addEventListener('ember-timer', e => { const t = e.detail && e.detail.text; if (!t) return; ensure(); conv.msgs.push({ r: 'a', t, ts: Date.now() }); persist(); renderLog(); toast(t.slice(0, 80)); });
 $('bSend').onclick = send;
+// V1.9.24: Paste and Copy for the message box (long-press paste is unreliable in some webviews)
+if ($('bPasteIn')) $('bPasteIn').onclick = async () => {
+  const el = $('inp'); let t = '';
+  try { t = await navigator.clipboard.readText(); } catch (e) { t = ''; }
+  if (!t) { el.focus(); toast('Clipboard blocked or empty: long-press the box and tap Paste'); return; }
+  const a = el.selectionStart == null ? el.value.length : el.selectionStart, b = el.selectionEnd == null ? a : el.selectionEnd;
+  el.value = el.value.slice(0, a) + t + el.value.slice(b); const pos = a + t.length; el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { /* ignore */ }
+  el.dispatchEvent(new Event('input', { bubbles: true })); toast('Pasted');
+};
+if ($('bCopyIn')) $('bCopyIn').onclick = () => { const el = $('inp'); const a = el.selectionStart, b = el.selectionEnd; const t = (a != null && b != null && b > a) ? el.value.slice(a, b) : el.value; copyTxt(t, $('bCopyIn')); };
 $('inp').addEventListener('keydown', e => { if (e.key == 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); } });
 // Save input text as user types
 $('inp').addEventListener('input', () => { grow(); saveSession(); });
@@ -1132,8 +1189,8 @@ $('fImp').onchange = async e => {
 };
 $('bWipe').onclick = async () => {
   if (!(await sure('Delete everything?', 'All chats, memory, settings, chat and scraping keys, the Tavily key, the notepad, uploaded music, playlists and the Audd.io token on this device. This cannot be undone.'))) return;
-  try { if (window.EmberPlayer) await window.EmberPlayer.wipe(); if (window.EmberAudd) window.EmberAudd.wipe(); } catch (e) { /* storage already blocked */ }
-  await Store.wipe(); ['ember_set', 'ember_keys', 'ember_models', 'ember_voice', 'ember_voice_gm', 'ember_scrape', 'ember_scrape_rot', 'ember_agent', 'ember_pad'].forEach(k => LS.del(k)); location.reload();
+  try { if (window.EmberPlayer) await window.EmberPlayer.wipe(); if (window.EmberAudd) window.EmberAudd.wipe(); if (window.EmberDocs) { for (const d of await window.EmberDocs.all()) await window.EmberDocs.remove(d.id); } } catch (e) { /* storage already blocked */ }
+  await Store.wipe(); ['ember_set', 'ember_keys', 'ember_models', 'ember_voice', 'ember_voice_gm', 'ember_scrape', 'ember_scrape_rot', 'ember_agent', 'ember_pad', 'ember_saved', 'ember_imagine'].forEach(k => LS.del(k)); location.reload();
 };
 
 // ---------- start ----------
@@ -1146,7 +1203,7 @@ $('bWipe').onclick = async () => {
   // If no session was restored, render the empty state
   if (!conv) renderLog();
   try { if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {}); } catch (e) {}
-  window.__ember = { ready: true };
+  window.__ember = { ready: true, parseCalls, stripTags };
 })();
 window.addEventListener('error', e => { try { console.error('Ember error:', e.message); } catch (x) {} });
 // ---------- V1.6.2: download progress cards + "it is done" message from the agent ----------

@@ -263,6 +263,9 @@ async function respond(conv, { S, mem, directive, lane, deep, uiState, planHint 
   const longAsk = !crisis && !!lastUser && (lastUser.t.length > 600 || /\b(explain|in detail|detailed|elaborate|walk me through|step by step|break(?: it)? down|breakdown|tutorial|guide|deep dive|full (?:script|code|list|answer)|write (?:me )?(?:a|an|the)|script|essay|everything about|list all)\b/i.test(lastUser.t));
   if (longAsk) sys += '\n\nLENGTH OVERRIDE (this reply only): he asked for depth, code or length, so ignore the sentence limits above. Write it out fully and properly, as long as it needs, still in your own voice. Never cut yourself short.';
   const o = { system: sys, messages: msgs, temp: deep ? 0.9 : 0.85, max: longAsk ? 1600 : deep ? 650 : 350 };
+  // V1.9.27: native function calling, only when the message looks like it needs a tool (the <tool_call> text route stays available either way)
+  const TOOL_ASK = /\b(search|look ?up|find|google|download|save|grab|rip|get|fetch|pull|put|add|want|need|play|scrape|read|open|check|summari[sz]e|news|latest|current|today|price|who is|who's|info|tell me about|track|song|playlist|album|music|youtube|soundcloud|document|doc|note|saved|key|site|remind|task|device|termux)\b|https?:\/\//i;
+  if (!crisis && !directive && lastUser && window.EmberToolCatalog && TOOL_ASK.test(lastUser.t)) { const tl = window.EmberToolCatalog(); if (tl.length) o.tools = tl; }
   let r = await Prov.run(lane, o), retried = false;
   if (!directive && lastUser && !crisis) {
     const op = openersOf(conv), bad = flaw(lastUser.t, r.text, op);

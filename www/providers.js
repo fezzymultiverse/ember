@@ -177,19 +177,78 @@ async function modelsFor(id, key, lane) {
 }
 
 // ---------- one call ----------
+// ---------- V1.9.27: native function calling ----------
+// o.tools = [{name, description, parameters (loose shorthand like {query:'string', n:'number?'}) or schema (JSON Schema subset)}].
+// The engine's own tool API is used (OpenAI-style tools for Groq/Mistral/OpenRouter/HuggingFace, v2 tools for Cohere, functionDeclarations for Gemini).
+// A native call comes back as the same <tool_call>{"tool","args"}</tool_call> text the app already runs, so everything after the engine is unchanged,
+// and a model that writes the tag itself still works. If the engine rejects the tools (400/422) the call is repeated once without them.
+const SCH_KEEP = ['type', 'description', 'enum', 'properties', 'items', 'required', 'minimum', 'maximum'];
+function cleanSchema(sc, up) {
+  if (!sc || typeof sc != 'object' || Array.isArray(sc)) return { type: up ? 'STRING' : 'string' };
+  const out = {};
+  SCH_KEEP.forEach(k => { if (sc[k] !== undefined) out[k] = sc[k]; });
+  if (Array.isArray(out.type)) out.type = out.type.find(t => t != 'null') || 'string';
+  if (!out.type) out.type = out.properties ? 'object' : out.items ? 'array' : 'string';
+  out.type = up ? String(out.type).toUpperCase() : String(out.type).toLowerCase();
+  if (out.properties) { const pr = {}; Object.keys(out.properties).forEach(k => { pr[k] = cleanSchema(out.properties[k], up); }); out.properties = pr; }
+  if (out.items) out.items = cleanSchema(out.items, up);
+  if (out.required && !Array.isArray(out.required)) delete out.required;
+  if (Array.isArray(out.required) && !out.required.length) delete out.required;
+  if (out.enum && !Array.isArray(out.enum)) delete out.enum;
+  return out;
+}
+function shorthandSchema(params) {
+  const props = {}, req = [];
+  Object.keys(params || {}).forEach(k => {
+    const raw = String(params[k] == null ? '' : params[k]), m = /^\s*"?([a-z]+)"?(\?)?/i.exec(raw), ty = m ? m[1].toLowerCase() : 'string';
+    const type = ['string', 'number', 'integer', 'boolean', 'array', 'object'].includes(ty) ? ty : 'string';
+    props[k] = /^\s*"?[a-z]+"?\[\]/i.test(raw) ? { type: 'array', items: { type: type == 'array' ? 'string' : type }, description: raw.slice(0, 300) } : { type, description: raw.slice(0, 300) };
+    if (!(m && m[2]) && !/\?/.test(raw.split(/[ (]/)[0])) req.push(k);
+  });
+  return { type: 'object', properties: props, required: req };
+}
+function toolDecls(tools, up) {
+  const seen = new Set(), out = [];
+  (tools || []).forEach(t => {
+    if (!t || !/^[A-Za-z_][A-Za-z0-9_]{0,63}$/.test(t.name || '') || seen.has(t.name)) return; seen.add(t.name);
+    let sc = (t.schema && typeof t.schema == 'object') ? t.schema : shorthandSchema(t.parameters);
+    sc = cleanSchema(sc, up); if (!sc.properties) sc.properties = {};
+    if (up && !Object.keys(sc.properties).length) delete sc.properties; // Gemini rejects an empty properties object
+    out.push({ name: t.name, description: String(t.description || t.name).slice(0, 1000), parameters: sc });
+  });
+  return out;
+}
+const tagOf = (tool, args) => '<tool_call>' + JSON.stringify({ tool, args: (args && typeof args == 'object' && !Array.isArray(args)) ? args : {} }) + '</tool_call>';
+function joinCall(text, tool, args) { return (String(text || '').trim() ? String(text).trim() + '\n' : '') + tagOf(tool, args); }
+function oaiNative(j) { // first tool call of an OpenAI-style answer, or null
+  const m = j && j.choices && j.choices[0] && j.choices[0].message, tc = m && Array.isArray(m.tool_calls) && m.tool_calls[0], f = tc && tc.function; if (!f || !f.name) return null;
+  let args = f.arguments; if (typeof args == 'string') { try { args = JSON.parse(args || '{}'); } catch (e) { args = {}; } }
+  return { tool: f.name, args };
+}
 async function call(id, key, model, o) {
   const c = CFG[id], t0 = performance.now();
   let text = '';
   if (c.kind == 'oai') {
     const body = { model, messages: [{ role: 'system', content: o.system }].concat(o.messages), temperature: o.temp == null ? 0.8 : o.temp, max_tokens: o.max || 400 };
     if (o.json) body.response_format = { type: 'json_object' };
-    const j = await jfetch(c.base + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, 40000);
+    const decl = (!o.json && o.tools && o.tools.length) ? toolDecls(o.tools, false) : [];
+    if (decl.length) { body.tools = decl.map(f => ({ type: 'function', function: f })); body.tool_choice = 'auto'; }
+    let j;
+    try { j = await jfetch(c.base + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, 40000); }
+    catch (er) { if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
     text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content || '';
+    const nc = decl.length ? oaiNative(j) : null; if (nc) text = joinCall(text, nc.tool, nc.args);
   } else if (c.kind == 'cohere') {
     const body = { model, messages: [{ role: 'system', content: o.system }].concat(o.messages), temperature: o.temp == null ? 0.8 : o.temp, max_tokens: o.max || 400 };
     if (o.json) body.response_format = { type: 'json_object' };
-    const j = await jfetch(c.base + '/v2/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, 40000);
+    const decl = (!o.json && o.tools && o.tools.length) ? toolDecls(o.tools, false) : [];
+    if (decl.length) body.tools = decl.map(f => ({ type: 'function', function: f }));
+    let j;
+    try { j = await jfetch(c.base + '/v2/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, 40000); }
+    catch (er) { if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
     text = j.message && Array.isArray(j.message.content) ? j.message.content.map(p => p.text || '').join('') : '';
+    const tc = decl.length && j.message && Array.isArray(j.message.tool_calls) && j.message.tool_calls[0], tf = tc && tc.function;
+    if (tf && tf.name) { let ar = tf.arguments; if (typeof ar == 'string') { try { ar = JSON.parse(ar || '{}'); } catch (e) { ar = {}; } } text = joinCall(text, tf.name, ar); }
   } else {
     const contents = [];
     o.messages.forEach(m => {
@@ -198,9 +257,15 @@ async function call(id, key, model, o) {
     });
     const gc = { temperature: o.temp == null ? 0.8 : o.temp, maxOutputTokens: (o.max || 400) * 4 }; // headroom: some Gemini models spend output tokens on thinking
     if (o.json) gc.responseMimeType = 'application/json';
-    const j = await gemFetch(c.base + '/models/' + model + ':generateContent', key, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ systemInstruction: { parts: [{ text: o.system }] }, contents, generationConfig: gc }) }, 60000);
-    const cand = j.candidates && j.candidates[0];
-    text = cand && cand.content && cand.content.parts ? cand.content.parts.map(p => p.text || '').join('') : '';
+    const decl = (!o.json && o.tools && o.tools.length) ? toolDecls(o.tools, true) : [];
+    const gbody = { systemInstruction: { parts: [{ text: o.system }] }, contents, generationConfig: gc };
+    if (decl.length) { gbody.tools = [{ functionDeclarations: decl }]; gbody.toolConfig = { functionCallingConfig: { mode: 'AUTO' } }; }
+    let j;
+    try { j = await gemFetch(c.base + '/models/' + model + ':generateContent', key, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(gbody) }, 60000); }
+    catch (er) { if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
+    const cand = j.candidates && j.candidates[0], parts = cand && cand.content && cand.content.parts ? cand.content.parts : [];
+    text = parts.map(p => p.text || '').join('');
+    const fc = decl.length && parts.find(p => p.functionCall && p.functionCall.name); if (fc) text = joinCall(text, fc.functionCall.name, fc.functionCall.args);
   }
   text = String(text || '').trim();
   if (!text) throw Object.assign(new Error('empty reply (blocked or cut off)'), { status: 0 });
@@ -218,7 +283,7 @@ async function health(id, e) {
     const cands = rank(id, list, 'fast');
     if (!cands.length) throw Object.assign(new Error('key works but no chat model is available on it'), { status: 0 });
     st.model = cands[0];
-    try { await call(id, e.key, cands[0], { system: 'Reply with the single word OK.', messages: [{ role: 'user', content: 'ping' }], temp: 0, max: 64 }); st.ok = true; }
+    try { const pr = await call(id, e.key, cands[0], { system: 'Reply with the single word OK.', messages: [{ role: 'user', content: 'ping' }], temp: 0, max: 64 }); st.ok = true; st.lat = pr.ms || 0; }
     catch (er) { if (er.status == 429) { st.ok = true; st.limited = true; st.msg = 'rate limited right now (key is valid)'; } else throw er; }
   } catch (er) {
     st.code = er.status || 0;
@@ -409,7 +474,7 @@ async function runInner(lane, o, tok) {
       const pm = pinnedModel && pinnedModel.id == id ? pinnedModel.model : null;
       for (const m of (pm ? [pm] : models.slice(0, soft ? 5 : 3))) {
         halted();
-        try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '' }); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
+        try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
         catch (er) {
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
           if (soft && (er.status == 400 || er.status == 402 || er.status == 403 || er.status == 422) && !pm) continue; // V1.9.15: try the next model, keep the key, the reason stays in failed[]
@@ -496,7 +561,16 @@ async function ping(id) {
   save();
   return stateOf(id);
 }
+// V1.9.29: what the dashboard shows per engine, all from real data (no invented prices): the model and latency of the best key,
+// keys saved, and the seconds until a resting key is free again (0 when none is resting).
+function detail(id) {
+  const l = keys[id] || [], now = Date.now(), live = l.filter(e => !e.bad && e.st && e.st.ok);
+  const best = live.filter(e => !isCool(e.key) && e.st.lat).sort((a, b) => a.st.lat - b.st.lat)[0] || live[0] || null;
+  const rest = l.filter(e => !e.bad), left = rest.length && rest.every(e => isCool(e.key)) ? Math.ceil(Math.min(...rest.map(e => cool.get(e.key) - now)) / 1000) : 0;
+  const withMsg = l.find(e => e.st && e.st.msg);
+  return { keys: l.length, model: (best && best.st.model) || '', lat: (best && best.st.lat) || 0, retry: left > 0 ? left : 0, msg: withMsg ? withMsg.st.msg : '' };
+}
 async function pingAll() { await Promise.all(IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); }
 function status() { const o = {}; IDS.forEach(id => { o[id] = stateOf(id); }); return o; }
-window.Prov = { stateOf, ping, pingAll, holdInflight, stopInflight, pending, nativePlan, CFG, IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
+window.Prov = { toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, pending, nativePlan, CFG, IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
 })();

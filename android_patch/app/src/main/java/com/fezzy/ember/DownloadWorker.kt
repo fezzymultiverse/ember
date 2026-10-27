@@ -33,6 +33,10 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
     private val progressId get() = 7000 + (id.hashCode() and 0xffff)
     private val doneId get() = 90000 + (id.hashCode() and 0xffff)
     private var shownTitle = "YouTube audio"
+    private var tagTitle = ""
+    private var tagArtist = ""
+    private var tagAlbum = ""
+    private var tagTrack = 0
     private var lastTick = 0L
     private var lastPct = -1
 
@@ -46,6 +50,13 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             val svc = if (inputData.getString("service") == "soundcloud") ServiceList.SoundCloud else ServiceList.YouTube
             val info = StreamInfo.getInfo(svc, url)
             shownTitle = asked.ifEmpty { info.name ?: "YouTube audio" }
+            // V1.9.27 tags: clean title, artist (given, else "Artist - Title", else the channel without "- Topic"), album (playlist name), track number.
+            val parsed = splitTitle(shownTitle)
+            val given = inputData.getString("artist")?.trim().orEmpty().ifEmpty { (info.uploaderName ?: "").trim() }.removeSuffix(" - Topic").trim()
+            tagTitle = parsed.second
+            tagArtist = if (parsed.first.isNotEmpty()) parsed.first else given
+            tagAlbum = inputData.getString("album")?.trim().orEmpty()
+            tagTrack = inputData.getInt("track", 0)
 
             // Only plain HTTP audio streams (DASH/HLS manifests are not handled). Prefer M4A, then the highest bitrate.
             val ok = info.audioStreams.filter { it.isUrl && it.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP }
@@ -178,6 +189,14 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             .putLong("at", System.currentTimeMillis()).apply()
     }
 
+    // "Artist - Title (Official Video)" -> ("Artist", "Title"). Noise in brackets (official, audio, video, lyrics, visualizer, HD, 4K, explicit) is dropped.
+    private fun splitTitle(raw: String): Pair<String, String> {
+        val noise = Regex("\\s*[\\(\\[][^\\)\\]]*(official|audio|video|lyric|visuali[sz]er|hd|4k|explicit|music video)[^\\)\\]]*[\\)\\]]", RegexOption.IGNORE_CASE)
+        val t = raw.replace(noise, "").trim().ifEmpty { raw.trim() }
+        val i = t.indexOf(" - ")
+        return if (i > 0 && i < t.length - 3) Pair(t.substring(0, i).trim(), t.substring(i + 3).trim()) else Pair("", t)
+    }
+
     private fun safeName(t: String): String =
         t.replace(Regex("[\\\\/:*?\"<>|\\u0000-\\u001f]"), "_").trim().take(80).ifEmpty { "YouTube audio" }
 
@@ -189,6 +208,10 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 val cv = ContentValues().apply {
                     put(MediaStore.Audio.Media.DISPLAY_NAME, name)
                     put(MediaStore.Audio.Media.MIME_TYPE, mime)
+                    if (tagTitle.isNotEmpty()) put(MediaStore.Audio.Media.TITLE, tagTitle)
+                    if (tagArtist.isNotEmpty()) put(MediaStore.Audio.Media.ARTIST, tagArtist)
+                    if (tagAlbum.isNotEmpty()) put(MediaStore.Audio.Media.ALBUM, tagAlbum)
+                    if (tagTrack > 0) put(MediaStore.Audio.Media.TRACK, tagTrack)
                     put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/Ember")
                     put(MediaStore.Audio.Media.IS_PENDING, 1)
                 }

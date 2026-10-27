@@ -1,9 +1,9 @@
-# Ember V1.9.21 HANDOVER (V1.9.20 + natural-talk download gate and prompt wording; see CHANGELOG)
-Status: key-extraction fix wired in. The app-test wording check is fixed; app-test now reaches the same #hq crash as the original baseline.
+# Ember V1.9.29 HANDOVER
+Status: tool-execution card, provider dashboard (real latency, retry countdown), pill modifier bar (V1.9.29); "Summary" thinking timeline card (V1.9.28); native tool calling, tags/covers/whole-playlist (V1.9.27); loose tool-call formats now parsed (V1.9.26); name-search fix, Web Search + YouTube defaults on, Paste/Copy bar on the message box. See docs/CHANGELOG.md.
 ## Open items
-1. tests/app-test.js: ONE check fails ("unlabeled junk string rejected"): it expects the old wording "1 unlabeled 32-character string(s) were not a valid Mistral key". Fix prepared, NOT applied: add `rejectedBy:{mistral,cohere}` to Prov.ingest's report and make EmberKeyScan.describe print "N unlabeled 32-character string(s) were not a valid Mistral key and were ignored" (and a 40-character Cohere variant).
-2. app-test then crashes at the `#hq` history search, exactly as it did before this work (baseline: 44 checks then crash).
-3. Bright Data SERP / Web Unlocker calls untested against the live service.
-4. Not run on a device or APK.
+1. Not run on a device or APK. The DuckDuckGo web-results parser is only tested against a mock.
+2. CI (.github/workflows/build.yml) has not been seen green past the V1.9.23-1 setup-android fix; downloads need an APK built with the native NewPipe patch.
+3. tests/router-test.js crashes (Gemini AQ-key failure, same as V1.9.21); speaker, v198, voice-cloud had known failures; app-test stops at the #hq history search (baseline).
+4. Bright Data calls untested against the live service.
 ## Test results
-scrape 74, keyscan 44, v168 25, agent 67, context 63, term 52, safety 44, music 48, handoff 6, v183 18, router 16, lyrics 23: pass. speaker 1, v198 1, voice-cloud 2 failures are the same as before.
+agent 75, v1928 20, v1929 12, v1924 6, scrape 74, keyscan 44, v168 25, context 63, safety 44, music 48, handoff 6, v183 18, lyrics 23, v1915 45, term 52: pass.
