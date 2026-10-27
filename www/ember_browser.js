@@ -161,10 +161,11 @@ function tab(name) {
   document.querySelectorAll('#brTabs .stab').forEach(b => b.classList.toggle('on', b.dataset.bt == name));
   $('brWeb').classList.toggle('hidden', name != 'web'); $('brDocs').classList.toggle('hidden', name != 'docs');
   if (name == 'docs') renderDocs(); else sitesChips();
+  try { window.dispatchEvent(new CustomEvent('ember-ui-tab', { detail: name == 'docs' ? 'Documents' : 'Browser' })); } catch (e) { /* no listener */ }
 }
 $('brTabs').addEventListener('click', e => { const b = e.target.closest('.stab'); if (b) tab(b.dataset.bt); });
 function open(which) { paintReal(); hookWeb(); sheet.classList.add('show'); tab(which == 'docs' ? 'docs' : 'web'); if (which != 'docs' && !cur) setTimeout(() => $('brUrl').focus(), 150); }
-function close() { sheet.classList.remove('show'); }
+function close() { sheet.classList.remove('show'); try { window.dispatchEvent(new CustomEvent('ember-ui-tab', { detail: 'Chat' })); } catch (e) { /* no listener */ } }
 $('brX').onclick = close;
 window.EmberBrowser = { open, close, go };
 })();

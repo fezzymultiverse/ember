@@ -792,3 +792,13 @@ header .who b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:el
 .row .side{gap:6px}
 #bMic{width:40px;height:40px;padding:0;border-radius:50%;font-size:18px;display:inline-flex;align-items:center;justify-content:center;gap:0;border:1px solid var(--b);background:#1a1a1a}
 .mrow{justify-content:space-between}
+
+/* V1.9.20: chat text is always selectable/copyable; tool receipts; composer copy/paste */
+#log,.msg,.msg .mtxt,.msg .mtxt *{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+.msg .mt button,.msg .mt{-webkit-user-select:none;user-select:none}
+#inp{-webkit-user-select:text;user-select:text}
+.rcs{margin-top:6px;display:flex;flex-direction:column;gap:3px}
+.rc{font-size:11px;line-height:1.35;padding:3px 8px;border-radius:8px;background:rgba(255,255,255,.06);color:#cfd6dd;word-break:break-word}
+.rc.ok{border-left:3px solid #3ddc84}.rc.warn{border-left:3px solid #ffb020}.rc.empty{border-left:3px solid #ffb020}.rc.fail{border-left:3px solid #ff5577;color:#ffd3db}
+.row .side #bPaste,.row .side #bCopyAll{background:none;border:none;font-size:18px;padding:0 6px;color:var(--t);opacity:.85}
+.mt button[data-act=copy]{font-size:11px;color:var(--t);opacity:.75}
