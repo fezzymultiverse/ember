@@ -411,10 +411,6 @@ async function scrape_url(url, objective, format, via, opt) {
   }
   const u = checkUrl(resolveSite(url));
   if (!u) return { error: 'Only public http(s) URLs can be scraped.' };
-  { // V1.9.20: search-engine result pages always bot-block a scrape; run a real web search for the same query instead
-    let sq = ''; try { const x = new URL(u); if (/(^|\.)(google|bing|duckduckgo|yahoo)\.[a-z.]+$/i.test(x.hostname) && /search|\/html|^\/$/i.test(x.pathname)) sq = x.searchParams.get('q') || x.searchParams.get('p') || ''; } catch (e) { sq = ''; }
-    if (sq && window.EmberAgentAddon && window.EmberAgentAddon.dispatch) { const r = await window.EmberAgentAddon.dispatch('web_search', { query: sq, max_results: 5 }); if (r && typeof r == 'object') r.note = 'Search-engine pages cannot be scraped, so this is a real web_search for "' + sq + '". ' + (r.note || ''); return r; }
-  }
   let list = plan();
   if (want) {
     if (!list.includes(want)) return { error: LABEL[want] + ' is not usable: ' + (want == 'reader' ? 'the Free reader is switched off.' : want == 'sting' && keyOf('sting') ? 'no https endpoint is set for it in Settings > Web Scraping.' : 'no key saved for it in Settings > Web Scraping.') + ' Nothing was fetched.' };

@@ -1,7 +1,3 @@
-## V1.9.20
-- **Restored missing CI files** (dotfiles dropped by earlier zips): `.github/workflows/build.yml`, `.github/workflows/newpipe-update.yml`, `.gitlab-ci.yml` (lint, audit, Pages, manual APK job), `.gitignore`. Rebuilt from the docs; untested on the real runners.
-- Removed hardcoded Bojack card; tool receipts; forced-tool guard; DDG HTML web search; scrape of search-engine URLs becomes web_search; Groq gpt-oss empty-reply fix; copy/paste buttons.
-
 ## V1.9.14
 - **One key finder for every paste box** (`www/ember_keyscan.js`, loads before `providers.js`). Replaces the two old extractors. Fixes: `Name: key  Name2: key2` on one line, blank lines after a label, Cohere key under its label, `CO_API_KEY`, key before its name, hex-only labelled Mistral keys, Audd.io and EasyVoice keys, Bright Data key and zones.
 - **Several keys per provider** (`ai_scraper.js`): first = primary, rest = extras (max 8), never overwritten. Extras take turns and cover for a key that is rejected, out of credits or rate limited (401/402/403/429/432/433). A 5xx stops at once (no double billing). Tavily extras also cover web search (`ai_agent.js`). Health checks every key.

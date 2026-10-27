@@ -1,17 +1,9 @@
-# Ember V1.9.20 HANDOVER
-Status: four reported bugs fixed. Not yet run on a device or APK.
-## Changed in V1.9.20
-1. Bojack hardcoded card removed from send() in app.js. Every message goes to the model.
-2. TOOL RECEIPTS: app.js writes a line under each reply for every tool that ran (OK / warn / empty / fail + reason), built from the real tool result. The model cannot claim a download or search that the receipt contradicts. The old fake "I tried, but the add-on came back empty." is gone; failures now say what really failed.
-3. Forced-tool guard: a message that asks to scrape/search/google/download or holds a URL, answered with no tool call, gets one forced retry, else an honest "no tool ran".
-4. Name search: ai_agent.js now uses DuckDuckGo HTML web results first (real results, works for people), Instant Answer second. A bot-check page is reported as blocked, never "no info". Google/Bing/DDG result-page URLs given to scrape_url are turned into a real web_search.
-5. Groq gpt-oss returned EMPTY replies because its reasoning ate max_tokens. providers.js now sets reasoning_effort low, raises the budget, and retries once with more room if still empty.
-6. Copy/paste: Copy button on every message, Copy and Paste buttons by the input, chat text forced selectable, and the download poll no longer re-renders the chat while text is selected.
-## Restored in this zip (no app code changed)
-- Hidden files were missing from the V1.9.18 and V1.9.20 zips (zipped with `*`, which skips dotfiles): `.github/workflows/build.yml`, `.github/workflows/newpipe-update.yml`, `.gitlab-ci.yml`, `.gitignore`. Rebuilt from docs/ANDROID_BUILD.md, CHANGELOG, CONTRIBUTING and scripts/apply_android_patch.py. Not run on GitHub/GitLab yet; the first CI run is the real test.
-- Zip with `zip -r out.zip ember-V1_9_20` (the folder itself) so dotfiles are included.
-
+# Ember V1.9.18 HANDOVER
+Status: key-extraction fix wired in. The app-test wording check is fixed; app-test now reaches the same #hq crash as the original baseline.
 ## Open items
-- tests/router-test.js crashes before and after this work (needs playwright, same as the original).
-- app-test crash at #hq and the speaker/v198/voice-cloud failures are unchanged from V1.9.18.
-- YouTube Music download still needs a device run: the receipt and the download card will now show the real failure reason.
+1. tests/app-test.js: ONE check fails ("unlabeled junk string rejected"): it expects the old wording "1 unlabeled 32-character string(s) were not a valid Mistral key". Fix prepared, NOT applied: add `rejectedBy:{mistral,cohere}` to Prov.ingest's report and make EmberKeyScan.describe print "N unlabeled 32-character string(s) were not a valid Mistral key and were ignored" (and a 40-character Cohere variant).
+2. app-test then crashes at the `#hq` history search, exactly as it did before this work (baseline: 44 checks then crash).
+3. Bright Data SERP / Web Unlocker calls untested against the live service.
+4. Not run on a device or APK.
+## Test results
+scrape 74, keyscan 44, v168 25, agent 67, context 63, term 52, safety 44, music 48, handoff 6, v183 18, router 16, lyrics 23: pass. speaker 1, v198 1, voice-cloud 2 failures are the same as before.
