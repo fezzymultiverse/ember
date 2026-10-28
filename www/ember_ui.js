@@ -21,7 +21,7 @@ function syncLabels() {
   const sel = $('kProv');
   if (sel) Array.from(sel.options).forEach(op => { if (P.CFG[op.value]) op.textContent = P.CFG[op.value].name + (P.CFG[op.value].status == 'prototype' ? ' (Prototype)' : ''); });
   document.querySelectorAll('.pingname').forEach(n => { n.textContent = P.label('groq'); });
-  const pn = $('provNames'); if (pn) pn.textContent = '· ' + P.IDS.map(id => P.CFG[id].name).join(', ');
+  const pn = $('provNames'); if (pn) pn.textContent = P.IDS.map(id => P.CFG[id].name).join(', ');
 }
 function paintNames() {
   const P = window.Prov, host = $('provNameBox'); if (!P || !host) return;

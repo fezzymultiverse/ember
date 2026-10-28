@@ -45,7 +45,7 @@
   SECTIONS.forEach(s => {
     const body = item(s.id).querySelector('.acc-b');
     const back = document.createElement('div'); back.className = 'acc-backbar';
-    back.innerHTML = '<button type="button" data-acc-back aria-label="Back to Settings">‹ <span>All Settings</span></button><b>' + esc(s.title) + '</b>';
+    back.innerHTML = '<button type="button" data-acc-back aria-label="Back to Settings">‹ <span>Settings</span></button><b>' + esc(s.title) + '</b>';
     body.prepend(back);
   });
   const active = () => { const t = stabs.querySelector('.stab.on'); return t ? t.dataset.st : 'none'; };

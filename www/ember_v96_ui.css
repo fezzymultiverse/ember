@@ -168,13 +168,11 @@ html body header .hr>#bBrowserTop.hb:active{transform:scale(.96)}
 html body #chatProviderBar #bProv{gap:8px!important;max-width:100%!important}
 #provNext.pn{display:inline-flex;align-items:center;gap:7px;min-width:0;margin-left:2px;padding-left:9px;border-left:1px solid #2b3a50;font:600 11.5px/1 system-ui,-apple-system,Roboto,sans-serif;color:#9cc7ff}
 #provNext .pn-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-#provNext .pn-dot{position:relative;flex:0 0 9px;width:9px;height:9px;border-radius:50%;background:#3d8bff;box-shadow:0 0 8px #3d8bffaa}
-#provNext .pn-dot::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid transparent;border-top-color:#7ab4ff;border-right-color:#7ab4ff55;animation:pnSpin 2.2s linear infinite}
-#provNext.busy .pn-dot::after{animation-duration:.7s}
+#provNext .pn-dot{display:block;flex:0 0 9px;width:9px;height:9px;border-radius:50%;background:#3d8bff;box-shadow:0 0 8px #3d8bffaa;animation:pnBlink 1.1s ease-in-out infinite}
+#provNext.busy .pn-dot{animation-duration:.45s}
 #provNext.idle{color:#7f8da1}
-#provNext.idle .pn-dot{background:#59657a;box-shadow:none}
-#provNext.idle .pn-dot::after{animation:none;border-color:transparent}
+#provNext.idle .pn-dot{background:#59657a;box-shadow:none;animation:none}
 #provNext.flip .pn-t{animation:pnFlip .45s ease-out}
-@keyframes pnSpin{to{transform:rotate(360deg)}}
+@keyframes pnBlink{0%,100%{opacity:1;box-shadow:0 0 9px #3d8bffcc}50%{opacity:.18;box-shadow:0 0 0 #3d8bff00}}
 @keyframes pnFlip{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
-@media(prefers-reduced-motion:reduce){#provNext .pn-dot::after,#provNext.flip .pn-t{animation:none!important}}
+@media(prefers-reduced-motion:reduce){#provNext .pn-dot,#provNext.flip .pn-t{animation:none!important}}
