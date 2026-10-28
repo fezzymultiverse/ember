@@ -1,6 +1,6 @@
 // Ember V1.9.87 - ember_engines.js: media engine router. Two keyless integrations behind one switchboard.
 //   IMAGE  Pollinations stays the default. "Forge" (AI Horde, anonymous key 0000000000) is the second engine: it takes over when Pollinations fails (Auto) or runs alone (Forge only).
-//   PDF    Cloud HTML-to-PDF (mintpdf.dev, then pdfrender.dev, both anonymous) with the offline EmberPDF writer as the guaranteed fallback.
+//   PDF    Bundled pdfmake and docx provide private, no-account exports; basic EmberPDF is the fallback.
 //   Plain-English routing: "draw a husky in neon Cape Town" goes to the image route without opening the + menu. PDFs already arrive as artifacts from the chat; saving them goes through here.
 // Nothing leaves the phone until a picture is asked for or a PDF is saved. Cloud PDF asks once before the first send (the text of the document leaves the phone).
 'use strict';
@@ -14,7 +14,7 @@
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   // ---------- settings + activity log ----------
-  const DEF = { image: 'auto', pdf: 'auto', nl: true, pdfConsent: false, log: [] };
+  const DEF = { image: 'auto', pdf: 'local', nl: true, pdfConsent: false, log: [] };
   const IMAGE_MODES = ['auto', 'pollinations', 'forge'], PDF_MODES = ['auto', 'cloud', 'local'];
   const cfg = () => { const c = Object.assign({}, DEF, lsGet(KEY, {})); if (!IMAGE_MODES.includes(c.image)) c.image = 'auto'; if (!PDF_MODES.includes(c.pdf)) c.pdf = 'auto'; if (!Array.isArray(c.log)) c.log = []; return c; };
   const put = c => lsSet(KEY, c);
@@ -190,10 +190,8 @@
   }
 
   // ---------- Cloud PDF ----------
-  const PDF_PROVIDERS = [
-    { id: 'mintpdf', name: 'mintpdf.dev', url: 'https://mintpdf.dev/v1/pdf', body: h => ({ html: h }) },
-    { id: 'pdfrender', name: 'pdfrender.dev', url: 'https://api.pdfrender.dev/v1/render', body: h => ({ html: h }) }
-  ];
+  // No verified anonymous hosted PDF provider is configured. Private bundled providers are used instead.
+  const PDF_PROVIDERS = [];
   const isPdf = u8 => {
     if (!u8 || u8.length < 400) return false;
     const head = String.fromCharCode.apply(null, Array.prototype.slice.call(u8, 0, 5));
@@ -243,18 +241,9 @@
   }
   // Called by ember_artifacts.js exportPdf(). ok:false means "build it on this phone".
   async function cloudPdfFor(md, title) {
-    const c = cfg(); if (c.pdf === 'local') return { ok: false, why: 'local' };
-    if (!c.pdfConsent) {
-      let go = false; try { go = confirm('Cloud PDF sends the text of this document to mintpdf.dev (or pdfrender.dev) to draw it, then discards it. Use cloud PDF? Cancel builds the PDF on this phone instead.'); } catch (e) { go = false; }
-      const c2 = cfg(); if (go) c2.pdfConsent = true; else c2.pdf = 'local'; put(c2);
-      if (!go) { toast('PDFs will be built on this phone. Change it in Settings > Engine Keys > Media engines.'); return { ok: false, why: 'declined' }; }
-    }
-    const html = pdfHtml(md, title); if (!html) return { ok: false, why: 'renderer missing' };
-    toast('Compiling PDF…');
-    const r = await cloudPdf(html, title);
-    if (r.ok) { toast('PDF drawn by ' + r.engine); return r; }
-    toast('Cloud PDF busy, building it on this phone'); return r;
+    return { ok: false, why: 'Cloud PDF disabled: no verified hosted provider. Ember uses bundled offline engines.' };
   }
+
   async function pdfCheck() {
     const html = '<!doctype html><html><head><meta charset="utf-8"><style>body{font:12pt Helvetica,sans-serif;padding:20pt}h1{color:#ff6a00}</style></head><body><h1>Ember engine check</h1><p>If you can read this, the cloud PDF engine works. ' + new Date().toISOString() + '</p>' + '<p>' + 'The quick brown fox jumps over the lazy dog. '.repeat(12) + '</p></body></html>';
     const r = await cloudPdf(html, 'check'); return r.ok ? { ok: true, engine: r.engine } : { ok: false, why: r.why };
@@ -277,11 +266,9 @@
       '<p class="hint">Auto tries Pollinations first and falls back to Forge if it fails. Forge is the AI Horde: free community GPUs, no key, a queue of 30 seconds to a few minutes, 512 px pictures.</p>' +
       eng('Pollinations', 'flux · fast', 'image.pollinations.ai, about one picture per 15 s anonymous', 'pollinations') + eng('Forge', 'AI Horde · queue', 'aihorde.net anonymous key, drawn on volunteer GPUs', 'forge') +
       '<div class="eg-row"><button type="button" class="btn g" id="egTestF">Check Forge</button></div></div>' +
-      '<div class="eg-card"><div class="eg-h">📄 PDFs</div>' + seg('pdf', c.pdf, [['auto', 'Auto'], ['cloud', 'Cloud'], ['local', 'This phone']]) +
-      '<p class="hint">Auto and Cloud send the document text to a PDF renderer (asked once). Cloud gives real fonts and any language. This phone builds the PDF offline: private, Latin letters only. Any cloud failure falls back to this phone.</p>' +
-      eng('mintpdf.dev', 'cloud · 10 a day', 'HTML to PDF, no key, per-IP daily limit', 'pdf:mintpdf') + eng('pdfrender.dev', 'cloud · backup', 'second cloud renderer if the first is busy', 'pdf:pdfrender') +
-      '<div class="eg-eng"><i class="eg-dot ok" aria-hidden="true"></i><div><b>This phone <em>offline · always works</em></b><small>Built-in PDF writer, nothing leaves the device</small></div></div>' +
-      '<div class="eg-row"><button type="button" class="btn g" id="egTestP">Check cloud PDF (uses 1 render)</button></div></div>' +
+      '<div class="eg-card"><div class="eg-h">📄 PDFs</div>' + seg('pdf', c.pdf, [['local', 'Private / no account']]) +
+      '<p class="hint">Ember PDF uses bundled pdfmake with embedded Roboto fonts. Ember Documents exports genuine DOCX through the bundled docx engine. Both are free software, run on this device and need no provider account. Font coverage is not universal. Basic PDF is the fallback.</p>' +
+      '<div class="eg-eng"><i class="eg-dot ok" aria-hidden="true"></i><div><b>Ember PDF &amp; Documents <em>offline · no signup</em></b><small>pdfmake 0.2.20 + docx 9.5.1 (MIT). Documents stay on your device during export.</small></div></div></div>' +
       '<div class="eg-card"><div class="eg-h">💬 Plain English</div><button type="button" class="eg-sw' + (c.nl ? ' on' : '') + '" id="egNl" role="switch" aria-checked="' + c.nl + '"><span>Route requests like “draw a husky in neon” to the picture engines</span><i></i></button><p class="hint">Off means pictures only start from + > Create image.</p></div>' +
       '<div class="eg-card"><div class="eg-h">🧾 Recent activity</div>' + (c.log.length ? '<ul class="eg-log">' + c.log.slice(0, 8).map(l => '<li class="' + (l.ok ? 'ok' : 'bad') + '"><b>' + esc(l.e.replace('pdf:', 'pdf · ')) + '</b><span>' + esc(l.d) + '</span><small>' + ago(l.t) + '</small></li>').join('') + '</ul>' : '<p class="hint">Nothing yet. Ask for a picture or save a PDF.</p>') + '</div>' +
       '<p class="eg-foot">Keyless first. Pictures leave the phone only when you ask for one. Pollinations audio and its newer endpoints need a key, so they are not used here.</p>';

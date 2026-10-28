@@ -82,6 +82,7 @@
       case 'github_repos':        return 'Checking your Knowledge Brain Repo';
       case 'github_sync':         return 'Syncing ' + (a.repo ? clip(a.repo, 36) : 'your repos') + ' from GitHub' + (a.force ? ' (re-reading everything)' : '');
       case 'github_repo_map':      return 'Mapping ' + (a.repo ? clip(a.repo, 30) : 'the repo') + (a.path ? '/' + clip(a.path, 30) : '') + ' from the synced index';
+      case 'github_grep': return 'Grepping the entire Super Brain' + (q ? ': ' + clip(q, 40) : '');
       case 'github_find':          return (String(a.mode || '').toLowerCase() == 'code' ? 'Searching the code of ' : 'Finding files in ') + (a.repo ? clip(a.repo, 28) : 'the repo') + (q ? ': \u201c' + clip(q, 30) + '\u201d' : '');
       case 'github_list_files':   return 'Listing ' + (a.repo ? clip(a.repo, 28) + '/' : 'GitHub files ') + (a.path ? clip(a.path, 36) : '');
       case 'github_read_file':    return 'Reading ' + (a.path ? clip(a.path, 40) : 'a GitHub file') + (a.repo ? ' from ' + clip(a.repo, 28) : '');

@@ -165,6 +165,7 @@ const srv = http.createServer((q, r) => {
   ok('chain: everything down -> one error naming every engine, no key text', /^Every search engine failed\./.test(r.error || '') && /DuckDuckGo/.test(r.error) && !/FIRESECRET|SERPSECRET/.test(r.error), r);
   MODE.ddg = 'ok'; MODE2.fcSearch = 200; MODE2.serp = 200;
   await ev(() => { window.EmberScraper._dead['s:serpapi'] = 0; window.EmberScraper._dead['s:firecrawl'] = 0; });
+  await ev(() => window.EmberScraper.setOn(false)); // 1.9.91: keys-only installs are auto-enabled; OFF must now be explicit.
   ok('search_and_read is not offered while Web Scraping is off', await names({ agentAddon: true }) == 'web_search');
   await ev(() => window.EmberScraper.setOn(true));
   ok('search_and_read is offered with both switches on', await names({ agentAddon: true }) == 'web_search,search_and_read');

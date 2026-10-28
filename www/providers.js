@@ -698,6 +698,7 @@ async function runInner(lane, o, tok) {
 // V1.5.9: remember the chat request that is in flight so app.js can hand it to the native background task if the app is backgrounded.
 let inflight = null;
 async function run(lane, o) {
+  try { if (lane !== 'util' && window.EmberCommandCenter) window.EmberCommandCenter.observeRequest(o); } catch (_) { /* passive inspector */ }
   if (lane !== 'util') routeCancelled = false;
   const tok = { lane, o };
   if (lane != 'util') { inflight = tok; try { window.dispatchEvent(new Event('ember-run-start')); } catch (e) { /* no listener */ } }

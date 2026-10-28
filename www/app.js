@@ -298,6 +298,7 @@ async function runTool(tool, args) { // every call (chat, plan, ReAct) shows on 
   const TL = window.EmberTimeline, h = TL ? TL.tool(tool, args) : null;
   let res; try { res = await runToolRaw(tool, args); } catch (e) { res = { error: (e && e.message) || 'Tool failed.' }; }
   if (h) h.end(res);
+  try { if (window.EmberCommandCenter) window.EmberCommandCenter.observeTool(tool, args, res); } catch (_) { /* independent view */ }
   // Download rows come from the real 'ember-dl' job events (ember_timeline.js), so a model saying "downloading" or a failed start never creates one.
   return res;
 }
@@ -347,7 +348,7 @@ async function resolveAddonCalls(text, L, route) {
   // V1.9.7: a reply that says it searched / browsed / downloaded when NO tool ran is a lie. Give the model one chance to do it for real, else say so honestly.
   const FAKE = /\b(?:i(?:'ve| have|'ll| will)?\s+(?:just\s+|now\s+)?(?:searched|looked(?: it| that| this)? up|googled|browsed|scraped|fetched|pulled up|went (?:on|to) the (?:web|internet)|visited|downloaded|queued|started (?:the |your )?download|saved (?:it|that|this|the (?:song|track|playlist)))|checked (?:the )?(?:web|internet|site|page|link)|(?:the )?download(?:ing)?(?: has| is| just)? (?:started|underway|queued|complete|done|finished)|(?:it'?s|they'?re) (?:now )?(?:downloading|saved to))/i;
   if (!calls.length) {
-    if (!FAKE.test(stripTags(cur)) || Safety.lastLevel() >= 3) return stripTags(cur) || text;
+    if ((route && route.webRead) || !FAKE.test(stripTags(cur)) || Safety.lastLevel() >= 3) return stripTags(cur) || text;
     const base = Persona.sentMsgs(conv, S).map(x => ({ role: x.r == 'u' ? 'user' : 'assistant', content: Persona.body(x) }));
     if (base.length && base[0].role == 'assistant') base.unshift({ role: 'user', content: '(we are picking the conversation back up)' });
     base.push({ role: 'assistant', content: stripTags(cur) });
@@ -364,6 +365,9 @@ async function resolveAddonCalls(text, L, route) {
   if (Safety.lastLevel() >= 3 || !anyOn) return stripTags(cur);
   const msgs = Persona.sentMsgs(conv, S).map(x => ({ role: x.r == 'u' ? 'user' : 'assistant', content: Persona.body(x) }));
   if (msgs.length && msgs[0].role == 'assistant') msgs.unshift({ role: 'user', content: '(we are picking the conversation back up)' });
+  if (route && route.webEvidence) msgs.push({ role: 'user', content: route.webEvidence });
+  const request = [...conv.msgs].reverse().find(m => m.r == 'u');
+  const artifactBudget = request && window.EmberDeliverables && window.EmberDeliverables.intent(request.t) ? 4096 : 450;
   const rounds = []; // V1.9.19: every tool call made this turn, oldest first — feeds the RECENT ACTIONS block below
   const seenKeys = new Set();
   for (let round = 0; round < 4 && calls.length; round++) {
@@ -397,7 +401,7 @@ async function resolveAddonCalls(text, L, route) {
       'No JSON, no code blocks, no raw data dump — tell him what it means, in your own voice, the way a person would after actually looking at it. Only claim what the result actually says: if it holds an error, ok:false, or nothing, say that plainly in one line and do not pretend it worked. If a result says a bridge or key is missing or empty, say so plainly in one line.]\n\n' + ctx });
     try {
       const sys = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, noTools: last, noAmbient: Safety.lastLevel() >= 3, uiState: uiStateBlock(), actionHistory: historyLines(rounds) }), Safety.lastLevel());
-      const synth = await Prov.run(L.lane, Object.assign({ system: sys, messages: msgs, temp: 0.85, max: 450, tools: last ? null : toolCatalog() }, route ? { routeProvider: route.provider, routeModel: route.model } : {}));
+      const synth = await Prov.run(L.lane, Object.assign({ system: sys + (artifactBudget > 450 ? '\nDELIVERABLE OVERRIDE: the user requested a file. Ignore sentence limits; include complete artifact blocks with the requested content, not just a summary. The no-raw-data instruction means do not dump tool logs; it does not prohibit requested JSON/CSV/code artifacts.' : ''), messages: msgs, temp: 0.85, max: artifactBudget, tools: last ? null : toolCatalog() }, route ? { routeProvider: route.provider, routeModel: route.model } : {}));
       cur = String(synth.text || '');
     } catch (e) { return stripTags(cur) || 'I tried, but the add-on came back empty.'; }
     calls = last ? [] : parseCalls(cur);
@@ -441,7 +445,9 @@ async function reply(o) {
     // Persist provenance before a native handoff so background answers keep the same chip.
     conv.ghReadTurns = conv.ghReadTurns || {}; conv.ghReadTurns[turnId] = rr; await persist();
     const lastU = conv.msgs.length ? [...conv.msgs].reverse().find(m => m.r == 'u') : null;
-    const call = Persona.respond(conv, { S, mem, directive: o.directive, lane: L.lane, deep: L.deep, uiState: uiStateBlock(), planHint: !o.directive && lastU ? planHint(lastU.t) : '', shouldCancel: () => cancelRequested, onToken: (piece, full) => { if (!GHr.hasLiveRead(GHr.lastRead())) return; try { window.dispatchEvent(new CustomEvent('ember-token', { detail: { piece, text: full } })); } catch (_) {} } });
+    const web = !o.directive && Safety.lastLevel() < 3 && window.EmberDeliverables ? await window.EmberDeliverables.prepare(latest, { cancelled: () => cancelRequested || curTurn !== turnId, step: TLn && TLn.step ? TLn.step.bind(TLn) : null }) : { results: [], context: '' };
+    if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });
+    const call = Persona.respond(conv, { S, mem, webEvidence: web.context, directive: o.directive, lane: L.lane, deep: L.deep, uiState: uiStateBlock(), planHint: !o.directive && lastU ? planHint(lastU.t) : '', shouldCancel: () => cancelRequested, onToken: (piece, full) => { try { if (window.EmberCommandCenter) window.EmberCommandCenter.inspect(full); } catch (_) {} if (!GHr.hasLiveRead(GHr.lastRead())) return; try { window.dispatchEvent(new CustomEvent('ember-token', { detail: { piece, text: full } })); } catch (_) {} } });
     // V1.9.33: no reply may hang the screen. After REPLY_MS the page stops trying engines and shows an error with Resend.
     let dl; const guard = new Promise((_, no) => { dl = setTimeout(() => { try { if (Prov.abortInflight) Prov.abortInflight(); } catch (e) { /* ignore */ } no(Object.assign(new Error('No reply after ' + Math.round(REPLY_MS / 1000) + ' seconds. An engine is stuck or very slow. Tap resend, or pin a different engine in Settings.'), { code: 'timeout' })); }, REPLY_MS); });
     call.catch(() => {}); // the race below reports it; a late failure after the deadline must not surface as an unhandled rejection
@@ -450,14 +456,16 @@ async function reply(o) {
     let finalText = r.text;
     const bgWon = () => conv.msgs.some(m => m.turn === turnId); // the background task already delivered this turn's reply
     if (bgWon()) finalText = '';
-    else if (finalText) finalText = await resolveAddonCalls(finalText, L, { provider: r.provider, model: r.model });
+    else if (finalText) finalText = await resolveAddonCalls(finalText, L, { provider: r.provider, model: r.model, webRead: web.results.some(x => x.result && x.result.markdown && !x.result.error), webEvidence: web.context });
+    if (finalText && window.EmberDeliverables && Safety.lastLevel() < 3) finalText = window.EmberDeliverables.normalize(finalText, latest);
     GHr.assertReadFirst();
-    if (finalText && GHr.isCodeQuestion(finalText, latest)) { const proof = GHr.lastRead(); if (!GHr.hasLiveRead(proof)) throw new Error('Read-First blocked this code answer: no live file was read from Knowledge Brain Repo. Check Settings > GitHub.'); }
+    if (finalText && (GHr.isCodeQuestion(latest, previous) || (window.EmberDeliverables ? window.EmberDeliverables.answerHasCode(finalText) : GHr.isCodeQuestion(finalText, latest)))) { const proof = GHr.lastRead(); if (!GHr.hasLiveRead(proof)) throw new Error('Read-First blocked this code answer: no live file was read from Knowledge Brain Repo. Check Settings > GitHub.'); }
     if (finalText && TLn && window.EmberArtifacts) { const made=window.EmberArtifacts.parse(finalText).items; if(made.length) TLn.note('Writing ' + made.map(a=>a.title).join(', ')); }
+    try { if (window.EmberCommandCenter && finalText) window.EmberCommandCenter.inspect(finalText); } catch (_) { /* independent view */ }
     if (finalText && !bgWon()) {
       try { window.dispatchEvent(new CustomEvent('ember-turn-end', { detail: { words: (String(streamText || '').trim().match(/\S+/g) || []).length } })); } catch (_) { /* no listener */ }
       const tlSnap = window.EmberTimeline ? window.EmberTimeline.snapshot() : null;
-      conv.msgs.push({ r: 'a', t: finalText, ts: Date.now(), turn: turnId, tl: tlSnap || undefined, deep: L.deep || undefined, ghRead: GHr.lastRead(), eng: { p: r.provider, m: r.model, ms: r.ms, pm: r.pinMiss ? r.pinMiss.want : undefined } });
+      conv.msgs.push({ r: 'a', t: finalText, ts: Date.now(), turn: turnId, tl: tlSnap || undefined, deep: L.deep || undefined, webRead: web.results.map(x => ({ url: x.url, provider: x.result.provider || null, ok: !x.result.error, cached: !!x.result.cached })), ghRead: GHr.lastRead(), eng: { p: r.provider, m: r.model, ms: r.ms, pm: r.pinMiss ? r.pinMiss.want : undefined } });
       if (window.EmberNative && window.EmberNative.aiAvailable) window.EmberNative.aiCancel(turnId);
       if (S.autoRead || talkOn) { speakText(finalText, conv.msgs.length - 1); if (talkOn) talkWait = true; }
       if (window.EmberNative) window.EmberNative.notifyReply(finalText);
@@ -1179,7 +1187,7 @@ async function applyBg(r) {
   const c = isCur ? conv : await Store.get(r.convId); if (!c) return;
   if (c.msgs.some(m => m.turn === turn)) return;
   const ghRead = c.ghReadTurns && c.ghReadTurns[turn];
-  if (window.EmberGithub && ((ghRead && ghRead.required) || window.EmberGithub.isCodeQuestion(text, '')) && !window.EmberGithub.hasLiveRead(ghRead)) return;
+  if (window.EmberGithub && ((ghRead && ghRead.required) || (window.EmberDeliverables ? window.EmberDeliverables.answerHasCode(text) : window.EmberGithub.isCodeQuestion(text, ''))) && !window.EmberGithub.hasLiveRead(ghRead)) return;
   c.msgs.push({ r: 'a', t: text, ghRead, ts: Date.now(), turn, bg: true, eng: { p: r.provider, m: r.model, ms: 0 } });
   c.updated = Date.now(); await Store.put(c);
   if (isCur) {
@@ -1335,7 +1343,7 @@ $('fImp').onchange = async e => {
 $('bWipe').onclick = async () => {
   if (!(await sure('Delete everything?', 'All chats, memory, settings, chat and scraping keys, the Tavily key, the notepad, uploaded music, playlists and the Audd.io token on this device. This cannot be undone.'))) return;
   try { if (window.EmberPlayer) await window.EmberPlayer.wipe(); if (window.EmberAudd) window.EmberAudd.wipe(); if (window.EmberDocs) { for (const d of await window.EmberDocs.all()) await window.EmberDocs.remove(d.id); } } catch (e) { /* storage already blocked */ }
-  await Store.wipe(); ['ember_set', 'ember_keys', 'ember_models', 'ember_voice', 'ember_voice_gm', 'ember_scrape', 'ember_scrape_rot', 'ember_agent', 'ember_github', 'ember_gh_digest', 'ember_gh_log', 'ember_pad', 'ember_saved', 'ember_imagine'].forEach(k => LS.del(k)); location.reload();
+  await Store.wipe(); ['ember_set', 'ember_keys', 'ember_models', 'ember_voice', 'ember_voice_gm', 'ember_scrape', 'ember_scrape_rot', 'ember_agent', 'ember_github', 'ember_gh_digest', 'ember_gh_log', 'ember_repo_runner', 'ember_pad', 'ember_saved', 'ember_imagine'].forEach(k => LS.del(k)); location.reload();
 };
 
 // ---------- start ----------

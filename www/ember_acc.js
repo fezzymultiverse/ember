@@ -12,6 +12,7 @@
     { id: 'general', title: 'General, Persona & Memory', desc: 'Free Mode, your name, voice and pacing, system prompt, memory, look, usage, backup' },
     { id: 'keys', title: 'Engine Keys & Providers', desc: 'Which engine answers, API keys, Puter token, engine names' },
     { id: 'github', title: 'GitHub', desc: 'Knowledge Brain Repo, token, live files and activity' },
+    { id: 'features', title: 'Features', desc: 'Repo Runner: search whole repos, add to output, clone, sync, push and build' },
     { id: 'advanced', title: 'Advanced', desc: 'Optional GitHub Actions Runner for builds and tests' },
     { id: 'scraping', title: 'Web Scraping', desc: 'Scraper keys, the free reader, health checks and tests' },
     { id: 'hacking', title: 'Termux & Hacking', desc: 'Termux mode, pen-test persona and the built-in terminal' },

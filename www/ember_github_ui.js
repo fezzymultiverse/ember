@@ -4,7 +4,7 @@
 const G = () => window.EmberGithub, $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 if (!$('ghHub') || !G()) return;
-let currentPath = '', opened = null, busy = false;
+let currentPath = '', opened = null, busy = false, grepCursor = null;
 const message = (id, text) => { const el = $(id); if (el) el.textContent = text || ''; };
 function paint() {
   const g = G(), c = g.cfg();
@@ -20,8 +20,8 @@ function paint() {
     '<div class="gh-sec"><div class="gh-h">Read-First · always on</div><p class="hint">Before answering a code question, Ember must read a real file live from the Super Repo. If reading fails, the code answer is blocked. Each grounded answer has a Last Read chip with its file, revision and read time. File content is treated as data, not instructions.</p></div>' +
     '<details class="gh-sec"><summary class="gh-h">Files · live GitHub API</summary><label class="lb" for="ghFilePath">Folder path</label><input id="ghFilePath" type="text" placeholder="Repository root" spellcheck="false">' +
     '<div class="btnrow"><button class="btn g" data-gh-action="list">List files</button><button class="btn g" data-gh-action="root">Root</button></div>' +
-    '<label class="lb" for="ghQuery">Find file or code</label><input id="ghQuery" type="text" spellcheck="false"><select id="ghFindMode"><option value="path">File paths</option><option value="code">Code search</option></select><button class="btn g" data-gh-action="find">Find</button><p class="hint" id="ghFilesStatus" role="status"></p><div id="ghFileList"></div><pre class="gh-pre" id="ghFileText" hidden></pre><button class="btn g" id="ghReadMore" data-gh-action="more" hidden>Read next part</button></details>' +
-    '<details class="gh-sec"><summary class="gh-h">Sync cache · optional</summary><p class="hint">A local cache can help browsing and repository summaries. It is never accepted as proof for Read-First.</p><label><input type="checkbox" id="ghAutoSync"' + (c.auto && c.sync ? ' checked' : '') + '> Keep cache fresh automatically</label><div class="btnrow"><button class="btn g" data-gh-action="sync">Sync cache now</button><button class="btn g" data-gh-action="clear-cache">Clear cache</button></div><p class="hint" id="ghSyncStatus" role="status"></p></details>' +
+    '<label class="lb" for="ghQuery">Find file or code</label><input id="ghQuery" type="text" spellcheck="false"><select id="ghFindMode"><option value="path">File paths</option><option value="code">GitHub indexed code</option><option value="grep">Entire repo content grep</option></select><button class="btn g" data-gh-action="find">Find</button><button class="btn g" id="ghGrepMore" data-gh-action="grep-more" hidden>Continue whole-repo grep</button><p class="hint" id="ghFilesStatus" role="status"></p><div id="ghFileList"></div><pre class="gh-pre" id="ghFileText" hidden></pre><button class="btn g" id="ghReadMore" data-gh-action="more" hidden>Read next part</button></details>' +
+    '<details class="gh-sec"><summary class="gh-h">Sync cache · optional</summary><p class="hint">The ENTIRE repository is searchable without syncing or selecting files. This optional ranked preview cache is NOT the brain and NOT the search scope. It is never accepted as proof for Read-First.</p><label><input type="checkbox" id="ghAutoSync"' + (c.auto && c.sync ? ' checked' : '') + '> Keep cache fresh automatically</label><div class="btnrow"><button class="btn g" data-gh-action="sync">Sync cache now</button><button class="btn g" data-gh-action="clear-cache">Clear cache</button></div><p class="hint" id="ghSyncStatus" role="status"></p></details>' +
     '<details class="gh-sec"><summary class="gh-h">Activity</summary><div id="ghActivity"></div></details>';
   paintAdvanced(); paintActivity(); paintSync();
 }
@@ -69,6 +69,7 @@ async function click(e) {
   const action = b.dataset.ghAction; busy = true; b.disabled = true;
   try {
     if (action === 'save-repo') {
+      grepCursor = null; $('ghGrepMore').hidden = true;
       const r = G().setKnowledgeRepo($('ghBrainRepo').value);
       message('ghRepoStatus', r.ok ? 'Saved ' + r.repo + '. Every repository tool now uses this one repository.' : r.error);
       if (r.ok) { currentPath = ''; opened = null; $('ghFilePath').value = ''; $('ghFileList').innerHTML = ''; $('ghFileText').hidden = true; $('ghReadMore').hidden = true; }
@@ -82,10 +83,19 @@ async function click(e) {
     else if (action === 'folder') await listFiles(b.dataset.path);
     else if (action === 'read') await readFile(b.dataset.path, 0);
     else if (action === 'more' && opened) await readFile(opened.path, opened.next);
-    else if (action === 'find') {
-      message('ghFilesStatus', 'Searching live…'); const r = await G().dispatch('github_find', { query: $('ghQuery').value, mode: $('ghFindMode').value });
-      if (!r.ok) { $('ghFileList').innerHTML = ''; message('ghFilesStatus', r.error); }
-      else { showFiles(r.paths || r.hits || [], ''); message('ghFilesStatus', (r.total || 0) + ' matches · live GitHub API' + (r.partial_index || r.partial ? ' · partial results' : '')); }
+    else if (action === 'find' || action === 'grep-more') {
+      const mode = $('ghFindMode').value, grep = mode === 'grep';
+      if (action !== 'grep-more') { grepCursor = null; $('ghFileList').innerHTML = ''; }
+      message('ghFilesStatus', grep ? 'Grepping whole repository blobs…' : 'Searching live…');
+      const r = await G().dispatch(grep ? 'github_grep' : 'github_find', { query: $('ghQuery').value, mode, cursor: grep ? grepCursor : undefined });
+      grepCursor = r.cursor || null; $('ghGrepMore').hidden = !grepCursor;
+      if (!r.ok) { message('ghFilesStatus', r.error); }
+      else if (grep) {
+        if (opened) { opened = null; $('ghFileText').hidden = true; $('ghReadMore').hidden = true; }
+        const html = (r.hits || []).map(x => '<div><button class="btn g" data-gh-action="read" data-path="' + esc(x.path) + '">' + esc(x.path) + '</button><pre class="gh-pre">' + esc((x.matches || []).map(m => m.line + ': ' + m.text).join('\n')) + '</pre></div>').join('');
+        $('ghFileList').insertAdjacentHTML('beforeend', html);
+        message('ghFilesStatus', r.visited + '/' + r.total_files + ' files visited · ' + r.scanned + ' text files scanned · ' + (r.complete ? 'snapshot scan finished' : 'more files remain; Continue grep') + ' · skipped: ' + JSON.stringify(r.skipped) + (r.submodules && r.submodules.length ? ' · submodules not traversed: ' + r.submodules.join(', ') : ''));
+      } else { showFiles(r.paths || r.hits || [], ''); message('ghFilesStatus', (r.total || 0) + ' matches · live GitHub API' + (r.partial_index || r.partial ? ' · partial results' : '')); }
     } else if (action === 'sync') { const r = await G().syncAll({ force: true }); if (!r.ok) message('ghSyncStatus', r.error || 'Sync failed.'); }
     else if (action === 'clear-cache') { await G().clearCache(G().knowledgeSources()[0]); message('ghSyncStatus', 'Cache cleared. Live reads still work.'); }
     else if (action === 'install-runner') { message('ghRunnerStatus', 'Installing optional Runner…'); const r = await G().installRunner(G().knowledgeRepo()); message('ghRunnerStatus', r.ok ? 'Runner ' + r.action + ' in ' + r.repo : r.error); }

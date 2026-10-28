@@ -74,7 +74,7 @@ function setup(extra = {}) {
   t.mode({ noFiles: true }); r = await g.prefetch('Write code', '');
   check('empty repository cannot satisfy read-first', () => { assert.equal(r.files.length, 0); assert.throws(() => g.assertReadFirst()); });
   t.mode({ truncated: true }); r = await g.dispatch('github_find', { query: '.js' });
-  check('partial tree search reports coverage limit', () => assert.equal(r.partial_index, true));
+  check('truncated tree whose subtrees cannot be read fails closed', () => { assert.equal(r.ok, false); assert(r.error); });
   t.mode({}); await g.prefetch('Explain code', ''); const count = t.calls.length; g.setToken(''); r = await g.prefetch('Explain code', '');
   check('no token blocks code before any network call', () => { assert.equal(t.calls.length, count); assert.throws(() => g.assertReadFirst(), /token/); });
   r = await g.prefetch('hello', ''); check('ordinary chat can continue without token', () => { assert(!r.required); g.assertReadFirst(); });

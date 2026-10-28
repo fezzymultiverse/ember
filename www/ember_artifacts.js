@@ -126,6 +126,8 @@
   const looksHtml = s => /^\s*(<!doctype|<html|<body|<div|<h[1-6][\s>]|<p[\s>]|<table|<section|<article)/i.test(s);
   const mdOf = a => (a.type === 'html' || looksHtml(a.content)) && window.EmberPDF ? window.EmberPDF.htmlToMarkdown(a.content) : a.content;
   async function exportPdf(a) {
+    const D = window.EmberDeliverables;
+    if (D) { try { await saveBlob(await D.pdf(mdOf(a), baseName(a.title)), baseName(a.title) + '.pdf'); return; } catch (e) { T('Rich PDF unavailable; using the basic offline writer (Latin-only fonts)'); } }
     const E = window.EmberEngines; // V1.9.87: cloud PDF first when allowed, this phone's writer is the fallback
     if (E && E.cloudPdfFor) { try { const c = await E.cloudPdfFor(mdOf(a), baseName(a.title)); if (c && c.ok) { await saveBlob(c.blob, baseName(a.title) + '.pdf'); return; } } catch (e) { /* fall through to the local writer */ } }
     const P = window.EmberPDF; if (!P) { printArtifact(a); return; }
@@ -161,7 +163,11 @@
     const body = markdownHtml(mdOf(a));
     return '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>' + esc(baseName(a.title)) + '</title><style>body{font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.4;color:#111}h1{font-size:22pt;border-bottom:2px solid #ff6a00;padding-bottom:4pt}h2{font-size:16pt}h3{font-size:13pt}table{border-collapse:collapse}td,th{border:1px solid #bbb;padding:4pt 7pt}th{background:#ffeedd}pre,code{font-family:Consolas,Courier New,monospace;font-size:9.5pt;background:#f4f4f5}blockquote{border-left:3px solid #ff6a00;margin-left:0;padding-left:10pt;color:#444}</style></head><body>' + body + '</body></html>';
   }
-  function exportWord(a) { saveBlob(new Blob(['\ufeff', wordDoc(a)], { type: 'application/msword' }), baseName(a.title) + '.doc'); }
+  async function exportWord(a) {
+    const D = window.EmberDeliverables;
+    if (D) { try { await saveBlob(await D.word(mdOf(a), baseName(a.title)), baseName(a.title) + '.docx'); return; } catch (e) { T('DOCX engine failed; exporting legacy Word HTML (.doc) instead'); } }
+    await saveBlob(new Blob(['\ufeff', wordDoc(a)], { type: 'application/msword' }), baseName(a.title) + '.doc');
+  }
   function download(a) {
     if (a.type === 'pdf') { exportPdf(a); return; }
     const ext = a.title.split('.').pop().toLowerCase();
@@ -192,7 +198,7 @@
     const fb = (k, label, cls) => '<button type="button" class="artifact-action' + (cls ? ' ' + cls : '') + '" data-vact="' + k + '">' + label + '</button>';
     if (html) { body = '<iframe class="artifact-frame" title="Preview of '+esc(a.title)+'" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe>'; sub = 'Sandboxed preview'; foot = fb('pdf', 'Print / PDF') + fb('download', 'Download', 'secondary'); }
     else if (svg) { const s = cleanSvg(a.content); body = s ? '<div class="artifact-svg" id="artSvg"><img alt="' + esc(a.title) + '" src="' + svgUrl(s) + '"></div>' : '<pre class="artifact-text">' + esc(a.content) + '</pre>'; sub = s ? 'SVG image' : 'Not a valid SVG - showing source'; foot = fb('png', 'Save PNG') + fb('download', 'Save SVG', 'secondary') + fb('bg', 'Background', 'secondary') + fb('copy', 'Copy code', 'secondary'); }
-    else if (paper) { body = '<div class="artifact-paper-wrap"><div class="artifact-paper">' + markdownHtml(mdOf(a)) + '</div></div>'; sub = a.type === 'pdf' ? 'PDF preview - Save PDF builds the real file' : 'Document preview'; foot = fb('pdf', 'Save PDF') + (a.type === 'document' ? fb('doc', 'Word', 'secondary') : '') + fb('copy', 'Copy', 'secondary') + (a.type === 'document' ? fb('download', 'Markdown', 'secondary') : ''); }
+    else if (paper) { body = '<div class="artifact-paper-wrap"><div class="artifact-paper">' + markdownHtml(mdOf(a)) + '</div></div>'; sub = a.type === 'pdf' ? 'PDF preview - Save PDF builds the real file' : 'Document preview'; foot = fb('pdf', 'Save PDF') + (a.type === 'document' ? fb('doc', 'Word .docx', 'secondary') : '') + fb('copy', 'Copy', 'secondary') + (a.type === 'document' ? fb('download', 'Markdown', 'secondary') : ''); }
     else if (isMd(a.type)) { body = '<div class="artifact-dark">' + markdownHtml(a.content) + '</div>'; sub = 'Markdown'; foot = fb('pdf', 'Save PDF') + fb('download', 'Download .md', 'secondary') + fb('copy', 'Copy', 'secondary'); }
     else { body = '<pre class="artifact-text'+(a.type==='code'?' artifact-code':'')+'">'+(a.type==='code'?highlightCode(a.content):esc(a.content))+'</pre>'; sub = 'Artifact preview'; foot = fb('copy', 'Copy') + fb('download', 'Download', 'secondary'); }
     overlay.innerHTML='<div class="artifact-viewer" role="dialog" aria-modal="true" aria-label="'+esc(a.title)+'"><header class="artifact-viewer-head"><div><b>'+esc(a.title)+'</b><small>'+sub+'</small></div><button type="button" class="artifact-close" aria-label="Close preview">×</button></header><div class="artifact-viewer-body'+(html?' is-html':'')+'">'+body+'</div>'+(foot?'<footer class="artifact-viewer-foot">'+foot+'</footer>':'')+'</div>';
@@ -222,5 +228,5 @@
     if(v) view(a); else if(pdf) (a.type==='html'?printArtifact(a):exportPdf(a)); else if(dc) exportWord(a); else if(pn) svgPng(a); else if(cp) copyContent(a.content).then(ok=>T(ok?'Code copied':'Could not copy code')); else if(tx) copyContent(a.content).then(async ok=>{if(!ok){T('Could not copy code');return;}const N=window.EmberNative;if(N&&N.openTermux){await N.openTermux();T('Code copied. Paste it in Termux; it has not been run.');}else T('Code copied; Termux is unavailable in this view.');}); else download(a);
   });
   document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
-  window.EmberArtifacts={parse,render,shelf,markdownHtml,highlightCode,cleanSvg,exportPdf,svgPng,wordDoc,view,download,copyContent};
+  window.EmberArtifacts={parse,render,shelf,markdownHtml,highlightCode,cleanSvg,exportPdf,exportWord,svgPng,wordDoc,view,download,copyContent};
 })();

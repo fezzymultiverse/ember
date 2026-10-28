@@ -20,7 +20,7 @@ const TOOLS = [
 // ---------- settings ----------
 function load(k) { try { const o = JSON.parse(localStorage.getItem(k || LSK) || '{}'); return (o && typeof o == 'object' && !Array.isArray(o)) ? o : {}; } catch (e) { return {}; } }
 function save(o, k) { try { localStorage.setItem(k || LSK, JSON.stringify(o)); } catch (e) { /* storage blocked */ } }
-const raw = () => Object.assign({ on: false, reader: true, keys: {}, more: {}, stingEndpoint: '', octoTask: '', brightZone: '', brightUnlock: '' }, load());
+const raw = () => Object.assign({ on: null, reader: true, keys: {}, more: {}, stingEndpoint: '', octoTask: '', brightZone: '', brightUnlock: '' }, load());
 // V1.5.6: strip invisible junk, quotes, "Bearer " and "key=" from pasted keys: any of it makes a provider answer 401/403 for a good key.
 function cleanKey(v) {
   const edge = t => t.replace(/^[\s"'`<([]+|[\s"'`>)\],;]+$/g, '');
@@ -40,7 +40,7 @@ function setKey(id, v) {
   const s = raw(); s.keys = s.keys || {}; if (v) s.keys[id] = v; else delete s.keys[id]; save(s);
 }
 // get() is what the UI and the key map read: the stored settings plus the shared Tavily key
-function get() { const s = raw(); s.keys = Object.assign({}, s.keys); const t = tavKey(); if (t) s.keys.tavily = t; s.more = {}; KEY_IDS.forEach(id => { const x = extrasOf(id); if (x.length) s.more[id] = x; }); return s; }
+function get() { const s = raw(); s.on = enabled(); s.keys = Object.assign({}, s.keys); const t = tavKey(); if (t) s.keys.tavily = t; s.more = {}; KEY_IDS.forEach(id => { const x = extrasOf(id); if (x.length) s.more[id] = x; }); return s; }
 function setReader(v) { const s = raw(); s.reader = !!v; save(s); }
 const readerOn = () => raw().reader !== false;
 function setOn(v) { const s = raw(); s.on = !!v; save(s); }
@@ -51,7 +51,7 @@ function setBrightUnlock(v) { const s = raw(); s.brightUnlock = zoneName(v); sav
 const brightZone = () => raw().brightZone || 'serp_api1';
 const brightUnlock = () => raw().brightUnlock || '';
 function setOctoTask(v) { const s = raw(); s.octoTask = String(v || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64); save(s); }
-const enabled = () => !!raw().on;
+const enabled = () => { const stored = load(); return typeof stored.on === 'boolean' ? stored.on : KEY_IDS.some(id => keysOf(id).length > 0); };
 const keyOf = id => id == 'tavily' ? tavKey() : cleanKey((raw().keys || {})[id] || '');
 // every saved key for a provider, primary first, no duplicates
 function keysOf(id) { const o = []; [keyOf(id)].concat(extrasOf(id)).forEach(k => { if (k && !o.includes(k)) o.push(k); }); return o; }
@@ -403,6 +403,7 @@ function resolveSite(x) {
 }
 const CACHE = new Map();
 async function scrape_url(url, objective, format, via, opt) {
+  if (!enabled()) return { error: 'Web Scraping is off. Enable Settings > Scraping. No page was fetched.' };
   const want = String(via || '').toLowerCase().replace(/[^a-z]/g, '');
   const cleanObj = String(objective || '').trim().slice(0, 300), max = opt && opt.max ? opt.max : 0;
   if (want && !ORDER.includes(want)) return { error: 'Unknown provider "' + via + '". Choose one of: ' + ORDER.join(', ') + '.' };

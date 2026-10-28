@@ -7,12 +7,12 @@
 <link rel="icon" href="ember-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="ember_v79.css"><link rel="stylesheet" href="ember_v80.css"><link rel="stylesheet" href="ember_v81.css"><link rel="stylesheet" href="ember_v82.css"><link rel="stylesheet" href="ember_v83.css"><link rel="stylesheet" href="ember_acc.css"><link rel="stylesheet" href="ember_engines.css">
-<link rel="stylesheet" href="ember_blue.css"><link rel="stylesheet" href="ember_v89.css"></head><body>
+<link rel="stylesheet" href="ember_blue.css"><link rel="stylesheet" href="ember_v89.css"><link rel="stylesheet" href="ember_command_center.css"></head><body>
 <div id="app">
 <header>
 <div class="hl"><button class="hb" id="bHist" aria-label="Chat history">☰</button><button class="hb" id="bProv" aria-label="Providers" aria-expanded="false" title="Providers: live engine status"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 2.5v3M12 2.5v3M15 2.5v3M9 18.5v3M12 18.5v3M15 18.5v3M2.5 9h3M2.5 12h3M2.5 15h3M18.5 9h3M18.5 12h3M18.5 15h3"/></svg></button></div>
 <div class="who"><b id="pName">Ember</b><button id="engs" class="engpill" aria-label="Engine status. Tap to open the Keys tab"></button></div>
-<div class="hr"><button id="bGlobe" class="hb" aria-label="Browser" title="Browser: read or open a web page">🌐</button>
+<div class="hr"><button id="bCommandCenter" class="hb" aria-label="Open Command Center" aria-controls="emberCommandCenter" aria-expanded="false" title="Command Center">◫</button><button id="bGlobe" class="hb" aria-label="Browser" title="Browser: read or open a web page">🌐</button>
 <button id="bTermux" title="Termux Mode" aria-label="Open the Termux tab" class="hb">💻</button>
 <button class="hb" id="bSet" aria-label="Settings">⚙</button></div>
 <div id="provDrop" class="provdrop hidden" role="menu" aria-label="Providers"></div>
@@ -28,6 +28,14 @@
 <div id="noKey" class="card hidden"><b>Running on Free Mode.</b><p>No key needed. Optional faster engines are in Settings.</p><button class="btn g" id="bGoKeys">Open Keys</button></div>
 </div>
 <div id="mw" class="mw hidden"><img id="mwArt" class="mwart hidden" alt=""><button id="mwOpen" class="mwt" aria-label="Open the music panel"><b id="mwTitle">—</b><small id="mwSub"></small></button><button id="mwPlay" aria-label="Play or pause">▶</button><button id="mwNext" aria-label="Next">⏭</button></div>
+<!-- Independent terminal: never inserted into #log or the Thinking Timeline. -->
+<section id="emberTerminal" class="ecc-terminal" aria-label="Live terminal">
+  <div class="ecc-terminal-bar"><button id="eccTerminalToggle" aria-controls="eccTerminalBody" aria-expanded="false"><span class="ecc-dot"></span> <b>Live Terminal</b> <span id="eccTerminalStatus">Idle</span> <span id="eccTerminalChevron" aria-hidden="true">▴</span></button><button id="eccTerminalClear" title="Clear terminal display" aria-label="Clear terminal display">Clear</button></div>
+  <div id="eccTerminalBody" hidden><div class="ecc-terminal-options"><label>Stream <select id="eccTerminalFilter"><option value="all">All</option><option value="stdout">stdout</option><option value="stderr">stderr</option><option value="status">Status</option><option value="merged">Merged logs</option></select></label><label><input id="eccTerminalFollow" type="checkbox" checked> Follow</label><span id="eccTerminalCount">0 lines</span></div>
+    <div id="eccTerminalOutput" role="log" aria-label="Runner and NewPipe output" aria-live="off" tabindex="0"></div>
+    <p class="ecc-footnote">Runner: live job status; published logs after completion. NewPipe: native progress. Raw stdout/stderr requires a live backend stream.</p>
+  </div>
+</section>
 <footer class="comp">
 <div class="mrow"><button id="bModes" class="mpill" aria-haspopup="menu" aria-expanded="false" aria-label="Modes: Chill, Sharp or Deep"><span class="mp-ic" aria-hidden="true">◐</span><span>Modes</span><b id="modesLbl">Chill</b><span class="mp-ch" aria-hidden="true">▾</span></button><div class="modes mpop hidden" id="modes" role="menu" aria-label="Modes"><button data-m="chill" role="menuitemradio">Chill<small>Relaxed, short and easy</small></button><button data-m="sharp" role="menuitemradio">Sharp<small>Tight, direct, no padding</small></button><button data-m="deep" role="menuitemradio">Deep<small>Slower, careful, longer</small></button></div><button id="bDocsQuick" aria-label="Open Documents: attach a file or note" title="Documents: attach a file or note">📎 <span>Docs</span></button></div>
 <div class="tools"><button id="bPasteIn" aria-label="Paste into the message box">📋 Paste</button><button id="bCopyIn" aria-label="Copy the message box text">⧉ Copy</button><button id="bDevice">📟 Device</button><button id="bReact">🧠 Reasoning</button><button id="bGraph">🕸 Graph</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
@@ -35,6 +43,16 @@
 <div class="row"><div id="plusMenu" class="pmenu hidden" role="menu" aria-label="Add to message"></div><button id="bPlus" class="plus" aria-label="Add: tools and attachments" aria-haspopup="menu" aria-expanded="false" title="Add">+</button><textarea id="inp" rows="1" spellcheck="false" autocorrect="off" placeholder="Say anything…" enterkeyhint="send"></textarea><div class="side"><button id="bTalk" aria-label="Talk mode: hands-free conversation" aria-pressed="false" title="Talk mode: just talk. It sends when you stop, reads the reply aloud, then listens again. Tap again to stop.">🗣</button><button id="bMic" aria-label="Dictate: talk and your words are typed here" aria-pressed="false" title="Dictate: tap, talk, tap again. Your words are typed into the message box.">🎤</button><button id="bStop" class="hidden" aria-label="Stop generating" title="Stop response">■</button><button id="bSend" aria-label="Send">➤</button></div></div>
 </footer>
 </div>
+
+<button id="eccBackdrop" class="ecc-backdrop" aria-label="Close Command Center" hidden tabindex="-1"></button>
+<aside id="emberCommandCenter" class="ecc-panel" aria-labelledby="eccTitle" inert aria-hidden="true">
+  <div class="ecc-panel-head"><div><span class="ecc-eyebrow">EMBER / WORKSPACE</span><h2 id="eccTitle">Command Center</h2></div><button id="eccClose" aria-label="Close Command Center">✕</button></div>
+  <div class="ecc-panel-content">
+    <section class="ecc-card"><div class="ecc-card-title"><span class="ecc-icon">◈</span><h3>Thought Inspector</h3><span class="ecc-chip">SUMMARY</span></div><p class="ecc-description">Ember’s public three-phase summary, not private internal reasoning.</p><pre id="eccThought" aria-live="polite">No three-phase summary received yet.</pre></section>
+    <section class="ecc-card"><div class="ecc-card-title"><span class="ecc-icon ecc-blue">▦</span><h3>Memory Matrix</h3><span id="eccMemoryCount" class="ecc-chip">0</span></div><p class="ecc-description">File excerpts present in the latest observed model request. Not the entire library or repository.</p><ul id="eccMemory"></ul><p id="eccMemoryEmpty" class="ecc-empty">No file excerpts observed in the context window.</p><small id="eccContextStatus">Waiting for a model request.</small></section>
+    <section class="ecc-card"><div class="ecc-card-title"><span class="ecc-icon">ϟ</span><h3>Quick Actions</h3></div><div class="ecc-actions"><button data-ecc-action="build"><span>▶</span><b>Run Build<small>Dispatch the configured build workflow</small></b></button><button data-ecc-action="cache"><span>↻</span><b>Clear Cache<small>Repository read caches only</small></b></button><button data-ecc-action="push"><span>↥</span><b>Push to GitHub<small>Run installed whole-repository sync</small></b></button></div><p id="eccActionStatus" role="status" class="ecc-description">Actions use your existing Repo Runner configuration.</p></section>
+  </div>
+</aside>
 
 <aside id="drawer"><div class="dh"><b>Menu</b><button class="hb" id="bDx">✕</button></div>
 <div class="dtabs"><button class="dtab" data-d="prompts">Prompts</button><button class="dtab on" data-d="chats">Chats</button><button class="dtab" data-d="projects">Projects</button></div>
@@ -141,6 +159,7 @@
 <button class="stab on" data-st="general">General</button>
 <button class="stab" data-st="keys">Keys</button>
 <button class="stab" data-st="github">GitHub</button>
+<button class="stab" data-st="features">Features</button>
 <button class="stab" data-st="advanced">Advanced</button>
 <button class="stab" data-st="scraping">Scraping</button>
 <button class="stab" data-st="hacking">Hacking</button>
@@ -194,6 +213,7 @@
 <div class="card" data-tab="keys"><div class="ct">GitHub</div><p class="hint">GitHub now has its own tab: token, Knowledge Brain Repo, files and activity.</p><button class="btn g" data-gh-open="home">Open GitHub settings</button></div>
 
 <div class="card" data-tab="github" id="ghCard"><div id="ghHub"></div></div>
+<div class="card" data-tab="features" id="repoRunnerFeature"></div>
 <div class="card" data-tab="advanced" id="ghRunnerCard"><div class="ct">Optional GitHub Runner</div><div id="ghAdvanced"></div></div>
 
 <div class="card collapsed" data-tab="keys"><div class="ct">Notepad · paste anything, pull the keys out</div>
@@ -352,7 +372,7 @@
 <div class="btnrow"><button class="btn" id="bExp">Export backup</button><button class="btn g" id="bImp">Import backup</button></div>
 <input type="file" id="fImp" accept="application/json,.json" hidden>
 <button class="btn g danger" id="bWipe" style="margin-top:10px">Delete everything</button>
-<p class="hint" id="ver">Ember V1.9.86 · Spacious Black</p></div>
+<p class="hint" id="ver">Ember V1.9.92 · Whole-repo brain + Repo Runner</p></div>
 </div></section>
 
 <section id="react" class="sheet"><div class="sh"><b>Reasoning</b><button class="hb" id="bRx" aria-label="Close reasoning">✕</button></div>
@@ -518,9 +538,11 @@
 
 <div class="modal" id="dlg"><div class="mc"><h2 id="dT"></h2><p id="dX"></p><input type="text" id="dI" class="hidden"><div class="btnrow" style="margin-top:14px"><button class="btn" id="dOk">OK</button><button class="btn g" id="dNo">Cancel</button></div></div></div>
 <div id="toast"></div>
-<script src="store.js"></script><script src="ember_keyscan.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js"></script><script src="ember_timeline.js"></script><script src="ember_steps.js"></script><script src="ember_pdf.js"></script><script src="ember_artifacts.js"></script><script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script><script src="ember_getmusic.js"></script><script src="ember_react_ui.js"></script><script src="ember_think_inline.js"></script><script src="ember_device.js"></script>
+<script src="store.js"></script><script src="ember_keyscan.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js"></script><script src="ember_timeline.js"></script><script src="ember_steps.js"></script><script src="ember_pdf.js"></script><script src="ember_artifacts.js"></script>
+<script src="ember_deliverables.js"></script><script src="ember_command_center.js"></script>
+<script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script><script src="ember_getmusic.js"></script><script src="ember_react_ui.js"></script><script src="ember_think_inline.js"></script><script src="ember_device.js"></script>
 <script src="ember_docs_lib.js"></script>
-<script src="ember_graph.js"></script><script src="ember_github.js"></script><script src="ember_github_ui.js"></script><script src="ember_puter.js"></script><script src="ember_learn.js"></script>
+<script src="ember_graph.js"></script><script src="ember_github.js"></script><script src="ember_github_ui.js"></script><script src="ember_repo_runner.js"></script><script src="ember_puter.js"></script><script src="ember_learn.js"></script>
 <script src="ember_find.js"></script><script src="ember_tasks.js"></script><script src="ember_keys.js"></script>
 <script src="ember_browser.js"></script>
 <script src="ember_term.js"></script>

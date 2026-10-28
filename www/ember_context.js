@@ -231,6 +231,7 @@ async function autoBlock(query) {
     const c = indexOf_(d).chunks[h.chunk - 1]; if (!c) continue;
     const t = clipS(String(d.text || '').slice(c.s, c.e).replace(/\s+/g, ' ').trim(), 1100);
     if (used + t.length > 3200) break;
+    try { if (window.EmberCommandCenter) window.EmberCommandCenter.registerContext({ id: d.id, name: d.name, scope: 'Document excerpt · part ' + h.chunk + ' of ' + h.of, needle: t.slice(0, 160) }); } catch (_) { /* metadata only */ }
     used += t.length; parts.push('[' + clipS(d.name, 40) + (c.heading ? ' > ' + clipS(c.heading, 40) : '') + ' · part ' + h.chunk + ' of ' + h.of + '] ' + t);
   }
   if (!parts.length) return '';
