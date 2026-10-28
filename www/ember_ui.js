@@ -8,12 +8,12 @@ const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); retu
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const toast = m => { const t = $('toast'); if (!t) return; t.textContent = m; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2400); };
 
-// ---- provider names: the display name of every engine can be changed; nothing hard-codes "Groq" any more ----
+// ---- provider names: engine names come from providers.js; nothing hard-codes "Groq" any more. V1.9.85: renaming is gone, the Keys list just shows the names. ----
 const NK = 'ember_provnames', DEFAULTS = {};
 function applyNames() {
   const P = window.Prov; if (!P || !P.CFG) return;
-  const o = lsGet(NK, {});
-  P.IDS.forEach(id => { if (!(id in DEFAULTS)) DEFAULTS[id] = P.CFG[id].name; P.CFG[id].name = String(o[id] || '').trim().slice(0, 24) || DEFAULTS[id]; });
+  try { localStorage.removeItem(NK); } catch (e) { /* storage blocked */ } // V1.9.85: names saved by the old rename boxes are dropped, so every engine shows its real name
+  P.IDS.forEach(id => { if (!(id in DEFAULTS)) DEFAULTS[id] = P.CFG[id].name; P.CFG[id].name = DEFAULTS[id]; });
   syncLabels();
 }
 function syncLabels() {
@@ -25,17 +25,14 @@ function syncLabels() {
 }
 function paintNames() {
   const P = window.Prov, host = $('provNameBox'); if (!P || !host) return;
-  const o = lsGet(NK, {});
-  host.innerHTML = P.IDS.map(id => '<div class="pnrow"><label for="pn_' + id + '">' + esc(DEFAULTS[id] || id) + '</label><input type="text" id="pn_' + id + '" data-id="' + id + '" maxlength="24" placeholder="' + esc(DEFAULTS[id] || id) + '" value="' + esc(o[id] || '') + '" autocomplete="off"></div>').join('');
+  host.innerHTML = P.IDS.map(id => '<div class="pnrow"><span class="pn-name">' + esc(DEFAULTS[id] || id) + '</span></div>').join('');
 }
 function mountNames() {
   const keys = document.querySelector('.card[data-tab="keys"]'); if (!keys || $('provNameBox')) return;
   const card = document.createElement('div'); card.className = 'card'; card.dataset.tab = 'keys';
-  card.innerHTML = '<div class="ct">Provider names</div><p class="hint">Rename how each engine is shown in chat, the header and the key list. The key itself and the real service do not change. Leave a box empty to use the original name.</p><div id="provNameBox"></div><div class="btnrow"><button class="btn g" id="pnReset">Reset names</button></div>';
+  card.innerHTML = '<div class="ct">Provider names</div><div id="provNameBox"></div>';
   keys.parentNode.insertBefore(card, keys.nextSibling);
   paintNames();
-  card.addEventListener('change', e => { const i = e.target.closest('input[data-id]'); if (!i) return; const o = lsGet(NK, {}); const v = i.value.trim().slice(0, 24); if (v) o[i.dataset.id] = v; else delete o[i.dataset.id]; lsSet(NK, o); applyNames(); window.dispatchEvent(new Event('ember-names')); toast('Name saved'); });
-  $('pnReset').onclick = () => { lsSet(NK, {}); applyNames(); paintNames(); window.dispatchEvent(new Event('ember-names')); toast('Names reset'); };
 }
 
 // ---- key box: the provider follows the key you paste ----
@@ -75,7 +72,7 @@ if ($('dmWall')) {
   $('dmWall').addEventListener('contextmenu', e => { e.preventDefault(); $('dmWallFile').click(); });
 }
 
-applyNames(); mountNames(); paintWall(); if (Object.keys(lsGet(NK, {})).length) window.dispatchEvent(new Event('ember-names'));
+const hadNames = Object.keys(lsGet(NK, {})).length; applyNames(); mountNames(); paintWall(); if (hadNames) window.dispatchEvent(new Event('ember-names'));
 document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#bSet')) setTimeout(() => { mountNames(); syncLabels(); }, 30); });
 window.EmberUI = { applyNames, syncLabels, paintWall };
 })();

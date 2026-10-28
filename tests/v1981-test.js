@@ -9,7 +9,7 @@ ok('hero egg is an inline SVG with the icon flame path', /<svg class="ev-hero"[^
 ok('hero no longer carries the old .flame orb class', !/class="[^"]*\bflame\b[^"]*ember-logo-hero/.test(html) && !/<[^>]+class="flame/.test(html.split('id="empty"')[1].split('</div>')[0]));
 ok('inline gradient ids do not clash with ember-icon.svg ids', /id="evBg"/.test(html) && !/id="bg"|id="fl"|id="core"/.test(html.split('id="empty"')[1].split('id="mw"')[0]));
 ok('v81 css + js are loaded after v80', html.indexOf('ember_v81.css') > html.indexOf('ember_v80.css') && html.indexOf('ember_v81.js') > html.indexOf('ember_v80.js'));
-ok('service worker caches v81 files and bumps its version (V1.9.83)', /ember-v1\.9\.83/.test(sw) && /'ember_v81\.css'/.test(sw) && /'ember_v81\.js'/.test(sw));
+ok('service worker caches v81 files and bumps its version (V1.9.84)', /ember-v1\.9\.\d+/.test(sw) && /'ember_v81\.css'/.test(sw) && /'ember_v81\.js'/.test(sw));
 ok('blue blink on the spin led, both shimmer labels, the live row and the top pill', ['.et-led', '.tl-shimmer::before', '.et-shimmer::before', '.tl-item.tl-now .tl-live', '#engs.activity i'].every(s => css.includes(s)) && /ev-blink/.test(css) && /#3b9eff/.test(css));
 ok('blink respects reduced motion', /prefers-reduced-motion:reduce\)\{[^}]*animation:none/.test(css));
 ok('default live status now reads Thinking…', /: \{ t: 'Thinking\\u2026'/.test(tl));

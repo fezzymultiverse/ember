@@ -1,4 +1,6 @@
-// Ember V1.9.30 - ember_plus.js: the "+" button on the left of the message box and its menu.
+// Ember V1.9.84 - ember_plus.js: the "+" button on the left of the message box and its menu.
+// V1.9.84: Create image (one-shot, routes the next message to Pollinations and answers with an artifact), a Think group (Reasoning, Go deeper, Learn, Spark),
+// Paste, Copy and Device tools are gone from the menu (Device tools now live in Settings), Modes is its own pill by the box.
 // Toggles (Device Access, Web Search, Reasoning, Code Mode) stay on and show a removable chip above the box.
 // Fire-once items (Upload File, Camera / Vision, Audio Context) run straight away and put their result in the message box as a block he can edit before sending.
 'use strict';
@@ -7,6 +9,7 @@ const $ = id => document.getElementById(id);
 if (!$('bPlus')) return;
 const KEY = 'ember_plus';
 const TOGGLES = [
+  { id: 'image', icon: '🎨', label: 'Create image', hint: 'Your next message becomes a picture (Pollinations)', chip: 'Create image', once: true },
   { id: 'device', icon: '📱', label: 'Device Access', hint: 'Let Ember read local files & Termux', chip: 'Device Access' },
   { id: 'web', icon: '🌐', label: 'Web Search', hint: 'Force live scraping/DuckDuckGo', chip: 'Web Search' },
   { id: 'reason', icon: '🧠', label: 'Reasoning', hint: 'Use chain-of-thought / slower model', chip: 'Reasoning' },
@@ -18,34 +21,37 @@ const ONCE = [
   { id: 'audio', icon: '🎵', label: 'Audio Context', hint: 'Listen to surrounding audio or identify a song' }
 ];
 const LINES = {
+  image: '',
   device: 'DEVICE ACCESS is ON for this chat: he allowed you to use his saved Documents tools (list, search, read) and the Termux panel when it helps. Use them instead of saying you cannot reach his files. You still cannot see anything outside those tools.',
   web: 'WEB SEARCH is FORCED ON for this chat: before answering anything that could be current or factual, call web_search (or search_and_read) first, then answer from the results and name the source. If the search fails, say so; do not answer from memory as if it had worked.',
   reason: 'REASONING is ON for this chat: work the problem step by step, check your own answer once before you give it, and say plainly where you are unsure.',
   code: 'CODE MODE is ON for this chat: answer in working code first, in fenced blocks with the language named, complete and runnable (no stubs), then at most a few lines of explanation. Bash for Termux unless he says otherwise.'
 };
-let on = {}; try { const r = JSON.parse(localStorage.getItem(KEY) || '{}'); TOGGLES.forEach(t => { if (r[t.id]) on[t.id] = true; }); } catch (e) { on = {}; }
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(on)); } catch (e) { /* storage blocked */ } };
+let on = {}; try { const r = JSON.parse(localStorage.getItem(KEY) || '{}'); TOGGLES.forEach(t => { if (r[t.id] && !t.once) on[t.id] = true; }); } catch (e) { on = {}; }
+const save = () => { try { const o = {}; TOGGLES.forEach(t => { if (on[t.id] && !t.once) o[t.id] = true; }); localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) { /* storage blocked */ } };
 const toast = m => { const t = $('toast'); if (!t) return; t.textContent = m; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2400); };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const getSet = () => { try { return JSON.parse(localStorage.getItem('ember_set') || '{}') || {}; } catch (e) { return {}; } };
 
 // ---------- menu + chips ----------
 const menu = $('plusMenu'), chips = $('plusChips'), btn = $('bPlus');
-const QUICK = [
-  { id: 'bPasteIn', icon: '📋', label: 'Paste', hint: 'Insert clipboard text' },
-  { id: 'bCopyIn', icon: '⧉', label: 'Copy message', hint: 'Copy the text in the composer' },
-  { id: 'bDevice', icon: '📟', label: 'Device tools', hint: 'Open device and Termux tools' },
-  { id: 'bReact', icon: '🧠', label: 'Reasoning', hint: 'Toggle reasoning mode' },
+// Think group, in this order. These click the buttons that already exist (hidden under the box), so nothing about how they work changes.
+const THINK = [
+  { id: 'bReact', icon: '🧠', label: 'Reasoning', hint: 'Open a step-by-step run you can steer' },
+  { id: 'bDeep', icon: '💡', label: 'Go deeper', hint: 'Expand on the last reply' },
   { id: 'bLearn', icon: '📚', label: 'Learn', hint: 'Teach Ember from links and saved documents' },
+  { id: 'bSpark', icon: '✨', label: 'Spark', hint: 'Ember starts something, no topic needed' }
+];
+const QUICK = [
   { id: 'bGraph', icon: '🕸', label: 'Knowledge Graph', hint: 'Map local documents, memory and chats' },
-  { id: 'bSpark', icon: '✨', label: 'Spark', hint: 'Toggle Spark mode' },
-  { id: 'bDeep', icon: '💡', label: 'Go deeper', hint: 'Toggle deeper answers' },
   { id: 'bPriv', icon: '🔓', label: 'Normal mode', hint: 'Toggle normal privacy mode' }
 ];
-menu.innerHTML = '<div class="pm-h">Chat tools</div>' +
-  QUICK.map(t => '<button class="pm-i" data-action="' + t.id + '" role="menuitem"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span></button>').join('') +
-  '<div class="pm-h pm-action">Enable for this chat</div>' +
-  TOGGLES.map(t => '<button class="pm-i" data-t="' + t.id + '" role="menuitemcheckbox" aria-checked="false"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span><span class="pm-sw"></span></button>').join('') +
+const tRow = t => '<button class="pm-i" data-t="' + t.id + '" role="menuitemcheckbox" aria-checked="false"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span><span class="pm-sw"></span></button>';
+const aRow = t => '<button class="pm-i" data-action="' + t.id + '" role="menuitem"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span></button>';
+menu.innerHTML = '<div class="pm-h">Create</div>' + TOGGLES.filter(t => t.id == 'image').map(tRow).join('') +
+  '<div class="pm-h pm-action">Think</div>' + THINK.map(aRow).join('') +
+  '<div class="pm-h pm-action">Chat tools</div>' + QUICK.map(aRow).join('') +
+  '<div class="pm-h pm-action">Enable for this chat</div>' + TOGGLES.filter(t => t.id != 'image').map(tRow).join('') +
   '<div class="pm-h pm-action">Attach or capture</div>' +
   ONCE.map(t => '<button class="pm-i" data-o="' + t.id + '" role="menuitem"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span></button>').join('');
 function paint() {
@@ -72,7 +78,9 @@ menu.addEventListener('click', e => {
     else toast('This tool is not available on this screen.');
     return;
   }
-  if (t) { const id = t.dataset.t; on[id] = !on[id]; save(); paint(); toast((on[id] ? '✔ ' : '✖ ') + TOGGLES.find(x => x.id == id).label + (on[id] ? ' on' : ' off')); return; } // toggles keep the menu open so several can be switched at once
+  if (t) { const id = t.dataset.t; on[id] = !on[id]; save(); paint();
+    if (id == 'image') { toast(on[id] ? '🎨 Describe the picture and send it' : 'Image mode off'); if (on[id]) { setMenu(false); const i = $('inp'); if (i) { try { i.focus(); } catch (e) { /* no focus */ } } } return; }
+    toast((on[id] ? '✔ ' : '✖ ') + TOGGLES.find(x => x.id == id).label + (on[id] ? ' on' : ' off')); return; } // toggles keep the menu open so several can be switched at once
   if (o) { setMenu(false); fire(o.dataset.o); }
 });
 
@@ -165,7 +173,8 @@ async function fire(id) {
 window.EmberPlus = {
   isOn: id => !!on[id],
   lane: () => !!on.reason,
-  stateLine: () => TOGGLES.filter(t => on[t.id]).map(t => LINES[t.id]).join(' '),
+  stateLine: () => TOGGLES.filter(t => on[t.id] && LINES[t.id]).map(t => LINES[t.id]).join(' '),
+  consume: id => { if (!on[id]) return false; on[id] = false; save(); paint(); return true; },
   _fire: fire, _set: (id, v) => { on[id] = !!v; save(); paint(); }
 };
 paint();

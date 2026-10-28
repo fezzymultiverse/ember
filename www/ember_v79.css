@@ -7,13 +7,7 @@ html body .card input[type=text],html body .card input[type=url],html body .card
 html body input::placeholder,html body textarea::placeholder{color:var(--f-ph)!important;opacity:1!important}
 html body input:focus,html body select:focus,html body textarea:focus{border-color:var(--ac)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 28%,transparent)!important;outline:0}
 
-/* ---- Provider names ---- */
-#provNameBox{display:flex;flex-direction:column;gap:12px;margin:14px 0 6px}
-.pnrow{display:flex;flex-direction:column;gap:6px}
-.pnrow label{font-size:12.5px;font-weight:700;letter-spacing:.04em;color:#d6d6d6;display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left}
-.pnrow label::after{content:"tap to rename";font-weight:500;letter-spacing:0;color:var(--soft);font-size:11.5px;white-space:nowrap}
-html body .card .pnrow input[type=text]{width:100%;min-height:50px;padding:13px 44px 13px 16px!important;font-size:16px;font-weight:600;
-  background:#222224 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b0b0b6' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20h4L19 9l-4-4L4 16z'/%3E%3C/svg%3E") no-repeat right 14px center/18px!important}
+/* ---- Provider names: plain padded list, styled in ember_v83.css ---- */
 
 /* ---- Music: tabs keep a solid band so nothing shows through ---- */
 .sheet .sb>.mtabs{position:sticky;top:0;z-index:8;isolation:isolate}

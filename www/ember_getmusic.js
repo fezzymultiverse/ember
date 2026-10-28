@@ -85,6 +85,7 @@ function paintJobs() {
       + '<div class="dj-meta">' + eng + '<span>' + esc(meta) + '</span></div>' + err
       + '<div class="dj-seg">' + seg + '</div>'
       + (!done && !failed ? '<div class="dj-bar"><i style="width:' + pct + '%"></i></div>' : '')
+      + (done ? '<button type="button" class="dj-play" data-dl-play="' + esc(j.id) + '" data-title="' + esc(j.title || '') + '">▶ Play</button>' : '')
       + '<details class="dj-more"><summary>All steps</summary><ul>' + list + '</ul></details></div>';
   }).join('');
 }

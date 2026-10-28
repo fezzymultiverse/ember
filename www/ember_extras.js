@@ -1,7 +1,7 @@
 // Ember V1.9.24 - ember_extras.js: three small features, all on-device.
 //   1. Saved replies  - a star on every reply keeps it in a searchable list (Menu > Saved Replies).
 //   2. Share this chat - the open chat as clean Markdown: preview, copy, or the phone's share sheet (Menu > Share this chat).
-//   3. Usage           - how many replies each engine gave you today and this week, average speed, top model (Menu > Usage).
+//   3. Usage           - how many replies each engine gave you today and this week, average speed, top model (Settings > General > Usage).
 // Reads the chat from the screen and the saved chats from Store; nothing is sent anywhere. Loads last.
 'use strict';
 (() => {
@@ -113,8 +113,10 @@ function paintShare() {
 }
 
 // ---------- 3. usage ----------
-async function paintUsage() {
-  body.innerHTML = '<p class="hint">Counting…</p>';
+// host/flat: the Settings card paints into its own box with flat blocks; the sheet tab keeps its cards.
+async function paintUsage(host, flat) {
+  host = host || body; const BLK = flat ? 'ux-blk' : 'card', TTL = flat ? 'ux-t' : 'ct';
+  host.innerHTML = '<p class="hint">Counting…</p>';
   let convs = []; try { convs = await window.Store.all(); } catch (e) { /* storage blocked */ }
   const d0 = new Date(); d0.setHours(0, 0, 0, 0); const day = d0.getTime(), week = day - 6 * 864e5;
   const by = {}; let tot = 0, totW = 0;
@@ -128,10 +130,10 @@ async function paintUsage() {
   let st = {}; try { st = window.Prov.status() || {}; } catch (e) { /* no status */ }
   const ids = Object.keys(by).sort((a, b) => by[b].w - by[a].w);
   const dot = id => st[id] == 'ok' ? '🟢' : st[id] == 'limited' ? '🟡' : st[id] == 'bad' ? '🔴' : '⚪';
-  body.innerHTML = '<div class="card"><div class="ct">Replies</div><p style="margin:4px 0"><b style="font-size:22px">' + tot + '</b> today · <b>' + totW + '</b> in the last 7 days</p>' +
+  host.innerHTML = '<div class="' + BLK + '"><div class="' + TTL + '">Replies</div><p style="margin:4px 0"><b style="font-size:22px">' + tot + '</b> today · <b>' + totW + '</b> in the last 7 days</p>' +
     '<p class="hint" style="margin:6px 0 0">Counted from the chats saved on this phone (private chats included). Private chats you deleted are not counted. Rate limits are set by each provider, so this shows how hard you are leaning on each engine, not how much is left.</p></div>' +
     (ids.length ? ids.map(id => { const e = by[id], top = Object.keys(e.models).sort((a, b) => e.models[b] - e.models[a])[0];
-      return '<div class="card"><div class="ct">' + dot(id) + ' ' + esc(label(id)) + '</div><p style="margin:4px 0"><b>' + e.d + '</b> today · <b>' + e.w + '</b> this week' +
+      return '<div class="' + BLK + '"><div class="' + TTL + '">' + dot(id) + ' ' + esc(label(id)) + '</div><p style="margin:4px 0"><b>' + e.d + '</b> today · <b>' + e.w + '</b> this week' +
         (e.n ? ' · avg <b>' + Math.round(e.ms / e.n) + ' ms</b>' : '') + '</p>' + (top ? '<small class="xm">Most used model: ' + esc(top) + '</small>' : '') + '</div>'; }).join('')
       : '<p class="hint">No replies in the last 7 days yet.</p>') +
     '<p class="hint">🟢 ready · 🟡 rate limited right now · 🔴 key problem · ⚪ not checked</p>';
@@ -140,13 +142,26 @@ async function paintUsage() {
 // ---------- entry points in the Menu ----------
 const anchor = $('bSitesOpen');
 if (anchor && anchor.parentNode) {
-  [['⭐', 'Saved Replies', 'Replies you starred', 'saved'], ['📤', 'Share this chat', 'Copy it or send it as Markdown', 'share'], ['📊', 'Usage', 'Replies per engine, today and this week', 'usage']].forEach(r => {
+  [['⭐', 'Saved Replies', 'Replies you starred', 'saved'], ['📤', 'Share this chat', 'Copy it or send it as Markdown', 'share']].forEach(r => {
     const b = document.createElement('button'); b.className = 'rcbtn'; b.setAttribute('aria-label', r[1]);
     b.innerHTML = '<span class="rci">' + r[0] + '</span><span class="rct"><b>' + r[1] + '</b><small>' + r[2] + '</small></span><span class="chev">›</span>';
     b.onclick = () => { const x = $('bDx'); if (x) x.click(); openTab(r[3]); };
     anchor.parentNode.appendChild(b);
   });
 }
+
+// ---------- Usage card in Settings > General (it used to be a button in the left menu) ----------
+(() => {
+  const set = $('settings'), sbEl = set && set.querySelector('.sb'); if (!sbEl || $('usageCard')) return;
+  const card = document.createElement('div'); card.className = 'card'; card.id = 'usageCard'; card.dataset.tab = 'general';
+  card.innerHTML = '<div class="ct">Usage</div><div id="usageSet"><p class="hint">Replies per engine, today and this week.</p></div>';
+  const look = Array.from(sbEl.querySelectorAll('.card[data-tab="general"] > .ct')).find(c => /^Look/.test(c.textContent.trim()));
+  if (look) look.parentNode.after(card); else sbEl.appendChild(card);
+  const peer = sbEl.querySelector('.card[data-tab="general"]:not(#usageCard)'); card.classList.toggle('stab-show', !!(peer && peer.classList.contains('stab-show')));
+  let lastT = 0;
+  const fill = () => { if (!set.classList.contains('show') || Date.now() - lastT < 1500) return; lastT = Date.now(); paintUsage($('usageSet'), true); };
+  if (window.MutationObserver) new MutationObserver(fill).observe(set, { attributes: true, attributeFilter: ['class'] });
+})();
 decorate();
 window.EmberExtras = { open: openTab, saved, chatMarkdown };
 })();

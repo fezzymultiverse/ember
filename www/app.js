@@ -145,7 +145,7 @@ function bub(x, last, i) {
   const say = x.r == 'a' ? '<button data-act="say" data-i="' + i + '" aria-label="Read aloud" title="Read aloud"' + (sayIdx === i ? ' class="talking"' : '') + '>' + (sayIdx === i ? '■ Stop' : '🔊') + '</button>' : '';
   const cp = '<button data-act="copy" data-i="' + i + '" aria-label="Copy message" title="Copy this message">⧉ Copy</button>';
   const context = x.ctx ? '<span class="context-chip" title="This message includes extra context">'+(/image|photo|vision/i.test(x.ctx)?'Image context':/document|file|attachment/i.test(x.ctx)?'Document context':'Extra context')+'</span>' : '';
-  const makeArtifact = x.r === 'a' && !artifact ? '<button data-act="artifact" data-i="'+i+'" title="Save this reply as a Markdown artifact">Save .md</button>' : '';
+  const makeArtifact = ''; // V1.9.84: Save .md removed from the bubble
   return (x.tl && window.EmberTimeline ? window.EmberTimeline.savedHtml(x.tl) : '') + '<div class="msg ' + x.r + '"><div>' + (artifact ? artifact.html : fmt(x.t)) + '</div><div class="mt">' + context + '<span>' + U.time(x.ts) + (x.deep ? ' · 💡' : '') + eng + '</span>' + say + cp + regen + makeArtifact + '</div></div>';
 }
 function renderLog() {
@@ -535,8 +535,21 @@ async function send() {
   if (conv.auto && conv.title == 'New chat') conv.title = t.length > 38 ? t.slice(0, 38).trim() + '…' : t;
   $('inp').value = ''; grow();
   await persist(); renderLog();
+  if (window.EmberPlus && window.EmberPlus.consume && window.EmberPlus.consume('image')) { await imageRoute(t); return; } // V1.9.84: + > Create image
   if (await directNewPipe(t)) return;
   reply();
+}
+// V1.9.84: the picture goes to Pollinations, never to a chat engine. The answer is an HTML artifact with the image and Ember's thought process.
+async function imageRoute(t) {
+  const EC = window.EmberCreate, TLn = window.EmberTimeline;
+  if (!EC || !EC.route) { lastErr = 'Image creation did not load. Restart Ember and try again.'; renderLog(); return; }
+  busy = true; lastErr = null; $('bSend').disabled = true; typing(true);
+  const turnId = conv.id + ':' + conv.msgs.length; curTurn = turnId;
+  let r; try { r = await EC.route(t, { step: (ic, text, key) => { if (TLn && TLn.step) TLn.step(ic, text, key); } }); } catch (e) { r = { ok: false, error: (e && e.message) || 'The image route failed.' }; }
+  if (curTurn !== turnId) return;
+  if (r && r.ok) { const tlSnap = TLn ? TLn.snapshot() : null; conv.msgs.push({ r: 'a', t: r.text, ts: Date.now(), turn: turnId, tl: tlSnap || undefined }); await persist(); }
+  else lastErr = (r && r.error) || 'The picture could not be made.';
+  busy = false; $('bSend').disabled = false; typing(false); curTurn = null; renderLog();
 }
 function needKeys() { return false; }
 // Fired by MainActivity when he replies from the notification while the app was backgrounded.
@@ -1196,7 +1209,7 @@ document.querySelector('#settings .sb').addEventListener('click', e => {
   const ct = e.target.closest('.card>.ct'); if (!ct) return;
   ct.parentElement.classList.toggle('collapsed');
 });
-function openSettings(tab) { drawer(false); renderSet(); renderPerms(); showStab(typeof tab == 'string' ? tab : 'general'); $('settings').classList.add('show'); setUI('Settings'); }
+function openSettings(tab) { drawer(false); renderSet(); renderPerms(); showStab(typeof tab == 'string' ? tab : 'none'); $('settings').classList.add('show'); setUI('Settings'); }
 function closeSettings() { $('settings').classList.remove('show'); S.name = $('sName').value.trim(); S.about = $('sAbout').value; S.pname = $('sPname').value.trim() || 'Ember'; S.interests = $('sInt').value.trim() || DEF.interests; S.persona = $('sPersona').value.trim().slice(0, 2000); S.talk = $('sTalk').value.trim().slice(0, 300); saveS(); renderLog(); setUI('Chat'); }
 $('bSet').onclick = openSettings; $('bSx').onclick = closeSettings; $('bGoKeys').onclick = openSettings;
 function accent(c) {

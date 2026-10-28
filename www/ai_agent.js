@@ -357,8 +357,32 @@ function cardHtml(j) {
     '<div class="act-hd">' + note + '<div class="act-title">' + escH(title) + '</div></div>' +
     '<div class="act-file">' + escH(j.title || 'Fetching track info') + '</div>' +
     '<div class="act-bar"><div class="act-fill" style="width:' + shown + '%"></div></div>' +
-    '<div class="act-st"><span>' + escH(where) + '</span><span>' + (bad ? '' : shown + '%') + '</span></div></div>';
+    '<div class="act-st"><span>' + escH(where) + '</span><span>' + (bad ? '' : shown + '%') + '</span></div>' +
+    (done ? '<div class="act-play"><button type="button" class="act-playbtn" data-dl-play="' + escH(j.id) + '" data-title="' + escH(j.title || '') + '">▶ Play</button></div>' : '') + '</div>';
 }
+// ---------- V1.9.86: Play button on a finished download. Same library lookup as play_song; scans Music/Ember if the track is not listed yet. ----------
+const toastMsg = m => { const t = document.getElementById('toast'); if (!t) return; t.textContent = m; t.classList.add('show'); clearTimeout(toastMsg._t); toastMsg._t = setTimeout(() => t.classList.remove('show'), 2800); };
+async function playDownloaded(title) {
+  const Pl = window.EmberPlayer; if (!Pl) return { ok: false, error: 'The music player did not load. Reload the app.' };
+  const key = str(title, 120); if (!key) return { ok: false, error: 'No track name to look for.' };
+  for (let i = 0; i < 4; i++) {
+    let t = findLocal(key);
+    if (!t) { try { if (Pl.deviceOk && Pl.deviceOk() && Pl.scanDevice) await Pl.scanDevice(); } catch (e) { /* the retry covers it */ } t = findLocal(key); }
+    if (t) { const r = await Pl.playLocal(t.id); return r && r.ok === false ? { ok: false, error: r.error || 'The player could not start it.' } : { ok: true, title: t.title }; }
+    await new Promise(r => setTimeout(r, 1200));
+  }
+  return { ok: false, error: 'Saved, but it has not shown up in the library yet. Open Music > Library, tap scan, then tap Play again.' };
+}
+const playBusy = new Set();
+document.addEventListener('click', async e => {
+  const b = e.target.closest && e.target.closest('[data-dl-play]'); if (!b) return;
+  const id = b.dataset.dlPlay; if (playBusy.has(id)) return;
+  const j = dlJobs.get(id), title = (j && j.title) || b.dataset.title || '';
+  playBusy.add(id); const label = b.textContent; b.textContent = 'Finding…'; b.disabled = true;
+  let r; try { r = await playDownloaded(title); } catch (err) { r = { ok: false, error: 'Could not play it: ' + ((err && err.message) || err) }; }
+  playBusy.delete(id); if (b.isConnected) { b.textContent = label; b.disabled = false; }
+  toastMsg(r.ok ? 'Playing: ' + str(r.title, 60) : r.error);
+});
 function cardsHtml() { return [...dlJobs.values()].filter(j => !j.silent).slice(-6).map(cardHtml).join(''); }
 function emitEv(name, detail) { try { window.dispatchEvent(new CustomEvent(name, { detail })); } catch (e) { /* no listeners */ } }
 function trackJob(jobId, title, silent) {

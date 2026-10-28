@@ -6,7 +6,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="ember-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="ember_v79.css"><link rel="stylesheet" href="ember_v80.css"><link rel="stylesheet" href="ember_v81.css"><link rel="stylesheet" href="ember_v82.css">
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="ember_v79.css"><link rel="stylesheet" href="ember_v80.css"><link rel="stylesheet" href="ember_v81.css"><link rel="stylesheet" href="ember_v82.css"><link rel="stylesheet" href="ember_v83.css"><link rel="stylesheet" href="ember_acc.css">
 </head><body>
 <div id="app">
 <header>
@@ -29,7 +29,7 @@
 </div>
 <div id="mw" class="mw hidden"><img id="mwArt" class="mwart hidden" alt=""><button id="mwOpen" class="mwt" aria-label="Open the music panel"><b id="mwTitle">—</b><small id="mwSub"></small></button><button id="mwPlay" aria-label="Play or pause">▶</button><button id="mwNext" aria-label="Next">⏭</button></div>
 <footer class="comp">
-<div class="mrow"><div class="modes" id="modes"><button data-m="chill">Chill</button><button data-m="sharp">Sharp</button><button data-m="deep">Deep</button></div><button id="bDocsQuick" aria-label="Open Documents: attach a file or note" title="Documents: attach a file or note">📎 <span>Docs</span></button></div>
+<div class="mrow"><button id="bModes" class="mpill" aria-haspopup="menu" aria-expanded="false" aria-label="Modes: Chill, Sharp or Deep"><span class="mp-ic" aria-hidden="true">◐</span><span>Modes</span><b id="modesLbl">Chill</b><span class="mp-ch" aria-hidden="true">▾</span></button><div class="modes mpop hidden" id="modes" role="menu" aria-label="Modes"><button data-m="chill" role="menuitemradio">Chill<small>Relaxed, short and easy</small></button><button data-m="sharp" role="menuitemradio">Sharp<small>Tight, direct, no padding</small></button><button data-m="deep" role="menuitemradio">Deep<small>Slower, careful, longer</small></button></div><button id="bGhPill" class="ghpill" aria-pressed="false" title="GitHub: let Ember read and write your repo">GitHub</button><button id="bDocsQuick" aria-label="Open Documents: attach a file or note" title="Documents: attach a file or note">📎 <span>Docs</span></button></div>
 <div class="tools"><button id="bPasteIn" aria-label="Paste into the message box">📋 Paste</button><button id="bCopyIn" aria-label="Copy the message box text">⧉ Copy</button><button id="bDevice">📟 Device</button><button id="bReact">🧠 Reasoning</button><button id="bGraph">🕸 Graph</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
 <div id="plusChips" class="pchips hidden" aria-live="polite"></div>
 <div class="row"><div id="plusMenu" class="pmenu hidden" role="menu" aria-label="Add to message"></div><button id="bPlus" class="plus" aria-label="Add: tools and attachments" aria-haspopup="menu" aria-expanded="false" title="Add">+</button><textarea id="inp" rows="1" spellcheck="false" autocorrect="off" placeholder="Say anything…" enterkeyhint="send"></textarea><div class="side"><button id="bTalk" aria-label="Talk mode: hands-free conversation" aria-pressed="false" title="Talk mode: just talk. It sends when you stop, reads the reply aloud, then listens again. Tap again to stop.">🗣</button><button id="bMic" aria-label="Dictate: talk and your words are typed here" aria-pressed="false" title="Dictate: tap, talk, tap again. Your words are typed into the message box.">🎤</button><button id="bStop" class="hidden" aria-label="Stop generating" title="Stop response">■</button><button id="bSend" aria-label="Send">➤</button></div></div>
@@ -37,7 +37,7 @@
 </div>
 
 <aside id="drawer"><div class="dh"><b>Menu</b><button class="hb" id="bDx">✕</button></div>
-<div class="dtabs"><button class="dtab on" data-d="chats">Chats</button><button class="dtab" data-d="prompts">Prompts</button><button class="dtab" data-d="projects">Projects</button></div>
+<div class="dtabs"><button class="dtab" data-d="prompts">Prompts</button><button class="dtab on" data-d="chats">Chats</button><button class="dtab" data-d="projects">Projects</button></div>
 <div class="dpane" id="dp_chats">
 <button class="btn" id="bNew">＋ New chat</button>
 <button class="rcbtn" id="hHead" aria-label="Open recent chats"><span class="rci">🕘</span><span class="rct"><b id="hTitle">Recent Chats (0)</b><small>Search, rename, delete</small></span><span class="chev">›</span></button>
@@ -127,6 +127,7 @@
 </div>
 <div class="brbody hidden" id="brDocs">
 <div id="dcList"><div class="brbar"><input type="text" id="dcQ" placeholder="Search documents…" autocomplete="off"><button class="hb" id="dcAttach" aria-label="Attach a file or a note" aria-expanded="false" title="Attach">📎</button><div id="dcMenu" class="dcmenu hidden"><button class="hb" id="dcAdd" aria-label="Attach files" title="Files">📄</button><button class="hb" id="dcNew" aria-label="New note" title="Note">📝</button></div></div>
+<button class="rcbtn" id="dcNotesOpen" aria-label="Open Notes"><span class="rci">📝</span><span class="rct"><b>Notes</b><small>Quick notes Ember can read</small></span><span class="chev">›</span></button>
 <input type="file" id="dcFile" class="hidden" multiple>
 <div id="dcItems"></div></div>
 <div id="dcView" class="hidden"><input type="text" id="dcName" maxlength="120" placeholder="Name"><textarea id="dcText" rows="14" placeholder="Document text"></textarea>
@@ -134,8 +135,9 @@
 <div class="brbtns"><button class="btn" id="dcAsk">Ask Ember</button><button class="btn g" id="dcSave">Save</button><button class="btn g" id="dcBack">Back</button></div></div>
 </div>
 </section>
-<section id="settings" class="sheet"><div class="sh"><b>Settings</b><button class="hb" id="bSx">✕</button></div>
-<div class="stabs" id="stabs">
+<section id="settings" class="sheet"><div class="sh sh-ember"><button class="hb" id="bSx" aria-label="Close settings">✕</button><div class="sh-t"><b id="setTitle">Ember</b><small>Settings</small></div><img class="sh-logo" src="ember-icon.svg" alt="" width="36" height="36"></div>
+<div class="stabs" id="stabs" aria-hidden="true">
+<button class="stab" data-st="none" tabindex="-1">None</button>
 <button class="stab on" data-st="general">General</button>
 <button class="stab" data-st="keys">Keys</button>
 <button class="stab" data-st="github">GitHub</button>
@@ -178,8 +180,14 @@
 <div class="btnrow"><button class="btn g" id="bCheckAll">Check all</button></div>
 <div class="ct" style="margin-top:14px">Add one by hand</div>
 <div class="btnrow"><select id="kProv"><option value="groq">Groq</option><option value="mistral">Mistral</option><option value="gemini">Gemini</option><option value="cohere">Cohere (Prototype)</option><option value="anthropic">Claude (paid · pin to use)</option><option value="puter">Puter (auth token)</option></select><input type="password" id="kIn" placeholder="Paste a key" autocomplete="off" spellcheck="false"><button class="btn" id="bKAdd" style="width:auto;padding:0 16px">Add</button></div>
-<div class="btnrow puterrow"><button class="btn g" id="bPuter" style="width:auto;padding:0 16px">Get my Puter token</button></div><p class="hint" id="puterSt"></p>
 <p class="hint">More than one key per engine is fine. When one is rate-limited, the next one takes over, then the next engine.</p></div>
+
+<div class="card" data-tab="keys" id="puterCard"><div class="ct">Puter</div>
+<p class="hint" id="puterSt"></p>
+<label class="lb" for="puterTok">Puter auth token</label>
+<input type="password" id="puterTok" placeholder="Paste your Puter token here" autocomplete="off" autocapitalize="off" spellcheck="false">
+<div class="btnrow" style="margin-top:8px"><button class="btn" id="puterSave">Save token</button><button class="btn g" id="puterCheck">Check</button><button class="btn g danger" id="puterRm">Remove</button></div>
+<p class="hint">Token only. No email, no sign-in window, nothing opens in a browser. Ember calls Puter's own endpoint (api.puter.com) with this token.</p></div>
 
 <div class="card" data-tab="keys"><div class="ct">GitHub</div><p class="hint">GitHub now has its own tab: token, repo slots, sync, files and activity.</p><button class="btn g" data-gh-open="home">Open GitHub settings</button></div>
 
@@ -273,6 +281,10 @@
 <p class="hint">The default Android voice is basic. For better ones, install voice data for your language in your phone's text-to-speech settings (Google Speech Services), then pick one here. Voices marked "online" need internet.</p>
 <p class="hint">First read-aloud of a session can take a few seconds while the engine spins up — it's warming in the background on app open now, so it should be instant after that.</p></div>
 
+<div class="card" data-tab="general" id="devToolsCard"><div class="ct">Device tools</div>
+<p class="hint">Wi-Fi, storage and RAM, uptime, battery and the privacy page. Read from this phone and shown only here.</p>
+<button class="btn" id="bDevOpen">📟 Open device tools</button></div>
+
 <div class="card" data-tab="general"><div class="ct">Look</div>
 <div class="cr"><span>Show which engine answered</span><div class="sw" id="swEng"></div></div>
 <div class="chips" id="acc"></div></div>
@@ -337,7 +349,7 @@
 <div class="btnrow"><button class="btn" id="bExp">Export backup</button><button class="btn g" id="bImp">Import backup</button></div>
 <input type="file" id="fImp" accept="application/json,.json" hidden>
 <button class="btn g danger" id="bWipe" style="margin-top:10px">Delete everything</button>
-<p class="hint" id="ver">Ember V1.9.77 · Spacious Black</p></div>
+<p class="hint" id="ver">Ember V1.9.86 · Spacious Black</p></div>
 </div></section>
 
 <section id="react" class="sheet"><div class="sh"><b>Reasoning</b><button class="hb" id="bRx" aria-label="Close reasoning">✕</button></div>
@@ -616,5 +628,5 @@
   document.addEventListener('ember-player-state', syncTrack);
 })();
 </script>
-<script src="ember_v79.js"></script><script src="ember_v80.js"></script><script src="ember_v81.js"></script>
+<script src="ember_v79.js"></script><script src="ember_v80.js"></script><script src="ember_v81.js"></script><script src="ember_v83.js"></script><script src="ember_acc.js"></script>
 </body></html>

@@ -387,7 +387,12 @@ const T_INSTALL = { name: 'github_install_runner', description: 'Installs or upd
 const CORE = [T_REPOS, T_SYNC, T_MAP, T_FIND, T_STATUS, T_LIST, T_READ], RUNNER = [T_RUN, T_RUN_STATUS, T_INSTALL];
 const TOOLS = CORE.concat([T_WRITE], RUNNER);
 const hasMine = () => slots().some(s => s.role == 'mine');
+// V1.9.84: the GitHub pill by the chat box. OFF (default) = no GitHub tools reach the AI; ON = read, and write where a slot allows it.
+const PILL = 'ember_gh_pill';
+const pillOn = () => { try { return localStorage.getItem(PILL) == '1'; } catch (e) { return false; } };
+const setPill = v => { try { localStorage.setItem(PILL, v ? '1' : '0'); } catch (e) { /* storage blocked */ } try { window.dispatchEvent(new Event('ember-gh-pill')); } catch (e) { /* no listener */ } return !!v; };
 function toolsFor() {
+  if (!pillOn()) return [];
   const sl = slots(), out = [];
   if (!sl.length && !on()) return out;
   if (!sl.length) return [T_STATUS, T_REPOS];
@@ -681,6 +686,7 @@ function slotLine(s, i, short) {
 }
 function stateBlock() {
   const sl = slots(), c = cfg();
+  if (!pillOn()) return 'GITHUB PILL is OFF: your GitHub tools are locked for this chat. If he asks you to read or change a repo, tell him to tap the GitHub pill by the message box first. Do not pretend to have looked.';
   const rf = refs().length ? 'LINKED REFERENCE REPOS (read-only, no clone needed): ' + refs().join(', ') + '. Use repo_overview first, then repo_list_files / repo_read_file' + (on() ? ' / repo_search' : '') + ' to study how they do something, then write your own version from what you learned. If repo_search returns a list of files, you MUST use repo_read_file to read the most relevant file before answering, using the path exactly as returned. Never write code based on assumptions. ' : '';
   // V1.9.80: Ember always knows the GitHub Hub exists, even before a token or a repo slot is saved (before this it was told nothing)
   const FEAT = 'GITHUB HUB (a feature built into this app, you can explain it): Settings > GitHub tab holds a Classic token, up to ' + MAX_SLOTS + ' repo slots (mine = read+write, reference = read-only), manual or automatic sync, a live feed, a files browser and an activity log; a cloud runner is optional. Once repos are synced you read them with github_repo_map, github_find, github_list_files and github_read_file. ';
@@ -705,6 +711,7 @@ const setRefs = a => { const keep = slots().filter(s => s.role == 'mine'); setSl
 
 sched();
 window.EmberGithub = {
+  pill: { get: pillOn, set: setPill },
   TOOLS, REF_TOOLS, toolsFor, dispatch, setIntent, stateBlock, on, repo, refs, addRef, paint: () => {}, setToken, setRepo, setRefs, RUNNER_YML,
   // hub
   slots, cfg, setCfg, addSlot, updateSlot, removeSlot, clearCache, verify, myRepos, syncAll, syncSlot, cancelSync, syncState, due, sub, feed: () => FEED.slice(), logs: logAll, digestOf, digests, tree: loadTree, files: loadFiles, readSlot, status: github_status, runnerInstalled, installRunner, branchOf,

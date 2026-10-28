@@ -1,4 +1,7 @@
-// Ember V1.9.24 - ember_create.js: Imagine (make images) and Notes (quick notes Ember can read). Loads after ember_extras.js.
+// Ember V1.9.84 - ember_create.js: Notes (quick notes Ember can read) and the image route behind + > Create image. Loads after ember_extras.js.
+// V1.9.84: Imagine left the left menu. + > Create image routes the next message to Pollinations (flux, no chat engine) and answers with an HTML artifact that carries the picture and the thought process.
+// V1.9.85: the Notes button left the left menu. It is now the first row in Browser > Documents (#dcNotesOpen) and opens this same Notes sheet.
+// Earlier: Imagine (make images) and Notes.
 //   Imagine: your prompt goes to image.pollinations.ai (free, third party, no key) only when you tap "Make it". The image is shown in the app.
 //   Notes:   stored in the Documents library on this phone (so they also show in Browser > Documents, and Ember's document tools can search and read them).
 'use strict';
@@ -21,12 +24,13 @@ const shareText = async (title, text) => {
 
 // ---------- the sheet ----------
 const sheet = document.createElement('section'); sheet.id = 'xcreate'; sheet.className = 'sheet';
-sheet.innerHTML = '<div class="sh"><b>Imagine and Notes</b><button class="hb" id="cX" aria-label="Close">✕</button></div>' +
+sheet.innerHTML = '<div class="sh"><b>Notes</b><button class="hb" id="cX" aria-label="Close">✕</button></div>' +
   '<div class="stabs" id="cTabs"><button class="stab on" data-ct="imagine">🎨 Imagine</button><button class="stab" data-ct="notes">📝 Notes</button></div>' +
   '<div class="sb" id="cBody"></div>';
 document.getElementById('app').parentNode.appendChild(sheet);
-const body = $('cBody'); let cur = 'imagine', noteId = '';
+const body = $('cBody'); let cur = 'notes', noteId = '';
 function openTab(t) {
+  t = 'notes'; // V1.9.84: Imagine moved to + > Create image
   if (cur == 'notes' && t != 'notes') flushNote();
   cur = t; sheet.querySelectorAll('#cTabs .stab').forEach(b => b.classList.toggle('on', b.dataset.ct == t));
   sheet.classList.add('show'); if (t == 'imagine') paintImagine(); else { noteId = ''; paintNotes(); }
@@ -115,7 +119,7 @@ async function paintEditor() {
     await flushNote(); const B = window.EmberBridge; if (!B) { toast('Chat not ready'); return; }
     const t = $('eB').value.trim(); if (!t) { toast('Write something first'); return; }
     const ttl = $('eT').value.trim() || 'My note';
-    if (await B.askAbout({ chip: '📝 ' + ttl + ' · ' + t.length + ' chars', ctx: t.slice(0, 24000), q: $('eQ').value, title: ttl })) sheet.classList.remove('show');
+    if (await B.askAbout({ chip: '📝 ' + ttl + ' · ' + t.length + ' chars', ctx: t.slice(0, 24000), q: $('eQ').value, title: ttl })) { sheet.classList.remove('show'); if (window.EmberBrowser) window.EmberBrowser.close(); }
   };
   $('eBack').onclick = async () => { await flushNote(); noteId = ''; paintNotes(); };
   $('eDel').onclick = async () => { if (!confirm('Delete this note?')) return; clearTimeout(saveT); dirty = false; await D().remove(noteId); noteId = ''; toast('Deleted'); paintNotes(); };
@@ -142,16 +146,62 @@ log.addEventListener('click', async e => {
   toast(r.error ? r.error : 'Saved to Notes');
 });
 
-// ---------- Menu entries ----------
-const anchor = $('bSitesOpen');
-if (anchor && anchor.parentNode) {
-  [['🎨', 'Imagine', 'Make an image from a prompt', 'imagine'], ['📝', 'Notes', 'Quick notes Ember can read', 'notes']].forEach(r => {
-    const b = document.createElement('button'); b.className = 'rcbtn'; b.setAttribute('aria-label', r[1]);
-    b.innerHTML = '<span class="rci">' + r[0] + '</span><span class="rct"><b>' + r[1] + '</b><small>' + r[2] + '</small></span><span class="chev">›</span>';
-    b.onclick = () => { const x = $('bDx'); if (x) x.click(); openTab(r[3]); };
-    anchor.parentNode.appendChild(b);
+// ---------- Notes entry: Browser > Documents (it used to be a button in the left menu) ----------
+const notesBtn = $('dcNotesOpen');
+if (notesBtn) notesBtn.onclick = () => openTab('notes');
+decorate();
+
+// ---------- V1.9.84: + > Create image. The next message goes to Pollinations, never to a chat engine. ----------
+// Ember answers with an HTML artifact: the picture on top, then her thought process (what she read, what she picked, how long it took).
+const KW = [
+  [/\b(photo|photograph|photoreal\w*|realistic|dslr|portrait photo)\b/i, 'Photo'], [/\b(anime|manga)\b/i, 'Anime'], [/\b(neon|cyberpunk|synthwave)\b/i, 'Neon'],
+  [/\b(pixel art|pixel|8-bit|16-bit)\b/i, 'Pixel'], [/\b(sketch|pencil|hand drawn|line drawing)\b/i, 'Sketch']
+];
+const pickStyle = p => { for (const [rx, k] of KW) if (rx.test(p)) return k; return 'None'; };
+const pickSize = p => /\b(portrait|vertical|tall|poster|phone wallpaper)\b/i.test(p) ? 'Portrait' : /\b(landscape|wide|banner|widescreen|horizontal|desktop wallpaper|cover)\b/i.test(p) ? 'Landscape' : 'Square';
+const cleanAsk = p => String(p || '').replace(/^\s*(please\s+)?(can you\s+)?(make|create|draw|generate|imagine|paint|design)\s+(me\s+)?(an?\s+|the\s+)?(image|picture|pic|photo|drawing|illustration)?\s*(of|showing|with|:)?\s*/i, '').replace(/^["'\s]+|["'\s]+$/g, '').trim() || String(p || '').trim();
+function loadImage(url, ms) {
+  return new Promise(res => {
+    const im = new Image(); let done = false; const fin = v => { if (done) return; done = true; clearTimeout(tm); im.onload = im.onerror = null; res(v); };
+    const tm = setTimeout(() => fin({ ok: false, why: 'timeout' }), ms || 90000);
+    im.onload = () => fin({ ok: true, w: im.naturalWidth, h: im.naturalHeight }); im.onerror = () => fin({ ok: false, why: 'error' });
+    im.src = url;
   });
 }
-decorate();
-window.EmberCreate = { open: openTab };
+function imageArtifact(d) {
+  const row = (k, v) => '<tr><td>' + esc(k) + '</td><td>' + esc(v) + '</td></tr>';
+  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc(d.title) + '</title><style>' +
+    'html,body{margin:0;background:#070708;color:#ececee;font:15px/1.55 system-ui,sans-serif}main{max-width:720px;margin:0 auto;padding:16px 16px 28px}' +
+    'img{display:block;width:100%;height:auto;border-radius:16px;border:1px solid #2a2a30;background:#111}h1{font-size:18px;margin:16px 0 4px}h2{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#7fb2ff;margin:22px 0 8px}' +
+    'p{margin:0 0 8px;color:#bdbdc4}ol{margin:0;padding:0;list-style:none}li{display:flex;gap:10px;padding:9px 0;border-top:1px solid #1d1d22}li:first-child{border-top:0}li i{flex:0 0 22px;height:22px;border-radius:50%;background:#16233b;color:#7fb2ff;font:700 12px/22px system-ui;text-align:center;font-style:normal}' +
+    'li span{flex:1}li small{color:#8d8d94;white-space:nowrap}table{width:100%;border-collapse:collapse}td{padding:7px 0;border-top:1px solid #1d1d22;vertical-align:top}td:first-child{color:#8d8d94;width:36%}code{display:block;white-space:pre-wrap;word-break:break-word;background:#101013;border:1px solid #26262c;border-radius:12px;padding:10px 12px;color:#ffb27a;font:13px/1.5 ui-monospace,monospace}' +
+    '</style></head><body><main><img src="' + esc(d.url) + '" alt="' + esc(d.ask) + '"><h1>' + esc(d.ask.slice(0, 90)) + '</h1><p>Made with Pollinations (flux), no chat engine involved.</p>' +
+    '<h2>Thought process</h2><ol>' + d.steps.map((s, i) => '<li><i>' + (i + 1) + '</i><span>' + esc(s[0]) + '</span><small>' + esc(s[1]) + '</small></li>').join('') + '</ol>' +
+    '<h2>Prompt sent</h2><code>' + esc(d.full) + '</code><h2>Settings</h2><table>' + row('Service', 'image.pollinations.ai') + row('Model', 'flux') + row('Style', d.style) + row('Size', d.size + ' · ' + d.w + ' x ' + d.h) + row('Seed', String(d.seed)) + row('Made in', d.secs + ' s') + '</table></main></body></html>';
+}
+async function route(prompt, hk) {
+  hk = hk || {};
+  const step = (ic, text, key) => { try { if (hk.step) hk.step(ic, text, key); } catch (e) { /* the card is a view only */ } };
+  const raw = String(prompt || '').trim().slice(0, 600), ask = cleanAsk(raw).slice(0, 400);
+  if (!ask) return { ok: false, error: 'Describe the picture first.' };
+  const t0 = Date.now(), steps = [], lap = () => ((Date.now() - t0) / 1000).toFixed(1) + 's';
+  const words = (ask.match(/\S+/g) || []).length;
+  step('msg', 'Reading your picture request · ' + words + ' word' + (words == 1 ? '' : 's'), 'im1'); steps.push(['Read your request (' + words + ' word' + (words == 1 ? '' : 's') + ')', lap()]);
+  const style = pickStyle(raw), size = pickSize(raw), [w, h] = SIZES[size] || SIZES.Square;
+  step('files', 'Style: ' + (style == 'None' ? 'as written' : style) + ' · Size: ' + size + ' (' + w + ' x ' + h + ')', 'im2'); steps.push(['Picked style ' + (style == 'None' ? 'as written' : style) + ' and size ' + size, lap()]);
+  const full = ask + (STYLES[style] || ''), seed = Math.floor(Math.random() * 1e6), url = urlFor(full, w, h, seed);
+  step('globe', 'Routing to Pollinations (flux). No chat engine used', 'im3'); steps.push(['Routed to Pollinations (flux), seed ' + seed, lap()]);
+  step('bolt', 'Waiting for Pollinations to draw it…', 'im4');
+  const r = await loadImage(url, 90000);
+  if (!r.ok) { step('bolt', r.why == 'timeout' ? 'Pollinations took too long' : 'Pollinations did not answer', 'im4'); return { ok: false, error: r.why == 'timeout' ? 'Pollinations took too long (it is free and sometimes busy). Turn Create image on and send again in a moment.' : 'Pollinations did not answer. Check the connection, then turn Create image on and send again.' }; }
+  step('bolt', 'Drawn in ' + lap(), 'im4'); steps.push(['Pollinations drew it', lap()]);
+  steps.push(['Wrapped it as an artifact for you to open', lap()]); step('files', 'Wrapping the picture as an artifact', 'im5');
+  const title = ('Image - ' + ask.replace(/[^\w\s-]/g, '').trim().slice(0, 38).trim().replace(/\s+/g, ' ') + '.html').replace(/"/g, '');
+  const html = imageArtifact({ title, ask, full, style: style == 'None' ? 'As written' : style, size, w, h, seed, url, steps, secs: ((Date.now() - t0) / 1000).toFixed(1) });
+  const hist = lsGet(HK, []); hist.unshift({ p: ask, seed, s: size, ts: Date.now() }); hist.length = Math.min(hist.length, 30); lsSet(HK, hist);
+  const intro = 'Done. Open the artifact for the picture and how I made it. Say what to change and I will draw another.';
+  return { ok: true, url, text: intro + '\n<artifact type="html" title="' + title + '">\n' + html + '\n</artifact>' };
+}
+
+window.EmberCreate = { open: openTab, route };
 })();

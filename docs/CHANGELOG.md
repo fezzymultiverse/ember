@@ -1,3 +1,24 @@
+## V1.9.86
+- Download card ("Saved to your phone") is no longer clipped to its header row: the chat column used to squeeze it. It now keeps its full height (file name, bar, status).
+- A finished download gets a green Play button, in the chat card and in the Music > Get jobs list. It finds the track in the library (scanning Music/Ember if it is not listed yet) and plays it in Ember's player.
+
+## V1.9.85
+- Left menu: the tabs now read Prompts, Chats, Projects (Prompts first, Chats second).
+- Left menu: Usage removed. It is now a Usage card in Settings > General (replies per engine, today and this week).
+- Left menu: Notes removed. Notes is now the first row in Browser > Documents and opens the same Notes sheet.
+- Settings > Keys > Provider names: the "tap to rename" line, the rename boxes and Reset names are gone. The card is just the engine names in padded rows. Names saved by the old rename boxes are cleared so every engine shows its real name.
+
+## V1.9.84
+- Settings is a vertical accordion: 7 slim rows with longer names and a one-line description each; tap one to open its cards under it (one open at a time, plain Settings opens folded). Header: close button, "Ember" (the AI's own name) over "Settings", the app icon on the right edge. Neutral grey controls, thin hairlines, no coloured top bars, slimmer buttons and fields. The old tab strip is hidden but still drives the sections, so every shortcut into Settings still lands on the right one.
+- Reply actions: Save, Save .md and Note removed. Copy is grey, Again is orange.
+- GitHub pill by the message box: off by default; on = Ember's GitHub tools (read, and write where a repo slot allows) reach the AI.
+- Blue accent #3d8bff on switches, text fields, the composer focus ring, chips and selections.
+- Puter has a real token slot (Settings > Keys > Puter): paste, Save token, Check, Remove. No email, no sign-in window, nothing opens in a browser.
+- Settings > Keys > Provider names: the name, a "Tap the box below to rename" line and the box each sit on their own line, so nothing is squeezed or cut off.
+- Left menu: Imagine removed. "+" > Create image routes the next message to Pollinations (flux, no chat engine) and Ember answers with an HTML artifact: the picture, her thought process (live in the thinking card and saved in the artifact), the prompt sent and the settings. One-shot: it switches itself off after the picture.
+- "+" menu: Paste, Copy and Device tools removed (Device tools now live in Settings > General). New Think group in this order: Reasoning, Go deeper, Learn, Spark.
+- Modes pill by the box (shows the current mode): Chill, Sharp and Deep sit inside it.
+
 ## V1.9.83
 - Add-ons sheet: 25 more tiles (46 total) across Create, Research, Connect, Automate, Modes. New tile kind Runs for one-tap actions (Spark, Go deeper).
 

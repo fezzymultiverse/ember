@@ -1,4 +1,5 @@
 // Ember V1.9.81 - ember_v81.js: the "More add-ons" sheet (Manus-style) opened from the "+" menu.
+// V1.9.84: 39 tiles (Paste and Device tools left; Imagine is now Create image).
 // V1.9.83: 41 tiles. Every tile is one of three honest kinds:
 //   Opens   - opens a screen Ember already has (Imagine, Notes, Browser, Documents, Learn, Graph, GitHub, Termux, Projects, Saved/Share/Usage)
 //   Mode    - a switch that stays on for the chat (Web Search, Reasoning, Code Mode, Device Access) through EmberPlus
@@ -31,7 +32,7 @@
   // ---------- the tiles ----------
   // kind: open | mode | starter.  mode tiles read their state live from EmberPlus.
   const TILES = [
-    { id: 'imagine', cat: 'create', icon: '🎨', tint: 'rgba(255,106,0,.18)', title: 'Imagine', sub: 'Make an image from a prompt', kind: 'open', run: () => open(window.EmberCreate && (window.EmberCreate.open('imagine'), true)) },
+    { id: 'imagine', cat: 'create', icon: '🎨', tint: 'rgba(255,106,0,.18)', title: 'Create image', sub: 'Next message becomes a picture (Pollinations)', kind: 'act', run: () => { const p = EP(); if (!p || !p._set) return toast('Image mode is not available on this screen.'); p._set('image', true); const i = $('inp'); if (i) { try { i.focus(); } catch (e) { /* no focus */ } } toast('🎨 Describe the picture and send it'); } },
     { id: 'notes', cat: 'create', icon: '📝', tint: 'rgba(255,180,32,.16)', title: 'Notes', sub: 'Quick notes Ember can read', kind: 'open', run: () => open(window.EmberCreate && (window.EmberCreate.open('notes'), true)) },
     { id: 'pdf', cat: 'create', icon: '📄', tint: 'rgba(255,59,48,.16)', title: 'Make a PDF', sub: 'Report or guide as a real PDF file', kind: 'starter', run: () => starter('Write this as a PDF document (use headings and short paragraphs): ') },
     { id: 'page', cat: 'create', icon: '🌐', tint: 'rgba(59,158,255,.16)', title: 'Build a page', sub: 'Single-file HTML page you can preview', kind: 'starter', run: () => starter('Build a single-file HTML page, mobile first, for: ') },
@@ -46,7 +47,6 @@
     { id: 'docs', cat: 'connect', icon: '📎', tint: 'rgba(255,106,0,.18)', title: 'Documents', sub: 'Attach a file or note', kind: 'open', run: () => open(click('bDocsQuick')) },
     { id: 'github', cat: 'connect', icon: '🐙', tint: 'rgba(255,255,255,.10)', title: 'GitHub Hub', sub: 'Repo slots, sync, files, activity', kind: 'open', run: () => { open(click('bSet')); later(() => { const t = document.querySelector('#stabs [data-st="github"]'); if (t) t.click(); }, 160); } },
     { id: 'termux', cat: 'connect', icon: '⌨️', tint: 'rgba(46,232,107,.15)', title: 'Termux', sub: 'Run commands from the chat', kind: 'open', run: () => open(click('bTermux')) },
-    { id: 'device', cat: 'connect', icon: '📟', tint: 'rgba(255,180,32,.16)', title: 'Device tools', sub: 'Wi-Fi, storage, RAM, battery', kind: 'open', run: () => open(click('bDevice')) },
 
     { id: 'timer', cat: 'automate', icon: '⏰', tint: 'rgba(255,180,32,.16)', title: 'Timer / Reminder', sub: 'Ember sets it while the app runs', kind: 'starter', run: () => starter('Remind me in 20 minutes to ') },
     { id: 'projects', cat: 'automate', icon: '📁', tint: 'rgba(255,106,0,.18)', title: 'Projects', sub: 'Keep a goal and repo in every message', kind: 'open', run: () => { open(click('bHist')); later(() => { const t = document.querySelector('.dtab[data-d="projects"]'); if (t) t.click(); }, 160); } },
@@ -73,7 +73,6 @@
     { id: 'perms', cat: 'connect', icon: '🛡', tint: 'rgba(46,232,107,.15)', title: 'Permissions', sub: 'Notifications, mic, battery, files', kind: 'open', run: () => { open(click('bSet')); later(() => { const t = document.querySelector('#stabs [data-st="permissions"]'); if (t) t.click(); }, 160); } },
     { id: 'upload', cat: 'connect', icon: '📤', tint: 'rgba(255,106,0,.18)', title: 'Upload a file', sub: 'Image, text or audio into the box', kind: 'open', run: () => open(EP() && EP()._fire && (EP()._fire('upload'), true)) },
     { id: 'camera', cat: 'connect', icon: '📸', tint: 'rgba(255,59,48,.16)', title: 'Camera / Vision', sub: 'Snap a photo, read the text', kind: 'open', run: () => open(EP() && EP()._fire && (EP()._fire('camera'), true)) },
-    { id: 'paste', cat: 'connect', icon: '📋', tint: 'rgba(255,255,255,.10)', title: 'Paste', sub: 'Insert clipboard text', kind: 'open', run: () => open(click('bPasteIn')) },
 
     { id: 'plan', cat: 'automate', icon: '🗓', tint: 'rgba(46,232,107,.15)', title: 'Plan my day', sub: 'Time-boxed plan from your list', kind: 'starter', run: () => starter('Turn this into a time-boxed plan for today, most important first, with one thing to skip if I run out of time: ') },
     { id: 'checklist', cat: 'automate', icon: '☑️', tint: 'rgba(59,158,255,.16)', title: 'Checklist', sub: 'Break a goal into steps', kind: 'starter', run: () => starter('Break this goal into a short checklist of concrete steps, in order: ') },
