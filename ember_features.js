@@ -8,7 +8,7 @@
  const full={gemini:'Google Gemini',mistral:'Mistral AI',anthropic:'Anthropic Claude',puter:'Puter',cohere:'Cohere',groq:'Groq',openrouter:'OpenRouter',plugsky:'Plugsky AI',stability:'Stability AI'};
  // Embedded service monograms, no tracking requests or unlicensed external logo assets.
  const PROVIDER_LOGOS={groq:'groq.svg',mistral:'mistral.svg',gemini:'gemini.svg',cohere:'cohere.svg',anthropic:'anthropic.svg',openrouter:'openrouter.svg',stability:'stability.svg',puter:'puter.webp',plugsky:'plugsky.ico'};
- W.EmberProviderBadge=id=>{const f=PROVIDER_LOGOS[id];return f?'<span class="ef-badge ef-logo ef-play" aria-hidden="true"><img src="provider-icons/play/'+id+'.png" alt="" loading="lazy" onerror="this.onerror=null;this.src=\'provider-icons/'+f+'\';this.parentNode.className=\'ef-badge ef-logo\'"></span>':'<span class="ef-badge" aria-hidden="true">'+esc(initials[id]||id.slice(0,2).toUpperCase())+'</span>';};
+ W.EmberProviderBadge=id=>{const f=PROVIDER_LOGOS[id];return f?'<span class="ef-badge ef-logo" aria-hidden="true"><img src="provider-icons/'+f+'" alt="" loading="lazy"></span>':'<span class="ef-badge" aria-hidden="true">'+esc(initials[id]||id.slice(0,2).toUpperCase())+'</span>';};
  function open(){ $('bSet')?.click();document.querySelector('#stabs [data-st="features"]')?.click();setTimeout(()=>$('efRouting')?.scrollIntoView({block:'start',behavior:'smooth'}),100);}
  function switchHTML(id,label,on){return'<div class="ef-switch-row"><span>'+esc(label)+'</span><button type="button" class="ef-switch '+(on?'on':'')+'" id="'+id+'" role="switch" aria-checked="'+!!on+'">'+(on?'ON':'OFF')+'</button></div>';}
  function setSwitch(b,on){b.classList.toggle('on',!!on);b.setAttribute('aria-checked',String(!!on));b.textContent=on?'ON':'OFF';}
