@@ -49,7 +49,7 @@ const shown = () => TL._live().lines.filter(l => l.rv).length;
   // Spinner style: status follows revealed lines, first paint is the spinner, details expand in place.
   TL.setStyle('claude'); TL.begin();
   assert(els.typ.innerHTML.includes('et-spinner') && els.typ.innerHTML.includes('et-body') && els.typ.innerHTML.includes('et-drop-hint'));
-  assert(els.typ.innerHTML.includes('Preparing your response'));
+  assert(els.typ.innerHTML.includes('Thinking\u2026'));
   TL.note('Step A'); TL.note('Step B');
   await sleep(40);
   assert.strictEqual(TL._live().lines.filter(l => l.rv).length, 1);

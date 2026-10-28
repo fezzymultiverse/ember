@@ -70,49 +70,22 @@ function paintList() {
 function paintJobs() {
   const a = [...jobs.values()].slice(-8).reverse();
   if (!a.length) { $('gtJobs').innerHTML = '<p class="hint">Nothing downloading.</p>'; return; }
-
   $('gtJobs').innerHTML = a.map(j => {
-    const pct    = j.state === 'done' ? 100 : Math.max(0, Math.min(100, +j.pct || 0));
-    const failed = j.state === 'failed';
-    const done   = j.state === 'done';
-
-    // Status label
-    let statusLbl;
-    if (done)         statusLbl = '<span class="gjst-ok">✓ Saved to Music/Ember</span>';
-    else if (failed)  statusLbl = '<span class="gjst-bad">✗ Failed' + (j.detail ? ': ' + esc(String(j.detail).slice(0, 90)) : '') + '</span>';
-    else if (pct > 0) statusLbl = pct + '% complete';
-    else              statusLbl = 'Starting…';
-
-    // Step timeline
-    const stepsHtml = DL_STEPS.map((step, si) => {
-      const ss  = stepSt(step, pct, j.state);
-      const ico = ss === 'done' ? '✓' : ss === 'err' ? '✗' : ss === 'active' ? step.ico : '○';
-      const pctBadge = (ss === 'active' && step.id === 'dl' && pct > step.from)
-        ? ' <span class="gts-pct">' + pct + '%</span>' : '';
-      const conn = si < DL_STEPS.length - 1
-        ? '<div class="gts-conn gts-conn-' + ss + '"></div>' : '';
-      return '<div class="gts-wrap">'
-        + '<div class="gts gts-' + ss + '">'
-          + '<div class="gts-ico' + (ss === 'active' ? ' gts-ico-spin' : '') + '">' + ico + '</div>'
-          + '<div class="gts-lbl">' + step.lbl + pctBadge + '</div>'
-        + '</div>'
-        + conn
-        + '</div>';
-    }).join('');
-
-    // Progress bar only while running
-    const bar = (!done && !failed)
-      ? '<div class="gtj-bar"><div class="gtj-bar-fill" style="width:' + pct + '%"></div></div>'
-      : '';
-
-    return '<div class="gtj gtj-' + esc(j.state) + '">'
-      + '<div class="gtj-top">'
-        + '<div class="gtj-title">' + esc(j.title || 'Fetching track info') + '</div>'
-        + '<div class="gtj-sub">' + statusLbl + '</div>'
-      + '</div>'
-      + '<div class="gtj-timeline">' + stepsHtml + '</div>'
-      + bar
-      + '</div>';
+    const done = j.state === 'done', failed = j.state === 'failed';
+    const pct = done ? 100 : Math.max(0, Math.min(100, +j.pct || 0));
+    const cur = DL_STEPS.findIndex(st => pct < st.to);
+    const idx = done ? DL_STEPS.length : (cur < 0 ? DL_STEPS.length - 1 : cur);
+    const chip = done ? 'Saved' : failed ? 'Failed' : pct > 0 ? pct + '%' : 'Starting';
+    const meta = done ? 'Saved to Music/Ember' : failed ? 'Stopped at step ' + (idx + 1) + ' of ' + DL_STEPS.length + ': ' + DL_STEPS[idx].lbl : 'Step ' + (idx + 1) + ' of ' + DL_STEPS.length + ': ' + DL_STEPS[idx].lbl;
+    const seg = DL_STEPS.map((st, si) => '<i class="dj-s dj-s-' + stepSt(st, pct, j.state) + '"></i>').join('');
+    const list = DL_STEPS.map(st => { const ss = stepSt(st, pct, j.state); return '<li class="dj-l dj-l-' + ss + '"><span class="dj-li">' + (ss === 'done' ? '✓' : ss === 'err' ? '✗' : ss === 'active' ? st.ico : '○') + '</span><span>' + esc(st.lbl) + '</span></li>'; }).join('');
+    const eng = j.engine ? '<span class="dj-eng">' + esc(j.engine) + '</span>' : '';
+    const err = failed && j.detail ? '<div class="dj-err">' + esc(String(j.detail).slice(0, 160)) + '</div>' : '';
+    return '<div class="dj dj-' + esc(j.state) + '"><div class="dj-head"><div class="dj-title">' + esc(j.title || 'Fetching track info') + '</div><span class="dj-chip">' + chip + '</span></div>'
+      + '<div class="dj-meta">' + eng + '<span>' + esc(meta) + '</span></div>' + err
+      + '<div class="dj-seg">' + seg + '</div>'
+      + (!done && !failed ? '<div class="dj-bar"><i style="width:' + pct + '%"></i></div>' : '')
+      + '<details class="dj-more"><summary>All steps</summary><ul>' + list + '</ul></details></div>';
   }).join('');
 }
 async function perm() { try { if (window.EmberNative && window.EmberNative.ensureNotifyPermission) await window.EmberNative.ensureNotifyPermission(); } catch (e) { /* notifications are optional */ } }
@@ -169,7 +142,7 @@ $('gtAll').onclick = async () => {
 let scanT = null;
 window.addEventListener('ember-dl', e => {
   const j = e.detail || {}; if (!j.id) return;
-  jobs.set(j.id, { id: j.id, title: j.title, state: j.state, pct: j.pct, detail: j.detail }); paintJobs();
+  jobs.set(j.id, { id: j.id, title: j.title, state: j.state, pct: j.pct, detail: j.detail, engine: j.engine || (jobs.get(j.id) || {}).engine || '' }); paintJobs();
 });
 window.addEventListener('ember-dl-final', e => {
   const d = e.detail || {}; if (d.state !== 'done') { if (d.state === 'failed') toast('A download failed'); return; }

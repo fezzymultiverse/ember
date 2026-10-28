@@ -876,7 +876,7 @@ function renderKeys() {
 $('kList').addEventListener('click', e => { const b = e.target.closest('[data-fold]'); if (!b) return; toggleFold(b.dataset.fold); renderKeys(); });
 
 // ---------- V1.6.1: Get Key buttons ----------
-const KEY_LINKS = { groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', anthropic: 'https://console.anthropic.com/settings/keys' };
+const KEY_LINKS = { groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', anthropic: 'https://console.anthropic.com/settings/keys', puter: 'https://puter.com/dashboard#account' };
 const SCRAPE_LINKS = { firecrawl: 'https://www.firecrawl.dev/app/api-keys', browserless: 'https://www.browserless.io/', scraperapi: 'https://www.scraperapi.com/', scraperbee: 'https://app.scrapingbee.com/account/manage', zenrows: 'https://app.zenrows.com/builder', tavily: 'https://app.tavily.com/home', serpapi: 'https://serpapi.com/manage-api-key', brightdata: 'https://brightdata.com/cp', sting: '', octoparse: 'https://www.octoparse.com/' };
 function paintGetKeyRow(el, links) { if (!el) return; el.innerHTML = Object.keys(links).filter(k => links[k]).map(k => '<button class="btn g" data-link="' + esc(links[k]) + '" style="width:auto;padding:7px 12px;font-size:12px">' + (Prov.CFG[k] ? Prov.CFG[k].name : (window.EmberScraper && window.EmberScraper.LABEL[k]) || k) + ' ↗</button>').join(''); }
 document.addEventListener('click', e => { const b = e.target.closest('[data-link]'); if (b) window.open(b.dataset.link, '_blank', 'noopener'); });

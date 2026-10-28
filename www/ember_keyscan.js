@@ -17,7 +17,7 @@
 // is rejected whole, never sliced) are never keys. Key VALUES never leave this module except in the `keys` / `probes` it returns to its caller.
 'use strict';
 (() => {
-const MAX_TEXT = 400000, MAX_KEYS = 24, MAX_TOK = 128, MAX_STRONG = 200;
+const MAX_TEXT = 400000, MAX_KEYS = 24, MAX_TOK = 128, MAX_STRONG = 1600;
 const HEX = n => new RegExp('^[0-9a-f]{' + n + '}$', 'i');
 const GENERIC = /^[A-Za-z0-9_-]{16,128}$/;
 
@@ -30,6 +30,7 @@ const CAT = {
   mistral:     { kind: 'chat',   label: 'Mistral',      rx: 'mistral', shape: /^[A-Za-z0-9]{32}$/, strict: true, noHex: true },
   cohere:      { kind: 'chat',   label: 'Cohere',       rx: 'cohere', weak: 'co(?=[_-](?:api[_-]?)?(?:key|token))', shape: /^[A-Za-z0-9]{40}$/, strict: true, noHex: true },
   anthropic:   { kind: 'chat',   label: 'Claude',       rx: 'anthropic|claude', prefixed: true },
+  puter:       { kind: 'chat',   label: 'Puter',        rx: 'puter', prefixed: true },
   firecrawl:   { kind: 'scrape', label: 'Firecrawl',    rx: 'firecrawl', prefixed: true },
   browserless: { kind: 'scrape', label: 'Browserless',  rx: 'browserless', shape: /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[A-Za-z0-9]{20,64})$/i },
   scraperapi:  { kind: 'scrape', label: 'ScraperAPI',   rx: 'scraper[\\s_-]?api', shape: HEX(32) },
@@ -60,6 +61,7 @@ const STRONG = [
   ['tavily', new RegExp(B + 'tvly-[A-Za-z0-9_-]{16,}', 'g')],
   ['octoparse', new RegExp(B + 'op_sk_[A-Za-z0-9_-]{8,}', 'g')],
   ['anthropic', new RegExp(B + 'sk-ant-[A-Za-z0-9_-]{20,}', 'g')],
+  ['puter', new RegExp(B + 'eyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}', 'g')], // V1.9.80: a Puter auth token is a JWT
   ['easyvoice', new RegExp(B + 'ev_[A-Za-z0-9_-]{12,}', 'g')]
 ];
 // keys of services Ember cannot use: only counted (by service name), never stored

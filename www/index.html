@@ -6,7 +6,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="ember-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="ember_v79.css"><link rel="stylesheet" href="ember_v80.css"><link rel="stylesheet" href="ember_v81.css"><link rel="stylesheet" href="ember_v82.css">
 </head><body>
 <div id="app">
 <header>
@@ -21,7 +21,7 @@
 <div id="fBadge" class="fbadge hidden">Free Mode: no key needed. Replies can be slower.</div>
 <main id="log"></main>
 <div id="empty" class="empty hidden">
-<div class="flame"></div>
+<svg class="ev-hero" viewBox="0 0 512 512" width="84" height="84" role="img" aria-label="Ember"><defs><radialGradient id="evBg" cx="50%" cy="40%" r="75%"><stop offset="0" stop-color="#1c1c1c"/><stop offset="1" stop-color="#000"/></radialGradient><linearGradient id="evFl" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff5a00"/><stop offset=".6" stop-color="#ff8a00"/><stop offset="1" stop-color="#ffb347"/></linearGradient><linearGradient id="evCore" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ffd9a0"/><stop offset="1" stop-color="#fff"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#evBg)"/><circle cx="256" cy="300" r="170" fill="#ff6a00" opacity=".14"/><path d="M256 70c20 58 96 104 96 192 0 62-43 110-96 110s-96-48-96-110c0-38 18-66 40-92 4 28 18 44 34 50-10-58 6-106 22-150z" fill="url(#evFl)"/><path d="M256 232c10 30 52 56 52 104 0 34-23 58-52 58s-52-24-52-58c0-22 10-38 22-52 3 16 11 25 20 28-6-32 2-58 10-80z" fill="url(#evCore)"/><circle cx="256" cy="414" r="6" fill="#ff6a00" opacity=".9"/><circle cx="214" cy="430" r="4" fill="#ff8a00" opacity=".7"/><circle cx="300" cy="426" r="4" fill="#fff" opacity=".6"/></svg>
 <h1 id="eHi">Say anything.</h1>
 <p>No topic needed. I will pick it up and run with it.</p>
 <button class="btn" id="bSpark2">✨ Start something</button>
@@ -177,8 +177,8 @@
 <div id="kList"></div>
 <div class="btnrow"><button class="btn g" id="bCheckAll">Check all</button></div>
 <div class="ct" style="margin-top:14px">Add one by hand</div>
-<div class="btnrow"><select id="kProv"><option value="groq">Groq</option><option value="mistral">Mistral</option><option value="gemini">Gemini</option><option value="cohere">Cohere (Prototype)</option><option value="anthropic">Claude (paid · pin to use)</option></select><input type="password" id="kIn" placeholder="Paste a key" autocomplete="off" spellcheck="false"><button class="btn" id="bKAdd" style="width:auto;padding:0 16px">Add</button></div>
-<div class="btnrow puterrow"><button class="btn g" id="bPuter" style="width:auto;padding:0 16px">Connect Puter (free, no key)</button></div><p class="hint" id="puterSt"></p>
+<div class="btnrow"><select id="kProv"><option value="groq">Groq</option><option value="mistral">Mistral</option><option value="gemini">Gemini</option><option value="cohere">Cohere (Prototype)</option><option value="anthropic">Claude (paid · pin to use)</option><option value="puter">Puter (auth token)</option></select><input type="password" id="kIn" placeholder="Paste a key" autocomplete="off" spellcheck="false"><button class="btn" id="bKAdd" style="width:auto;padding:0 16px">Add</button></div>
+<div class="btnrow puterrow"><button class="btn g" id="bPuter" style="width:auto;padding:0 16px">Get my Puter token</button></div><p class="hint" id="puterSt"></p>
 <p class="hint">More than one key per engine is fine. When one is rate-limited, the next one takes over, then the next engine.</p></div>
 
 <div class="card" data-tab="keys"><div class="ct">GitHub</div><p class="hint">GitHub now has its own tab: token, repo slots, sync, files and activity.</p><button class="btn g" data-gh-open="home">Open GitHub settings</button></div>
@@ -616,4 +616,5 @@
   document.addEventListener('ember-player-state', syncTrack);
 })();
 </script>
+<script src="ember_v79.js"></script><script src="ember_v80.js"></script><script src="ember_v81.js"></script>
 </body></html>

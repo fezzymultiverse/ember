@@ -178,7 +178,7 @@
 
   // Keep both the spinner and status node. Overlapping old/new grid items and rotateX/translateY
   // made the text jump on Android, especially when statuses wrapped to different line counts.
-  const statusOf = () => { const v = vis(), last = v[v.length - 1]; return last ? { t: clip(last.text, 100), bad: !!last.bad } : { t: 'Preparing your response', bad: false }; };
+  const statusOf = () => { const v = vis(), last = v[v.length - 1]; return last ? { t: clip(last.text, 100), bad: !!last.bad } : { t: 'Thinking\u2026', bad: false }; };
   const statusSpan = st => '<span class="et-status' + (st.bad ? ' et-bad' : '') + '" data-s="' + esc(st.t) + '" title="' + esc(st.t) + '">' + esc(st.t) + '</span>';
   function paintSpin(el) {
     if (!el.querySelector) return false;
@@ -448,7 +448,7 @@
   const dlText = d => {
     const title = String(d.title || 'track').replace(/\s+/g, ' ').trim().slice(0, 48), pct = Math.round(+d.pct || 0);
     const state = d.state === 'done' ? 'ok' : d.state === 'failed' ? 'bad' : 'run';
-    return { state, text: state === 'ok' ? 'Saved ' + title + ' to Music/Ember' : state === 'bad' ? 'Download failed: ' + title : 'Downloading ' + title + (pct > 0 ? ' (' + pct + '%)' : ''), pill: state === 'run' ? 'NEWPIPE' : state === 'ok' ? 'SAVED' : 'FAILED', err: state === 'bad' ? String(d.detail || '').slice(0, 140) : '', pct };
+    return { state, text: state === 'ok' ? 'Saved ' + title + ' to Music/Ember' : state === 'bad' ? 'Download failed: ' + title : 'Downloading ' + title + (pct > 0 ? ' (' + pct + '%)' : ''), pill: state === 'run' ? String(d.engine || 'DOWNLOAD').toUpperCase() : state === 'ok' ? 'SAVED' : 'FAILED', err: state === 'bad' ? String(d.detail || '').slice(0, 140) : '', pct };
   };
   function patchSaved(msgs, key, f) { // finished turn: update the saved row in the message AND on screen
     let hit = null;

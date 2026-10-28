@@ -1,6 +1,6 @@
 {
   "name": "ember",
-  "version": "1.9.77",
+  "version": "1.9.83",
   "private": true,
   "license": "UNLICENSED",
   "description": "Ember - a companion to talk to about anything (PWA, APK-ready via Capacitor)",
@@ -14,7 +14,9 @@
     "test:ui-stability": "node tests/v1950-ui-stability-test.js",
     "test:api-audit": "node tests/v1951-api-audit-test.js",
     "test:api-profile": "node tests/v1955-api-profile-test.js",
-    "test:newpipe-direct": "node tests/v1957-newpipe-direct-test.js"
+    "test:newpipe-direct": "node tests/v1957-newpipe-direct-test.js",
+    "test:v1980": "node tests/v1980-puter-key-test.js",
+    "test:v1981": "node tests/v1981-test.js"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",

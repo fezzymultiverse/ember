@@ -41,7 +41,7 @@ function mountNames() {
 // ---- key box: the provider follows the key you paste ----
 function guess(k) {
   k = String(k || '').trim();
-  if (/^gsk_/.test(k)) return 'groq'; if (/^(AIza|AQ\.)/.test(k)) return 'gemini'; if (/^sk-ant-/.test(k)) return 'anthropic';
+  if (/^gsk_/.test(k)) return 'groq'; if (/^(AIza|AQ\.)/.test(k)) return 'gemini'; if (/^sk-ant-/.test(k)) return 'anthropic'; if (/^eyJ[\w-]{8,}\.[\w-]{8,}\.[\w-]{8,}$/.test(k)) return 'puter';
   return '';
 }
 if ($('kIn')) $('kIn').addEventListener('input', () => { const g = guess($('kIn').value), sel = $('kProv'); if (g && sel && sel.value != g) { sel.value = g; toast('Looks like a ' + window.Prov.label(g) + ' key'); } });

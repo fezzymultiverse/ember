@@ -1,3 +1,20 @@
+## V1.9.83
+- Add-ons sheet: 25 more tiles (46 total) across Create, Research, Connect, Automate, Modes. New tile kind Runs for one-tap actions (Spark, Go deeper).
+
+## V1.9.82
+- Settings is more spacious: bigger gaps between cards and rows, roomier tabs, taller inputs, buttons and switch rows, easier-to-read hint text. CSS only.
+
+## V1.9.81
+- Egg on the empty screen = the Ember app icon (inline SVG, breathes slowly). The old orange orb styles no longer apply to it.
+- Flashing blue dot beside Thinking in every thinking style, the live row and the top engine pill; live status text defaults to "Thinking…".
+- "+" menu: new top row More add-ons opens a Manus-style Add-ons sheet (search, categories, Recent, Opens / Mode / Starter tiles). Modes: Web Search, Reasoning, Code Mode, Device Access. Starters: Make a PDF, Build a page, Slide deck, Wide Research, Timer / Reminder.
+
+## V1.9.80
+- Puter: auth token as the key via https://api.puter.com/puterai/openai/v1 (OpenAI-compatible). Removed the puter.js sign-in path. Paste & detect files a bare Puter JWT under Puter; Puter is in the manual provider list; Get-key button opens the Puter dashboard. Chat models only (embedding, image, audio models skipped); no temperature sent.
+- Fixed: pinned Puter said "no Puter key is saved" because the old build never stored a real key.
+- UI: user bubbles compact (text and time on one line); Ember reply actions are one row of equal pills with the time above; left panel rows compact and the Music Console bar is raised, brighter, shows the track and has a play button; composer is one slim dock (chips scroll sideways, modes row hides while the keyboard is open); the empty-state egg is the Ember logo SVG; key groups show "N working" and wrap long text.
+- GitHub: EmberGithub.stateBlock() always describes the GitHub Hub (before: nothing was sent until a token and a slot existed) and persona.js includes it even when no tool set is on.
+
 # Ember V1.9.77
 - Interface pass, Manus-style: calmer black canvas, wider gutters, softer cards, pill buttons, one orange accent. Pure CSS (final layer at the end of style.css), no logic changed.
 - Chat box is black again (an old white-composer rule was winning). Header buttons are an even 38px round set: the Termux icon is no longer squeezed and the engine name is never cut.
