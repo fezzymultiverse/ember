@@ -1,4 +1,4 @@
-// Ember V1.9.100 - ember_v96_ui.js: right-panel refinements.
+// Ember V1.9.101 - ember_v96_ui.js: right-panel refinements.
 // 1) "Ember" title sits on a grid line with 3 flashing blue lights (big to small) sweeping left to right.
 // 2) The Command Centre is pinned as a widget at the top of the right-side Settings panel.
 // 3) Tapping the API-keys section opens a dedicated right sub-panel listing every provider
