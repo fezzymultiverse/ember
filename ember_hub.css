@@ -1,0 +1,105 @@
+/* Ember V1.9.102 - ember_hub.css: the new right-hand side panel. Every selector is prefixed .ehub-/#emberHub so nothing existing is restyled. */
+.ehub,.ehub-backdrop{--h-bg:#0b1019;--h-card:#101825;--h-line:#263245;--h-mut:#9daec4;--h-or:#ff8b40;--h-bl:#66aaff;--h-gr:#52d6a0}
+.ehub-backdrop{position:fixed;inset:0;z-index:199;border:0;padding:0;background:#000a;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.ehub-backdrop[hidden]{display:none}
+.ehub{position:fixed;top:0;right:0;bottom:0;z-index:200;width:min(430px,88vw);height:100dvh;display:flex;flex-direction:column;
+  background:radial-gradient(ellipse at 100% 0,#26334866,transparent 55%),var(--h-bg);color:#edf3fc;
+  font-family:system-ui,-apple-system,Roboto,sans-serif;border-left:1px solid #344257;box-shadow:-18px 0 65px #000a;
+  transform:translateX(105%);visibility:hidden;pointer-events:none;transition:transform .24s ease,visibility .24s ease;
+  padding-top:env(safe-area-inset-top,0px)}
+.ehub.ehub-open{transform:translateX(0);visibility:visible;pointer-events:auto}
+.ehub button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ehub button:focus-visible{outline:2px solid var(--h-bl);outline-offset:2px}
+
+.ehub-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 18px 16px;border-bottom:1px solid var(--h-line);flex:0 0 auto}
+.ehub-eyebrow{font-size:10px;letter-spacing:2.1px;color:var(--h-or);font-weight:750}
+.ehub-head h2{font-size:22px;font-weight:650;margin:6px 0 0;letter-spacing:-.5px}
+.ehub-x{width:38px;height:38px;border:1px solid var(--h-line);background:#182231;border-radius:11px;flex:0 0 38px}
+.ehub-body{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;padding:14px 14px calc(22px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+
+/* Command Centre widget */
+.ehub-cc{border:1px solid #5a4630;border-radius:16px;padding:14px;background:linear-gradient(140deg,#3a261a99,transparent 70%),var(--h-card);box-shadow:0 8px 22px #0003}
+.ehub-cc-top{display:flex;align-items:center;gap:11px}
+.ehub-cc-ico{flex:0 0 40px;height:40px;border-radius:11px;display:grid;place-items:center;font-size:20px;color:#ffb47c;background:#342218;border:1px solid #80522e}
+.ehub-cc-t{flex:1;min-width:0}
+.ehub-cc-t b{display:block;font-size:15px;font-weight:650}
+.ehub-cc-t small{display:block;font-size:10.5px;color:var(--h-mut);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ehub-chip{display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:750;letter-spacing:1px;border:1px solid #37506a;background:#21314966;padding:4px 7px;border-radius:6px;color:#a7cdfa}
+.ehub-live{width:6px;height:6px;border-radius:50%;background:#67809c;display:inline-block}
+.ehub-live.busy{background:var(--h-or);box-shadow:0 0 8px #ff8b4088;animation:ehubPulse 1s ease-in-out infinite}
+@keyframes ehubPulse{50%{opacity:.35}}
+.ehub-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.ehub-tile{border:1px solid #29445f;border-radius:10px;background:#102036;padding:8px 9px;min-width:0}
+.ehub-tile small{display:block;font-size:9.5px;color:var(--h-mut);letter-spacing:.3px}
+.ehub-tile b{display:block;font:600 14px/1.3 ui-monospace,SFMono-Regular,Consolas,monospace;margin-top:3px;color:#c5e2ff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ehub-cc-thought{margin-top:11px;border:1px solid #253349;border-left:2px solid var(--h-or);border-radius:9px;background:#080d15;padding:9px 11px}
+.ehub-cc-thought small{font-size:9px;letter-spacing:1.4px;color:var(--h-or);font-weight:750}
+.ehub-cc-thought p{margin:5px 0 0;font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;color:#d2deed;overflow-wrap:anywhere;max-height:96px;overflow:auto}
+.ehub-cc-btns{display:grid;grid-template-columns:1.3fr 1fr;gap:8px;margin-top:12px}
+
+.ehub-cc-git{margin-top:11px;border:1px solid #29445f;border-radius:9px;background:#102036;padding:8px 11px}
+.ehub-cc-git small{font-size:9px;letter-spacing:1.4px;color:#66aaff;font-weight:750}
+.ehub-cc-git p{margin:5px 0 0;font:11.5px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;color:#c5e2ff;white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* buttons */
+.ehub-btn{border:1px solid #30415a;background:#172231;border-radius:10px;padding:11px 12px;font-size:13px;font-weight:600;transition:background .15s,border-color .15s}
+.ehub-btn:hover{background:#22334a;border-color:var(--h-bl)}
+.ehub-btn:disabled{opacity:.55;cursor:wait}
+.ehub-btn-hot{border-color:#80522e;background:#342218;color:#ffc79e}
+.ehub-btn-hot:hover{background:#44291b;border-color:var(--h-or)}
+.ehub-sm{padding:8px 11px;font-size:12px}
+.ehub-classic{width:100%;color:#b9c8dc}
+
+/* rows */
+.ehub-sec{display:flex;flex-direction:column;gap:8px}
+.ehub-h{margin:4px 2px 0;font-size:10px;letter-spacing:1.8px;color:var(--h-mut);font-weight:750;text-transform:uppercase}
+.ehub-h2{margin:12px 2px 2px;font-size:10px;letter-spacing:1.6px;color:var(--h-mut);font-weight:750;text-transform:uppercase}
+.ehub-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px;border:1px solid var(--h-line);border-radius:13px;background:linear-gradient(140deg,#17213166,transparent 65%),var(--h-card);min-height:60px}
+.ehub-row:hover{border-color:#3d5578;background:#142034}
+.ehub-ico{flex:0 0 38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:18px;background:#152b49;color:#cfe6ff}
+.ehub-ico-orange{background:#342218;color:#ffc79e;border:1px solid #80522e}
+.ehub-ico-green{background:#12332a;color:#9ff0cf;border:1px solid #1f5a47}
+.ehub-rt{flex:1;min-width:0}
+.ehub-rt b{display:block;font-size:14px;font-weight:650;line-height:1.3}
+.ehub-rt small{display:block;font-size:11px;color:var(--h-mut);margin-top:3px;line-height:1.45}
+.ehub-chev{color:#7f93b0;font-size:22px;line-height:1;transition:transform .18s ease;flex:0 0 auto}
+.ehub-keys-btn.open{border-color:#1f5a47}
+.ehub-keys-btn.open .ehub-chev,.ehub-prov.open .ehub-chev{transform:rotate(90deg);color:var(--h-gr)}
+
+/* API keys dropdown */
+.ehub-keys{display:flex;flex-direction:column;gap:7px;padding:2px 0 4px 8px;border-left:2px solid #1f5a47;margin-left:6px;animation:ehubDrop .2s ease-out}
+.ehub-keys[hidden]{display:none}
+@keyframes ehubDrop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.ehub-prov{border:1px solid var(--h-line);border-radius:12px;background:var(--h-card);overflow:hidden}
+.ehub-prov.open{border-color:#2f4a6b}
+.ehub-prov.dim .ehub-prow{opacity:.78}
+.ehub-prow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 11px;border:0;background:transparent;min-height:54px}
+.ehub-prow.ehub-extra{border:1px solid var(--h-line);border-radius:12px;background:var(--h-card)}
+.ehub-prow.ehub-extra.dim{opacity:.78}
+.ehub-dot{flex:0 0 9px;width:9px;height:9px;border-radius:50%;background:#52627a}
+.ehub-dot.ok{background:var(--h-gr);box-shadow:0 0 8px #52d6a088}
+.ehub-dot.limited{background:#ffc247;box-shadow:0 0 8px #ffc24788}
+.ehub-dot.bad{background:#ff6b78;box-shadow:0 0 8px #ff6b7888}
+.ehub-dot.unknown{background:var(--h-bl)}
+.ehub .ef-badge.ef-logo,.ehub .pdbrand.ef-badge{width:34px;height:34px;flex:0 0 34px;margin:0}
+.ehub-fallback{flex:0 0 34px;width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font:700 11px system-ui;background:#1b2a44;color:#a9c8f5;border:1px solid #2b4268}
+.ehub .provider-title{color:#f4f6f8}
+.ehub-pbody{padding:2px 11px 11px;border-top:1px solid #1e2a3c;display:flex;flex-direction:column;gap:7px}
+.ehub-pbody[hidden]{display:none}
+.ehub-key{display:flex;align-items:center;gap:8px;padding:8px 9px;border:1px solid #29445f;border-radius:9px;background:#102036;margin-top:6px;flex-wrap:wrap}
+.ehub-kn{font:600 10px ui-monospace,monospace;color:var(--h-mut)}
+.ehub-key code{font:12px ui-monospace,SFMono-Regular,Consolas,monospace;color:#c5e2ff;flex:1;min-width:0;overflow-wrap:anywhere}
+.ehub-kst{font-size:10.5px;color:var(--h-mut);flex:1 0 100%;padding-left:2px}
+.ehub-kst.ok{color:var(--h-gr)}.ehub-kst.limited{color:#ffc247}.ehub-kst.bad{color:#ff8a91}
+.ehub-pact{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.ehub-note{font-size:11px;line-height:1.55;color:var(--h-mut);margin:6px 2px}
+
+body.ehub-on{overflow:hidden}
+@media(max-width:360px){.ehub{width:92vw}.ehub-tiles{gap:6px}.ehub-cc-btns{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.ehub,.ehub-keys,.ehub-chev,.ehub-live.busy{transition:none;animation:none}}
+
+/* V1.10.2: Command Centre is a widget at the bottom of the panel; the header row expands it. */
+.ehub-cc-top{width:100%;text-align:left;background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer}
+.ehub-cc-top .ehub-chip{margin-left:auto}
+.ehub-cc-body{margin-top:2px}
+.ehub-cc.open .ehub-chev{transform:rotate(90deg);color:#ffb47c}
