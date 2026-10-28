@@ -30,12 +30,13 @@ const setTavilyKey = v => { const o = load(); v = cleanKey(v); if (v) o.tavily =
 
 // ---------- native YouTube plugin (only inside the APK built with V1.6.0) ----------
 function yt() {
+  if (window.EmberDownloads) return EmberDownloads.available() ? EmberDownloads : undefined;
   const cap = window.Capacitor; if (!cap) return undefined;
   const P = cap.Plugins || {}; if (P.EmberYoutube) return P.EmberYoutube;
   try { if (cap.isNativePlatform && cap.isNativePlatform() && cap.isPluginAvailable && cap.isPluginAvailable('EmberYoutube') && cap.registerPlugin) return cap.registerPlugin('EmberYoutube'); } catch (e) { /* not available */ }
   return undefined;
 }
-const NEED_APK = 'YouTube needs the Ember V1.6.0 APK (the native downloader is not in this build or you are in a browser).';
+const NEED_APK = 'Configure the yt-dlp bridge in AI Features, or use NewPipe in the Ember APK.';
 
 // fetch with a timeout (CapacitorHttp is on in the APK, so there are no CORS limits there)
 async function net(url, opt, ms) {
@@ -49,16 +50,19 @@ async function net(url, opt, ms) {
 const T_SEARCH = { name: 'web_search', description: 'Searches the live web (Tavily first, then any search-capable scraper key he saved, then DuckDuckGo as a keyless fallback) for current events, facts or news. Returns a short answer plus the top results (title, url, snippet); source says which engine answered and tried lists any that were skipped and why. To read a full page afterwards use scrape_url if it is available.', parameters: { query: 'string', max_results: 'number? (1-6, default 4)' } };
 const T_SAR = { name: 'search_and_read', description: 'Searches the web AND opens the top results in one call, returning the page text (trimmed to fit), not just snippets. Use it when he wants an answer taken from the actual pages ("look up X and tell me what the sites say"). Needs Web Search and Web Scraping both on. objective says what to look for in each page (defaults to the query).', parameters: { query: 'string', objective: 'string?', count: 'number? (1-3 pages to open, default 2)' } };
 const T_YT_SEARCH = { name: 'youtube_search', description: 'Searches YouTube. Returns up to 5 videos: title, url, channel, durationSec.', parameters: { query: 'string' } };
-const T_YT_DL = { name: 'youtube_download', description: 'Downloads the AUDIO of one YouTube video or one SoundCloud track to his phone (Music/Ember) in the background. The chat shows live progress and a message when it lands. url must be a link he gave you or one from youtube_search or a listing. Only when he asks to download or save it.', parameters: { url: 'string', title: 'string?' } };
+const T_MEDIA = { name:'media_prepare', description:'Prepares a media artifact request in Ember AI Features. Never submits a paid generation: the user must review and confirm in the UI. Stability AI supports image and audio, Puter supports image video and speech. Stability video API is retired.', parameters:{provider:'string stability or puter',kind:'string image audio video or speech',prompt:'string'} };
+const T_MEDIA_LIST = {name:'media_artifacts',description:'Lists locally saved image video and audio artifacts; never exposes binary data or keys.',parameters:{}};
+const T_YT_DL = { name: 'youtube_download', description: 'Downloads audio (default) or VIDEO with audio when mode is video, from one YouTube video or one SoundCloud track to his phone (Music/Ember) in the background. The chat shows live progress and a message when it lands. url must be a link he gave you or one from youtube_search or a listing. Only when he asks to download or save it.', parameters: { url: 'string', title: 'string?', mode:'string? audio or video' } };
 const T_PL_LIST = { name: 'playlist_list', description: 'Lists the tracks of a YouTube or SoundCloud playlist or set (up to 100): title, url, artist, durationSec. Use it to look at a playlist before downloading.', parameters: { url: 'string' } };
-const T_PL_DL = { name: 'playlist_download', description: 'Downloads every track of a YouTube or SoundCloud playlist or set (up to 100, one after another) to Music/Ember, in the background, with progress in the chat. Only when he asks to download the whole playlist or set. url must be a link he gave you or one from playlist_list.', parameters: { url: 'string' } };
+const T_PL_DL = { name: 'playlist_download', description: 'Downloads every track of a YouTube or SoundCloud playlist or set (up to 100, one after another) to Music/Ember, in the background, with progress in the chat. Only when he asks to download the whole playlist or set. url must be a link he gave you or one from playlist_list.', parameters: { url: 'string', mode:'string? audio or video' } };
 const T_SEE = { name: 'see_image', description: 'Looks at an image and describes it or answers a question about it. image_url must be an https link he gave you (or a data:image base64 URL). prompt says what to look for.', parameters: { image_url: 'string', prompt: 'string?' } };
 const T_PLAY = { name: 'play_song', description: 'Plays a song on his phone through Ember\'s own player. It looks in his library first; if the song is not there it finds it on YouTube with the built-in NewPipe engine, saves it to Music/Ember, then plays it. Use it when he says play / put on / spin a song, artist or link. query is the song and artist in plain words (or a youtube.com / youtu.be link he gave you).', parameters: { query: 'string' } };
-const ALL = [T_SEARCH, T_SAR, T_YT_SEARCH, T_YT_DL, T_PL_LIST, T_PL_DL, T_PLAY, T_SEE];
+const ALL = [T_MEDIA,T_MEDIA_LIST,T_SEARCH, T_SAR, T_YT_SEARCH, T_YT_DL, T_PL_LIST, T_PL_DL, T_PLAY, T_SEE];
 const SCR = () => window.EmberScraper;
 const scraperOn = () => { try { return !!(SCR() && SCR().enabled()); } catch (e) { return false; } };
 const toolsFor = S => {
   S = S || {}; const o = [];
+  if(window.EmberMedia && EmberMedia.cfg().enabled) o.push(T_MEDIA,T_MEDIA_LIST);
   if (S.agentAddon) { o.push(T_SEARCH); if (scraperOn()) o.push(T_SAR); }
   if (S.youtubeAddon) o.push(T_YT_SEARCH, T_YT_DL, T_PL_LIST, T_PL_DL, T_PLAY);
   if (S.visionAddon) o.push(T_SEE);
@@ -77,6 +81,7 @@ const seen = new Set(); // video ids that he pasted or that youtube_search retur
 function setIntent(userText, prevText) {
   intent = str(userText, 2000); prevIntent = str(prevText, 2000);
   for (const t of [intent, prevIntent]) { const re = new RegExp(VID.source, 'g'); let m; while ((m = re.exec(t)) !== null) seen.add(m[1]); }
+  for(const t of [intent,prevIntent])for(const u of(t.match(/https:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com|youtu\.be)\/[^\s"'<>]+/gi)||[]))seenUrl.add(u.replace(/[.,)]+$/,''));
   for (const t of [intent, prevIntent]) for (const u of (t.match(SC_FIND) || [])) seenUrl.add(u.replace(/[.,)]+$/, ''));
 }
 const dlAllowed = () => DL_INTENT.test(intent) || (intent.length <= 60 && !NOT_FOLLOW.test(intent) && DL_INTENT.test(prevIntent));
@@ -242,7 +247,7 @@ async function youtube_download(a) {
   }
   try { if (window.EmberNative && window.EmberNative.ensureNotifyPermission) await window.EmberNative.ensureNotifyPermission(); } catch (e) { /* notifications are optional; the download still runs */ }
   try {
-    const r = await P.downloadVideo({ url: key, title: str(a.title, 120) });
+    const r = await P.downloadVideo({ url: key, title: str(a.title, 120), mode:a.mode === 'video'?'video':'audio' });
     if (r && r.jobId) trackJob(r.jobId, a.title || '');
     return { ok: true, status: 'Download started. The chat shows live progress and posts a message when it is saved to Music/Ember.', jobId: r && r.jobId };
   } catch (e) { return { ok: false, error: 'Could not start the download: ' + ((e && e.message) || e) }; }
@@ -263,7 +268,7 @@ async function playlist_download(a) {
   const raw = String(a.url || '').trim();
   if (!seenUrl.has(raw)) return { error: 'That playlist link did not come from him or from playlist_list, so nothing was downloaded. Ask him for the link.' };
   try { if (window.EmberNative && window.EmberNative.ensureNotifyPermission) await window.EmberNative.ensureNotifyPermission(); } catch (e) { /* optional */ }
-  let r; try { r = await P.downloadPlaylist({ url: raw, limit: 100 }); } catch (e) { return { error: 'Could not start the playlist download: ' + ((e && e.message) || e) }; }
+  let r; try { r = await P.downloadPlaylist({ url: raw, limit: 100, mode:a.mode === 'video' ? 'video' : 'audio' }); } catch (e) { return { error: 'Could not start the playlist download: ' + ((e && e.message) || e) }; }
   const list = (r && r.jobs) || [];
   list.forEach(j => trackJob(j.jobId, j.title));
   return { ok: true, count: list.length, playlist: str(r && r.title, 140), jobs: list.map(j => ({ jobId: j.jobId, title: str(j.title, 120) })), status: list.length + ' tracks queued. The chat shows each one and posts a message as each lands in Music/Ember.' };
@@ -293,6 +298,7 @@ function waitForJob(jobId, ms) {
 }
 async function play_song(a) {
   const Pl = window.EmberPlayer; if (!Pl) return { ok: false, error: 'The music player did not load. Reload the app.' };
+  if (window.EmberDownloads?.cfg().engine==='ytdlp' || (!window.EmberDownloads?.native() && window.EmberDownloads?.cfg().token)) return {error:'Local library playback remains available in Music. Automatic download-then-play requires NewPipe on this phone; bridge files must be saved/imported first.'};
   if (!playAllowed()) return { ok: false, error: 'He did not ask to play anything in his latest message, so nothing was played.' };
   const raw = str(a.query || a.url || a.title, 200); if (!raw) return { ok: false, error: 'query is empty.' };
   const sayEv = t => emitEv('ember-agent-note', t);
@@ -350,15 +356,15 @@ function cardHtml(j) {
   // V1.9.29: tool-execution card (no raw JSON): music note, what is happening, file name, glowing bar, where it goes + percent.
   const pct = Math.max(0, Math.min(100, +j.pct || 0));
   const done = j.state === 'done', bad = j.state === 'failed', shown = done ? 100 : pct;
-  const title = done ? 'Saved to your phone' : bad ? 'Download failed' : 'Downloading Audio';
-  const where = done ? 'Saved to Music/Ember' : bad ? (j.detail ? String(j.detail).slice(0, 90) : 'Failed') : (pct ? 'Saving to Music/Ember' : 'Looking it up...');
+  const title = done ? 'Download saved' : bad ? 'Download failed' : j.mode==='video'?'Downloading Video':'Downloading Audio';
+  const where = done ? (j.engine==='yt-dlp'?'Saved on local bridge · AI Features → Save to this device':j.mode==='video'?'Saved to Movies/Ember':'Saved to Music/Ember') : bad ? (j.detail ? String(j.detail).slice(0, 90) : 'Failed') : (pct ? 'Saving to Music/Ember' : 'Looking it up...');
   const note = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>';
   return '<div class="dl-card act-card act-' + (done ? 'done' : bad ? 'bad' : 'run') + '" id="dl-' + escH(j.id) + '">' +
     '<div class="act-hd">' + note + '<div class="act-title">' + escH(title) + '</div></div>' +
     '<div class="act-file">' + escH(j.title || 'Fetching track info') + '</div>' +
     '<div class="act-bar"><div class="act-fill" style="width:' + shown + '%"></div></div>' +
     '<div class="act-st"><span>' + escH(where) + '</span><span>' + (bad ? '' : shown + '%') + '</span></div>' +
-    (done ? '<div class="act-play"><button type="button" class="act-playbtn" data-dl-play="' + escH(j.id) + '" data-title="' + escH(j.title || '') + '">▶ Play</button></div>' : '') + '</div>';
+    (done && j.engine!=='yt-dlp' && j.mode!=='video' ? '<div class="act-play"><button type="button" class="act-playbtn" data-dl-play="' + escH(j.id) + '" data-title="' + escH(j.title || '') + '">▶ Play</button></div>' : '') + '</div>';
 }
 // ---------- V1.9.86: Play button on a finished download. Same library lookup as play_song; scans Music/Ember if the track is not listed yet. ----------
 const toastMsg = m => { const t = document.getElementById('toast'); if (!t) return; t.textContent = m; t.classList.add('show'); clearTimeout(toastMsg._t); toastMsg._t = setTimeout(() => t.classList.remove('show'), 2800); };
@@ -402,19 +408,19 @@ async function pollJobs() {
         j.state = (r.state === 'done' || r.state === 'failed') ? r.state : 'running';
         j.pct = +r.pct || j.pct;
         if (r.title) j.title = str(r.title, 120);
-        j.detail = str(r.detail, 160);
+        j.detail = str(r.error || r.detail, 160);j.engine=r.engine||j.engine;j.mode=r.mode||j.mode;j.files=r.files||[];
       }
     }
     emitEv('ember-dl', j);
     if (j.state === 'done' || j.state === 'failed') {
-      dlLast = j.state === 'done' ? 'Saved "' + j.title + '" to Music/Ember.' : 'The download of "' + j.title + '" failed' + (j.detail ? ': ' + j.detail : '.');
-      emitEv('ember-dl-final', { text: dlLast, silent: j.silent, state: j.state, title: j.title });
+      dlLast = j.state === 'done' ? 'Saved "' + j.title + '" '+(j.engine==='yt-dlp'?'on your local bridge device. Open AI Features to save a copy to this device.':j.mode==='video'?'to Movies/Ember.':'to Music/Ember.') : 'The download of "' + j.title + '" failed' + (j.detail ? ': ' + j.detail : '.');
+      emitEv('ember-dl-final', { id:j.id, text: dlLast, silent: j.silent, state: j.state, title: j.title, engine:j.engine, files:j.files||[],mode:j.mode });
     }
   }
   if (![...dlJobs.values()].some(j => j.state !== 'done' && j.state !== 'failed')) { clearInterval(dlTimer); dlTimer = null; }
 }
 
-const HANDLERS = { web_search, search_and_read, youtube_search, youtube_download, playlist_list, playlist_download, play_song, see_image };
+const HANDLERS = { media_prepare:async a=>{ if(!window.EmberMedia?.cfg().enabled)return{error:'Media generation is OFF'}; if(!EmberMedia.supported[a.provider]?.includes(a.kind))return{error:'Unsupported feature. Stability video is retired; select Puter explicitly.'}; window.dispatchEvent(new CustomEvent('ember-media-request',{detail:{provider:a.provider,kind:a.kind,prompt:String(a.prompt||'').slice(0,10000)}}));return{status:'awaiting_user_confirmation',note:'Nothing generated or charged. Review in AI Features and press Generate.'}; },media_artifacts:async()=>({artifacts:(await EmberMedia.list()).map(({id,provider,kind,model,name,at})=>({id,provider,kind,model,name,at}))}), web_search, search_and_read, youtube_search, youtube_download, playlist_list, playlist_download, play_song, see_image };
 async function dispatch(name, args) {
   if (!Object.prototype.hasOwnProperty.call(HANDLERS, name)) return { error: 'Unknown agent tool: ' + name };
   try { return await HANDLERS[name](args && typeof args == 'object' && !Array.isArray(args) ? args : {}); }
@@ -424,6 +430,7 @@ async function dispatch(name, args) {
 // what the prompt tells the AI, built from the real state
 function stateBlock(S) {
   S = S || {}; const o = [];
+  if(window.EmberMedia?.cfg().enabled)o.push('Media artifacts enabled. Use media_prepare for image/audio/video requests. User confirms in AI Features before billing. Stability: image and audio only; Puter: image video speech. media_artifacts lists real saved results.');
   if (S.agentAddon) o.push(extraEngines().length ? 'web_search works. Engines in order: ' + searchChain().join(' > ') + '. An engine that fails or finds nothing is skipped to the next; the result says which one answered (source) and which were skipped (tried).' : tavilyKey() ? 'web_search works (Tavily key is set; DuckDuckGo is the backup if Tavily fails).' : 'web_search works through DuckDuckGo (no Tavily key): it gives encyclopedia-style answers and related links, NOT news or full search results, so an empty result is normal for current events and you must say so, never invent results. If he needs news or full results, tell him a Tavily key in Settings > Music > Agent & API Tools gives full web search.');
   if (S.agentAddon && scraperOn()) o.push('search_and_read(query) searches and opens the top pages in one call: use it when he wants an answer from the real pages, and report any page that failed to open.');
   if (S.youtubeAddon) o.push(yt() ? 'YouTube and SoundCloud search, playlist listing and audio download work on this phone (SoundCloud: track links, set links and search). Download only when he asks, and plain talk counts as asking: "get me X", "grab X", "put X on my phone", "add X", "I want X" all mean download it, he does not have to say the word download. For a song name, run youtube_search, pick the best match, then call youtube_download with that url. Only for links he gave you or a listing returned, and tell him it saves to Music/Ember. Progress shows in the chat by itself, and a message appears when each track is saved, so you can confirm it is done. To PLAY a song on his phone ("play X", "put on X"), call play_song with the song and artist: it checks his library, and if the song is missing it finds it with NewPipe, saves it to Music/Ember and plays it in Ember\'s player. Say only what the tool result says happened.' : 'YouTube is on but the native downloader is not in this build, so those tools will fail.'); if (dlLast) o.push('Last download result: ' + dlLast);

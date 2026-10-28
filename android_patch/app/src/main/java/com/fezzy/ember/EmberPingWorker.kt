@@ -25,7 +25,8 @@ class EmberPingWorker(appContext: Context, params: WorkerParameters) : Worker(ap
         try {
             val prefs = ctx.getSharedPreferences("EmberPrefs", Context.MODE_PRIVATE)
             val key = prefs.getString("groq_key", "") ?: ""
-            if (key.isEmpty()) return Result.success() // switched off or no Groq key saved: nothing to do
+            val plan = try { JSONArray(prefs.getString("ping_plan","[]")) } catch (_:Exception) { JSONArray() }
+            if (key.isEmpty() && plan.length() == 0) return Result.success() // switched off or no Groq key saved: nothing to do
 
             val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             if (!nm.areNotificationsEnabled()) return Result.success()
@@ -39,7 +40,15 @@ class EmberPingWorker(appContext: Context, params: WorkerParameters) : Worker(ap
 
             val topics = (prefs.getString("last_chat_summary", "") ?: "").trim()
             val model = prefs.getString("ping_model", "") ?: ""
-            val text = askGroq(key, if (model.isEmpty()) "llama-3.1-8b-instant" else model, topics)
+            var text = ""
+            for (i in 0 until plan.length()) {
+                val p=plan.getJSONObject(i)
+                if(!EmberRouteHealth.ready(ctx,p.optString("id"),p.optString("key"),p.optString("model")))continue
+                text=try { askGroq(p.getString("key"),p.getString("model"),topics,p.getString("base"),p.optString("id")) } catch (_:Exception) { "" }
+                if(text.isNotEmpty())break
+            }
+            // Older installs without a cached live model plan retain their previous Groq behavior.
+            if(plan.length()==0 && key.isNotEmpty()) text=askGroq(key,if(model.isEmpty()) "llama-3.1-8b-instant" else model,topics)
             if (text.isEmpty()) return if (runAttemptCount < 2) Result.retry() else Result.success()
 
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
@@ -70,7 +79,7 @@ class EmberPingWorker(appContext: Context, params: WorkerParameters) : Worker(ap
         }
     }
 
-    private fun askGroq(key: String, model: String, topics: String): String {
+    private fun askGroq(key: String, model: String, topics: String, base: String = "https://api.groq.com/openai/v1", provider: String = "groq"): String {
         val sys = "You are Ember, a warm, dry-witted companion. Write ONE short check-in message, 15 words or fewer, " +
             "that nudges the person toward a topic they were curious about. Light and curious only: never mention " +
             "health, feelings, crisis, or anything heavy, and never give advice. No quotes, no emoji, no preamble. Output only the message."
@@ -81,10 +90,11 @@ class EmberPingWorker(appContext: Context, params: WorkerParameters) : Worker(ap
                 .put(JSONObject().put("role", "system").put("content", sys))
                 .put(JSONObject().put("role", "user").put("content", user)))
             put("max_tokens", 40)
-            put("temperature", 0.8)
+            if(provider != "puter") put("temperature", 0.8)
         }.toString()
 
-        val conn = URL("https://api.groq.com/openai/v1/chat/completions").openConnection() as HttpURLConnection
+        val started=System.currentTimeMillis()
+        val conn = URL(base.trimEnd('/')+"/chat/completions").openConnection() as HttpURLConnection
         try {
             conn.requestMethod = "POST"
             conn.connectTimeout = 15000
@@ -93,7 +103,9 @@ class EmberPingWorker(appContext: Context, params: WorkerParameters) : Worker(ap
             conn.setRequestProperty("Content-Type", "application/json")
             conn.doOutput = true
             conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
-            if (conn.responseCode != 200) return ""
+            val code=conn.responseCode
+            EmberRouteHealth.record(applicationContext,provider,key,model,code,System.currentTimeMillis()-started,conn.getHeaderField("Retry-After")?.toLongOrNull() ?: 0)
+            if (code != 200) return ""
             val resp = conn.inputStream.bufferedReader().use { it.readText() }
             val raw = JSONObject(resp).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content")
             return raw.trim().trim('"', '\'', '“', '”').trim().take(140)

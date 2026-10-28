@@ -66,7 +66,7 @@ class EmberAiWorker(appContext: Context, params: WorkerParameters) : Worker(appC
 
         val got = try { generate(req) } catch (e: Exception) { null }
         if (got == null) {
-            if (runAttemptCount < 2) return Result.retry()
+            // Do not blindly repeat a whole billable plan after a timeout or server failure.
             f.delete()
             notifyText(ctx, "I could not finish that reply in the background. Open Ember to try again.", turnId)
             return Result.success()
@@ -84,7 +84,9 @@ class EmberAiWorker(appContext: Context, params: WorkerParameters) : Worker(appC
     private fun clean(t: String): String =
         t.replace(Regex("<tool_call>[\\s\\S]*?</tool_call>", RegexOption.IGNORE_CASE), "").replace(Regex("</?tool_call>", RegexOption.IGNORE_CASE), "").trim()
 
-    private fun post(url: String, key: String?, body: String): String? {
+    private fun post(url: String, key: String?, body: String, provider: String = "pollinations", model: String = "openai"): String? {
+        if (key != null && !EmberRouteHealth.ready(applicationContext,provider,key,model)) return null
+        val started = System.currentTimeMillis()
         val c = URL(url).openConnection() as HttpURLConnection
         try {
             c.requestMethod = "POST"; c.connectTimeout = 15000; c.readTimeout = 45000
@@ -92,7 +94,13 @@ class EmberAiWorker(appContext: Context, params: WorkerParameters) : Worker(appC
             if (!key.isNullOrEmpty()) c.setRequestProperty("Authorization", "Bearer $key")
             c.doOutput = true
             c.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
-            if (c.responseCode != 200) return null
+            val status = c.responseCode
+            if (key != null) {
+                val header = c.getHeaderField("Retry-After")
+                val retry = header?.toLongOrNull() ?: try { maxOf(1L,(java.text.SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z",java.util.Locale.US).parse(header ?: "")!!.time-System.currentTimeMillis())/1000L) } catch (_:Exception) { 0L }
+                EmberRouteHealth.record(applicationContext,provider,key,model,status,System.currentTimeMillis()-started,retry)
+            }
+            if (status != 200) return null
             val j = JSONObject(c.inputStream.bufferedReader().use { it.readText() })
             return j.getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content")
         } finally { c.disconnect() }
@@ -110,9 +118,11 @@ class EmberAiWorker(appContext: Context, params: WorkerParameters) : Worker(appC
         fun viaPlan(): JSONObject? {
             for (i in 0 until plan.length()) {
                 val p = plan.getJSONObject(i)
-                val body = JSONObject().put("model", p.getString("model")).put("messages", msgs).put("temperature", temp).put("max_tokens", max).toString()
+                val requestBody = JSONObject().put("model", p.getString("model")).put("messages", msgs).put("max_tokens", max)
+                if (p.optString("id") != "puter") requestBody.put("temperature", temp)
+                val body = requestBody.toString()
                 try {
-                    val t = post(p.getString("base").trimEnd('/') + "/chat/completions", p.getString("key"), body)
+                    val t = post(p.getString("base").trimEnd('/') + "/chat/completions", p.getString("key"), body, p.optString("id"), p.getString("model"))
                     val c = if (t == null) "" else clean(t)
                     if (c.isNotEmpty()) return JSONObject().put("text", c).put("provider", p.optString("id")).put("model", p.getString("model"))
                 } catch (e: Exception) { /* next engine */ }
@@ -120,6 +130,7 @@ class EmberAiWorker(appContext: Context, params: WorkerParameters) : Worker(appC
             return null
         }
         fun viaFree(): JSONObject? {
+            if (!req.optBoolean("allowFree", false)) return null
             return try {
                 val body = JSONObject().put("model", "openai").put("messages", msgs).toString()
                 val t = post("https://text.pollinations.ai/openai", null, body)

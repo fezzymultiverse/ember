@@ -5,6 +5,9 @@
 (() => {
 const { LS } = U;
 const CFG = {
+  openrouter: { name: 'OpenRouter', base: 'https://openrouter.ai/api/v1', kind: 'oai', color: '#93c5fd', optIn: true },
+  plugsky: { name: 'Plugsky AI', base: 'https://plugsky.com/v1', kind: 'oai', color: '#7dd3fc', optIn: true },
+  stability: { name: 'Stability AI', base: 'https://api.stability.ai', kind: 'media', color: '#b4a3ff' },
   groq: { name: 'Groq', base: 'https://api.groq.com/openai/v1', kind: 'oai', color: '#ff6a00' },
   mistral: { name: 'Mistral', base: 'https://api.mistral.ai/v1', kind: 'oai', color: '#ffb020' },
   gemini: { name: 'Gemini', base: 'https://generativelanguage.googleapis.com/v1beta', kind: 'gem', color: '#ffffff' },
@@ -17,7 +20,7 @@ const CFG = {
 };
 const IDS = Object.keys(CFG);
 // Automatic profile for this installation. Mistral stays active because it is working for him.
-const ACTIVE_IDS = ['groq', 'cohere', 'gemini', 'mistral', 'anthropic', 'puter'];
+const ACTIVE_IDS = IDS.filter(id => CFG[id].kind !== 'media');
 // fast = quick everyday replies. deep = slow, careful turns. util = background jobs (memory, titles).
 const ORDER = { fast: ['groq', 'cohere', 'gemini', 'mistral', 'puter'], deep: ['gemini', 'cohere', 'mistral', 'groq', 'puter'], util: ['groq', 'cohere', 'gemini', 'mistral'] };
 
@@ -39,7 +42,7 @@ let keys = load();
 let freePref = null; // null = auto (Free Mode on only while the user has no keys); true/false = the user's own choice
 // V1.6.1: engine pin. null/'auto' = router decides (Groq first in fast/util since it's near-instant). Any CFG id = try that engine's keys first, every lane.
 let pinnedEngine = LS.get('ember_pin', null); if (pinnedEngine && !CFG[pinnedEngine]) pinnedEngine = null;
-function setPinned(id) { pinnedEngine = (id && CFG[id]) ? id : null; LS.set('ember_pin', pinnedEngine); }
+function setPinned(id) { pinnedEngine = (id && CFG[id] && CFG[id].kind !== 'media') ? id : null; LS.set('ember_pin', pinnedEngine); }
 // V1.6.8: model pin. {id, model} or null. Strict: when set, that engine only ever uses that exact model (no silent swap to another one).
 let pinnedModel = LS.get('ember_pin_model', null);
 if (pinnedModel && !(pinnedModel.id && pinnedModel.model && CFG[pinnedModel.id])) pinnedModel = null;
@@ -49,17 +52,44 @@ function setPinnedModel(id, model) { pinnedModel = (id && CFG[id] && model) ? { 
 let strictPin = LS.get('ember_pin_strict', true) !== false;
 function setStrict(v) { strictPin = !!v; LS.set('ember_pin_strict', strictPin); }
 const onlyPinned = lane => !!(strictPin && pinnedEngine && lane != 'util');
-function orderFor(lane) { const base = ORDER[lane] || ORDER.fast; if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
+function orderFor(lane) { const enabled = LS.get('ember_route_enabled', {}); const base = (ORDER[lane] || ORDER.fast).concat(['openrouter', 'plugsky'].filter(id => enabled[id] === true)).filter(id => CFG[id].kind !== 'media'); if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
     const lg = lane == 'fast' ? LS.get('ember_last_good', null) : null;
     if (lg && base.includes(lg) && keys[lg] && keys[lg].some(e => !e.bad)) return [lg].concat(base.filter(x => x != lg));
     return base; } return [pinnedEngine].concat(base.filter(id => id != pinnedEngine)); }
-const save = () => LS.set('ember_keys', keys);
-const cool = new Map(); // key -> timestamp until which it is resting after a 429
+const save = () => { LS.set('ember_keys', keys); emitStats(); };
+const cool = new Map(); // credential-wide failures only; model failures are independent
+const modelCool = new Map(), cursors = new Map();
+let metrics = LS.get('ember_route_metrics', {});
+function emitStats() { try { window.dispatchEvent(new CustomEvent('ember-provider-stats', { detail: { at: Date.now() } })); } catch (_) {} }
+const slot = (id, key, model) => JSON.stringify([id, key, model]);
+function modelRest(id, key, model, seconds) { modelCool.set(slot(id,key,model), Date.now() + Math.max(1, Number(seconds) || 60) * 1000); emitStats(); }
+function modelResting(id, key, model) { return (modelCool.get(slot(id,key,model)) || 0) > Date.now(); }
+function record(id, model, ok, ms, status, usage) {
+  const p = metrics[id] || (metrics[id] = { requests: 0, success: 0, failed: 0, models: {} });
+  const m = p.models[model] || (p.models[model] = { requests: 0, success: 0, failed: 0 });
+  for (const obj of [p,m]) { obj.requests++; obj[ok ? 'success' : 'failed']++; obj.lastAt = Date.now(); obj.lastStatus = status || 0; if (ok) obj.latency = ms || 0; }
+  if (usage) { m.tokens = (m.tokens || 0) + (Number(usage.total_tokens) || 0); p.tokens = (p.tokens || 0) + (Number(usage.total_tokens) || 0); }
+  LS.set('ember_route_metrics', metrics); emitStats();
+}
+function rotation(id, lane) {
+  const list = keys[id] || [], k = id + ':' + lane, at = cursors.get(k) || 0;
+  if (!list.length) return [];
+  cursors.set(k, (at + 1) % list.length); return list.slice(at).concat(list.slice(0,at));
+}
+function stats() {
+  const out = JSON.parse(JSON.stringify(metrics));
+  IDS.forEach(id => { const p = out[id] || (out[id] = { requests:0, success:0, failed:0, models:{} }); p.cooldowns = [];
+    for (const e of keys[id]) for (const [k,until] of modelCool) { const [pid,key,model] = JSON.parse(k); if (pid === id && key === e.key && until > Date.now()) p.cooldowns.push({ key:mask(key), model, retry:Math.ceil((until-Date.now())/1000) }); }
+  }); return out;
+}
+function setEnabled(id, on) { if (!CFG[id] || CFG[id].kind === 'media') return; const cfg=LS.get('ember_route_enabled',{}); cfg[id]=!!on; LS.set('ember_route_enabled',cfg); emitStats(); }
+function authFailure(er) { return Number(er.status) === 401 || (Number(er.status) === 403 && /invalid.{0,15}(key|token)|revoked|authentication_error|unauthenticated/i.test(er.message || '')); }
+
 const activeControllers = new Set(), activeReaders = new Set(); let routeCancelled = false;
 const isCool = k => (cool.get(k) || 0) > Date.now();
-const coolKey = (key, seconds) => cool.set(key, Date.now() + Math.max(5, Math.min(900, Number(seconds) || 60)) * 1000);
+const coolKey = (key, seconds) => cool.set(key, Date.now() + Math.max(1, Number(seconds) || 60) * 1000);
 // Transient provider failures should advance to another model/key/engine, not terminate the whole route.
-const transient = er => !er || !er.status || [408, 409, 425, 500, 502, 503, 504, 522, 524].includes(Number(er.status));
+const transient = er => !er || !er.status || [408, 409, 425, 500, 502, 503, 504, 522, 524, 529].includes(Number(er.status));
 const mask = k => k.length > 12 ? k.slice(0, 6) + '…' + k.slice(-4) : k.slice(0, 3) + '…';
 const has = k => IDS.some(id => keys[id].some(e => e.key === k));
 
@@ -88,8 +118,8 @@ async function jfetch(url, opt, timeout) {
     let retryAfter = Number(retryHeader) || 0;
     if (retryHeader && !retryAfter) { const at = Date.parse(retryHeader); if (Number.isFinite(at)) retryAfter = Math.max(0, Math.ceil((at - Date.now()) / 1000)); }
     if (!retryAfter && parsed) retryAfter = Number(parsed.retry_after || parsed.retryAfter || (parsed.error && (parsed.error.retry_after || parsed.error.retryAfter)) || (parsed.meta && parsed.meta.retry_after)) || 0;
-    retryAfter = Math.max(0, Math.min(900, retryAfter));
-    throw Object.assign(new Error(String(msg || body || ('HTTP ' + r.status)).slice(0, 200)), { status: r.status, retryAfter });
+    retryAfter = Math.max(0, retryAfter);
+    throw Object.assign(new Error(String(msg || body || ('HTTP ' + r.status)).slice(0, 200)), { status: r.status, retryAfter, metadata: parsed && parsed.error && parsed.error.metadata });
   }
   return r.json();
 }
@@ -134,6 +164,7 @@ function claudeMsgs(messages) { // the Messages API wants alternating user/assis
   if (!out.length || out[0].role != 'user') out.unshift({ role: 'user', content: '(continue)' });
   return out;
 }
+async function readPart(reader,ms) { let timer;try{return await Promise.race([reader.read(),new Promise((_,reject)=>{timer=setTimeout(()=>{reject(Object.assign(new Error('Stream stalled'),{status:408}));try{reader.cancel();}catch(_){}},ms||40000);})]);}finally{clearTimeout(timer);} }
 async function streamClaude(url, body, key, o, timeout) {
   body.stream = true;
   const r = await net(url, { method: 'POST', headers: Object.assign({ Accept: 'text/event-stream' }, claudeHeaders(key)), body: JSON.stringify(body) }, timeout || 60000);
@@ -141,7 +172,7 @@ async function streamClaude(url, body, key, o, timeout) {
     let raw = ''; try { raw = await r.text(); } catch (_) {}
     let msg = ''; try { const p = JSON.parse(raw); msg = (p.error && (p.error.message || p.error)) || p.message || ''; } catch (_) {}
     const h = r.headers && r.headers.get && r.headers.get('retry-after'); const retryAfter = Math.max(0, Math.min(900, Number(h) || 0));
-    throw Object.assign(new Error(String(msg || raw || ('HTTP ' + r.status)).slice(0, 200)), { status: r.status, retryAfter });
+    throw Object.assign(new Error(String(msg || raw || ('HTTP ' + r.status)).slice(0, 200)), { status: r.status, retryAfter, metadata: parsed && parsed.error && parsed.error.metadata });
   }
   if (!r.body || !r.body.getReader) { const j = await r.json(); return (j.content || []).map(p => p.text || '').join(''); }
   const reader = r.body.getReader(), decoder = new TextDecoder(); activeReaders.add(reader); let buffer = '', out = '';
@@ -156,7 +187,7 @@ async function streamClaude(url, body, key, o, timeout) {
   try {
     while (true) {
       if (routeCancelled) throw Object.assign(new Error('Stopped by user.'), { code: 'cancelled' });
-      const part = await reader.read(); if (part.done) break;
+      const part = await readPart(reader,timeout||40000); if (part.done) break;
       buffer += decoder.decode(part.value, { stream: true });
       const lines = buffer.split(/\r?\n/); buffer = lines.pop() || '';
       lines.forEach(consume);
@@ -211,6 +242,7 @@ async function callPuter(model, o) {
 // ---------- models ----------
 async function listModels(id, key) {
   const c = CFG[id];
+  if (c.kind === 'media') { await jfetch(c.base + '/v1/user/account', { headers: { Authorization: 'Bearer ' + key } }, 15000); return []; }
   if (c.kind == 'oai') {
     if (id == 'puter') { // V1.9.80: if the models list is unavailable the key is still tried on known Puter models
       try { const j = await jfetch(c.base + '/models', { headers: { Authorization: 'Bearer ' + key } }, 15000); const l = (j.data || []).map(m => m.id).filter(Boolean); if (l.length) return l; }
@@ -234,6 +266,8 @@ async function listModels(id, key) {
 const ver = m => { const x = /(\d+(?:\.\d+)?)/.exec(m); return x ? parseFloat(x[1]) : 0; };
 const PUTER_FALLBACK = ['gpt-5.4-nano', 'gpt-5-nano', 'gpt-4o-mini', 'claude-haiku-5-5', 'openai/gpt-5-nano', 'openai/gpt-5-mini', 'openai/gpt-4o-mini']; // V1.9.89: Puter's docs also show provider-prefixed ids
 function rank(id, list, lane) {
+  if (id === 'stability') return [];
+  if (id === 'openrouter' || id === 'plugsky') return list.filter(m => !/embed|rerank|whisper|tts|audio|video|flux|stable-diffusion|imagen|veo|sora|moderation/i.test(m)).sort((a,b) => Number(/:free$|^plugsky-(micro|lite)$/.test(b)) - Number(/:free$|^plugsky-(micro|lite)$/.test(a)));
   const deep = lane == 'deep';
   if (id == 'groq') {
     const ok = list.filter(m => !/whisper|guard|tts|embed|playai|distil/i.test(m));
@@ -344,7 +378,7 @@ async function streamOAI(url, key, body, o, timeout) {
         let parsed = null, msg = ''; try { parsed = JSON.parse(raw); if (parsed && typeof parsed == 'object') msg = (parsed.error && (parsed.error.message || parsed.error)) || parsed.message || ''; } catch (_) {}
     const h = r.headers && r.headers.get && r.headers.get('retry-after'); let retryAfter = Number(h) || 0;
     if (h && !retryAfter) { const at = Date.parse(h); if (Number.isFinite(at)) retryAfter = Math.max(0, Math.ceil((at-Date.now())/1000)); }
-    throw Object.assign(new Error(String(msg || raw || ('HTTP '+r.status)).slice(0,200)), {status:r.status,retryAfter});
+    throw Object.assign(new Error(String(msg || raw || ('HTTP '+r.status)).slice(0,200)), {status:r.status,retryAfter,metadata:parsed && parsed.error && parsed.error.metadata});
   }
   if (!r.body || !r.body.getReader) { const j = await r.json(); return (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || ''; }
   const reader = r.body.getReader(), decoder = new TextDecoder(); activeReaders.add(reader); let buffer = '', out = '';
@@ -352,7 +386,9 @@ async function streamOAI(url, key, body, o, timeout) {
     if (!line.startsWith('data:')) return;
     const data = line.slice(5).trim(); if (!data || data === '[DONE]') return;
     let packet; try { packet = JSON.parse(data); } catch (_) { return; }
+    if (packet.usage) o._usage = packet.usage;
     const choice = packet.choices && packet.choices[0], delta = choice && choice.delta;
+    if (packet.error || (choice && choice.finish_reason === 'error')) { const e = packet.error || {}; throw Object.assign(new Error(String(e.message || 'Provider stream failed')), { status: Number(e.code || e.status) || 502, partial: !!out }); }
     const rs = delta && (typeof delta.reasoning_content === 'string' ? delta.reasoning_content : typeof delta.reasoning === 'string' ? delta.reasoning : ''); // V1.9.78: the model's own reasoning, when the engine sends it, goes to the thinking card live
     if (rs) { o._th = (o._th || '') + rs; try { window.dispatchEvent(new CustomEvent('ember-thought', { detail: { piece: rs, text: o._th } })); } catch (_) { /* no listener */ } }
     const piece = delta && typeof delta.content === 'string' ? delta.content : '';
@@ -361,7 +397,7 @@ async function streamOAI(url, key, body, o, timeout) {
   try {
     while (true) {
       if (routeCancelled) throw Object.assign(new Error('Stopped by user.'), {code:'cancelled'});
-      const part = await reader.read(); if (part.done) break;
+      const part = await readPart(reader,timeout||40000); if (part.done) break;
       buffer += decoder.decode(part.value, {stream:true});
       const lines = buffer.split(/\r?\n/); buffer = lines.pop() || '';
       lines.forEach(consume);
@@ -389,6 +425,7 @@ async function call(id, key, model, o) {
     } else {
       try { j = await jfetch(c.base + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, 40000); }
       catch (er) { if (er.code === 'cancelled') throw er; if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
+      o._usage = j.usage || null;
       text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content || '';
       const nc = decl.length ? oaiNative(j) : null; if (nc) text = joinCall(text, nc.tool, nc.args);
     }
@@ -445,37 +482,36 @@ async function call(id, key, model, o) {
   }
   text = String(text || '').trim();
   if (!text) throw Object.assign(new Error('empty reply (blocked or cut off)'), { status: 0 });
-  return { text, ms: Math.round(performance.now() - t0) };
+  return { text, ms: Math.round(performance.now() - t0), usage:o._usage || null };
 }
 
 // ---------- key bookkeeping ----------
 const entries = id => keys[id];
-const hasKeys = () => IDS.some(id => keys[id].length > 0);
+const hasKeys = () => ACTIVE_IDS.some(id => keys[id].length > 0);
 async function health(id, e) {
   const t0 = performance.now(), st = { at: Date.now(), ok: false, limited: false, ms: 0, model: '', code: 0, msg: '' };
   try {
     const list = await listModels(id, e.key);
     const cache = LS.get('ember_models', {}); cache[id] = { at: Date.now(), list }; LS.set('ember_models', cache);
     const cands = rank(id, list, 'fast');
-    if (!cands.length) throw Object.assign(new Error('key works but no chat model is available on it'), { status: 0 });
-    st.model = cands[0];
-    try { const pr = await call(id, e.key, cands[0], { system: 'Reply with the single word OK.', messages: [{ role: 'user', content: 'ping' }], temp: 0, max: 64 }); st.ok = true; st.lat = pr.ms || 0; }
-    catch (er) { if (er.status == 429) { st.ok = true; st.limited = true; st.msg = 'rate limited right now (key is valid)'; } else throw er; }
+    if (CFG[id].kind === 'media') { st.ok = true; st.msg = 'Account authenticated; image and audio features available'; }
+    else if (!cands.length) throw Object.assign(new Error('key works but no chat model is available on it'), { status: 0 });
+    st.model = cands[0] || ''; st.ok = true; st.msg = st.msg || 'Model list accessible; generation not yet tested';
   } catch (er) {
     st.code = er.status || 0;
     if (er.status == 429) { st.ok = true; st.limited = true; st.msg = 'rate limited right now (key is valid)'; }
     else if (er.status == 401 || er.status == 403) st.msg = 'key rejected (' + er.status + '): ' + String(er.message || '').slice(0, 170);
     else st.msg = String(er.message || 'failed').slice(0, 120);
   }
-  st.ms = Math.round(performance.now() - t0); e.st = st; e.bad = !st.ok && (st.code == 401 || st.code == 403);
-  if (st.ok && !st.limited) cool.delete(e.key);
+  st.ms = Math.round(performance.now() - t0); e.st = st; e.bad = !st.ok && st.code == 401;
+  if (isCool(e.key)) st.limited = true;
   save(); return st;
 }
 async function healthAll() { for (const id of IDS) for (const e of keys[id]) await health(id, e); }
 async function addKey(id, key) {
   key = clean(key);
   if (!key || !keys[id]) return { ok: false, why: 'empty' };
-  if (has(key)) return { ok: false, why: 'already added' };
+  if (keys[id].some(e => e.key === key)) return { ok: false, why: 'already added' };
   const e = { key, st: null }; keys[id].push(e); save(); await health(id, e); return { ok: true, e };
 }
 function removeKey(id, key) { keys[id] = keys[id].filter(e => e.key !== key); cool.delete(key); save(); }
@@ -484,18 +520,18 @@ function removeKey(id, key) { keys[id] = keys[id].filter(e => e.key !== key); co
 // V1.9.14: the finder lives in ember_keyscan.js (one for every paste box). extract() keeps its old shape so callers and tests keep working.
 const KS = () => window.EmberKeyScan;
 function extract(text, pre) {
-  const out = { groq: [], gemini: [], mistral: [], cohere: [], anthropic: [], puter: [], unknown: [], unknownCohere: [] };
+  const out = Object.fromEntries(IDS.concat(['unknown','unknownCohere']).map(id => [id,[]]));
   const ks = KS(); if (!ks) return out;
   const sc = pre || ks.scan(text);
-  for (const id of ['groq', 'gemini', 'mistral', 'cohere', 'anthropic', 'puter']) out[id] = (sc.keys[id] || []).slice();
+  for (const id of IDS) out[id] = (sc.keys[id] || []).slice();
   out.unknown = (sc.probes && sc.probes.mistral || []).slice();
   out.unknownCohere = (sc.probes && sc.probes.cohere || []).slice();
   return out;
 }
 async function ingest(text, pre) {
   const f = extract(text, pre);
-  const rep = { found: { groq: f.groq.length, gemini: f.gemini.length, mistral: f.mistral.length, cohere: f.cohere.length, anthropic: f.anthropic.length, puter: f.puter.length, unknown: f.unknown.length + f.unknownCohere.length }, added: [], dupes: 0, rejected: 0, rejectedBy: { mistral: 0, cohere: 0 } };
-  for (const id of ['groq', 'gemini', 'mistral', 'cohere', 'anthropic', 'puter']) for (const k of f[id]) {
+  const rep = { found: Object.assign(Object.fromEntries(IDS.map(id => [id,f[id].length])), { unknown: f.unknown.length + f.unknownCohere.length }), added: [], dupes: 0, rejected: 0, rejectedBy: { mistral: 0, cohere: 0 } };
+  for (const id of IDS) for (const k of f[id]) {
     const r = await addKey(id, k);
     if (!r.ok) { rep.dupes++; continue; }
     rep.added.push({ id, key: k, ok: !!(r.e.st && r.e.st.ok), guess: false });
@@ -642,14 +678,14 @@ async function runInner(lane, o, tok) {
   for (const id of routeIds) {
     if (!o.routeProvider && onlyPinned(lane) && id != pinnedEngine) break; // V1.9.15: strict pin
     const soft = false;
-    for (const e of keys[id]) {
+    for (const e of rotation(id, lane)) {
       if (e.bad || isCool(e.key)) { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-skip', { detail: { id, why: e.bad ? 'key rejected' : 'resting after a rate limit' } })); } catch (_) { /* no listener */ } } continue; } // V1.9.78: a skipped engine is a real step
       halted();
       let models;
       try { models = await modelsFor(id, e.key, lane); }
       catch (er) {
         if (er.code === 'cancelled' || routeCancelled) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' });
-        if (er.status == 401 || er.status == 403) { e.bad = true; save(); } else if (er.status == 429) coolKey(e.key, er.retryAfter);
+        if (authFailure(er)) { e.bad = true; save(); } else if (er.status == 429) coolKey(e.key, er.retryAfter);
         // V1.9.89: a permanent 4xx (400/402/404/413/422) from one model or key no longer aborts the route: it is recorded and the router moves to the next model, key and engine (Free Mode last). A pinned engine is still strict (onlyPinned).
         errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message }); continue;
       }
@@ -657,17 +693,19 @@ async function runInner(lane, o, tok) {
       const routeModel = o.routeProvider === id && o.routeModel ? String(o.routeModel) : null;
       for (const m of (routeModel ? [routeModel] : (pm ? [pm] : models.slice(0, soft ? 5 : 3)))) {
         halted();
-        trying(CFG[id].name, m); try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
+        if (modelResting(id,e.key,m)) continue;
+        trying(CFG[id].name, m); try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); record(id,m,true,r.ms,200,r.usage); save(); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
         catch (er) {
           if (er.code === 'cancelled' || routeCancelled) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' });
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
           if (soft && (er.status == 400 || er.status == 402 || er.status == 403 || er.status == 422) && !pm) continue; // V1.9.15: try the next model, keep the key, the reason stays in failed[]
-          if (er.status == 429) { coolKey(e.key, er.retryAfter); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: true, code: 429 }); break; }
-          // V1.9.89: same: no abort, the next model, key and engine are tried
-          if (er.status == 401 || er.status == 403) { e.bad = true; e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: false, limited: false, code: er.status, msg: 'key rejected (' + er.status + ')' }); save(); break; }
-          if (er.status == 404 || (er.status == 400 && /model/i.test(er.message)) || transient(er)) continue;
-          // A model-specific or transient failure advances through models; auth/permission failures invalidate the key above.
-          break;
+          record(id,m,false,0,er.status); e.st = Object.assign({},e.st || {},{at:Date.now(),code:er.status || 0,msg:String(er.message || '').slice(0,160),model:m});
+          if (er.partial || (o._emitted && o._emitted.value)) { save(); throw Object.assign(er,{code:'partial_stream',message:'Stream interrupted after partial output. Retry explicitly to avoid mixing providers.'}); }
+          if (authFailure(er)) { e.bad=true; e.st.ok=false; save(); break; }
+          if (er.status == 402 && !(er.metadata && er.metadata.limit_source === 'openrouter_in_flight_budget')) { coolKey(e.key,er.retryAfter || 300); save(); break; }
+          if (er.status == 429 || er.status == 402) { modelRest(id,e.key,m,er.retryAfter || 60); e.st.ok=true; e.st.limited=true; save(); continue; }
+          if (er.status == 403 || er.status == 404 || er.status == 400 || er.status == 422 || transient(er)) { modelRest(id,e.key,m,er.retryAfter || (er.status == 404 ? 300 : 30)); save(); continue; }
+          save(); break;
         }
       }
     }
@@ -698,6 +736,7 @@ async function runInner(lane, o, tok) {
 // V1.5.9: remember the chat request that is in flight so app.js can hand it to the native background task if the app is backgrounded.
 let inflight = null;
 async function run(lane, o) {
+  o = Object.assign({},o); if (typeof o.onToken === 'function') { const cb=o.onToken; o._emitted={value:false}; o.onToken=(piece,all)=>{ if(piece) o._emitted.value=true; cb(piece,all); }; }
   try { if (lane !== 'util' && window.EmberCommandCenter) window.EmberCommandCenter.observeRequest(o); } catch (_) { /* passive inspector */ }
   if (lane !== 'util') routeCancelled = false;
   const tok = { lane, o };
@@ -718,13 +757,13 @@ function nativePlan(lane) {
   for (const id of orderFor(lane)) {
     if (onlyPinned(lane) && id != pinnedEngine) break;
     if (CFG[id].kind != 'oai') continue;
-    for (const e of keys[id]) {
+    for (const e of rotation(id, lane)) {
       if (e.bad || isCool(e.key)) continue;
       const c = cache[id]; if (!c || !c.list || !c.list.length) continue;
-      const m = (pinnedModel && pinnedModel.id == id) ? pinnedModel.model : rank(id, c.list, lane)[0]; if (m) out.push({ id, base: CFG[id].base, key: e.key, model: m });
+      const models = pinnedModel && pinnedModel.id == id ? [pinnedModel.model] : rank(id,c.list,lane).slice(0,3); for(const m of models)if(m && !modelResting(id,e.key,m))out.push({id,base:CFG[id].base,key:e.key,model:m});
     }
   }
-  return out.slice(0, 4);
+  return out.slice(0, 18);
 }
 // V1.9.8: one honest state per engine. none = no key saved (never green), unknown = keys saved but not checked in the last 30 min,
 // ok = a key answered a live check or a real reply recently, limited = valid but resting, bad = every key rejected or unreachable.
@@ -737,7 +776,8 @@ function stateOf(id) {
   const fresh = live.filter(e => e.st && Date.now() - (e.st.at || 0) < FRESH);
   if (!fresh.length) return 'unknown';
   if (fresh.some(e => e.st.ok && !e.st.limited && !isCool(e.key))) return 'ok';
-  if (fresh.some(e => e.st.ok)) return 'limited';
+  if (fresh.some(e => e.st.ok && (isCool(e.key) || stats()[id].cooldowns.length))) return 'limited';
+  if (fresh.some(e => e.st.ok)) return 'ok';
   return 'bad';
 }
 // Live check of one engine: lists models with each saved key (no chat call, so it spends no credit). Never touches an engine with no key.
@@ -748,12 +788,12 @@ async function ping(id) {
     const t0 = performance.now(), prev = e.st || {};
     try {
       await listModels(id, e.key);
-      e.bad = false; cool.delete(e.key);
-      e.st = { at: Date.now(), ok: true, limited: false, ms: Math.round(performance.now() - t0), model: prev.model || '', code: 0, msg: '' };
+      e.bad = false; // A catalog probe must NEVER clear an active inference cooldown.
+      e.st = { at: Date.now(), ok: true, limited: isCool(e.key), ms: Math.round(performance.now() - t0), lat:prev.lat || 0, model: prev.model || '', code: 0, msg: '' };
     } catch (er) {
       const c = er.status || 0;
       if (c == 429) e.st = { at: Date.now(), ok: true, limited: true, ms: 0, model: prev.model || '', code: 429, msg: 'rate limited right now (key is valid)' };
-      else { e.st = { at: Date.now(), ok: false, limited: false, ms: 0, model: '', code: c, msg: c == 401 || c == 403 ? 'key rejected (' + c + ')' : String(er.message || 'unreachable').slice(0, 100) }; if (c == 401 || c == 403) e.bad = true; }
+      else { e.st = { at: Date.now(), ok: false, limited: false, ms: 0, model: '', code: c, msg: c == 401 || c == 403 ? 'key rejected (' + c + ')' : String(er.message || 'unreachable').slice(0, 100) }; if (authFailure(er)) e.bad = true; }
     }
   }
   save();
@@ -770,5 +810,5 @@ function detail(id) {
 }
 async function pingAll() { await Promise.all(IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); }
 function status() { const o = {}; IDS.forEach(id => { o[id] = stateOf(id); }); return o; }
-window.Prov = { route: lane => orderFor(lane), puterConnect, puterOff, puterOn: () => (keys.puter || []).length > 0, toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
+window.Prov = { stats, setEnabled, record, rotation, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), puterConnect, puterOff, puterOn: () => (keys.puter || []).length > 0, toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
 })();

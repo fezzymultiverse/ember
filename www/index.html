@@ -7,7 +7,8 @@
 <link rel="icon" href="ember-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="ember_v79.css"><link rel="stylesheet" href="ember_v80.css"><link rel="stylesheet" href="ember_v81.css"><link rel="stylesheet" href="ember_v82.css"><link rel="stylesheet" href="ember_v83.css"><link rel="stylesheet" href="ember_acc.css"><link rel="stylesheet" href="ember_engines.css">
-<link rel="stylesheet" href="ember_blue.css"><link rel="stylesheet" href="ember_v89.css"><link rel="stylesheet" href="ember_command_center.css"></head><body>
+<link rel="stylesheet" href="ember_blue.css"><link rel="stylesheet" href="ember_v89.css"><link rel="stylesheet" href="ember_command_center.css"><link rel="stylesheet" href="ember_routing.css">
+</head><body>
 <div id="app">
 <header>
 <div class="hl"><button class="hb" id="bHist" aria-label="Chat history">☰</button><button class="hb" id="bProv" aria-label="Providers" aria-expanded="false" title="Providers: live engine status"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 2.5v3M12 2.5v3M15 2.5v3M9 18.5v3M12 18.5v3M15 18.5v3M2.5 9h3M2.5 12h3M2.5 15h3M18.5 9h3M18.5 12h3M18.5 15h3"/></svg></button></div>
@@ -200,7 +201,7 @@
 <div id="kList"></div>
 <div class="btnrow"><button class="btn g" id="bCheckAll">Check all</button></div>
 <div class="ct" style="margin-top:14px">Add one by hand</div>
-<div class="btnrow"><select id="kProv"><option value="groq">Groq</option><option value="mistral">Mistral</option><option value="gemini">Gemini</option><option value="cohere">Cohere (Prototype)</option><option value="anthropic">Claude (paid · pin to use)</option><option value="puter">Puter (auth token)</option></select><input type="password" id="kIn" placeholder="Paste a key" autocomplete="off" spellcheck="false"><button class="btn" id="bKAdd" style="width:auto;padding:0 16px">Add</button></div>
+<div class="btnrow"><select id="kProv"><option value="groq">Groq</option><option value="mistral">Mistral</option><option value="gemini">Gemini</option><option value="cohere">Cohere (Prototype)</option><option value="anthropic">Claude (paid · pin to use)</option><option value="puter">Puter (auth token)</option><option value="openrouter">OpenRouter</option><option value="plugsky">Plugsky AI</option><option value="stability">Stability AI · media only</option></select><input type="password" id="kIn" placeholder="Paste a key" autocomplete="off" spellcheck="false"><button class="btn" id="bKAdd" style="width:auto;padding:0 16px">Add</button></div>
 <p class="hint">More than one key per engine is fine. When one is rate-limited, the next one takes over, then the next engine.</p></div>
 
 <div class="card" data-tab="keys" id="puterCard"><div class="ct">Puter</div>
@@ -276,7 +277,7 @@
 
 <div class="card" data-tab="permissions"><div class="ct">System integrations</div>
 <div class="cr"><span>Proactive AI pings</span><div class="sw" id="swPing"></div></div>
-<p class="hint">Needs the installed app and a key for the ping engine (<span class="pingname">Groq</span>). About every 4 hours Ember wakes in the background and sends one short check-in about your open threads. It stays quiet from 22:00 to 08:00 and right after you have used the app. Only a few topic words and that key are handed to the background task, and both are wiped when you switch this off. The lock screen only shows "Ember pinged you".</p>
+<p class="hint">Needs the installed app and a key for a supported background engine (current utility routing plan). About every 4 hours Ember wakes in the background and sends one short check-in about your open threads. It stays quiet from 22:00 to 08:00 and right after you have used the app. Only a few topic words and that key are handed to the background task, and both are wiped when you switch this off. The lock screen only shows "Ember pinged you".</p>
 <div class="btnrow" style="margin-top:6px"><button class="btn g" id="bPingNow">Send test ping</button></div>
 <div class="cr" style="margin-top:10px"><span>Keep replying in the background</span><div class="sw on" id="swBgReply"></div></div>
 <p class="hint">If you leave Ember while it is still writing a reply, the unfinished request is handed to a background task on the phone, which finishes it and sends a notification with a reply box. It uses the same engines and keys as the app and is cancelled if the app finishes first. The request (including your keys) sits in the app's private storage until it completes, then is deleted. Add-on tools (music, documents, web) do not run in the background.</p>
@@ -538,7 +539,7 @@
 
 <div class="modal" id="dlg"><div class="mc"><h2 id="dT"></h2><p id="dX"></p><input type="text" id="dI" class="hidden"><div class="btnrow" style="margin-top:14px"><button class="btn" id="dOk">OK</button><button class="btn g" id="dNo">Cancel</button></div></div></div>
 <div id="toast"></div>
-<script src="store.js"></script><script src="ember_keyscan.js"></script><script src="providers.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js"></script><script src="ember_timeline.js"></script><script src="ember_steps.js"></script><script src="ember_pdf.js"></script><script src="ember_artifacts.js"></script>
+<script src="store.js"></script><script src="ember_keyscan.js"></script><script src="providers.js"></script><script src="ember_media.js"></script><script src="ember_downloads.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js"></script><script src="ember_timeline.js"></script><script src="ember_steps.js"></script><script src="ember_pdf.js"></script><script src="ember_artifacts.js"></script>
 <script src="ember_deliverables.js"></script><script src="ember_command_center.js"></script>
 <script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script><script src="ember_getmusic.js"></script><script src="ember_react_ui.js"></script><script src="ember_think_inline.js"></script><script src="ember_device.js"></script>
 <script src="ember_docs_lib.js"></script>
@@ -654,4 +655,5 @@
 })();
 </script>
 <script src="ember_v79.js"></script><script src="ember_v80.js"></script><script src="ember_v83.js"></script><script src="ember_acc.js"></script><script src="ember_v89.js"></script>
+<script src="ember_features.js"></script>
 </body></html>

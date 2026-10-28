@@ -29,7 +29,7 @@ for old in list((app / 'src/main/java').rglob('MainActivity.java')) + list((app 
     old.unlink()
 src = PATCH / 'app/src/main/java/com/fezzy/ember'
 kts = sorted(src.glob('*.kt'))
-need_kt = {'EmberMediaPlugin.kt', 'EmberNotifyPlugin.kt', 'EmberMediaSession.kt', 'EmberPingWorker.kt', 'EmberAiPlugin.kt', 'EmberAiWorker.kt', 'MainActivity.kt', 'ReplyReceiver.kt', 'EmberKeepAliveService.kt',
+need_kt = {'EmberMediaPlugin.kt', 'EmberNotifyPlugin.kt', 'EmberMediaSession.kt', 'EmberPingWorker.kt', 'EmberAiPlugin.kt', 'EmberAiWorker.kt', 'EmberRouteHealth.kt', 'MainActivity.kt', 'ReplyReceiver.kt', 'EmberKeepAliveService.kt',
            'EmberYoutubePlugin.kt', 'EmberYtCore.kt', 'DownloadWorker.kt', 'EmberDevicePlugin.kt', 'EmberWebPlugin.kt'}
 if not need_kt.issubset({f.name for f in kts}):
     sys.exit('missing Kotlin files in ' + str(src) + ': ' + ', '.join(sorted(need_kt - {f.name for f in kts})))

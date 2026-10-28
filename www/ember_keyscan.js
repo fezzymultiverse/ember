@@ -25,6 +25,9 @@ const GENERIC = /^[A-Za-z0-9_-]{16,128}$/;
 // rx = names/domains that are unmistakably this provider; weak = words that are only a hint (used only when no strong name is on the line)
 // shape = what a real key looks like (needed when the token is far from its name); strict = the shape is needed even next to the name
 const CAT = {
+  openrouter: { kind:'chat', label:'OpenRouter', rx:'open[\\s_-]?router', prefixed:true },
+  plugsky: { kind:'chat', label:'Plugsky AI', rx:'plug[\\s_-]?sky', prefixed:true },
+  stability: { kind:'chat', label:'Stability AI', rx:'stability(?:[\\s_-]?ai)?', prefixed:true },
   groq:        { kind: 'chat',   label: 'Groq',         rx: 'groq', prefixed: true },
   gemini:      { kind: 'chat',   label: 'Gemini',       rx: 'gemini|genai|ai[\\s_-]?studio|generativelanguage', weak: 'google', prefixed: true },
   mistral:     { kind: 'chat',   label: 'Mistral',      rx: 'mistral', shape: /^[A-Za-z0-9]{32}$/, strict: true, noHex: true },
@@ -54,6 +57,8 @@ const OTHER_RE = new RegExp(OTHER_RX, 'ig');
 // keys that announce themselves
 const B = '(?<![A-Za-z0-9_-])';
 const STRONG = [
+  ['openrouter', new RegExp(B + 'sk-or-v1-[A-Za-z0-9_-]{16,}', 'g')],
+  ['plugsky', new RegExp(B + 'sk-live-[A-Za-z0-9_-]{16,}', 'g')],
   ['groq', new RegExp(B + 'gsk_[A-Za-z0-9]{20,}', 'g')],
   ['gemini', new RegExp(B + 'AIza[0-9A-Za-z_-]{30,}', 'g')],
   ['gemini', new RegExp(B + 'AQ\\.[0-9A-Za-z_.-]{20,}', 'g')],
@@ -66,7 +71,7 @@ const STRONG = [
 ];
 // keys of services Ember cannot use: only counted (by service name), never stored
 const OTHER_KEYS = [
-  ['OpenAI', new RegExp(B + 'sk-(?!ant-)(?:proj-|svcacct-|admin-)?[A-Za-z0-9_-]{32,}', 'g')],
+  ['OpenAI', new RegExp(B + 'sk-(?!ant-|or-v1-|live-)(?:proj-|svcacct-|admin-)?[A-Za-z0-9_-]{32,}', 'g')],
   ['xAI', new RegExp(B + 'xai-[A-Za-z0-9]{20,}', 'g')],
   ['Perplexity', new RegExp(B + 'pplx-[A-Za-z0-9]{20,}', 'g')],
   ['Cerebras', new RegExp(B + 'csk-[A-Za-z0-9]{20,}', 'g')],
@@ -118,7 +123,7 @@ function tokensOf(masked) {
 // does this token look like a real key at all (before asking whose it is)?
 function plausible(tok, c) {
   if (tok.length < 16 || tok.length > MAX_TOK) return false;                      // too long is rejected whole, never cut into 128 + the rest
-  if (OTHER_PFX.test(tok) || KEYSTOP.test(tok) || PLACEHOLDER.test(tok)) return false;
+  if ((OTHER_PFX.test(tok) && !(c && c.label === 'Stability AI' && /^sk-[A-Za-z0-9_-]{16,}$/.test(tok))) || KEYSTOP.test(tok) || PLACEHOLDER.test(tok)) return false;
   if (/^[A-Z][A-Z0-9]*_[A-Z0-9_]+$/.test(tok)) return false;                       // ALL_CAPS variable names (FIRECRAWL_API_KEY)
   if (/^\d+$/.test(tok)) return false;                                             // all-digit runs are ids, not keys
   if (!/\d/.test(tok) && !(c && c.strict && c.shape.test(tok) && /[a-z]/.test(tok) && /[A-Z]/.test(tok) && new Set(tok).size >= 14)) return false;
@@ -170,6 +175,7 @@ function scan(text) {
     if (!raw.trim()) continue;                                                     // blank lines never use up the window
     let work = raw; const strongIds = [];
     for (const [id, re] of STRONG) work = work.replace(re, m => { if (m.length <= MAX_STRONG) { push(id, id == 'gemini' ? m.replace(/[.]+$/, '') : m); strongIds.push(id); } return ' '.repeat(m.length); });
+    if (spotsOf(work).some(s => s.id === 'stability')) work = work.replace(/(?<![A-Za-z0-9_-])sk-(?!ant-|or-v1-|live-)[A-Za-z0-9_-]{16,}/g,m => { push('stability',m); return ' '.repeat(m.length); });
     for (const [name, re] of OTHER_KEYS) work = work.replace(re, m => { foreignN[name] = (foreignN[name] || 0) + 1; return ' '.repeat(m.length); });
     const spots = spotsOf(work), toks = tokensOf(maskLine(work));
     // NAME = value (env file, shell, JSON, code): the variable name says whose key it is. Only for keys with no prefix of their own, and only when the line names one provider.

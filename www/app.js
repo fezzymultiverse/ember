@@ -179,11 +179,11 @@ function renderTop() {
   let lastEng = '', lastMod = ''; if (conv) for (let k = conv.msgs.length - 1; k >= 0; k--) { const mm = conv.msgs[k]; if (mm.r == 'a' && mm.eng && mm.eng.p) { lastEng = mm.eng.p; lastMod = mm.eng.m || ''; break; } }
   const shortM = m => String(m || '').replace(/^.*\//, '').slice(0, 28); // V1.9.24: the pill names the model too, not just the engine
   // V1.9.0: one compact pill instead of a row of chips. Dot = health of your keys, text = who answered last (or the mode).
-  const okN = Prov.IDS.filter(id => st[id] == 'ok').length, limN = Prov.IDS.filter(id => st[id] == 'limited').length, unkN = Prov.IDS.filter(id => st[id] == 'unknown').length;
+  const okN = Prov.ACTIVE_IDS.filter(id => st[id] == 'ok').length, limN = Prov.ACTIVE_IDS.filter(id => st[id] == 'limited').length, unkN = Prov.ACTIVE_IDS.filter(id => st[id] == 'unknown').length;
   const dot = Prov.freeOn() && !okN ? 'free' : okN ? 'ok' : limN ? 'limited' : unkN ? 'none' : Prov.hasKeys() ? 'bad' : 'none';
   const pinM = (() => { try { const x = Prov.getPinnedModel && Prov.getPinnedModel(); return x && x.id == Prov.getPinned() ? shortM(x.model) : ''; } catch (e) { return ''; } })();
   const who = lastEng ? Prov.label(lastEng) + (lastMod ? ' · ' + shortM(lastMod) : '') : (Prov.getPinned() ? Prov.label(Prov.getPinned()) + (pinM ? ' · ' + pinM : '') + ' (pinned)' : (Prov.freeOn() && !okN ? 'Free Mode' : okN ? 'Auto' : 'No key'));
-  $('engs').className = 'engpill ' + dot + (activityStatus ? ' activity' : ''); $('engs').innerHTML = '<i></i><span>' + esc(activityStatus || who) + '</span>';
+  $('engs').className = 'engpill ' + dot + (activityStatus ? ' activity' : ''); $('engs').innerHTML = '<i></i>' + (window.EmberProviderBadge && (lastEng || Prov.getPinned()) ? EmberProviderBadge(lastEng || Prov.getPinned()) : '') + '<span>' + esc(activityStatus || who) + '</span>';
   $('engs').title = activityStatus ? ('Ember is working: ' + activityStatus + '. Tap Stop in the activity card to cancel this turn.') : (lastEng ? 'Last reply: ' + Prov.label(lastEng) + (lastMod ? ' · ' + lastMod : '') + '. ' : '') + (okN ? okN + ' engine(s) ready' : 'No engine ready') + (limN ? ', ' + limN + ' rate limited' : '') + '. Tap to open Keys.';
   document.querySelectorAll('#modes button').forEach(b => b.classList.toggle('on', b.dataset.m == S.mode));
   const p = conv && conv.priv; $('bPriv').textContent = p ? '🔒 Private' : '🔓 Normal'; $('bPriv').classList.toggle('on', !!p);
@@ -503,8 +503,10 @@ async function directNewPipe(t) {
   const A = window.EmberAgentAddon, hasYt = A && A.dispatch && A.toolsFor && A.toolsFor(S).some(x => x.name == 'youtube_download');
   if (!hasYt) return false;
   const video = (t.match(/https:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com|youtu\.be)\/[^\s<>"']+/i) || [])[0] || '';
-  const playlist = /(?:[?&]list=|\/playlist(?:\/|\?|$))/i.test(video);
+  let playlist = /(?:[?&]list=|\/playlist(?:\/|\?|$))/i.test(video);
   const soundcloud = (t.match(/https:\/\/(?:www\.|m\.)?soundcloud\.com\/[^\s<>"']+/i) || [])[0] || '';
+  playlist = playlist || /\/sets\//i.test(soundcloud);
+  const mode = /\bvideo\b/i.test(t) ? 'video' : /\baudio|mp3\b/i.test(t) ? 'audio' : (window.EmberDownloads?.cfg().mode || 'audio');
   const hasLink = !!(video || soundcloud);
   // A real download request: a media link with a save/download verb, or the word download/rip/newpipe, or "save|grab|get ... song|track|audio|mp3|music".
   // Everyday talk ("get me a recipe", "save money") and questions about downloading stay with the normal AI route, as does "play ..." (play_song handles that).
@@ -524,18 +526,18 @@ async function directNewPipe(t) {
     A.setIntent(t, prev);
     let r;
     if (playlist) {
-      const listed = await runTool('playlist_list', { url: video });
-      r = listed && !listed.error ? await runTool('playlist_download', { url: video }) : listed;
+      const listed = await runTool('playlist_list', { url: video || soundcloud });
+      r = listed && !listed.error ? await runTool('playlist_download', { url: video || soundcloud, mode }) : listed;
     } else if (video || soundcloud) {
-      r = await runTool('youtube_download', { url: video || soundcloud, title: query || undefined });
+      r = await runTool('youtube_download', { url: video || soundcloud, title: query || undefined, mode });
     } else {
       const found = TL ? await runTool('youtube_search', { query }) : await A.dispatch('youtube_search', { query });
       const first = found && found.results && found.results[0];
       if (first && TL) TL.note('Best match: ' + String(first.title || '').slice(0, 70));
-      r = first ? await runTool('youtube_download', { url: first.url, title: first.title }) : (found && found.error ? found : { error: 'NewPipe found nothing for \u201c' + query + '\u201d.' });
+      r = first ? await runTool('youtube_download', { url: first.url, title: first.title, mode }) : (found && found.error ? found : { error: 'NewPipe found nothing for \u201c' + query + '\u201d.' });
     }
     const failed = !r || r.error || r.ok === false;
-    const text = failed ? 'I could not start that download. ' + String(r && (r.error || r.status) || '') : 'Download started' + (r.count ? ' for ' + r.count + ' tracks' : '') + '. The progress is in the thought above and in the card below; it lands in Music/Ember.';
+    const text = failed ? 'I could not start that download. ' + String(r && (r.error || r.status) || '') : 'Download started' + (r.count ? ' for ' + r.count + ' tracks' : '') + '. '+(r.status || 'See the download progress card and AI Features for saved files.');
     if (TL) { if (failed) TL.note('Could not start the download', 'np-result'); TL.flush(); }
     conv.msgs.push({ r: 'a', t: text, ts: Date.now(), turn, tl: TL ? TL.snapshot() : undefined });
     await persist();
@@ -557,6 +559,12 @@ async function send() {
   if (conv.auto && conv.title == 'New chat') conv.title = t.length > 38 ? t.slice(0, 38).trim() + '…' : t;
   $('inp').value = ''; grow();
   await persist(); renderLog();
+  if (window.EmberMedia?.cfg().enabled && /\b(create|generate|make|draw|render|produce)\b/i.test(t) && /\b(image|picture|artwork|illustration|video|animation|audio|music|sound|speech)\b/i.test(t)) {
+    const kind=/\b(video|animation)\b/i.test(t)?'video':/\b(speech|spoken)\b/i.test(t)?'speech':/\b(audio|music|sound)\b/i.test(t)?'audio':'image';
+    const provider=/stability/i.test(t)?'stability':/puter/i.test(t)?'puter':(kind==='video'||kind==='speech'?'puter':'stability');
+    await window.EmberAgentAddon.dispatch('media_prepare',{provider,kind,prompt:t});
+    conv.msgs.push({r:'a',t:provider==='stability'&&kind==='video'?'Stability hosted video is retired. Choose Puter video in AI Features if you want to use that platform.':'I prepared your '+kind+' request in AI Features. Review the platform and press Generate to authorize it; nothing has been submitted yet.',ts:Date.now()}); await persist();renderLog();return;
+  }
   if ((window.EmberPlus && window.EmberPlus.consume && window.EmberPlus.consume('image')) || (window.EmberEngines && window.EmberEngines.intent && window.EmberEngines.intent(t) == 'image')) { await imageRoute(t); return; } // V1.9.84: + > Create image. V1.9.87: plain-English picture requests route here too
   if (await directNewPipe(t)) return;
   reply();
@@ -902,7 +910,7 @@ function renderKeys() {
       const line = !st ? 'not checked yet' : st.ok ? (st.limited ? st.msg : '✓ working · ' + st.ms + ' ms · ' + st.model) : '✗ ' + st.msg;
       rows += '<div class="kr"><span class="d ' + (DOT[cls] || '') + '"></span><div class="kt"><b>' + esc(Prov.mask(e.key)) + '</b><small>' + esc(line) + '</small></div><button data-k="chk" data-id="' + id + '" data-key="' + esc(e.key) + '" title="Check">↻</button><button data-k="rm" data-id="' + id + '" data-key="' + esc(e.key) + '" title="Remove">✕</button></div>';
     });
-    const title = Prov.CFG[id].name + (Prov.CFG[id].status == 'prototype' ? ' <span class="pbadge">Prototype</span>' : '') + ' <small>(' + list.length + ')</small>';
+    const title = (window.EmberProviderBadge ? EmberProviderBadge(id) : '') + Prov.CFG[id].name + (Prov.CFG[id].status == 'prototype' ? ' <span class="pbadge">Prototype</span>' : '') + ' <small>(' + list.length + ')</small>';
     if (many) h += '<div class="kgrp"><button class="kghead" data-fold="' + id + '">' + title + '<span class="chev">' + (closed ? '▸' : '▾') + '</span></button><div class="kgbody' + (closed ? ' hidden' : '') + '">' + rows + '</div></div>';
     else h += '<div class="kgrp"><div class="kghead static">' + title + '</div>' + rows + '</div>';
   });
@@ -912,7 +920,7 @@ function renderKeys() {
 $('kList').addEventListener('click', e => { const b = e.target.closest('[data-fold]'); if (!b) return; toggleFold(b.dataset.fold); renderKeys(); });
 
 // ---------- V1.6.1: Get Key buttons ----------
-const KEY_LINKS = { groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', anthropic: 'https://console.anthropic.com/settings/keys', puter: 'https://puter.com/dashboard#account' };
+const KEY_LINKS = { openrouter:'https://openrouter.ai/settings/keys', plugsky:'https://plugsky.com/dashboard', stability:'https://platform.stability.ai/dashboard/api-keys', groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', anthropic: 'https://console.anthropic.com/settings/keys', puter: 'https://puter.com/dashboard#account' };
 const SCRAPE_LINKS = { firecrawl: 'https://www.firecrawl.dev/app/api-keys', browserless: 'https://www.browserless.io/', scraperapi: 'https://www.scraperapi.com/', scraperbee: 'https://app.scrapingbee.com/account/manage', zenrows: 'https://app.zenrows.com/builder', tavily: 'https://app.tavily.com/home', serpapi: 'https://serpapi.com/manage-api-key', brightdata: 'https://brightdata.com/cp', sting: '', octoparse: 'https://www.octoparse.com/' };
 function paintGetKeyRow(el, links) { if (!el) return; el.innerHTML = Object.keys(links).filter(k => links[k]).map(k => '<button class="btn g" data-link="' + esc(links[k]) + '" style="width:auto;padding:7px 12px;font-size:12px">' + (Prov.CFG[k] ? Prov.CFG[k].name : (window.EmberScraper && window.EmberScraper.LABEL[k]) || k) + ' ↗</button>').join(''); }
 document.addEventListener('click', e => { const b = e.target.closest('[data-link]'); if (b) window.open(b.dataset.link, '_blank', 'noopener'); });
@@ -1115,13 +1123,13 @@ function pingSummary() {
 // Hands the background worker what it needs. With pings off it sends an empty key, which wipes the stored one.
 async function syncPing() {
   const N = window.EmberNative; if (!N) return;
-  await N.syncNativeConfig(S.proactivePings ? { groqKey: pingKey(), summary: pingSummary(), lastActive: Date.now() } : { groqKey: '', summary: '', lastActive: Date.now() });
+  await N.syncNativeConfig(S.proactivePings ? { groqKey: pingKey(), plan:Prov.nativePlan('util'), summary: pingSummary(), lastActive: Date.now() } : { groqKey: '', summary: '', lastActive: Date.now() });
 }
 $('swPing') && ($('swPing').onclick = async () => {
   const N = window.EmberNative; if (!N) { toast('No native bridge loaded'); return; }
   const next = !S.proactivePings;
   if (next) {
-    if (!pingKey()) { toast('Add a ' + Prov.label('groq') + ' key first (Keys tab)'); return; }
+    if (!pingKey() && !Prov.nativePlan('util').length) { toast('Add a supported chat engine key and load its models first (Keys tab)'); return; }
     if (!(await N.ensureNotifyPermission())) { toast('Allow notifications first'); return; }
     S.proactivePings = true; await syncPing();
     const r = await N.setProactivePings(true, S.pingHours || 4);
@@ -1134,7 +1142,7 @@ $('swPing') && ($('swPing').onclick = async () => {
 });
 $('bPingNow') && ($('bPingNow').onclick = async () => {
   const N = window.EmberNative; if (!N) { toast('No native bridge loaded'); return; }
-  if (!pingKey()) { toast('Add a ' + Prov.label('groq') + ' key first (Keys tab)'); return; }
+  if (!pingKey() && !Prov.nativePlan('util').length) { toast('Add a supported chat engine key and load its models first (Keys tab)'); return; }
   if (!(await N.ensureNotifyPermission())) { toast('Allow notifications first'); return; }
   const was = S.proactivePings; S.proactivePings = true; await syncPing(); S.proactivePings = was;
   const r = await N.pingNow(); toast(r.ok ? 'Test ping on its way, give it a few seconds' : (r.note || 'Needs the V1.5.8 APK'));
@@ -1177,7 +1185,7 @@ function handoff() {
   const plan = Prov.nativePlan(p.lane); if (Prov.onlyPinned && Prov.onlyPinned(p.lane) && !plan.length) return null; // V1.9.15: strict pin the background task cannot serve: stay on the page, no silent Free Mode
   handedTurn = curTurn;
   if (window.EmberGithub && conv.ghReadTurns) conv.ghReadTurns[curTurn] = window.EmberGithub.lastRead();
-  return persist().then(() => N.aiAsk({ turnId: curTurn, convId: conv.id, system: p.o.system, messages: p.o.messages, temp: p.o.temp, max: p.o.max, plan, freeFirst: Prov.freeOn() && !Prov.getPinned() }))
+  return persist().then(() => N.aiAsk({ turnId: curTurn, convId: conv.id, system: p.o.system, messages: p.o.messages, temp: p.o.temp, max: p.o.max, plan, allowFree: !Prov.onlyPinned(p.lane), freeFirst: Prov.freeOn() && !Prov.getPinned() }))
     .then(r => { if (!r.ok) { handedTurn = ''; return false; } if (Prov.stopInflight) Prov.stopInflight(); return true; }); // V1.8.3: the worker has it, so the page stops spending the same reply
 }
 // A reply finished by the native task: add it to its chat (the open one, or one loaded from storage) exactly once.
@@ -1343,7 +1351,8 @@ $('fImp').onchange = async e => {
 $('bWipe').onclick = async () => {
   if (!(await sure('Delete everything?', 'All chats, memory, settings, chat and scraping keys, the Tavily key, the notepad, uploaded music, playlists and the Audd.io token on this device. This cannot be undone.'))) return;
   try { if (window.EmberPlayer) await window.EmberPlayer.wipe(); if (window.EmberAudd) window.EmberAudd.wipe(); if (window.EmberDocs) { for (const d of await window.EmberDocs.all()) await window.EmberDocs.remove(d.id); } } catch (e) { /* storage already blocked */ }
-  await Store.wipe(); ['ember_set', 'ember_keys', 'ember_models', 'ember_voice', 'ember_voice_gm', 'ember_scrape', 'ember_scrape_rot', 'ember_agent', 'ember_github', 'ember_gh_digest', 'ember_gh_log', 'ember_repo_runner', 'ember_pad', 'ember_saved', 'ember_imagine'].forEach(k => LS.del(k)); location.reload();
+  if(window.EmberMedia)for(const a of await EmberMedia.list())await EmberMedia.remove(a.id);
+  await Store.wipe(); ['ember_route_metrics','ember_route_enabled','ember_media_cfg','ember_download_cfg','ember_pin','ember_pin_model','ember_pin_strict','ember_last_good','ember_set', 'ember_keys', 'ember_models', 'ember_voice', 'ember_voice_gm', 'ember_scrape', 'ember_scrape_rot', 'ember_agent', 'ember_github', 'ember_gh_digest', 'ember_gh_log', 'ember_repo_runner', 'ember_pad', 'ember_saved', 'ember_imagine'].forEach(k => LS.del(k)); location.reload();
 };
 
 // ---------- start ----------

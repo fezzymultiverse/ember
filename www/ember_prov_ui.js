@@ -5,7 +5,8 @@
 (() => {
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const TXT = { ok: 'working', limited: 'rate limited, key is valid', bad: 'key rejected or unreachable', none: 'no key saved', unknown: 'key saved, not checked yet' };
+const TXT = { ok: 'authenticated / available', limited: 'rate limited, key is valid', bad: 'key rejected or unreachable', none: 'no key saved', unknown: 'key saved, not checked yet' };
+window.addEventListener('ember-provider-stats', () => { if(open && !busy) paint(); });
 let open = false, busy = false, lastAt = 0, tk = 0;
 
 function lat(d) { return d.lat ? '⚡ ' + d.lat + 'ms' : '⚡ —'; }
@@ -22,7 +23,7 @@ function rowFor(id) {
   else { sub = d.model || 'model picked on first use'; right = '<div class="pdlat">' + lat(d) + '</div><div class="pdcost">' + keys + '</div>'; }
   const dim = !n || st === 'limited' || st === 'bad' ? ' pd-dim' : '';
   return '<button class="pdrow' + dim + '" role="menuitem" data-id="' + esc(id) + '"><span class="pdd ' + (chk ? 'chk' : st) + '"></span>' +
-    '<span class="pdinfo"><span class="pdn">' + esc(c.name) + proto + '</span><small>' + esc(sub) + '</small></span><span class="pdright">' + right + '</span></button>';
+    '<span class="pdinfo"><span class="pdn">' + (window.EmberProviderBadge ? EmberProviderBadge(id) : '') + esc(c.name) + proto + '</span><small>' + esc(sub) + '</small></span><span class="pdright">' + right + '</span></button>';
 }
 function freeRow() {
   const P = window.Prov, on = P.freeOn();
@@ -32,7 +33,7 @@ function paint() {
   const d = $('provDrop'), P = window.Prov; if (!d || !P) return;
   d.innerHTML = '<div class="pdh"><b>Providers</b><button class="pdre" id="pdRe" aria-label="Check all now">' + (busy ? '…' : '↻') + '</button></div>' +
     P.IDS.map(rowFor).join('') + freeRow() +
-    '<div class="pdleg"><span><i class="pdd ok"></i>working</span><span><i class="pdd limited"></i>limited</span><span><i class="pdd bad"></i>rejected</span><span><i class="pdd none"></i>no key</span></div>' +
+    '<div class="pdleg"><span><i class="pdd ok"></i>available</span><span><i class="pdd limited"></i>limited</span><span><i class="pdd bad"></i>rejected</span><span><i class="pdd none"></i>no key</span></div>' +
     '<p class="pdnote">' + (lastAt ? 'Checked ' + new Date(lastAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '. ' : '') + 'A provider with no key can never show green.</p>';
 }
 async function check() {
@@ -49,7 +50,7 @@ function toggle(force) {
   d.classList.toggle('hidden', !open); b.classList.toggle('on', open); b.setAttribute('aria-expanded', open ? 'true' : 'false');
   if (open) { paint(); check(); }
   clearInterval(tk); tk = 0;
-  if (open) tk = setInterval(() => { try { if (!busy && window.Prov.IDS.some(i => window.Prov.detail(i).retry > 0)) paint(); } catch (e) { /* repaint is best effort */ } }, 1000);
+  if (open) tk = setInterval(() => { try { if (!busy) paint(); } catch (e) { /* repaint is best effort */ } }, 1000);
 }
 if ($('bProv')) {
   $('bProv').addEventListener('click', e => { e.stopPropagation(); toggle(); });

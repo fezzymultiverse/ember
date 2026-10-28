@@ -8,6 +8,7 @@ const lsGet = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 
 const CHAT = 'Chat engine. Used automatically for every reply (the router picks one, or the one he pinned). No tool call needed.';
 const SCRAPE = id => 'Web page fetcher. Used by scrape_url (it takes turns with his other scraper keys; pass via:"' + id + '" to force this one). Only runs when Settings > Scraping is switched on.';
 const USE = {
+  openrouter: CHAT + ' Paid models possible; automatic fallback requires explicit opt-in in AI Features.', plugsky: CHAT + ' Automatic fallback requires opt-in in AI Features.', stability: 'Media generation only, never a chat fallback. Image and audio artifacts in AI Features; hosted Stability video API is retired.',
   groq: CHAT, mistral: CHAT, gemini: CHAT, cohere: CHAT + ' Prototype.', anthropic: 'Claude chat engine (paid). Never used automatically: it answers only while he pins Claude in the Providers chip.',
   firecrawl: SCRAPE('firecrawl') + ' Also backs up web_search after Tavily.', browserless: SCRAPE('browserless'), scraperapi: SCRAPE('scraperapi'), scraperbee: SCRAPE('scraperbee'), sting: SCRAPE('sting'), zenrows: SCRAPE('zenrows'),
   serpapi: 'Google search results. Backs up web_search after Tavily, and is the last resort inside scrape_url (snippets only, never the page itself).',
@@ -23,7 +24,7 @@ function inventory() {
   const P = window.Prov, SC = window.EmberScraper, out = [];
   if (P && P.IDS) P.IDS.forEach(id => {
     const a = (P.entries && P.entries(id)) || [];
-    out.push({ id, name: P.CFG[id].name, kind: 'chat engine', saved: a.length, usable: a.filter(e => e && !(e.st && e.st.ok === false) && !e.bad).length, use: USE[id] || CHAT, where: WHERE(id) });
+    out.push({ id, name: P.CFG[id].name, kind: P.CFG[id].kind === 'media' ? 'media artifacts' : 'chat engine', saved: a.length, usable: a.filter(e => e && !(e.st && e.st.ok === false) && !e.bad).length, use: USE[id] || CHAT, where: WHERE(id) });
   });
   if (SC && SC.KEY_IDS) { const k = (SC.get() || {}).keys || {}; const cnt = id => (SC.keysOf ? SC.keysOf(id).length : (k[id] ? 1 : 0)); SC.KEY_IDS.filter(id => id != 'tavily').forEach(id => out.push({ id, name: (SC.LABEL && SC.LABEL[id]) || id, kind: 'scraper', saved: cnt(id), usable: cnt(id), use: USE[id], where: WHERE(id) })); }
   const A = window.EmberAgentAddon, tn = SC && SC.keysOf ? SC.keysOf('tavily').length : (A && A.hasTavilyKey && A.hasTavilyKey() ? 1 : 0); out.push({ id: 'tavily', name: 'Tavily', kind: 'web search', saved: tn, usable: tn, use: USE.tavily, where: WHERE('tavily') });
@@ -38,7 +39,7 @@ function line() {
     const s = lsGet('ember_set', {}) || {};
     return 'KEY MAP (true now, names only, values are never shown to you): ' +
       (have.length ? have.map(x => x.name + ' [' + x.kind + (x.kind == 'chat engine' ? ', ' + x.usable + '/' + x.saved + ' usable' : '') + ']').join('; ') : 'no keys saved') +
-      '. Every saved key is already wired: chat engine keys answer your replies by themselves; scraper keys run inside scrape_url (SerpApi, Bright Data, Firecrawl, ScraperAPI and ScraperBee keys also back up web_search; a provider with several keys switches to the next one when a key runs out); the Tavily key runs inside web_search and takes turns as a page reader (DuckDuckGo is the keyless fallback); an Octoparse key reads one saved task and only when named; the Audd token runs inside identify_song. You never receive or type a key. ' +
+      '. Every saved key is already wired: chat engine keys answer replies according to pin and opt-in routing; Stability keys are media-only and require user confirmation in AI Features; scraper keys run inside scrape_url (SerpApi, Bright Data, Firecrawl, ScraperAPI and ScraperBee keys also back up web_search; a provider with several keys switches to the next one when a key runs out); the Tavily key runs inside web_search and takes turns as a page reader (DuckDuckGo is the keyless fallback); an Octoparse key reads one saved task and only when named; the Audd token runs inside identify_song. You never receive or type a key. ' +
       'If he asks whether a key works or where it goes, call key_map and answer from its result. Missing: ' + (miss.map(x => x.name).join(', ') || 'none') + '. If a feature needs a missing key, say which one and which Settings tab takes it. ' +
       (s.agentAddon ? '' : 'Web search is switched off. ');
   } catch (e) { return ''; }

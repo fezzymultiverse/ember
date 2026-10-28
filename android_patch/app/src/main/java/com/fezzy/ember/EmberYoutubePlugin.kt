@@ -88,7 +88,7 @@ class EmberYoutubePlugin : Plugin() {
     fun downloadVideo(call: PluginCall) {
         val url = call.getString("url")?.trim().orEmpty()
         if (serviceFor(url) == null) { call.reject("A YouTube or SoundCloud link is required"); return }
-        val req = enqueue(url, call.getString("title") ?: "", serviceName(url), call.getString("artist") ?: "", call.getString("album") ?: "", 0, call.getString("thumb") ?: "", null)
+        val req = enqueue(url, call.getString("title") ?: "", serviceName(url), call.getString("artist") ?: "", call.getString("album") ?: "", 0, call.getString("thumb") ?: "", null, call.getString("mode") ?: "audio")
         call.resolve(JSObject().put("jobId", req.id.toString()))
     }
 
@@ -108,7 +108,7 @@ class EmberYoutubePlugin : Plugin() {
                 val queue = "ember_pl_" + (url.hashCode().toLong() and 0xffffffffL)
                 for (item in playlistItems(svc, url, pi, limit)) {
                     n++
-                    val req = enqueue(item.url, item.name ?: "", serviceName(item.url), item.uploaderName ?: "", pi.name ?: "", n, thumbOf(item), queue)
+                    val req = enqueue(item.url, item.name ?: "", serviceName(item.url), item.uploaderName ?: "", pi.name ?: "", n, thumbOf(item), queue, call.getString("mode") ?: "audio")
                     arr.put(JSObject().put("jobId", req.id.toString()).put("title", item.name ?: "").put("thumb", thumbOf(item)).put("artist", item.uploaderName ?: ""))
                 }
                 call.resolve(JSObject().put("title", pi.name ?: "").put("jobs", arr))
@@ -135,9 +135,9 @@ class EmberYoutubePlugin : Plugin() {
         return items.take(limit)
     }
 
-    private fun enqueue(url: String, title: String, service: String, artist: String, album: String, track: Int, thumb: String, queue: String?): OneTimeWorkRequest {
+    private fun enqueue(url: String, title: String, service: String, artist: String, album: String, track: Int, thumb: String, queue: String?, mode: String): OneTimeWorkRequest {
         val data = Data.Builder().putString("url", url).putString("title", title).putString("service", service)
-            .putString("artist", artist).putString("album", album).putInt("track", track).putString("thumb", thumb).build()
+            .putString("mode", if (mode == "video") "video" else "audio").putString("artist", artist).putString("album", album).putInt("track", track).putString("thumb", thumb).build()
         val req = OneTimeWorkRequestBuilder<DownloadWorker>().setInputData(data).build()
         if (queue != null) WorkManager.getInstance(context).enqueueUniqueWork(queue, ExistingWorkPolicy.APPEND_OR_REPLACE, req)
         else WorkManager.getInstance(context).enqueue(req)

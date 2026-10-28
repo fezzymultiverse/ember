@@ -32,6 +32,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
     private val nm get() = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     private val progressId get() = 7000 + (id.hashCode() and 0xffff)
     private val doneId get() = 90000 + (id.hashCode() and 0xffff)
+    private val videoMode get() = inputData.getString("mode") == "video"
+    private val saveFolder get() = if (videoMode) "Movies/Ember" else "Music/Ember"
     private var shownTitle = "YouTube audio"
     private var tagTitle = ""
     private var tagArtist = ""
@@ -62,17 +64,21 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             val ok = info.audioStreams.filter { it.isUrl && it.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP }
             val pick = ok.filter { it.format == MediaFormat.M4A }.maxByOrNull { it.averageBitrate }
                 ?: ok.maxByOrNull { it.averageBitrate }
-                ?: throw IOException("No downloadable audio stream for this video")
-            val suffix = pick.format?.suffix ?: "m4a"
-            val mime = pick.format?.mimeType ?: "audio/mp4"
+                ?: if (videoMode) null else throw IOException("No downloadable audio stream for this video")
+            val video = if (videoMode) info.videoStreams.filter {
+                it.isUrl && !it.isVideoOnly && it.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP
+            }.maxByOrNull { it.resolution.filter(Char::isDigit).toIntOrNull() ?: 0 } else null
+            if (videoMode && video == null) throw IOException("No combined video/audio stream. Select yt-dlp for high-resolution merging.")
+            val suffix = if (videoMode) video!!.format?.suffix ?: "mp4" else pick?.format?.suffix ?: "m4a"
+            val mime = if (videoMode) video!!.format?.mimeType ?: "video/mp4" else pick?.format?.mimeType ?: "audio/mp4"
 
-            fetch(pick.content, tmp)
+            fetch(if (videoMode) video!!.content else pick!!.content, tmp)
             report("Saving...", 100, false)
             val where = publish(tmp, safeName(shownTitle) + "." + suffix, mime)
             tmp.delete()
             remember("done", where)
             saveJob("done", 100, shownTitle, where)
-            finish("Saved: $shownTitle", "Music/Ember")
+            finish("Saved: $shownTitle", saveFolder)
             Result.success()
         } catch (e: CancellationException) {
             tmp.delete()
@@ -209,20 +215,20 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     put(MediaStore.Audio.Media.DISPLAY_NAME, name)
                     put(MediaStore.Audio.Media.MIME_TYPE, mime)
                     if (tagTitle.isNotEmpty()) put(MediaStore.Audio.Media.TITLE, tagTitle)
-                    if (tagArtist.isNotEmpty()) put(MediaStore.Audio.Media.ARTIST, tagArtist)
-                    if (tagAlbum.isNotEmpty()) put(MediaStore.Audio.Media.ALBUM, tagAlbum)
-                    if (tagTrack > 0) put(MediaStore.Audio.Media.TRACK, tagTrack)
-                    put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/Ember")
+                    if (!videoMode && tagArtist.isNotEmpty()) put(MediaStore.Audio.Media.ARTIST, tagArtist)
+                    if (!videoMode && tagAlbum.isNotEmpty()) put(MediaStore.Audio.Media.ALBUM, tagAlbum)
+                    if (!videoMode && tagTrack > 0) put(MediaStore.Audio.Media.TRACK, tagTrack)
+                    put(MediaStore.Audio.Media.RELATIVE_PATH, saveFolder)
                     put(MediaStore.Audio.Media.IS_PENDING, 1)
                 }
-                val uri = cr.insert(MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), cv)
+                val uri = cr.insert(if (videoMode) MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY) else MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), cv)
                     ?: throw IOException("MediaStore refused the file")
-                cr.openOutputStream(uri)!!.use { o -> tmp.inputStream().use { it.copyTo(o) } }
+                try { cr.openOutputStream(uri)!!.use { o -> tmp.inputStream().use { it.copyTo(o) } } } catch (e: Exception) { cr.delete(uri, null, null); throw e }
                 cv.clear(); cv.put(MediaStore.Audio.Media.IS_PENDING, 0); cr.update(uri, cv, null, null)
-                return "Music/Ember/$name"
+                return "$saveFolder/$name"
             } catch (e: Exception) { /* fall through to the app folder */ }
         }
-        val dir = applicationContext.getExternalFilesDir(Environment.DIRECTORY_MUSIC) ?: applicationContext.filesDir
+        val dir = applicationContext.getExternalFilesDir(if (videoMode) Environment.DIRECTORY_MOVIES else Environment.DIRECTORY_MUSIC) ?: applicationContext.filesDir
         val f = File(dir, name)
         tmp.copyTo(f, true)
         return f.absolutePath

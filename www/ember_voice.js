@@ -24,7 +24,7 @@ const EZ_VOICES = [['af_aoede', 'Aoede (default)'], ['af_heart', 'Heart'], ['af_
 const cfg = () => { const c = Object.assign({}, DEF, lsGet(KEY, {})); if (c.engine !== 'device' && c.engine !== 'easyvoice') c.engine = 'gemini'; return c; };
 const setCfg = p => { const c = Object.assign(cfg(), p); lsSet(KEY, c); return c; };
 
-const gemKeys = () => { try { return ((window.Prov && window.Prov.entries && window.Prov.entries('gemini')) || []).filter(e => e && e.key && !e.bad).map(e => e.key); } catch (e) { return []; } };
+const gemKeys = rotate => { try { return ((window.Prov && (rotate && window.Prov.rotation ? window.Prov.rotation('gemini','voice') : window.Prov.entries('gemini'))) || []).filter(e => e && e.key && !e.bad && !window.Prov.isCool(e.key)).map(e => e.key); } catch (e) { return []; } };
 // is the cloud voice usable right now?
 function active() {
   const c = cfg();
@@ -71,7 +71,7 @@ async function gemOnce(model, key, text, voice, tone) {
       let r;
       try { r = await fetch(u, { method: 'POST', headers, body, signal: ac.signal }); }
       catch (e) { throw err(e && e.name === 'AbortError' ? 'The voice took too long' : 'Could not reach the voice service', 0); }
-      if (!r.ok) { let m = ''; try { const j = await r.json(); m = (j.error && j.error.message) || ''; } catch (e) { } throw err(String(m || ('HTTP ' + r.status)).slice(0, 160), r.status); }
+      if (!r.ok) { let m = ''; try { const j = await r.json(); m = (j.error && j.error.message) || ''; } catch (e) { } throw err(String(m || ('HTTP ' + r.status)).slice(0, 160), r.status,{retryAfter:Number(r.headers.get('retry-after'))||60}); }
       return await r.json();
     } finally { clearTimeout(t); }
   };
@@ -84,14 +84,15 @@ async function gemOnce(model, key, text, voice, tone) {
   return a.inlineData;
 }
 async function gemAudio(text, tone, c) {
-  const keys = gemKeys(); if (!keys.length) throw err('No Gemini key saved: add one in Settings > Keys', 0);
+  const keys = gemKeys(true); if (!keys.length) throw err('No Gemini key saved: add one in Settings > Keys', 0);
   const models = Array.from(new Set([c.gemModel, lsGet(GM, ''), ...MODELS].filter(Boolean)));
   let last = null;
   for (const m of models) {
     for (const k of keys) {
-      try { const d = await gemOnce(m, k, text, c.gem || DEF.gem, tone); lsSet(GM, m); return d; }
+      if(window.Prov?.modelResting('gemini',k,m))continue;const start=performance.now();
+      try { const d = await gemOnce(m, k, text, c.gem || DEF.gem, tone); lsSet(GM, m); window.Prov?.record('gemini',m,true,Math.round(performance.now()-start),200);return d; }
       catch (e) {
-        last = e;
+        last = e;window.Prov?.record('gemini',m,false,0,e.status);if(e.status===429)window.Prov?.modelRest('gemini',k,m,e.retryAfter||60);
         if (e.status === 404 || e.noAudio || (e.status === 400 && /model|not found|not support|modalit|response/i.test(e.message) && !/api key/i.test(e.message))) break; // this model is not usable here: next model
         if (e.status === 401 || e.status === 403 || e.status === 429) continue; // this key: next key
         throw e;
@@ -235,11 +236,12 @@ async function sttOnce(model, key, b64) {
   } finally { clearTimeout(t); }
 }
 async function transcribe(b64) {
-  const keys = gemKeys(); if (!keys.length) throw err('No Gemini key saved: add one in Settings > Keys', 0);
+  const keys = gemKeys(true); if (!keys.length) throw err('No Gemini key saved: add one in Settings > Keys', 0);
   let last = null;
   for (const m of STT_MODELS) for (const k of keys) {
-    try { return await sttOnce(m, k, b64); }
-    catch (e) { last = e; if (e.status === 404) break; if (e.status === 401 || e.status === 403 || e.status === 429 || e.status === 400) continue; throw e; }
+    if(window.Prov?.modelResting('gemini',k,m))continue;
+    try { const start=performance.now(),text=await sttOnce(m,k,b64);window.Prov?.record('gemini',m,true,Math.round(performance.now()-start),200);return text; }
+    catch (e) { last = e;window.Prov?.record('gemini',m,false,0,e.status);if(e.status===429)window.Prov?.modelRest('gemini',k,m,e.retryAfter||60); if (e.status === 404) break; if (e.status === 401 || e.status === 403 || e.status === 429 || e.status === 400) continue; throw e; }
   }
   throw last || err('Transcribing failed', 0);
 }

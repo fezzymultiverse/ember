@@ -269,7 +269,7 @@
   }
   async function syncNativeConfig(cfg) {
     if (!hasM(Notify, 'saveNativeConfig')) return { ok: false, note: 'Needs the V1.5.8 APK (saveNativeConfig).' };
-    try { await Notify.saveNativeConfig({ groqKey: cfg.groqKey || '', summary: cfg.summary || '', model: cfg.model || '', lastActive: cfg.lastActive || Date.now() }); return { ok: true }; }
+    try { await Notify.saveNativeConfig({ plan:cfg.plan || [],groqKey: cfg.groqKey || '', summary: cfg.summary || '', model: cfg.model || '', lastActive: cfg.lastActive || Date.now() }); return { ok: true }; }
     catch (e) { return { ok: false, note: (e && e.message) || 'Could not save the ping settings.' }; }
   }
   async function setProactivePings(enabled, hours) {
@@ -292,7 +292,7 @@
   async function aiSetVisible(v) { if (!aiAvailable) return; try { await AiP.setVisible({ visible: !!v }); } catch (e) { /* older APK */ } }
   async function aiTakeResults() {
     if (!aiAvailable) return [];
-    try { const r = await AiP.takeResults(); return (r && Array.isArray(r.results)) ? r.results : []; } catch (e) { return []; }
+    try { const r = await AiP.takeResults(); if(r && Array.isArray(r.routing) && window.Prov) for(const a of r.routing){ if(!Prov.CFG[a.id])continue;Prov.record(a.id,a.model,Number(a.status)===200,a.ms,a.status);const entry=(Prov.entries(a.id)||[]).find(e=>Prov.mask(e.key)===a.key);if(entry&&a.status===429)Prov.modelRest(a.id,entry.key,a.model,Math.max(1,(a.at+(a.retry||60)*1000-Date.now())/1000)); } return (r && Array.isArray(r.results)) ? r.results : []; } catch (e) { return []; }
   }
 
   // V1.6.6: read-only phone facts for the Device panel (Wi-Fi, VPN, RAM, storage, uptime, battery). Null in a plain browser.

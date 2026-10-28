@@ -45,6 +45,7 @@ class EmberAiPlugin : Plugin() {
                 .put("max", call.data.optInt("max", 400))
                 .put("plan", call.getArray("plan") ?: JSArray())
                 .put("freeFirst", call.getBoolean("freeFirst") ?: false)
+                .put("allowFree", call.getBoolean("allowFree") ?: false)
             val dir = File(context.filesDir, "ember_bg"); dir.mkdirs()
             val f = File(dir, UUID.randomUUID().toString() + ".json")
             f.writeText(req.toString())
@@ -72,6 +73,7 @@ class EmberAiPlugin : Plugin() {
     fun takeResults(call: PluginCall) {
         val r = JSObject()
         r.put("results", EmberAiBridge.take(context))
+        r.put("routing", EmberRouteHealth.take(context))
         call.resolve(r)
     }
 }

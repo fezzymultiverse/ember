@@ -1,6 +1,6 @@
 {
   "name": "ember",
-  "version": "1.9.93",
+  "version": "1.9.94",
   "private": true,
   "license": "UNLICENSED",
   "description": "Ember - a companion to talk to about anything (PWA, APK-ready via Capacitor)",
@@ -25,7 +25,11 @@
     "test:repo-runner": "node tests/v1992-repo-runner-test.js",
     "test:repo-runner:browser": "node tests/v1992-repo-runner-browser-test.js",
     "test:command-center": "node tests/command-center-test.js",
-    "test:command-center:browser": "node tests/command-center-browser-test.js"
+    "test:command-center:browser": "node tests/command-center-browser-test.js",
+    "test:routing94": "node tests/routing94-test.js",
+    "downloads": "node tools/download-bridge.cjs",
+    "test:routing94:browser": "node tests/routing94-browser-test.js",
+    "test:downloads94": "node tests/download94-test.js"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",

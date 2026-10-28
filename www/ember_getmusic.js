@@ -8,12 +8,13 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&a
 const toast = m => { const t = $('toast'); if (!t) return; t.textContent = m; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 3200); };
 const fmt = s => { s = Math.max(0, Math.round(+s || 0)); return s ? Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') : ''; };
 function yt() {
+  if (window.EmberDownloads) return EmberDownloads.available() ? EmberDownloads : undefined;
   const cap = window.Capacitor; if (!cap) return undefined;
   const P = cap.Plugins || {}; if (P.EmberYoutube) return P.EmberYoutube;
   try { if (cap.isNativePlatform && cap.isNativePlatform() && cap.isPluginAvailable && cap.isPluginAvailable('EmberYoutube') && cap.registerPlugin) return cap.registerPlugin('EmberYoutube'); } catch (e) { /* not in this build */ }
   return undefined;
 }
-const NEED = 'The native downloader is only inside the Ember APK. In a browser, search and download do not work.';
+const NEED = 'Choose NewPipe in the APK, or configure the local yt-dlp bridge in AI Features for browser and Android downloads.';
 const LINK = /^https:\/\/(www\.|m\.|music\.)?(youtube\.com|youtu\.be|soundcloud\.com)\/\S+$/i;
 // V1.9.27: what we know about each track we queued (YouTube thumbnail, artist, album), keyed by a plain form of its title. The library uses it as a
 // cover when no tag or online lookup has one. Mirrors DownloadWorker.splitTitle so the cleaned title the phone saves still matches.
@@ -76,7 +77,7 @@ function paintJobs() {
     const cur = DL_STEPS.findIndex(st => pct < st.to);
     const idx = done ? DL_STEPS.length : (cur < 0 ? DL_STEPS.length - 1 : cur);
     const chip = done ? 'Saved' : failed ? 'Failed' : pct > 0 ? pct + '%' : 'Starting';
-    const meta = done ? 'Saved to Music/Ember' : failed ? 'Stopped at step ' + (idx + 1) + ' of ' + DL_STEPS.length + ': ' + DL_STEPS[idx].lbl : 'Step ' + (idx + 1) + ' of ' + DL_STEPS.length + ': ' + DL_STEPS[idx].lbl;
+    const meta = done ? (j.engine==='yt-dlp'?'Saved on local bridge · AI Features → Save to this device':j.mode==='video'?'Saved to Movies/Ember':'Saved to Music/Ember') : failed ? 'Stopped at step ' + (idx + 1) + ' of ' + DL_STEPS.length + ': ' + DL_STEPS[idx].lbl : 'Step ' + (idx + 1) + ' of ' + DL_STEPS.length + ': ' + DL_STEPS[idx].lbl;
     const seg = DL_STEPS.map((st, si) => '<i class="dj-s dj-s-' + stepSt(st, pct, j.state) + '"></i>').join('');
     const list = DL_STEPS.map(st => { const ss = stepSt(st, pct, j.state); return '<li class="dj-l dj-l-' + ss + '"><span class="dj-li">' + (ss === 'done' ? '✓' : ss === 'err' ? '✗' : ss === 'active' ? st.ico : '○') + '</span><span>' + esc(st.lbl) + '</span></li>'; }).join('');
     const eng = j.engine ? '<span class="dj-eng">' + esc(j.engine) + '</span>' : '';
@@ -85,7 +86,7 @@ function paintJobs() {
       + '<div class="dj-meta">' + eng + '<span>' + esc(meta) + '</span></div>' + err
       + '<div class="dj-seg">' + seg + '</div>'
       + (!done && !failed ? '<div class="dj-bar"><i style="width:' + pct + '%"></i></div>' : '')
-      + (done ? '<button type="button" class="dj-play" data-dl-play="' + esc(j.id) + '" data-title="' + esc(j.title || '') + '">▶ Play</button>' : '')
+      + (done && j.engine!=='yt-dlp' && j.mode!=='video' ? '<button type="button" class="dj-play" data-dl-play="' + esc(j.id) + '" data-title="' + esc(j.title || '') + '">▶ Play</button>' : '')
       + '<details class="dj-more"><summary>All steps</summary><ul>' + list + '</ul></details></div>';
   }).join('');
 }
@@ -99,7 +100,7 @@ async function one(url, title, meta) {
   const P = yt(); if (!P) { toast(NEED); return false; }
   if (!LINK.test(url)) { toast('That is not a YouTube or SoundCloud link'); return false; }
   await perm();
-  try { const m = meta || {}; const r = await P.downloadVideo({ url, title: title || '', artist: m.artist || '', thumb: m.thumb || '' }); if (r && r.jobId) { track(r.jobId, title); dlSave(title, m); toast('Download started'); return true; } toast('The downloader did not start a job'); }
+  try { const m = meta || {}; const r = await P.downloadVideo({ url, mode:window.EmberDownloads ? EmberDownloads.cfg().mode : 'audio', title: title || '', artist: m.artist || '', thumb: m.thumb || '' }); if (r && r.jobId) { track(r.jobId, title); dlSave(title, m); toast('Download started'); return true; } toast('The downloader did not start a job'); }
   catch (e) { toast('Could not start: ' + String((e && e.message) || e).slice(0, 120)); }
   return false;
 }
@@ -137,13 +138,13 @@ $('gtAll').onclick = async () => {
   if (!P) { toast(NEED); return; } if (!LINK.test(u)) { toast('That is not a YouTube or SoundCloud link'); return; }
   if (!window.confirm('Download this whole playlist (up to 100 tracks, one after another)? Each track is saved with its title, artist and the playlist name as the album.')) return;
   await perm();
-  try { const r = await P.downloadPlaylist({ url: u, limit: 100 }); ((r && r.jobs) || []).forEach(j => { track(j.jobId, j.title); dlSave(j.title, { thumb: j.thumb, artist: j.artist, album: r.title }); }); toast(((r && r.jobs) || []).length + ' downloads queued'); $('gtUrl').value = ''; }
+  try { const r = await P.downloadPlaylist({ url: u, limit: 100, mode:window.EmberDownloads ? EmberDownloads.cfg().mode : 'audio' }); ((r && r.jobs) || []).forEach(j => { track(j.jobId, j.title); dlSave(j.title, { thumb: j.thumb, artist: j.artist, album: r.title }); }); toast(((r && r.jobs) || []).length + ' downloads queued'); $('gtUrl').value = ''; }
   catch (e) { toast('Could not queue: ' + String((e && e.message) || e).slice(0, 120)); }
 };
 let scanT = null;
 window.addEventListener('ember-dl', e => {
   const j = e.detail || {}; if (!j.id) return;
-  jobs.set(j.id, { id: j.id, title: j.title, state: j.state, pct: j.pct, detail: j.detail, engine: j.engine || (jobs.get(j.id) || {}).engine || '' }); paintJobs();
+  jobs.set(j.id, { id: j.id, title: j.title, state: j.state, pct: j.pct, detail: j.detail, mode:j.mode, engine: j.engine || (jobs.get(j.id) || {}).engine || '' }); paintJobs();
 });
 window.addEventListener('ember-dl-final', e => {
   const d = e.detail || {}; if (d.state !== 'done') { if (d.state === 'failed') toast('A download failed'); return; }

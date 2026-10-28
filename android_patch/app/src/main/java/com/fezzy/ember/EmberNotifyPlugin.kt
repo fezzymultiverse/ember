@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.RemoteInput
+import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -172,6 +173,7 @@ class EmberNotifyPlugin : Plugin() {
     fun saveNativeConfig(call: PluginCall) {
         val e = context.getSharedPreferences("EmberPrefs", Context.MODE_PRIVATE).edit()
         e.putString("groq_key", call.getString("groqKey") ?: "")
+        e.putString("ping_plan", (call.getArray("plan") ?: JSArray()).toString())
         e.putString("last_chat_summary", (call.getString("summary") ?: "").take(600))
         e.putString("ping_model", call.getString("model") ?: "")
         e.putLong("last_active", call.data.optLong("lastActive", 0L))
@@ -192,7 +194,7 @@ class EmberNotifyPlugin : Plugin() {
             wm.enqueueUniquePeriodicWork("EmberPing", androidx.work.ExistingPeriodicWorkPolicy.UPDATE, req)
         } else {
             wm.cancelUniqueWork("EmberPing")
-            context.getSharedPreferences("EmberPrefs", Context.MODE_PRIVATE).edit().remove("groq_key").remove("last_chat_summary").apply()
+            context.getSharedPreferences("EmberPrefs", Context.MODE_PRIVATE).edit().remove("groq_key").remove("ping_plan").remove("last_chat_summary").apply()
         }
         val r = JSObject(); r.put("enabled", enabled); r.put("hours", hours)
         call.resolve(r)
