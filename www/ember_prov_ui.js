@@ -9,7 +9,14 @@ const TXT = { ok: 'authenticated / available', limited: 'rate limited, key is va
 window.addEventListener('ember-provider-stats', () => { if(open && !busy) paint(); });
 let open = false, busy = false, lastAt = 0, tk = 0;
 
-function lat(d) { return d.lat ? '⚡ ' + d.lat + 'ms' : '⚡ —'; }
+function lat(d) { return d.lat ? '⚡ ' + d.lat + ' ms' : '⚡ —'; }
+// Branded, full-colour provider marks. Inline SVG keeps the icons crisp and available offline.
+const MARKS = {
+ openrouter:['#6b5cff','O'], plugsky:['#36b8f5','P'], stability:['#a78bfa','S'],
+ groq:['#ff6a00','G'], mistral:['#ff8a00','M'], gemini:['#4285f4','✦'],
+ cohere:['#39594d','C'], anthropic:['#d97757','A'], puter:['#4f7cff','P']
+};
+function mark(id) { const m=MARKS[id]||['#64748b','•']; return '<span class="pdbrand" style="--brand:'+m[0]+'" aria-hidden="true">'+m[1]+'</span>'; }
 function rowFor(id) {
   const P = window.Prov, st = P.stateOf(id), n = P.entries(id).length, c = P.CFG[id], d = P.detail(id), chk = busy && n;
   const proto = c.status === 'prototype' ? ' <i class="pdproto">prototype</i>' : '';
@@ -23,7 +30,7 @@ function rowFor(id) {
   else { sub = d.model || 'model picked on first use'; right = '<div class="pdlat">' + lat(d) + '</div><div class="pdcost">' + keys + '</div>'; }
   const dim = !n || st === 'limited' || st === 'bad' ? ' pd-dim' : '';
   return '<button class="pdrow' + dim + '" role="menuitem" data-id="' + esc(id) + '"><span class="pdd ' + (chk ? 'chk' : st) + '"></span>' +
-    '<span class="pdinfo"><span class="pdn">' + (window.EmberProviderBadge ? EmberProviderBadge(id) : '') + esc(c.name) + proto + '</span><small>' + esc(sub) + '</small></span><span class="pdright">' + right + '</span></button>';
+    '<span class="pdinfo"><span class="pdn">' + mark(id) + esc(c.name) + proto + '</span><small>' + esc(sub) + '</small></span><span class="pdright">' + right + '</span></button>';
 }
 function freeRow() {
   const P = window.Prov, on = P.freeOn();
@@ -31,9 +38,9 @@ function freeRow() {
 }
 function paint() {
   const d = $('provDrop'), P = window.Prov; if (!d || !P) return;
-  d.innerHTML = '<div class="pdh"><b>Providers</b><button class="pdre" id="pdRe" aria-label="Check all now">' + (busy ? '…' : '↻') + '</button></div>' +
+  d.innerHTML = '<div class="pdh"><div><b>API &amp; Engine Health</b><small class="pdsummary">Live status · latency · key state</small></div><button class="pdre" id="pdRe" aria-label="Check all providers now">' + (busy ? '…' : '↻ Check') + '</button></div>' +
     P.IDS.map(rowFor).join('') + freeRow() +
-    '<div class="pdleg"><span><i class="pdd ok"></i>available</span><span><i class="pdd limited"></i>limited</span><span><i class="pdd bad"></i>rejected</span><span><i class="pdd none"></i>no key</span></div>' +
+    '<div class="pdleg"><span><i class="pdd ok"></i>API available</span><span><i class="pdd limited"></i>Rate limited</span><span><i class="pdd bad"></i>Key/API error</span><span><i class="pdd none"></i>No key</span></div>' +
     '<p class="pdnote">' + (lastAt ? 'Checked ' + new Date(lastAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '. ' : '') + 'A provider with no key can never show green.</p>';
 }
 async function check() {

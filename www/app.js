@@ -1049,10 +1049,34 @@ $('swLively') && ($('swLively').onclick = () => { S.ttsLively = S.ttsLively === 
 $('bVoiceTest') && ($('bVoiceTest').onclick = () => { speakText("Hey, it's " + (S.pname || 'Ember') + ". Is this voice better? Because I can sound a lot less boring than that!", null); });
 paintVoiceTune();
 setTimeout(paintVoices, 1200);
-function renderMem() {
-  const row = (k, a) => a.map((f, i) => '<div class="mi' + (S.learn ? '' : ' off') + '"><span>' + esc(f.t) + '</span><button class="ed" data-m="' + k + '" data-i="' + i + '" data-e="1">Edit</button><button data-m="' + k + '" data-i="' + i + '" title="Delete">✕</button></div>').join('') || '<p class="hint">Nothing yet.</p>';
-  $('mFacts').innerHTML = row('facts', mem.facts); $('mThreads').innerHTML = row('threads', mem.threads);
+// V1.9.96: Core Memory is grouped by topic. Groups are worked out at draw time from the fact text; nothing stored is changed,
+// so Edit and the X keep using each fact's original index in mem.facts. Open/closed state of each group is remembered.
+const MEM_GROUPS = [
+  ['Chat notes', /^(provided|reminded|assisted|helped|told|explained|asked|suggested|answered|walked|gave)\b/i],
+  ['About you', /(\bname is\b|\bcalled\b|\blives? in\b|\bbased in\b|\byears? old\b|\bborn\b|\bworks? as\b|\bjob\b|\(user\)|\bspeaks?\b)/i],
+  ['Security & OSINT', /(osint|ransomware|reverse shell|metasploit|pen-?test|exploit|hack|malware|vulnerab)/i],
+  ['Music & media', /(music|youtube|song|lyric|playlist|spotify|album|download|audio|video)/i],
+  ['Interests & habits', /(interest|\blikes?\b|\bloves?\b|\benjoys?\b|favou?rite|hobby|late night|routine|\bprefers?\b)/i],
+  ['Projects & building', /(project|\bapp\b|script|termux|\bbuild|\bcode\b|github|\brepo|\bapk\b|scrap|\bflow\b|setup|\btool|android|\bbash\b)/i]
+];
+const memShut = () => { try { const a = JSON.parse(localStorage.getItem('ember_memgrp_shut') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+function memGroupHtml(a, item) {
+  if (!a.length) return '<p class="hint">Nothing yet.</p>';
+  const names = MEM_GROUPS.map(g => g[0]).concat('Other'), box = {}; names.forEach(n => { box[n] = []; });
+  a.forEach((f, i) => { const t = String((f && f.t) || ''), g = MEM_GROUPS.find(x => x[1].test(t)); box[g ? g[0] : 'Other'].push(i); });
+  const shut = memShut();
+  return names.filter(n => box[n].length).map(n => '<details class="mg" data-g="' + esc(n) + '"' + (shut.indexOf(n) < 0 ? ' open' : '') + '><summary><span>' + esc(n) + '</span><b>' + box[n].length + '</b></summary>' + box[n].map(i => item('facts', a[i], i)).join('') + '</details>').join('');
 }
+function renderMem() {
+  const item = (k, f, i) => '<div class="mi' + (S.learn ? '' : ' off') + '"><span>' + esc(f.t) + '</span><button class="ed" data-m="' + k + '" data-i="' + i + '" data-e="1">Edit</button><button data-m="' + k + '" data-i="' + i + '" title="Delete">✕</button></div>';
+  const row = (k, a) => a.map((f, i) => item(k, f, i)).join('') || '<p class="hint">Nothing yet.</p>';
+  $('mFacts').innerHTML = memGroupHtml(mem.facts, item); $('mThreads').innerHTML = row('threads', mem.threads);
+}
+$('mFacts').addEventListener('toggle', e => {
+  const d = e.target; if (!d || !d.classList || !d.classList.contains('mg')) return;
+  const n = d.dataset.g, a = memShut().filter(x => x != n); if (!d.open) a.push(n);
+  try { localStorage.setItem('ember_memgrp_shut', JSON.stringify(a)); } catch (x) { /* storage blocked */ }
+}, true);
 function renderSet() {
   renderKeys(); renderMem();
   $('sName').value = S.name; $('sAbout').value = S.about; $('sPname').value = S.pname; $('sInt').value = S.interests;

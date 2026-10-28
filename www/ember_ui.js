@@ -27,12 +27,8 @@ function paintNames() {
   const P = window.Prov, host = $('provNameBox'); if (!P || !host) return;
   host.innerHTML = P.IDS.map(id => '<div class="pnrow"><span class="pn-name">' + esc(DEFAULTS[id] || id) + '</span></div>').join('');
 }
-function mountNames() {
-  const keys = document.querySelector('.card[data-tab="keys"]'); if (!keys || $('provNameBox')) return;
-  const card = document.createElement('div'); card.className = 'card'; card.dataset.tab = 'keys';
-  card.innerHTML = '<div class="ct">Provider names</div><div id="provNameBox"></div>';
-  keys.parentNode.insertBefore(card, keys.nextSibling);
-  paintNames();
+function mountNames() { // V1.9.96: the "Provider names" card is gone. Any copy left in the page is removed; nothing is added.
+  const box = $('provNameBox'), card = box && box.closest ? box.closest('.card') : null; if (card) card.remove();
 }
 
 // ---- key box: the provider follows the key you paste ----

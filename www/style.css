@@ -717,10 +717,10 @@ header{padding:6px 10px;gap:6px;border-bottom-color:#2a1a0c}
 /* ===== V1.9.8 ===== */
 /* header: Providers chip left, Ember's name in the true middle, tools right */
 @keyframes pdin{from{opacity:0;transform:translateY(-6px) scale(.97)}to{opacity:1;transform:none}}
-.pdh{display:flex;align-items:center;justify-content:space-between;padding:4px 8px 6px}
+.pdh{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 8px 10px;border-bottom:1px solid var(--b);margin-bottom:5px}.pdsummary{display:block;color:var(--m);font-size:11px;margin-top:3px;letter-spacing:0;text-transform:none;font-weight:400}
 .pdh b{font-size:12px;letter-spacing:.8px;text-transform:uppercase;color:var(--ac)}
 .pdre{width:30px;height:30px;border-radius:9px;border:1px solid var(--b);background:#141414;color:var(--t);font-size:15px;cursor:pointer}
-.pdrow{display:grid;grid-template-columns:14px 1fr;column-gap:10px;align-items:center;width:100%;text-align:left;padding:9px 10px;border:none;background:transparent;color:var(--t);border-radius:11px;cursor:pointer;font:inherit}
+.pdrow{display:grid;grid-template-columns:12px minmax(0,1fr) minmax(82px,auto);column-gap:9px;align-items:center;width:100%;text-align:left;padding:10px 9px;border:none;background:transparent;color:var(--t);border-radius:11px;cursor:pointer;font:inherit}
 .pdrow:active{background:#151515}
 .pdrow .pdn{font-size:14px;font-weight:700}
 .pdrow small{grid-column:2;color:var(--m);font-size:11px;margin-top:1px}
@@ -771,7 +771,7 @@ header .who b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:el
 #bProv{display:inline-flex;align-items:center;justify-content:center;padding:0;color:var(--ac)}
 #bProv svg{display:block}
 #bProv.on{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 16%,#141414)}
-.provdrop{position:absolute;left:8px;right:8px;top:calc(100% + 6px);z-index:60;max-width:430px;background:#0a0a0a;border:1px solid color-mix(in srgb,var(--ac) 45%,var(--b));border-radius:16px;box-shadow:0 14px 40px rgba(0,0,0,.75);padding:6px 6px 8px;transform-origin:top left;animation:pdin .16s ease-out}
+.provdrop{position:absolute;left:8px;right:8px;top:calc(100% + 6px);z-index:60;width:auto;max-width:560px;max-height:min(76vh,680px);overflow-y:auto;overscroll-behavior:contain;background:#0a0a0a;border:1px solid color-mix(in srgb,var(--ac) 45%,var(--b));border-radius:16px;box-shadow:0 14px 40px rgba(0,0,0,.75);padding:8px;transform-origin:top left;animation:pdin .16s ease-out}
 .provdrop.hidden{display:none}
 
 /* ===== V1.9.11 ===== */
@@ -1859,3 +1859,16 @@ html body .msg.a p,html body .msg.a ul,html body .msg.a ol,html body .msg.a pre{
 
 /* Verified per-answer GitHub provenance, separate from answer text. */
 .gh-last-read{display:table;max-width:100%;box-sizing:border-box;margin:10px 0 4px;padding:4px 9px;border:1px solid currentColor;border-radius:12px;font-size:11px;line-height:1.5;opacity:.8;overflow-wrap:anywhere}
+
+/* V1.9.96: clearer API health dashboard and non-squashed provider rows */
+.pdrow{min-height:58px;border-bottom:1px solid rgba(255,255,255,.045)}
+.pdrow:last-of-type{border-bottom:0}
+.pdrow .pdn{display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap}
+.pdrow .pdinfo small{white-space:normal;overflow-wrap:anywhere;line-height:1.35}
+.pdright{min-width:82px;max-width:42%;white-space:normal;overflow-wrap:anywhere}
+.pdbrand{display:inline-flex;align-items:center;justify-content:center;flex:0 0 27px;width:27px;height:27px;border-radius:8px;background:var(--brand);color:#fff;font-size:15px;font-weight:800;box-shadow:0 2px 7px rgba(0,0,0,.28);margin-right:2px}
+.pdbrand[aria-hidden=true]{line-height:1}
+.pdleg{display:flex;flex-wrap:wrap;gap:8px 12px;padding:10px 8px 4px;border-top:1px solid var(--b);margin-top:5px}
+.pdleg span{display:inline-flex;align-items:center;gap:5px;font-size:10px}
+.pdnote{font-size:11px;line-height:1.45;margin:7px 8px 3px;color:var(--m)}
+@media(max-width:380px){.provdrop{left:4px;right:4px;padding:5px}.pdrow{grid-template-columns:10px minmax(0,1fr) 76px;column-gap:7px;padding:9px 6px}.pdright{min-width:76px;max-width:76px}.pdbrand{width:24px;height:24px;flex-basis:24px}.pdrow .pdn{font-size:13px}}
