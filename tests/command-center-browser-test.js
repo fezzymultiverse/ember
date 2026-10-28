@@ -24,7 +24,10 @@ const server=http.createServer((req,res)=>{
   check('panel initially inert and terminal collapsed',await page.evaluate(()=>document.querySelector('#emberCommandCenter').inert && document.querySelector('#eccTerminalBody').hidden));
   await page.click('#bCommandCenter');
   check('header button opens sliding panel',await page.getAttribute('#bCommandCenter','aria-expanded')==='true' && await page.locator('#eccTitle').isVisible());
+  check('desktop workspace docks without making chat inert', await page.evaluate(()=>document.body.classList.contains('ecc-docked') && !document.querySelector('#app').inert));
+  await page.setViewportSize({width:390,height:844}); await page.waitForTimeout(100);
   await page.focus('[data-ecc-action="push"]'); await page.keyboard.press('Tab'); check('panel focus trap loops to close',await page.evaluate(()=>document.activeElement.id==='eccClose'));
+  await page.setViewportSize({width:1280,height:900});
   await page.keyboard.press('Escape');check('escape closes and restores header focus',await page.getAttribute('#bCommandCenter','aria-expanded')==='false' && await page.evaluate(()=>document.activeElement.id==='bCommandCenter'));
   await page.evaluate(()=>{
     EmberTimeline.begin();EmberTimeline.note('Original timeline is still running','cc-test');EmberTimeline.note('Existing timeline events unchanged','cc-test-2');EmberTimeline.flush();

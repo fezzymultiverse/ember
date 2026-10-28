@@ -7,7 +7,7 @@
 <link rel="icon" href="ember-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="ember_v79.css"><link rel="stylesheet" href="ember_v80.css"><link rel="stylesheet" href="ember_v81.css"><link rel="stylesheet" href="ember_v82.css"><link rel="stylesheet" href="ember_v83.css"><link rel="stylesheet" href="ember_acc.css"><link rel="stylesheet" href="ember_engines.css">
-<link rel="stylesheet" href="ember_blue.css"><link rel="stylesheet" href="ember_v89.css"><link rel="stylesheet" href="ember_command_center.css"><link rel="stylesheet" href="ember_routing.css">
+<link rel="stylesheet" href="ember_blue.css"><link rel="stylesheet" href="ember_v89.css"><link rel="stylesheet" href="ember_command_center.css"><link rel="stylesheet" href="ember_routing.css"><link rel="stylesheet" href="ember_workspace.css">
 </head><body>
 <div id="app">
 <header>
@@ -51,7 +51,7 @@
   <div class="ecc-panel-content">
     <section class="ecc-card"><div class="ecc-card-title"><span class="ecc-icon">◈</span><h3>Thought Inspector</h3><span class="ecc-chip">SUMMARY</span></div><p class="ecc-description">Ember’s public three-phase summary, not private internal reasoning.</p><pre id="eccThought" aria-live="polite">No three-phase summary received yet.</pre></section>
     <section class="ecc-card"><div class="ecc-card-title"><span class="ecc-icon ecc-blue">▦</span><h3>Memory Matrix</h3><span id="eccMemoryCount" class="ecc-chip">0</span></div><p class="ecc-description">File excerpts present in the latest observed model request. Not the entire library or repository.</p><ul id="eccMemory"></ul><p id="eccMemoryEmpty" class="ecc-empty">No file excerpts observed in the context window.</p><small id="eccContextStatus">Waiting for a model request.</small></section>
-    <section class="ecc-card"><div class="ecc-card-title"><span class="ecc-icon">ϟ</span><h3>Quick Actions</h3></div><div class="ecc-actions"><button data-ecc-action="build"><span>▶</span><b>Run Build<small>Dispatch the configured build workflow</small></b></button><button data-ecc-action="cache"><span>↻</span><b>Clear Cache<small>Repository read caches only</small></b></button><button data-ecc-action="push"><span>↥</span><b>Push to GitHub<small>Run installed whole-repository sync</small></b></button></div><p id="eccActionStatus" role="status" class="ecc-description">Actions use your existing Repo Runner configuration.</p></section>
+    <section class="ecc-card"><div class="ecc-card-title"><span class="ecc-icon">ϟ</span><h3>Quick Actions</h3></div><div class="ecc-workspace-actions"><button class="btn g" id="eccRepos">Repositories &amp; Brain</button><button class="btn g" id="eccRunnerStatus">Check runner status</button></div><p id="eccRepoSummary" class="ecc-description"></p><div class="ecc-actions"><button data-ecc-action="build"><span>▶</span><b>Run Build<small>Dispatch the configured build workflow</small></b></button><button data-ecc-action="cache"><span>↻</span><b>Clear Cache<small>Repository read caches only</small></b></button><button data-ecc-action="push"><span>↥</span><b>Push to GitHub<small>Run installed whole-repository sync</small></b></button></div><p id="eccActionStatus" role="status" class="ecc-description">Actions use your existing Repo Runner configuration.</p></section>
   </div>
 </aside>
 
@@ -655,5 +655,5 @@
 })();
 </script>
 <script src="ember_v79.js"></script><script src="ember_v80.js"></script><script src="ember_v83.js"></script><script src="ember_acc.js"></script><script src="ember_v89.js"></script>
-<script src="ember_features.js"></script>
+<script src="ember_features.js"></script><script src="ember_workspace.js"></script>
 </body></html>

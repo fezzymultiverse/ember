@@ -11,8 +11,8 @@ function paint() {
   $('ghHub').innerHTML = '<div class="gh-sec"><div class="gh-h">GitHub</div>' +
     '<label class="lb" for="ghBrainRepo">Knowledge Brain Repo</label>' +
     '<input id="ghBrainRepo" type="text" value="' + esc(g.knowledgeRepo()) + '" placeholder="fezzymultiverse/ember-brain" autocomplete="off" autocapitalize="off" spellcheck="false">' +
-    '<button class="btn g" data-gh-action="save-repo">Save repository</button>' +
-    '<p class="hint">One Super Repo for every repository tool. Reads use the GitHub API and your saved token. No clone, sync or Runner is needed.</p><p class="hint" id="ghRepoStatus" role="status"></p></div>' +
+    '<button class="btn g" data-gh-action="save-repo">Apply Brain repository</button>' +
+    '<p class="hint">One Brain for live knowledge tools, automatically included in Repo Runner below. Use search results to apply a different Brain, add whole sources, or select your Ember output repo. Applying a Brain is local; live reads require your saved token.</p><p class="hint" id="ghRepoStatus" role="status"></p></div>' +
     '<div class="gh-sec"><label class="lb" for="ghTok">GitHub token</label>' +
     '<input type="password" id="ghTok" placeholder="' + (g.token() ? 'Token saved. Paste to replace.' : 'Paste GitHub token') + '" autocomplete="off" autocapitalize="off" spellcheck="false">' +
     '<p class="hint">The token stays on this device and is sent only to the GitHub API, never to the model. It needs access to the Super Repo, including Contents read access for a fine-grained token.</p>' +
@@ -70,9 +70,9 @@ async function click(e) {
   try {
     if (action === 'save-repo') {
       grepCursor = null; $('ghGrepMore').hidden = true;
-      const r = G().setKnowledgeRepo($('ghBrainRepo').value);
+      const r = window.EmberRepoRunner ? window.EmberRepoRunner.applyBrain($('ghBrainRepo').value) : G().setKnowledgeRepo($('ghBrainRepo').value);
       message('ghRepoStatus', r.ok ? 'Saved ' + r.repo + '. Every repository tool now uses this one repository.' : r.error);
-      if (r.ok) { currentPath = ''; opened = null; $('ghFilePath').value = ''; $('ghFileList').innerHTML = ''; $('ghFileText').hidden = true; $('ghReadMore').hidden = true; }
+      if (r.ok) { $('ghBrainRepo').value = r.repo; currentPath = ''; opened = null; $('ghFilePath').value = ''; $('ghFileList').innerHTML = ''; $('ghFileText').hidden = true; $('ghReadMore').hidden = true; }
     } else if (action === 'save-token') {
       const value = $('ghTok').value; if (!value.trim()) return message('ghTokenStatus', 'Paste a token first. Your saved token was not changed.');
       const saved = G().setToken(value); $('ghTok').value = ''; message('ghTokenStatus', saved ? 'Token saved on this device.' : 'Invalid token. Paste a GitHub token.'); paintAdvanced();
@@ -99,7 +99,7 @@ async function click(e) {
     } else if (action === 'sync') { const r = await G().syncAll({ force: true }); if (!r.ok) message('ghSyncStatus', r.error || 'Sync failed.'); }
     else if (action === 'clear-cache') { await G().clearCache(G().knowledgeSources()[0]); message('ghSyncStatus', 'Cache cleared. Live reads still work.'); }
     else if (action === 'install-runner') { message('ghRunnerStatus', 'Installing optional Runner…'); const r = await G().installRunner(G().knowledgeRepo()); message('ghRunnerStatus', r.ok ? 'Runner ' + r.action + ' in ' + r.repo : r.error); }
-  } catch (error) { message(action === 'install-runner' ? 'ghRunnerStatus' : 'ghFilesStatus', error.message || 'GitHub request failed.'); }
+  } catch (error) { message(action === 'install-runner' ? 'ghRunnerStatus' : action.includes('token') ? 'ghTokenStatus' : action === 'save-repo' ? 'ghRepoStatus' : 'ghFilesStatus', error.message || 'GitHub request failed.'); }
   finally { busy = false; if (b.isConnected) b.disabled = false; paintActivity(); }
 }
 $('ghHub').addEventListener('click', click);

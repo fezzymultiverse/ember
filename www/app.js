@@ -20,7 +20,7 @@ const migrateMem = m => {
 };
 let mem = MEM_DEF();
 let conv = null, busy = false, lastErr = null, backupKeys = false, curTurn = null, handedTurn = '';
-let streamText = '', cancelRequested = false, activityStatus = '';
+let streamText = '', cancelRequested = false, activityStatus = '', rejectTurn = null;
 function paintRouteStatus(name, model) { const b = $('engs'); if (!b) return; b.classList.add('working'); const sp = b.querySelector('span'); if (sp) sp.textContent = name ? ('Trying ' + name + (model ? ' · ' + model : '')) : 'Connecting…'; b.title = 'Live routing status: ' + (name || 'connecting') + (model ? ' · ' + model : ''); }
 window.addEventListener('ember-try', e => { streamText = ''; const d = e.detail || {}; paintRouteStatus(d.name, d.model); const p = $('streamPreview'); if (p) p.remove(); });
 window.addEventListener('ember-token', e => { streamText = String(e.detail && e.detail.text || ''); let p = $('streamPreview'); if (!p && streamText) { $('log').insertAdjacentHTML('beforeend', '<div class="msg a stream-preview" id="streamPreview"><div></div><small>Live response</small></div>'); p = $('streamPreview'); } if (p) { const d = p.querySelector('div'); if (d) d.innerHTML = fmt(streamText); down(); } });
@@ -413,6 +413,8 @@ async function reply(o) {
   o = o || {}; if (busy) return;
   busy = true; cancelRequested = false; streamText = ''; lastErr = null; $('bSend').disabled = true; $('bStop').classList.remove('hidden'); $('bStop').disabled = false; $('bStop').textContent = '■'; $('bSend').classList.add('hidden'); typing(true);
   const turnId = conv.id + ':' + conv.msgs.length; curTurn = turnId;
+  const cancelledTurn = new Promise((_, reject) => { rejectTurn = reject; }); cancelledTurn.catch(() => {});
+  const withinTurn = promise => Promise.race([promise, cancelledTurn]);
   const L = o.force ? { lane: 'deep', deep: true } : laneFor();
   const TLn = window.EmberTimeline; // V1.9.35: richer steps in the thinking card
   try { window.dispatchEvent(new CustomEvent('ember-turn-start', { detail: { lane: L.lane } })); } catch (_) { /* no listener */ }
@@ -438,25 +440,27 @@ async function reply(o) {
     const GHr = window.EmberGithub, us = conv.msgs.filter(m => m.r == 'u');
     const latest = us.length ? us[us.length - 1].t : '', previous = us.length > 1 ? us[us.length - 2].t : '';
     if (!GHr || !GHr.prefetch || !GHr.assertReadFirst) throw new Error('Knowledge Brain Read-First is unavailable. Reload Ember before asking code questions.');
-    const rr = await GHr.prefetch(latest, previous);
+    const rr = await withinTurn(GHr.prefetch(latest, previous));
     if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });
     GHr.assertReadFirst();
     if (rr.files.length && TLn && TLn.step) TLn.step('github', 'Read first · ' + rr.files.map(f => f.path).join(', '), 'r4c');
     // Persist provenance before a native handoff so background answers keep the same chip.
     conv.ghReadTurns = conv.ghReadTurns || {}; conv.ghReadTurns[turnId] = rr; await persist();
     const lastU = conv.msgs.length ? [...conv.msgs].reverse().find(m => m.r == 'u') : null;
-    const web = !o.directive && Safety.lastLevel() < 3 && window.EmberDeliverables ? await window.EmberDeliverables.prepare(latest, { cancelled: () => cancelRequested || curTurn !== turnId, step: TLn && TLn.step ? TLn.step.bind(TLn) : null }) : { results: [], context: '' };
+    const web = !o.directive && Safety.lastLevel() < 3 && window.EmberDeliverables ? await withinTurn(window.EmberDeliverables.prepare(latest, { cancelled: () => cancelRequested || curTurn !== turnId, step: TLn && TLn.step ? TLn.step.bind(TLn) : null })) : { results: [], context: '' };
     if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });
-    const call = Persona.respond(conv, { S, mem, webEvidence: web.context, directive: o.directive, lane: L.lane, deep: L.deep, uiState: uiStateBlock(), planHint: !o.directive && lastU ? planHint(lastU.t) : '', shouldCancel: () => cancelRequested, onToken: (piece, full) => { try { if (window.EmberCommandCenter) window.EmberCommandCenter.inspect(full); } catch (_) {} if (!GHr.hasLiveRead(GHr.lastRead())) return; try { window.dispatchEvent(new CustomEvent('ember-token', { detail: { piece, text: full } })); } catch (_) {} } });
+    const call = Persona.respond(conv, { S, mem, webEvidence: web.context, directive: o.directive, lane: L.lane, deep: L.deep, uiState: uiStateBlock(), planHint: !o.directive && lastU ? planHint(lastU.t) : '', shouldCancel: () => cancelRequested || curTurn !== turnId, onToken: (piece, full) => { try { if (window.EmberCommandCenter) window.EmberCommandCenter.inspect(full); } catch (_) {} if (!GHr.hasLiveRead(GHr.lastRead())) return; try { window.dispatchEvent(new CustomEvent('ember-token', { detail: { piece, text: full } })); } catch (_) {} } });
     // V1.9.33: no reply may hang the screen. After REPLY_MS the page stops trying engines and shows an error with Resend.
     let dl; const guard = new Promise((_, no) => { dl = setTimeout(() => { try { if (Prov.abortInflight) Prov.abortInflight(); } catch (e) { /* ignore */ } no(Object.assign(new Error('No reply after ' + Math.round(REPLY_MS / 1000) + ' seconds. An engine is stuck or very slow. Tap resend, or pin a different engine in Settings.'), { code: 'timeout' })); }, REPLY_MS); });
     call.catch(() => {}); // the race below reports it; a late failure after the deadline must not surface as an unhandled rejection
-    let r; try { r = await Promise.race([window.EmberNative ? window.EmberNative.holdDuringReply(call) : call, guard]); } finally { clearTimeout(dl); }
+    let r; try { r = await Promise.race([window.EmberNative ? window.EmberNative.holdDuringReply(call) : call, guard, cancelledTurn]); } finally { clearTimeout(dl); }
+    if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });
     if (TLn && r) TLn.note('Got a reply from ' + (r.provider || 'an engine') + (r.model ? ' (' + r.model + ')' : '') + (r.ms ? ' in ' + (r.ms / 1000).toFixed(1) + 's' : ''), 'got');
     let finalText = r.text;
     const bgWon = () => conv.msgs.some(m => m.turn === turnId); // the background task already delivered this turn's reply
     if (bgWon()) finalText = '';
-    else if (finalText) finalText = await resolveAddonCalls(finalText, L, { provider: r.provider, model: r.model, webRead: web.results.some(x => x.result && x.result.markdown && !x.result.error), webEvidence: web.context });
+    else if (finalText) finalText = await withinTurn(resolveAddonCalls(finalText, L, { provider: r.provider, model: r.model, webRead: web.results.some(x => x.result && x.result.markdown && !x.result.error), webEvidence: web.context }));
+    if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });
     if (finalText && window.EmberDeliverables && Safety.lastLevel() < 3) finalText = window.EmberDeliverables.normalize(finalText, latest);
     GHr.assertReadFirst();
     if (finalText && (GHr.isCodeQuestion(latest, previous) || (window.EmberDeliverables ? window.EmberDeliverables.answerHasCode(finalText) : GHr.isCodeQuestion(finalText, latest)))) { const proof = GHr.lastRead(); if (!GHr.hasLiveRead(proof)) throw new Error('Read-First blocked this code answer: no live file was read from Knowledge Brain Repo. Check Settings > GitHub.'); }
@@ -477,9 +481,9 @@ async function reply(o) {
       const keep = turnId; setTimeout(() => { if (curTurn === keep && busy && !conv.msgs.some(m => m.turn === keep)) { lastErr = 'The background reply did not arrive. Tap resend.'; busy = false; $('bSend').disabled = false; typing(false); curTurn = null; renderLog(); } }, 180000);
       return;
     }
-    if (curTurn === turnId) lastErr = e.message || 'Something broke.';
+    if (curTurn === turnId && !(e && e.code === 'cancelled')) lastErr = e.message || 'Something broke.';
   }
-  if (curTurn === turnId) { busy = false; streamText = ''; $('bSend').disabled = false; $('bSend').classList.remove('hidden'); $('bStop').classList.add('hidden'); $('bStop').disabled = false; $('engs').classList.remove('working'); typing(false); curTurn = null; }
+  if (curTurn === turnId) { rejectTurn = null; busy = false; streamText = ''; $('bSend').disabled = false; $('bSend').classList.remove('hidden'); $('bStop').classList.add('hidden'); $('bStop').disabled = false; $('engs').classList.remove('working'); typing(false); curTurn = null; }
   if (talkOn && lastErr) talkOff('Talk mode off: that reply failed');
   renderLog();
   saveSession(); // persist session state after every reply
@@ -594,7 +598,7 @@ window.addEventListener('ember-bg-reply', e => {
 });
 window.addEventListener('ember-timer', e => { const t = e.detail && e.detail.text; if (!t) return; ensure(); conv.msgs.push({ r: 'a', t, ts: Date.now() }); persist(); renderLog(); toast(t.slice(0, 80)); });
 $('bSend').onclick = send;
-if ($('bStop')) $('bStop').onclick = () => { if (!busy) return; cancelRequested = true; $('bStop').disabled = true; $('bStop').textContent = '…'; try { Prov.abortInflight(); } catch (_) {} };
+if ($('bStop')) $('bStop').onclick = () => { if (!busy) return; cancelRequested = true; if (rejectTurn) rejectTurn(Object.assign(new Error('Reply stopped'), { code: 'cancelled' })); $('bStop').disabled = true; $('bStop').textContent = '…'; try { Prov.abortInflight(); } catch (_) {} try { window.EmberGithub?.cancelReads(); } catch (_) {} try { window.EmberEngine?.react?.stop(); } catch (_) {} try { if (curTurn) window.EmberNative?.aiCancel(curTurn); } catch (_) {} };
 window.addEventListener('ember-stop-request', () => { if ($('bStop') && busy) $('bStop').click(); });
 window.addEventListener('ember-activity', e => { const d = e.detail || {}; activityStatus = d.active ? String(d.text || 'Thinking…').slice(0, 54) : ''; if ($('engs')) renderTop(); });
 // V1.9.24: Paste and Copy for the message box (long-press paste is unreliable in some webviews)

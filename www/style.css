@@ -1824,7 +1824,7 @@ header .hb,header .hr .hb,header .hl .hb,#bGlobe.hb,#bTermux.hb,#bSet.hb{flex:0 
 
 /* ===== V1.9.78: calmer, roomier layout (Manus-style). Appended last so nothing above is edited. ===== */
 /* Stop: a floating pill above the composer instead of a button squeezed into the input row */
-html body .comp .row .side #bStop:not(.hidden){position:fixed!important;right:16px;bottom:calc(var(--dock,150px) + 12px);width:auto!important;height:42px!important;padding:0 20px!important;border-radius:999px!important;font-size:14px!important;font-weight:700;box-shadow:0 8px 26px rgba(0,0,0,.38);z-index:40;display:inline-flex!important;align-items:center;gap:6px}
+html body .comp .row .side #bStop:not(.hidden){display:none!important}
 html body .comp .row .side #bStop:not(.hidden)::after{content:"Stop"}
 html body .comp .row .side #bStop:disabled::after{content:""}
 /* Bottom bar: one quiet row of modes; the tool buttons live in the + menu already */

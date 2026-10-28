@@ -20,7 +20,12 @@
     if (open) lastFocus = document.activeElement;
     el.classList.toggle('ecc-open', open); el.inert = !open;
     el.setAttribute('aria-hidden', String(!open)); $('bCommandCenter').setAttribute('aria-expanded', String(open));
-    $('eccBackdrop').hidden = !open;
+    const docked = open && W.matchMedia('(min-width: 1100px)').matches;
+    document.body.classList.toggle('ecc-docked', docked);
+    $('eccBackdrop').hidden = !open || docked;
+    $('app').inert = open && !docked;
+    el.setAttribute('role', docked ? 'complementary' : 'dialog');
+    if (open && !docked) el.setAttribute('aria-modal', 'true'); else el.removeAttribute('aria-modal');
     if (open) $('eccClose').focus(); else if (lastFocus && lastFocus.isConnected) lastFocus.focus();
   }
   function drawer(open) {
@@ -230,7 +235,7 @@
     on(document, 'keydown', e => {
       if (!$('emberCommandCenter').classList.contains('ecc-open')) return;
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); panel(false); }
-      if (e.key === 'Tab') {
+      if (e.key === 'Tab' && !document.body.classList.contains('ecc-docked')) {
         const nodes = [...$('emberCommandCenter').querySelectorAll('button:not(:disabled),[tabindex="0"]')], first = nodes[0], last = nodes[nodes.length-1];
         if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }

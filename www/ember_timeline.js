@@ -359,7 +359,7 @@
     }
     if (getStyle() === 'dd') {
       return '<div class="et-inner' + (live.open ? ' et-open' : '') + '">'
-        + '<div class="et-hdr" data-et="toggle">' + CHEV + '<span class="et-shimmer">Thinking\u2026</span>' + SW + '</div>'
+        + '<div class="et-hdr" data-et="toggle">' + CHEV + '<span class="et-shimmer">Thinking\u2026</span>' + STOP + SW + '</div>'
         + '<div class="et-body"><div class="et-lines">' + (V.length ? V.map(l => '<p class="et-line' + (l.bad ? ' et-bad' : '') + '">' + esc(l.text) + '</p>').join('') : '<p class="et-line et-muted">Starting\u2026</p>') + '</div></div></div>';
     }
     return '<div class="tl-card tl-run' + (live.open ? ' tl-open' : '') + '">'
@@ -405,6 +405,7 @@
 
   document.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (e.target.closest && e.target.closest('button')) return; // Native button activation must not toggle the parent instead.
     const b = e.target.closest && e.target.closest('[data-et="toggle"]');
     if (!b || !live) return;
     e.preventDefault(); b.click();

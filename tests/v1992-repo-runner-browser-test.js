@@ -14,6 +14,7 @@ const server = http.createServer((req, res) => {
     const page = await browser.newPage({ viewport: { width: 430, height: 932 }, serviceWorkers: 'block' }), errors = [], calls = [], encrypted = [], trees = [];
     let publicOutput = false, committedManifest = null;
     page.on('pageerror', e => errors.push(e.message));
+    page.on('dialog', d => d.accept()); // v1.9.95 explicit install/sync confirmation.
     await page.route('https://**/*', async route => {
       const rq = route.request(), u = new URL(rq.url()), p = decodeURIComponent(u.pathname), method = rq.method();
       const json = (x, status = 200) => route.fulfill({ status, contentType: 'application/json', body: status === 204 ? '' : JSON.stringify(x) });

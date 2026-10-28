@@ -84,7 +84,7 @@
     const running = s.status === 'running', waiting = !!s.waiting;
     const lastStep = [...s.entries].reverse().find(e => e.type === 'step') || null;
     let h = '<div class="tl-hdr">' + titleHtml(s, lastStep) + '<span class="tl-meta">' + esc(metaText(s)) + '</span>'
-      + (running ? '' : '<span class="tl-chev">' + (open ? '▴' : '▾') + '</span>')
+      + (running ? '<button class="tl-stop" data-react-stop aria-label="Stop current reasoning run">STOP</button>' : '<span class="tl-chev">' + (open ? '▴' : '▾') + '</span>')
       + '<button class="tl-x" aria-label="Close">&times;</button></div>';
     h += '<div class="tl-body"><div class="tl">';
     let last = null;
@@ -157,6 +157,7 @@
     const t = e.target; if (!t || !t.closest) return;
     const card = t.closest('#amber-think'); if (!card) return;
     const s = RX.state();
+    if (t.closest('[data-react-stop]')) { e.preventDefault(); e.stopPropagation(); RX.stop(); return; }
     if (t.closest('.tl-x')) { if (s) dismissedId = s.id; card.remove(); return; }
     if (t.closest('.tl-hdr') && s && s.status !== 'running') {
       open = !open; card.classList.toggle('tl-open', open);

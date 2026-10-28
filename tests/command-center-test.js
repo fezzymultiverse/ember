@@ -17,6 +17,10 @@ check('new assets included in offline shell',read('sw.js').includes("'ember_comm
 check('timeline event emitters remain present',read('app.js').includes("new CustomEvent('ember-turn-start'") && read('ai_agent.js').includes("emitEv('ember-dl', j)"));
 const preserved = require('./command-center-preservation.json');
 for (const [file,hash] of Object.entries(preserved)) {
- check('unchanged original '+file,crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex')===hash);
+ if (['ember_timeline.js','ember_think_inline.js'].includes(file)) {
+   check('requested in-row Stop added to '+file,read(file).includes(file==='ember_timeline.js' ? "+ STOP + SW" : "data-react-stop"));
+   continue; // v1.9.95 deliberately changes stop placement; not an unchanged-file claim.
+ }
+ check('unchanged uploaded V1.9.94 '+file,crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex')===hash);
 }
 console.log(passed+' Command Center static checks passed.');
