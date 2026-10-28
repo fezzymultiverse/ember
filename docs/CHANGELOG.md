@@ -1,3 +1,9 @@
+## V1.9.88
+- GitHub: repo slots can be pinned; a full set replaces the oldest unpinned repo after you confirm (Add is never greyed out).
+- GitHub: Ember reads the files your message points at before she answers (Read first), shown in the thinking card.
+- GitHub: cloud runner wording only appears in Setup > Advanced.
+- Add-ons sheet removed (Settings: Music; Media engines moved to Engine Keys). GitHub pill removed; repos work in chat once linked (switch in GitHub Hub > Home).
+
 ## V1.9.86
 - Download card ("Saved to your phone") is no longer clipped to its header row: the chat column used to squeeze it. It now keeps its full height (file name, bar, status).
 - A finished download gets a green Play button, in the chat card and in the Music > Get jobs list. It finds the track in the library (scanning Music/Ember if it is not listed yet) and plays it in Ember's player.

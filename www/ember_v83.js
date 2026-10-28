@@ -31,18 +31,8 @@
   };
 })();
 
-// ---- GitHub pill: toggles Ember's GitHub tools (read, and write where a repo slot allows it) ----
+// ---- V1.9.88: Media engines lives in Settings > Engine Keys (it used to hide in the add-ons sheet) ----
 (() => {
-  const $ = id => document.getElementById(id), b = $('bGhPill'); if (!b) return;
-  const G = () => window.EmberGithub;
-  const toast = m => { const t = $('toast'); if (!t) return; t.textContent = m; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2600); };
-  const paint = () => { const on = !!(G() && G().pill && G().pill.get()); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); };
-  b.addEventListener('click', () => {
-    const g = G(); if (!g || !g.pill) return toast('GitHub did not load.');
-    const v = !g.pill.get(); g.pill.set(v); paint();
-    if (!v) return toast('GitHub off');
-    let n = 0; try { n = g.slots().length; } catch (e) { n = 0; }
-    toast(!g.token() ? 'GitHub on, but no token yet: Settings > GitHub' : !n ? 'GitHub on, but no repo slot yet: Settings > GitHub' : 'GitHub on: Ember can read and write your repo');
-  });
-  window.addEventListener('ember-gh-pill', paint); paint();
+  const b = document.getElementById('bMediaEng'); if (!b) return;
+  b.addEventListener('click', () => { const E = window.EmberEngines; if (E && E.open) E.open(); });
 })();

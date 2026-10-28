@@ -427,6 +427,13 @@ async function reply(o) {
       TLn.step('egg', pin ? 'Engine: ' + Prov.label(pin) + ' (pinned)' : usable.length ? 'Route: ' + usable.map(id => Prov.label(id)).join(' → ') : 'Route: Free Mode (no keys saved)', 'r5');
     } catch (_) { /* the card is a view; it never blocks the reply */ }
   }
+  // V1.9.88 READ FIRST: before the model sees his message, Ember reads the synced repo files it points at (local, 3.5 s cap, never blocks the reply)
+  try {
+    const GHr = window.EmberGithub; if (GHr && GHr.prefetch) {
+      const us = conv.msgs.filter(m => m.r == 'u'), rr = await GHr.prefetch(us.length ? us[us.length - 1].t : '', us.length > 1 ? us[us.length - 2].t : '');
+      if (rr && rr.files.length && TLn && TLn.step) TLn.step('github', 'Read first · ' + rr.files.length + ' file' + (rr.files.length == 1 ? '' : 's') + ' from ' + [...new Set(rr.files.map(f => f.repo.split('/')[1] || f.repo))].join(', ') + ': ' + rr.files.map(f => f.path.split('/').pop()).join(', '), 'r4c');
+    }
+  } catch (_) { /* reading first is a help, never a gate */ }
   try {
     const lastU = conv.msgs.length ? [...conv.msgs].reverse().find(m => m.r == 'u') : null;
     const call = Persona.respond(conv, { S, mem, directive: o.directive, lane: L.lane, deep: L.deep, uiState: uiStateBlock(), planHint: !o.directive && lastU ? planHint(lastU.t) : '', shouldCancel: () => cancelRequested, onToken: (piece, full) => { try { window.dispatchEvent(new CustomEvent('ember-token', { detail: { piece, text: full } })); } catch (_) {} } });
@@ -535,17 +542,18 @@ async function send() {
   if (conv.auto && conv.title == 'New chat') conv.title = t.length > 38 ? t.slice(0, 38).trim() + '…' : t;
   $('inp').value = ''; grow();
   await persist(); renderLog();
-  if (window.EmberPlus && window.EmberPlus.consume && window.EmberPlus.consume('image')) { await imageRoute(t); return; } // V1.9.84: + > Create image
+  if ((window.EmberPlus && window.EmberPlus.consume && window.EmberPlus.consume('image')) || (window.EmberEngines && window.EmberEngines.intent && window.EmberEngines.intent(t) == 'image')) { await imageRoute(t); return; } // V1.9.84: + > Create image. V1.9.87: plain-English picture requests route here too
   if (await directNewPipe(t)) return;
   reply();
 }
 // V1.9.84: the picture goes to Pollinations, never to a chat engine. The answer is an HTML artifact with the image and Ember's thought process.
 async function imageRoute(t) {
-  const EC = window.EmberCreate, TLn = window.EmberTimeline;
-  if (!EC || !EC.route) { lastErr = 'Image creation did not load. Restart Ember and try again.'; renderLog(); return; }
+  const EC = window.EmberCreate, EE = window.EmberEngines, TLn = window.EmberTimeline;
+  const run = EE && EE.imageRoute ? EE.imageRoute : EC && EC.route; // V1.9.87: engine router (Pollinations, then Forge)
+  if (!run) { lastErr = 'Image creation did not load. Restart Ember and try again.'; renderLog(); return; }
   busy = true; lastErr = null; $('bSend').disabled = true; typing(true);
   const turnId = conv.id + ':' + conv.msgs.length; curTurn = turnId;
-  let r; try { r = await EC.route(t, { step: (ic, text, key) => { if (TLn && TLn.step) TLn.step(ic, text, key); } }); } catch (e) { r = { ok: false, error: (e && e.message) || 'The image route failed.' }; }
+  let r; try { r = await run(t, { step: (ic, text, key) => { if (TLn && TLn.step) TLn.step(ic, text, key); } }); } catch (e) { r = { ok: false, error: (e && e.message) || 'The image route failed.' }; }
   if (curTurn !== turnId) return;
   if (r && r.ok) { const tlSnap = TLn ? TLn.snapshot() : null; conv.msgs.push({ r: 'a', t: r.text, ts: Date.now(), turn: turnId, tl: tlSnap || undefined }); await persist(); }
   else lastErr = (r && r.error) || 'The picture could not be made.';

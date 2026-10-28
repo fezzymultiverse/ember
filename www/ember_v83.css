@@ -60,3 +60,9 @@ html body .act-playbtn,html body .dj-play{display:inline-flex;align-items:center
 html body .act-playbtn:active,html body .dj-play:active{background:rgba(46,232,107,.28)}
 html body .act-playbtn:disabled,html body .dj-play:disabled{opacity:.6}
 html body .dj-play{margin-top:12px}
+
+/* V1.9.88: folded Advanced block in Settings > GitHub > Setup */
+.gh-adv > summary { cursor: pointer; list-style: none; }
+.gh-adv > summary::-webkit-details-marker { display: none; }
+.gh-adv > summary::after { content: ' ▾'; opacity: .6; }
+.gh-adv[open] > summary::after { content: ' ▴'; }

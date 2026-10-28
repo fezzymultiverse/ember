@@ -6,8 +6,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="ember-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="ember_v79.css"><link rel="stylesheet" href="ember_v80.css"><link rel="stylesheet" href="ember_v81.css"><link rel="stylesheet" href="ember_v82.css"><link rel="stylesheet" href="ember_v83.css"><link rel="stylesheet" href="ember_acc.css">
-</head><body>
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="ember_v79.css"><link rel="stylesheet" href="ember_v80.css"><link rel="stylesheet" href="ember_v81.css"><link rel="stylesheet" href="ember_v82.css"><link rel="stylesheet" href="ember_v83.css"><link rel="stylesheet" href="ember_acc.css"><link rel="stylesheet" href="ember_engines.css">
+<link rel="stylesheet" href="ember_blue.css"></head><body>
 <div id="app">
 <header>
 <div class="hl"><button class="hb" id="bHist" aria-label="Chat history">☰</button><button class="hb" id="bProv" aria-label="Providers" aria-expanded="false" title="Providers: live engine status"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 2.5v3M12 2.5v3M15 2.5v3M9 18.5v3M12 18.5v3M15 18.5v3M2.5 9h3M2.5 12h3M2.5 15h3M18.5 9h3M18.5 12h3M18.5 15h3"/></svg></button></div>
@@ -29,7 +29,7 @@
 </div>
 <div id="mw" class="mw hidden"><img id="mwArt" class="mwart hidden" alt=""><button id="mwOpen" class="mwt" aria-label="Open the music panel"><b id="mwTitle">—</b><small id="mwSub"></small></button><button id="mwPlay" aria-label="Play or pause">▶</button><button id="mwNext" aria-label="Next">⏭</button></div>
 <footer class="comp">
-<div class="mrow"><button id="bModes" class="mpill" aria-haspopup="menu" aria-expanded="false" aria-label="Modes: Chill, Sharp or Deep"><span class="mp-ic" aria-hidden="true">◐</span><span>Modes</span><b id="modesLbl">Chill</b><span class="mp-ch" aria-hidden="true">▾</span></button><div class="modes mpop hidden" id="modes" role="menu" aria-label="Modes"><button data-m="chill" role="menuitemradio">Chill<small>Relaxed, short and easy</small></button><button data-m="sharp" role="menuitemradio">Sharp<small>Tight, direct, no padding</small></button><button data-m="deep" role="menuitemradio">Deep<small>Slower, careful, longer</small></button></div><button id="bGhPill" class="ghpill" aria-pressed="false" title="GitHub: let Ember read and write your repo">GitHub</button><button id="bDocsQuick" aria-label="Open Documents: attach a file or note" title="Documents: attach a file or note">📎 <span>Docs</span></button></div>
+<div class="mrow"><button id="bModes" class="mpill" aria-haspopup="menu" aria-expanded="false" aria-label="Modes: Chill, Sharp or Deep"><span class="mp-ic" aria-hidden="true">◐</span><span>Modes</span><b id="modesLbl">Chill</b><span class="mp-ch" aria-hidden="true">▾</span></button><div class="modes mpop hidden" id="modes" role="menu" aria-label="Modes"><button data-m="chill" role="menuitemradio">Chill<small>Relaxed, short and easy</small></button><button data-m="sharp" role="menuitemradio">Sharp<small>Tight, direct, no padding</small></button><button data-m="deep" role="menuitemradio">Deep<small>Slower, careful, longer</small></button></div><button id="bDocsQuick" aria-label="Open Documents: attach a file or note" title="Documents: attach a file or note">📎 <span>Docs</span></button></div>
 <div class="tools"><button id="bPasteIn" aria-label="Paste into the message box">📋 Paste</button><button id="bCopyIn" aria-label="Copy the message box text">⧉ Copy</button><button id="bDevice">📟 Device</button><button id="bReact">🧠 Reasoning</button><button id="bGraph">🕸 Graph</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
 <div id="plusChips" class="pchips hidden" aria-live="polite"></div>
 <div class="row"><div id="plusMenu" class="pmenu hidden" role="menu" aria-label="Add to message"></div><button id="bPlus" class="plus" aria-label="Add: tools and attachments" aria-haspopup="menu" aria-expanded="false" title="Add">+</button><textarea id="inp" rows="1" spellcheck="false" autocorrect="off" placeholder="Say anything…" enterkeyhint="send"></textarea><div class="side"><button id="bTalk" aria-label="Talk mode: hands-free conversation" aria-pressed="false" title="Talk mode: just talk. It sends when you stop, reads the reply aloud, then listens again. Tap again to stop.">🗣</button><button id="bMic" aria-label="Dictate: talk and your words are typed here" aria-pressed="false" title="Dictate: tap, talk, tap again. Your words are typed into the message box.">🎤</button><button id="bStop" class="hidden" aria-label="Stop generating" title="Stop response">■</button><button id="bSend" aria-label="Send">➤</button></div></div>
@@ -151,6 +151,7 @@
 <div class="cr"><span>Enable Free Mode (No Keys Needed)</span><div class="sw" id="swFree"></div></div>
 <p class="hint">Chats go through Pollinations.ai, a free third-party service, so your messages leave this phone. It is slower, rate-limited for anonymous use, and has no uptime promise. Keys stay on this phone. Free Mode is never used for background memory work. It is not a crisis line: if you are in danger, contact local emergency services or a crisis line now.</p></div>
 
+<div class="card" data-tab="keys"><div class="ct">Media engines</div><p class="hint">Picture and PDF providers. They need no key.</p><button class="btn g" id="bMediaEng">Open media engines</button></div>
 <div class="card" data-tab="keys"><div class="ct">Which engine answers</div>
 <label class="lb">Engine</label>
 <select id="engPin"><option value="">Auto (fastest working key)</option></select>
@@ -302,7 +303,7 @@
 <p class="hint" id="auUrlRes"></p>
 <p class="hint">Setup, once: make an account at dashboard.audd.io and copy the API token. Nothing is sent until you tap Identify in the Music panel, press Identify link, or ask Ember in chat. A short clip (about 12 seconds of the song, as a small WAV) or the link you typed goes to Audd.io with your token. Audd.io names the best match and gives no confidence score. Your allowance, pricing and limits are Audd.io's, not Ember's. The token stays on this phone and is not in backups.</p></div>
 
-<div class="card" data-tab="music"><div class="ct">Ember add-ons</div>
+<div class="card" data-tab="music"><div class="ct">Music control &amp; documents</div>
 <div class="cr"><span>Let Ember control music</span><div class="sw" id="swMusic"></div></div>
 <div class="cr"><span>Small freedoms: skip, volume, pick a song on her own</span><div class="sw" id="swMusicFree"></div></div>
 <p class="hint">When on, you can tell Ember in chat to play, pause, skip, change the volume, search, make playlists or say what is playing. It only touches the player when your message asks for it, and everything it does shows in the Ember tab of the Music panel. Ember can see only its own player, not other apps. If you tell it to look something up or scrape a page, it does that with Web Scraping (Settings, Scraping).</p>
@@ -462,7 +463,7 @@
 <h3>Stored anyway, and worth knowing</h3>
 <ul><li>The text of every message is saved, including one that triggered the safety card.</li><li>A chat's first message becomes its title.</li><li><b>Anyone holding the unlocked phone can open Ember and read it.</b> There is no app lock yet.</li><li>A backup file you export contains your whole chat history. Treat it as private. Keys are included only if you tick that box.</li></ul>
 <h3>Your control</h3>
-<ul><li><b>Settings, Your data</b>: export a backup, import one, or <b>Delete everything</b> (chats, memory, settings, keys). It cannot touch files you already exported or anything a service kept.</li><li>Turn add-ons off (music control, documents, web, YouTube, vision, pings) to stop their traffic.</li><li>Mark a chat 🔒 Private so nothing is learned from it.</li><li>Remove a single song or playlist in the Music panel.</li></ul>
+<ul><li><b>Settings, Your data</b>: export a backup, import one, or <b>Delete everything</b> (chats, memory, settings, keys). It cannot touch files you already exported or anything a service kept.</li><li>Turn tools off (music control, documents, web, YouTube, vision, pings) to stop their traffic.</li><li>Mark a chat 🔒 Private so nothing is learned from it.</li><li>Remove a single song or playlist in the Music panel.</li></ul>
 <h3>Laws and your rights</h3>
 <p>Because the maintainer does not receive or hold your data, you are the controller of what is on your phone. Under POPIA (South Africa), GDPR and similar laws, requests about data held by an AI service go to that service. If you are under 18, use Ember together with a trusted adult.</p>
 <h3>Changes</h3>
@@ -523,7 +524,7 @@
 <script src="ember_term.js"></script>
 <script src="ember_voice.js"></script><script src="ember_lyrics.js"></script><script src="ember_projects.js"></script><script src="ember_lyric_thoughts.js"></script><script src="ember_prov_ui.js"></script><script src="ember_pastekeys.js"></script><script src="ember_plus.js"></script>
 
-<script src="ember_ui.js"></script><script src="ember_extras.js"></script><script src="ember_create.js"></script>
+<script src="ember_ui.js"></script><script src="ember_extras.js"></script><script src="ember_create.js"></script><script src="ember_engines.js"></script>
 <script>
 // Apply termux-mode-on class to body when S is available, for CSS theming
 (function pollTermux(){
@@ -628,5 +629,5 @@
   document.addEventListener('ember-player-state', syncTrack);
 })();
 </script>
-<script src="ember_v79.js"></script><script src="ember_v80.js"></script><script src="ember_v81.js"></script><script src="ember_v83.js"></script><script src="ember_acc.js"></script>
+<script src="ember_v79.js"></script><script src="ember_v80.js"></script><script src="ember_v83.js"></script><script src="ember_acc.js"></script>
 </body></html>

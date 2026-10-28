@@ -14,7 +14,7 @@
     { id: 'github', title: 'GitHub Hub', desc: 'Token, repo slots, sync, files and activity' },
     { id: 'scraping', title: 'Web Scraping', desc: 'Scraper keys, the free reader, health checks and tests' },
     { id: 'hacking', title: 'Termux & Hacking', desc: 'Termux mode, pen-test persona and the built-in terminal' },
-    { id: 'music', title: 'Music & Add-ons', desc: 'Player, song identification, music control, web search, vision' },
+    { id: 'music', title: 'Music', desc: 'Player, song identification, music control, documents' },
     { id: 'permissions', title: 'Permissions, Voice & Background', desc: 'Notifications, mic, battery, keep-alive, read aloud' }
   ];
   const CHEV = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
