@@ -7,7 +7,7 @@
 <link rel="icon" href="ember-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="ember_v79.css"><link rel="stylesheet" href="ember_v80.css"><link rel="stylesheet" href="ember_v81.css"><link rel="stylesheet" href="ember_v82.css"><link rel="stylesheet" href="ember_v83.css"><link rel="stylesheet" href="ember_acc.css"><link rel="stylesheet" href="ember_engines.css">
-<link rel="stylesheet" href="ember_blue.css"></head><body>
+<link rel="stylesheet" href="ember_blue.css"><link rel="stylesheet" href="ember_v89.css"></head><body>
 <div id="app">
 <header>
 <div class="hl"><button class="hb" id="bHist" aria-label="Chat history">☰</button><button class="hb" id="bProv" aria-label="Providers" aria-expanded="false" title="Providers: live engine status"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 2.5v3M12 2.5v3M15 2.5v3M9 18.5v3M12 18.5v3M15 18.5v3M2.5 9h3M2.5 12h3M2.5 15h3M18.5 9h3M18.5 12h3M18.5 15h3"/></svg></button></div>
@@ -141,6 +141,7 @@
 <button class="stab on" data-st="general">General</button>
 <button class="stab" data-st="keys">Keys</button>
 <button class="stab" data-st="github">GitHub</button>
+<button class="stab" data-st="advanced">Advanced</button>
 <button class="stab" data-st="scraping">Scraping</button>
 <button class="stab" data-st="hacking">Hacking</button>
 <button class="stab" data-st="music">Music</button>
@@ -190,9 +191,10 @@
 <div class="btnrow" style="margin-top:8px"><button class="btn" id="puterSave">Save token</button><button class="btn g" id="puterCheck">Check</button><button class="btn g danger" id="puterRm">Remove</button></div>
 <p class="hint">Token only. No email, no sign-in window, nothing opens in a browser. Ember calls Puter's own endpoint (api.puter.com) with this token.</p></div>
 
-<div class="card" data-tab="keys"><div class="ct">GitHub</div><p class="hint">GitHub now has its own tab: token, repo slots, sync, files and activity.</p><button class="btn g" data-gh-open="home">Open GitHub settings</button></div>
+<div class="card" data-tab="keys"><div class="ct">GitHub</div><p class="hint">GitHub now has its own tab: token, Knowledge Brain Repo, files and activity.</p><button class="btn g" data-gh-open="home">Open GitHub settings</button></div>
 
 <div class="card" data-tab="github" id="ghCard"><div id="ghHub"></div></div>
+<div class="card" data-tab="advanced" id="ghRunnerCard"><div class="ct">Optional GitHub Runner</div><div id="ghAdvanced"></div></div>
 
 <div class="card collapsed" data-tab="keys"><div class="ct">Notepad · paste anything, pull the keys out</div>
 <textarea id="padText" class="pad" placeholder="Paste a note, a doc dump, anything with keys buried in it…" spellcheck="false"></textarea>
@@ -629,5 +631,5 @@
   document.addEventListener('ember-player-state', syncTrack);
 })();
 </script>
-<script src="ember_v79.js"></script><script src="ember_v80.js"></script><script src="ember_v83.js"></script><script src="ember_acc.js"></script>
+<script src="ember_v79.js"></script><script src="ember_v80.js"></script><script src="ember_v83.js"></script><script src="ember_acc.js"></script><script src="ember_v89.js"></script>
 </body></html>

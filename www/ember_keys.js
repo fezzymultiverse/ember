@@ -14,7 +14,7 @@ const USE = {
   brightdata: 'Bright Data. Google search results through its SERP zone (backs up web_search after SerpApi). With a Web Unlocker zone saved (Settings > Scraping) it also fetches pages inside scrape_url; with only a SERP zone it gives search snippets, never the page itself. Several keys can be saved: extras cover for the first.',
   octoparse: 'Reads the exported rows of an Octoparse task he built (task id in Settings > Scraping). Used only by scrape_url with via:"octoparse"; it cannot read a url, so it never joins the normal rotation. Needs a Standard plan or higher for API access.',
   tavily: 'Live web search with full results (web_search, needs Settings > Music > Agent & API Tools > Web search ON) and page reading (scrape_url, Extract, takes turns with his other scraper keys when Settings > Scraping is on). Optional: without it web_search still works through DuckDuckGo, but only for encyclopedia-style answers, not news.',
-  github: 'GitHub Classic token. Used by the github_* tools: sync his repo slots, read files, write files when he asks (and optionally run builds on GitHub Actions).',
+  github: 'GitHub Classic token. Used by the github_* tools: sync his Knowledge Brain Repo, read files, write files when he asks (and optionally run builds on GitHub Actions).',
   audd: 'Song identification. Used by the identify_song tool and the Identify button in the Music panel.'
 };
 const WHERE = id => (window.Prov && window.Prov.CFG && window.Prov.CFG[id]) ? 'Settings > Keys' : (id == 'tavily' ? 'Settings > Music > Agent & API Tools (or Settings > Scraping: same key)' : id == 'audd' ? 'Settings > Music' : 'Settings > Scraping');

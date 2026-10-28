@@ -232,7 +232,7 @@ async function listModels(id, key) {
   return (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => String(m.name).replace(/^models\//, ''));
 }
 const ver = m => { const x = /(\d+(?:\.\d+)?)/.exec(m); return x ? parseFloat(x[1]) : 0; };
-const PUTER_FALLBACK = ['gpt-5.4-nano', 'gpt-5-nano', 'gpt-4o-mini', 'claude-haiku-5-5'];
+const PUTER_FALLBACK = ['gpt-5.4-nano', 'gpt-5-nano', 'gpt-4o-mini', 'claude-haiku-5-5', 'openai/gpt-5-nano', 'openai/gpt-5-mini', 'openai/gpt-4o-mini']; // V1.9.89: Puter's docs also show provider-prefixed ids
 function rank(id, list, lane) {
   const deep = lane == 'deep';
   if (id == 'groq') {
@@ -650,7 +650,7 @@ async function runInner(lane, o, tok) {
       catch (er) {
         if (er.code === 'cancelled' || routeCancelled) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' });
         if (er.status == 401 || er.status == 403) { e.bad = true; save(); } else if (er.status == 429) coolKey(e.key, er.retryAfter);
-        if (er.status != 429 && er.status != 401 && er.status != 403 && !transient(er)) routeStop = { id, error: er }; // V1.9.78: a rejected key is that key's problem, not a reason to stop the chain
+        // V1.9.89: a permanent 4xx (400/402/404/413/422) from one model or key no longer aborts the route: it is recorded and the router moves to the next model, key and engine (Free Mode last). A pinned engine is still strict (onlyPinned).
         errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message }); continue;
       }
       const pm = pinnedModel && pinnedModel.id == id ? pinnedModel.model : null;
@@ -663,7 +663,7 @@ async function runInner(lane, o, tok) {
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
           if (soft && (er.status == 400 || er.status == 402 || er.status == 403 || er.status == 422) && !pm) continue; // V1.9.15: try the next model, keep the key, the reason stays in failed[]
           if (er.status == 429) { coolKey(e.key, er.retryAfter); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: true, code: 429 }); break; }
-          if (er.status != 401 && er.status != 403 && !transient(er)) routeStop = { id, error: er }; // V1.9.78: same: bad key falls through to the next engine
+          // V1.9.89: same: no abort, the next model, key and engine are tried
           if (er.status == 401 || er.status == 403) { e.bad = true; e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: false, limited: false, code: er.status, msg: 'key rejected (' + er.status + ')' }); save(); break; }
           if (er.status == 404 || (er.status == 400 && /model/i.test(er.message)) || transient(er)) continue;
           // A model-specific or transient failure advances through models; auth/permission failures invalidate the key above.

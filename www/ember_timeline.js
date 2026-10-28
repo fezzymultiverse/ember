@@ -78,8 +78,8 @@
       case 'repo_list_files':     return 'Browsing ' + (a.repo ? clip(a.repo, 30) : 'a linked repo') + (a.path ? '/' + clip(a.path, 30) : '');
       case 'repo_read_file':      return 'Reading ' + (a.path ? clip(a.path, 40) : 'a repo file') + (a.repo ? ' from ' + clip(a.repo, 28) : '');
       case 'repo_search':          return 'Searching ' + (a.repo ? clip(a.repo, 30) : 'a linked repo') + (q ? ': \u201c' + clip(q, 30) + '\u201d' : '');
-      case 'github_status':       return 'Checking the GitHub token and repo slots';
-      case 'github_repos':        return 'Checking your repo slots';
+      case 'github_status':       return 'Checking the GitHub token and Knowledge Brain Repo';
+      case 'github_repos':        return 'Checking your Knowledge Brain Repo';
       case 'github_sync':         return 'Syncing ' + (a.repo ? clip(a.repo, 36) : 'your repos') + ' from GitHub' + (a.force ? ' (re-reading everything)' : '');
       case 'github_repo_map':      return 'Mapping ' + (a.repo ? clip(a.repo, 30) : 'the repo') + (a.path ? '/' + clip(a.path, 30) : '') + ' from the synced index';
       case 'github_find':          return (String(a.mode || '').toLowerCase() == 'code' ? 'Searching the code of ' : 'Finding files in ') + (a.repo ? clip(a.repo, 28) : 'the repo') + (q ? ': \u201c' + clip(q, 30) + '\u201d' : '');

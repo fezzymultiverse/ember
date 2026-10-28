@@ -145,8 +145,10 @@ function bub(x, last, i) {
   const say = x.r == 'a' ? '<button data-act="say" data-i="' + i + '" aria-label="Read aloud" title="Read aloud"' + (sayIdx === i ? ' class="talking"' : '') + '>' + (sayIdx === i ? '■ Stop' : '🔊') + '</button>' : '';
   const cp = '<button data-act="copy" data-i="' + i + '" aria-label="Copy message" title="Copy this message">⧉ Copy</button>';
   const context = x.ctx ? '<span class="context-chip" title="This message includes extra context">'+(/image|photo|vision/i.test(x.ctx)?'Image context':/document|file|attachment/i.test(x.ctx)?'Document context':'Extra context')+'</span>' : '';
+  const proof = x.r == 'a' && x.ghRead && x.ghRead.files && x.ghRead.files.length ? x.ghRead : null;
+  const readChip = proof ? '<div class="gh-last-read" title="' + esc(proof.files.map(f => f.repo + ':' + f.path + ' @' + (f.sha || '') + ' · ' + new Date(f.at || proof.at).toLocaleString() + (f.trimmed ? ' · partial file' : '')).join('\n')) + '">Last Read · ' + esc(proof.files[proof.files.length - 1].path) + (proof.files.length > 1 ? ' (+' + (proof.files.length - 1) + ')' : '') + '</div>' : '';
   const makeArtifact = ''; // V1.9.84: Save .md removed from the bubble
-  return (x.tl && window.EmberTimeline ? window.EmberTimeline.savedHtml(x.tl) : '') + '<div class="msg ' + x.r + '"><div>' + (artifact ? artifact.html : fmt(x.t)) + '</div><div class="mt">' + context + '<span>' + U.time(x.ts) + (x.deep ? ' · 💡' : '') + eng + '</span>' + say + cp + regen + makeArtifact + '</div></div>';
+  return (x.tl && window.EmberTimeline ? window.EmberTimeline.savedHtml(x.tl) : '') + '<div class="msg ' + x.r + '"><div>' + (artifact ? artifact.html : fmt(x.t)) + '</div>' + readChip + '<div class="mt">' + context + '<span>' + U.time(x.ts) + (x.deep ? ' · 💡' : '') + eng + '</span>' + say + cp + regen + makeArtifact + '</div></div>';
 }
 function renderLog() {
   const m = conv ? conv.msgs : [];
@@ -421,22 +423,25 @@ async function reply(o) {
       const chips = [...document.querySelectorAll('#plusChips > *')].map(x => x.textContent.replace(/[×✕]/g, '').trim()).filter(Boolean);
       if (S.termuxMode) chips.push('Termux Mode');
       TLn.step(chips.some(c => /device|termux/i.test(c)) ? 'termux' : chips.some(c => /web/i.test(c)) ? 'globe' : 'files', chips.length ? 'Switched on: ' + chips.join(', ') : 'No extra tools switched on', 'r4');
-      let gh = 0; try { gh = window.EmberGithub && window.EmberGithub.token() ? window.EmberGithub.slots().length : 0; } catch (_) { gh = 0; }
-      if (gh) TLn.step('github', 'GitHub Hub connected · ' + gh + ' repo slot' + (gh == 1 ? '' : 's'), 'r4b');
+      let gh = 0; try { gh = window.EmberGithub && window.EmberGithub.token() ? 1 : 0; } catch (_) { gh = 0; }
+      if (gh) TLn.step('github', 'Knowledge Brain Repo connected', 'r4b');
       const pin = Prov.getPinned(), usable = Prov.route(L.lane).filter(id => (Prov.keys()[id] || []).some(e => !e.bad));
       TLn.step('egg', pin ? 'Engine: ' + Prov.label(pin) + ' (pinned)' : usable.length ? 'Route: ' + usable.map(id => Prov.label(id)).join(' → ') : 'Route: Free Mode (no keys saved)', 'r5');
     } catch (_) { /* the card is a view; it never blocks the reply */ }
   }
-  // V1.9.88 READ FIRST: before the model sees his message, Ember reads the synced repo files it points at (local, 3.5 s cap, never blocks the reply)
+  // Read-first is an actual gate inside the reply try/catch, before any model or streaming call.
   try {
-    const GHr = window.EmberGithub; if (GHr && GHr.prefetch) {
-      const us = conv.msgs.filter(m => m.r == 'u'), rr = await GHr.prefetch(us.length ? us[us.length - 1].t : '', us.length > 1 ? us[us.length - 2].t : '');
-      if (rr && rr.files.length && TLn && TLn.step) TLn.step('github', 'Read first · ' + rr.files.length + ' file' + (rr.files.length == 1 ? '' : 's') + ' from ' + [...new Set(rr.files.map(f => f.repo.split('/')[1] || f.repo))].join(', ') + ': ' + rr.files.map(f => f.path.split('/').pop()).join(', '), 'r4c');
-    }
-  } catch (_) { /* reading first is a help, never a gate */ }
-  try {
+    const GHr = window.EmberGithub, us = conv.msgs.filter(m => m.r == 'u');
+    const latest = us.length ? us[us.length - 1].t : '', previous = us.length > 1 ? us[us.length - 2].t : '';
+    if (!GHr || !GHr.prefetch || !GHr.assertReadFirst) throw new Error('Knowledge Brain Read-First is unavailable. Reload Ember before asking code questions.');
+    const rr = await GHr.prefetch(latest, previous);
+    if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });
+    GHr.assertReadFirst();
+    if (rr.files.length && TLn && TLn.step) TLn.step('github', 'Read first · ' + rr.files.map(f => f.path).join(', '), 'r4c');
+    // Persist provenance before a native handoff so background answers keep the same chip.
+    conv.ghReadTurns = conv.ghReadTurns || {}; conv.ghReadTurns[turnId] = rr; await persist();
     const lastU = conv.msgs.length ? [...conv.msgs].reverse().find(m => m.r == 'u') : null;
-    const call = Persona.respond(conv, { S, mem, directive: o.directive, lane: L.lane, deep: L.deep, uiState: uiStateBlock(), planHint: !o.directive && lastU ? planHint(lastU.t) : '', shouldCancel: () => cancelRequested, onToken: (piece, full) => { try { window.dispatchEvent(new CustomEvent('ember-token', { detail: { piece, text: full } })); } catch (_) {} } });
+    const call = Persona.respond(conv, { S, mem, directive: o.directive, lane: L.lane, deep: L.deep, uiState: uiStateBlock(), planHint: !o.directive && lastU ? planHint(lastU.t) : '', shouldCancel: () => cancelRequested, onToken: (piece, full) => { if (!GHr.hasLiveRead(GHr.lastRead())) return; try { window.dispatchEvent(new CustomEvent('ember-token', { detail: { piece, text: full } })); } catch (_) {} } });
     // V1.9.33: no reply may hang the screen. After REPLY_MS the page stops trying engines and shows an error with Resend.
     let dl; const guard = new Promise((_, no) => { dl = setTimeout(() => { try { if (Prov.abortInflight) Prov.abortInflight(); } catch (e) { /* ignore */ } no(Object.assign(new Error('No reply after ' + Math.round(REPLY_MS / 1000) + ' seconds. An engine is stuck or very slow. Tap resend, or pin a different engine in Settings.'), { code: 'timeout' })); }, REPLY_MS); });
     call.catch(() => {}); // the race below reports it; a late failure after the deadline must not surface as an unhandled rejection
@@ -446,11 +451,13 @@ async function reply(o) {
     const bgWon = () => conv.msgs.some(m => m.turn === turnId); // the background task already delivered this turn's reply
     if (bgWon()) finalText = '';
     else if (finalText) finalText = await resolveAddonCalls(finalText, L, { provider: r.provider, model: r.model });
+    GHr.assertReadFirst();
+    if (finalText && GHr.isCodeQuestion(finalText, latest)) { const proof = GHr.lastRead(); if (!GHr.hasLiveRead(proof)) throw new Error('Read-First blocked this code answer: no live file was read from Knowledge Brain Repo. Check Settings > GitHub.'); }
     if (finalText && TLn && window.EmberArtifacts) { const made=window.EmberArtifacts.parse(finalText).items; if(made.length) TLn.note('Writing ' + made.map(a=>a.title).join(', ')); }
     if (finalText && !bgWon()) {
       try { window.dispatchEvent(new CustomEvent('ember-turn-end', { detail: { words: (String(streamText || '').trim().match(/\S+/g) || []).length } })); } catch (_) { /* no listener */ }
       const tlSnap = window.EmberTimeline ? window.EmberTimeline.snapshot() : null;
-      conv.msgs.push({ r: 'a', t: finalText, ts: Date.now(), turn: turnId, tl: tlSnap || undefined, deep: L.deep || undefined, eng: { p: r.provider, m: r.model, ms: r.ms, pm: r.pinMiss ? r.pinMiss.want : undefined } });
+      conv.msgs.push({ r: 'a', t: finalText, ts: Date.now(), turn: turnId, tl: tlSnap || undefined, deep: L.deep || undefined, ghRead: GHr.lastRead(), eng: { p: r.provider, m: r.model, ms: r.ms, pm: r.pinMiss ? r.pinMiss.want : undefined } });
       if (window.EmberNative && window.EmberNative.aiAvailable) window.EmberNative.aiCancel(turnId);
       if (S.autoRead || talkOn) { speakText(finalText, conv.msgs.length - 1); if (talkOn) talkWait = true; }
       if (window.EmberNative) window.EmberNative.notifyReply(finalText);
@@ -1161,7 +1168,8 @@ function handoff() {
   const p = Prov.pending && Prov.pending(); if (!p || !p.o) return null;
   const plan = Prov.nativePlan(p.lane); if (Prov.onlyPinned && Prov.onlyPinned(p.lane) && !plan.length) return null; // V1.9.15: strict pin the background task cannot serve: stay on the page, no silent Free Mode
   handedTurn = curTurn;
-  return N.aiAsk({ turnId: curTurn, convId: conv.id, system: p.o.system, messages: p.o.messages, temp: p.o.temp, max: p.o.max, plan, freeFirst: Prov.freeOn() && !Prov.getPinned() })
+  if (window.EmberGithub && conv.ghReadTurns) conv.ghReadTurns[curTurn] = window.EmberGithub.lastRead();
+  return persist().then(() => N.aiAsk({ turnId: curTurn, convId: conv.id, system: p.o.system, messages: p.o.messages, temp: p.o.temp, max: p.o.max, plan, freeFirst: Prov.freeOn() && !Prov.getPinned() }))
     .then(r => { if (!r.ok) { handedTurn = ''; return false; } if (Prov.stopInflight) Prov.stopInflight(); return true; }); // V1.8.3: the worker has it, so the page stops spending the same reply
 }
 // A reply finished by the native task: add it to its chat (the open one, or one loaded from storage) exactly once.
@@ -1170,7 +1178,9 @@ async function applyBg(r) {
   const isCur = !!conv && conv.id === r.convId;
   const c = isCur ? conv : await Store.get(r.convId); if (!c) return;
   if (c.msgs.some(m => m.turn === turn)) return;
-  c.msgs.push({ r: 'a', t: text, ts: Date.now(), turn, bg: true, eng: { p: r.provider, m: r.model, ms: 0 } });
+  const ghRead = c.ghReadTurns && c.ghReadTurns[turn];
+  if (window.EmberGithub && ((ghRead && ghRead.required) || window.EmberGithub.isCodeQuestion(text, '')) && !window.EmberGithub.hasLiveRead(ghRead)) return;
+  c.msgs.push({ r: 'a', t: text, ghRead, ts: Date.now(), turn, bg: true, eng: { p: r.provider, m: r.model, ms: 0 } });
   c.updated = Date.now(); await Store.put(c);
   if (isCur) {
     if (curTurn === turn) { busy = false; $('bSend').disabled = false; typing(false); curTurn = null; }

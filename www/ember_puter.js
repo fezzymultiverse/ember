@@ -17,7 +17,7 @@
       : !st ? 'Puter token saved (' + n + '). Not checked yet: tap Check.'
       : st.ok && !st.limited ? 'Puter token saved (' + n + ') and working' + (st.model ? ' · ' + st.model : '') + '. It answers last in the automatic order, or first while Puter is pinned.'
       : st.ok ? 'Puter token saved (' + n + '). Puter says it is rate limited right now; the token itself is valid.'
-      : 'Puter did not accept the token: ' + String(st.msg || 'rejected') + ' Paste a fresh one and tap Save token.';
+      : 'Puter did not accept the token: ' + String(st.msg || 'rejected') + ' Paste a fresh one and tap Save token. Get it at puter.com/dashboard > Account > Auth Token > Copy (the whole token, no spaces); a token from before a sign-out or password change stops working.';
   }
 
   async function save() {

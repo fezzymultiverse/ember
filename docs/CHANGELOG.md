@@ -1,3 +1,8 @@
+## V1.9.89
+- Routing: a permanent 4xx from one model or key (400, 402, 404, 413, 422) no longer aborts the whole route. The router records it and moves to the next model, key and engine, with Free Mode last. A pinned engine is still strict and shows its real error.
+- Puter: provider-prefixed model ids (openai/gpt-5-nano and similar) are also tried; a rejected token now says where to copy it (puter.com/dashboard > Account > Auth Token).
+- The toast ("Switched to ...", saved, copied) now floats just above the message box instead of on top of the header and the orange engine pill; long text wraps to three lines.
+
 ## V1.9.88
 - GitHub: repo slots can be pinned; a full set replaces the oldest unpinned repo after you confirm (Add is never greyed out).
 - GitHub: Ember reads the files your message points at before she answers (Read first), shown in the thinking card.

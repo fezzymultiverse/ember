@@ -3,7 +3,7 @@
 // Nothing is trained and nothing is sent anywhere except the page fetch itself (through the existing scraper, so his keys and provider order apply).
 //   learn_url(url)                 -> scrape one page, save it as a document (re-learning the same url updates that document)
 //   learn_from_document(fileId)    -> read the links inside a document he already saved (e.g. a research .md), then learn them all
-//   GitHub repo links              -> added as REFERENCE repo slots in the GitHub Hub (needs his token); if that is not possible the repo page is scraped instead
+//   GitHub repo links              -> never added as repository connections; only Knowledge Brain Repo is connected; if that is not possible the repo page is scraped instead
 //   github.com/.../blob/... links  -> fetched as the raw file, which is far cleaner than the HTML page
 // Saved page text is untrusted data: every learned document starts with a header saying so.
 'use strict';
@@ -71,12 +71,10 @@ async function learnOne(rawUrl, opt) {
   return { ok: true, url, name, fileId: d.id, chars: text.length, via: got.provider || '', updated: d.updated, truncated: cut || undefined };
 }
 async function linkRepo(repo) {
-  const G = window.EmberGithub;
-  if (!G || !G.addSlot || !(G.token && G.token())) return { ok: false, reason: 'no-token' };
-  const r = await G.addSlot(repo, { role: 'ref' });
-  if (r.ok) return { ok: true, repo: r.slot.repo, linked: true };
-  if (/already in a slot/i.test(r.error || '')) return { ok: true, repo, linked: true, already: true };
-  return { ok: false, reason: 'failed', error: r.error };
+  const g = window.EmberGithub;
+  if (g && g.knowledgeRepo && String(repo).toLowerCase() === g.knowledgeRepo().toLowerCase()) return { ok: true, repo: g.knowledgeRepo(), linked: true, already: true };
+  // Other GitHub links may be learned as ordinary web pages, never as repository tools.
+  return { ok: false, reason: 'single-knowledge-brain', error: 'Only Knowledge Brain Repo can be connected in Settings > GitHub.' };
 }
 
 // ---------- many pages (a document's links) ----------

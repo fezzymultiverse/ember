@@ -127,6 +127,6 @@ const G = win.EmberGithub;
   ok('Media engines has its native place in Settings > Engine Keys', /id="bMediaEng"/.test(idx) && /bMediaEng/.test(v83) && !/Add-ons > Media engines/.test(W('ember_engines.js')));
   ok('one blue for every toggle and selection, loaded last', /ember_blue\.css/.test(idx) && idx.lastIndexOf('ember_blue.css') > idx.lastIndexOf('ember_acc.css') && /ember_blue\.css/.test(sw) && /\.sw\.on\{background:var\(--blue\)/.test(W('ember_blue.css')) && /gh-sw input:checked/.test(W('ember_blue.css')) && /\.stab\.on/.test(W('ember_blue.css')));
   ok('GitHub Home has the chat switch', /cfg\.chat/.test(ui));
-  ok('service worker + package are V1.9.88', /ember-v1\.9\.88/.test(sw) && /"version": "1\.9\.88"/.test(pk) && /test:v1988/.test(pk));
+  ok('service worker + package are V1.9.88', /ember-v1\.9\.(88|89)/.test(sw) && /"version": "1\.9\.(88|89)"/.test(pk) && /test:v1988/.test(pk));
   console.log('\n' + pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);
 })();

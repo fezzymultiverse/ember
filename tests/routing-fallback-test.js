@@ -22,14 +22,37 @@ const res = (status, data, headers={}) => ({ ok: status >= 200 && status < 300, 
   ok('fallback returns the successful response', /recovered/.test(r.text), r.text);
   ok('both providers were attempted', sent.some(x => x.url.includes('groq')) && sent.some(x => x.url.includes('mistral')));
 
-  const strict = boot((url, opt) => {
-    if (url.endsWith('/models')) return res(200, { data: [{ id: 'llama-3.3-70b-versatile' }] });
+  // V1.9.89: a permanent 4xx (400/413) from the first engine no longer aborts the route: the next engine answers.
+  for (const code of [400, 413, 404]) {
+    const casc = boot((url, opt) => {
+      if (url.endsWith('/models')) return res(200, { data: [{ id: url.includes('groq') ? 'llama-3.3-70b-versatile' : 'mistral-small-latest' }] });
+      if (url.includes('groq')) return res(code, { error: { message: 'request rejected ' + code } });
+      return res(200, { choices: [{ message: { content: 'Mistral took over after ' + code } }] });
+    });
+    let r2 = null, err2 = null;
+    try { r2 = await casc.P.run('fast', { system: 'test', messages: [{ role: 'user', content: 'hello' }] }); } catch (e) { err2 = e; }
+    ok(code + ' from Groq moves on to Mistral', r2 && r2.provider === 'mistral' && new RegExp(String(code)).test(r2.text), err2 && err2.message);
+  }
+  // when every engine refuses, the error still names the real reason
+  const allbad = boot((url, opt) => {
+    if (url.endsWith('/models')) return res(200, { data: [{ id: url.includes('groq') ? 'llama-3.3-70b-versatile' : 'mistral-small-latest' }] });
     return res(400, { error: { message: 'invalid request payload' } });
   });
-  let permanentError = null;
-  try { await strict.P.run('fast', { system: 'test', messages: [{ role: 'user', content: 'hello' }] }); }
-  catch (e) { permanentError = e; }
-  ok('permanent 400 returns the original provider error', permanentError && /invalid request payload/.test(permanentError.message), permanentError && permanentError.message);
-  ok('permanent 400 does not cascade to another engine', !strict.sent.some(x => x.url.includes('mistral')));
+  let allErr = null;
+  try { await allbad.P.run('util', { system: 'test', messages: [{ role: 'user', content: 'hello' }] }); } catch (e) { allErr = e; }
+  ok('all engines refusing returns the provider reason', allErr && /invalid request payload/.test(allErr.message), allErr && allErr.message);
+  ok('both engines were tried before giving up', allbad.sent.some(x => x.url.includes('groq')) && allbad.sent.some(x => x.url.includes('mistral')));
+  // a pinned engine stays strict: no silent switch
+  const pin = boot((url, opt) => {
+    if (url.endsWith('/models')) return res(200, { data: [{ id: url.includes('groq') ? 'llama-3.3-70b-versatile' : 'mistral-small-latest' }] });
+    if (url.includes('groq')) return res(400, { error: { message: 'groq says no' } });
+    return res(200, { choices: [{ message: { content: 'should not be used' } }] });
+  });
+  pin.P.setPinned('groq');
+  let pinErr = null;
+  try { await pin.P.run('fast', { system: 'test', messages: [{ role: 'user', content: 'hello' }] }); } catch (e) { pinErr = e; }
+  ok('pinned engine still fails plainly', pinErr && /groq says no/i.test(pinErr.message), pinErr && pinErr.message);
+  ok('pinned engine does not call another engine', !pin.sent.some(x => x.url.includes('mistral') && !x.url.endsWith('/models')));
+
   console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);
 })();
