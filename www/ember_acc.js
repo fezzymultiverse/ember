@@ -42,10 +42,17 @@
   adopt();
   if (window.MutationObserver) new MutationObserver(adopt).observe(sb, { childList: true });
 
+  SECTIONS.forEach(s => {
+    const body = item(s.id).querySelector('.acc-b');
+    const back = document.createElement('div'); back.className = 'acc-backbar';
+    back.innerHTML = '<button type="button" data-acc-back aria-label="Back to Settings">‹ <span>All Settings</span></button><b>' + esc(s.title) + '</b>';
+    body.prepend(back);
+  });
   const active = () => { const t = stabs.querySelector('.stab.on'); return t ? t.dataset.st : 'none'; };
   let shown = 'none';
   function render() {
     const a = active();
+    wrap.classList.toggle('acc-in-detail', a !== 'none' && !!item(a));
     SECTIONS.forEach(s => {
       const it = item(s.id), open = s.id === a, h = it.querySelector('.acc-h'), b = it.querySelector('.acc-b');
       it.classList.toggle('open', open); h.setAttribute('aria-expanded', open ? 'true' : 'false'); b.hidden = !open;
@@ -62,6 +69,7 @@
   if (window.MutationObserver) new MutationObserver(render).observe(stabs, { attributes: true, subtree: true, attributeFilter: ['class'] });
 
   wrap.addEventListener('click', e => {
+    if (e.target.closest('[data-acc-back]')) { const none = stabs.querySelector('.stab[data-st="none"]'); if (none) none.click(); return; }
     const h = e.target.closest('.acc-h'); if (!h) return;
     const id = h.parentElement.dataset.acc, target = stabs.querySelector('.stab[data-st="' + (active() === id ? 'none' : id) + '"]');
     if (target) target.click();

@@ -11,12 +11,7 @@ let open = false, busy = false, lastAt = 0, tk = 0;
 
 function lat(d) { return d.lat ? '⚡ ' + d.lat + ' ms' : '⚡ —'; }
 // Branded, full-colour provider marks. Inline SVG keeps the icons crisp and available offline.
-const MARKS = {
- openrouter:['#6b5cff','O'], plugsky:['#36b8f5','P'], stability:['#a78bfa','S'],
- groq:['#ff6a00','G'], mistral:['#ff8a00','M'], gemini:['#4285f4','✦'],
- cohere:['#39594d','C'], anthropic:['#d97757','A'], puter:['#4f7cff','P']
-};
-function mark(id) { const m=MARKS[id]||['#64748b','•']; return '<span class="pdbrand" style="--brand:'+m[0]+'" aria-hidden="true">'+m[1]+'</span>'; }
+function mark(id) { return window.EmberProviderBadge ? window.EmberProviderBadge(id) : '<span class="pdbrand">'+esc(id.slice(0,2).toUpperCase())+'</span>'; }
 function rowFor(id) {
   const P = window.Prov, st = P.stateOf(id), n = P.entries(id).length, c = P.CFG[id], d = P.detail(id), chk = busy && n;
   const proto = c.status === 'prototype' ? ' <i class="pdproto">prototype</i>' : '';
@@ -30,7 +25,7 @@ function rowFor(id) {
   else { sub = d.model || 'model picked on first use'; right = '<div class="pdlat">' + lat(d) + '</div><div class="pdcost">' + keys + '</div>'; }
   const dim = !n || st === 'limited' || st === 'bad' ? ' pd-dim' : '';
   return '<button class="pdrow' + dim + '" role="menuitem" data-id="' + esc(id) + '"><span class="pdd ' + (chk ? 'chk' : st) + '"></span>' +
-    '<span class="pdinfo"><span class="pdn">' + mark(id) + esc(c.name) + proto + '</span><small>' + esc(sub) + '</small></span><span class="pdright">' + right + '</span></button>';
+    '<span class="pdinfo"><span class="pdn">' + mark(id) + '<b class="provider-title">' + esc(c.name) + '</b>' + proto + '</span><small>' + esc(sub) + '</small></span><span class="pdright">' + right + '</span></button>';
 }
 function freeRow() {
   const P = window.Prov, on = P.freeOn();

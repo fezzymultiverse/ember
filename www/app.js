@@ -903,11 +903,13 @@ const DOT = { ok: 'ok', limited: 'limited', bad: 'bad' };
 const KEY_FOLD = 'ember_keyfold';
 const keyFold = () => LS.get(KEY_FOLD, {});
 function toggleFold(id) { const f = keyFold(); f[id] = !f[id]; LS.set(KEY_FOLD, f); }
+let keyDetailId = null;
 function renderKeys() {
-  let h = ''; const fold = keyFold();
+  let h = ''; const detail = keyDetailId;
+  const kl = $('kList'); if (!kl) return;
+  kl.classList.toggle('key-detail-mode', !!detail);
   Prov.IDS.forEach(id => {
     const list = Prov.entries(id); if (!list.length) return;
-    const many = list.length > 1, closed = many && fold[id];
     let rows = '';
     list.forEach(e => {
       const st = e.st, cls = !st ? '' : st.ok ? (st.limited ? 'limited' : 'ok') : 'bad';
@@ -915,13 +917,16 @@ function renderKeys() {
       rows += '<div class="kr"><span class="d ' + (DOT[cls] || '') + '"></span><div class="kt"><b>' + esc(Prov.mask(e.key)) + '</b><small>' + esc(line) + '</small></div><button data-k="chk" data-id="' + id + '" data-key="' + esc(e.key) + '" title="Check">↻</button><button data-k="rm" data-id="' + id + '" data-key="' + esc(e.key) + '" title="Remove">✕</button></div>';
     });
     const title = (window.EmberProviderBadge ? EmberProviderBadge(id) : '') + Prov.CFG[id].name + (Prov.CFG[id].status == 'prototype' ? ' <span class="pbadge">Prototype</span>' : '') + ' <small>(' + list.length + ')</small>';
-    if (many) h += '<div class="kgrp"><button class="kghead" data-fold="' + id + '">' + title + '<span class="chev">' + (closed ? '▸' : '▾') + '</span></button><div class="kgbody' + (closed ? ' hidden' : '') + '">' + rows + '</div></div>';
-    else h += '<div class="kgrp"><div class="kghead static">' + title + '</div>' + rows + '</div>';
+    const active = detail === id;
+    h += '<section class="kgrp ' + (detail ? (active ? 'key-current' : 'key-away') : '') + '" data-key-provider="' + id + '">' +
+      (active ? '<button type="button" class="key-back" data-key-back>‹ <span>All API Providers</span></button>' : '') +
+      '<button type="button" class="kghead" data-key-provider-open="' + id + '">' + title + '<span class="chev">›</span></button>' +
+      '<div class="kgbody"' + (active ? '' : ' hidden') + '>' + rows + '</div></section>';
   });
-  $('kList').innerHTML = h || '<p class="hint">No keys yet.</p>';
+  kl.innerHTML = h || '<p class="hint">No keys yet.</p>';
   try { paintEngPin(); } catch (e) { }
 }
-$('kList').addEventListener('click', e => { const b = e.target.closest('[data-fold]'); if (!b) return; toggleFold(b.dataset.fold); renderKeys(); });
+$('kList').addEventListener('click', e => { if (e.target.closest('[data-key-back]')) { keyDetailId = null; renderKeys(); return; } const b = e.target.closest('[data-key-provider-open]'); if (!b) return; keyDetailId = b.dataset.keyProviderOpen; const card = $('kList').closest('.card'), body = card && card.closest('.acc-b'); if (card && body) { body.querySelectorAll(':scope > .card').forEach(c => c.classList.remove('card-selected')); body.classList.add('card-subpage'); card.dataset.wasCollapsed = card.classList.contains('collapsed') ? '1' : '0'; card.classList.add('card-selected'); card.classList.remove('collapsed'); if (!card.querySelector('.acc-card-backbar')) { const bar = document.createElement('div'); bar.className = 'acc-card-backbar'; bar.innerHTML = '<button type="button" data-card-back>‹ <span>Back to Engine Keys</span></button>'; card.prepend(bar); } } renderKeys(); });
 
 // ---------- V1.6.1: Get Key buttons ----------
 const KEY_LINKS = { openrouter:'https://openrouter.ai/settings/keys', plugsky:'https://plugsky.com/dashboard', stability:'https://platform.stability.ai/dashboard/api-keys', groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', anthropic: 'https://console.anthropic.com/settings/keys', puter: 'https://puter.com/dashboard#account' };
@@ -1268,8 +1273,20 @@ function showStab(name) {
 $('stabs') && $('stabs').addEventListener('click', e => { const b = e.target.closest('.stab'); if (b) showStab(b.dataset.st); });
 // collapsible cards: tap the .ct header to fold/unfold everything else in that card
 document.querySelector('#settings .sb').addEventListener('click', e => {
+  const back = e.target.closest('[data-card-back]');
+  if (back) {
+    const card = back.closest('.card'), body = card && card.closest('.acc-b');
+    if (card && card.querySelector('#kList')) { keyDetailId = null; renderKeys(); }
+    if (card) { card.classList.remove('card-selected'); if (card.dataset.wasCollapsed === '1') card.classList.add('collapsed'); delete card.dataset.wasCollapsed; card.querySelector('.acc-card-backbar')?.remove(); }
+    if (body) body.classList.remove('card-subpage');
+    return;
+  }
   const ct = e.target.closest('.card>.ct'); if (!ct) return;
-  ct.parentElement.classList.toggle('collapsed');
+  const card = ct.parentElement, body = card.closest('.acc-b'); if (!body) return;
+  body.querySelectorAll(':scope > .card').forEach(c => c.classList.remove('card-selected'));
+  body.classList.add('card-subpage'); card.dataset.wasCollapsed = card.classList.contains('collapsed') ? '1' : '0';
+  card.classList.add('card-selected'); card.classList.remove('collapsed');
+  if (!card.querySelector('.acc-card-backbar')) { const bar = document.createElement('div'); bar.className = 'acc-card-backbar'; bar.innerHTML = '<button type="button" data-card-back>‹ <span>Back to ' + ((body.querySelector('.acc-backbar b')?.textContent)||'Settings') + '</span></button>'; card.prepend(bar); }
 });
 function openSettings(tab) { drawer(false); renderSet(); renderPerms(); showStab(typeof tab == 'string' ? tab : 'none'); $('settings').classList.add('show'); setUI('Settings'); }
 function closeSettings() { $('settings').classList.remove('show'); S.name = $('sName').value.trim(); S.about = $('sAbout').value; S.pname = $('sPname').value.trim() || 'Ember'; S.interests = $('sInt').value.trim() || DEF.interests; S.persona = $('sPersona').value.trim().slice(0, 2000); S.talk = $('sTalk').value.trim().slice(0, 300); saveS(); renderLog(); setUI('Chat'); }

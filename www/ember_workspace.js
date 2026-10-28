@@ -10,8 +10,8 @@
     bar.setAttribute('aria-label', 'Chat provider connection and routing');
     const providers = $('bProv');
     if (providers) { const label = document.createElement('span'); label.textContent = 'Providers'; providers.append(label); bar.append(providers); }
-    if ($('engs')) bar.append($('engs'));
-    if ($('bAiFeatures')) bar.append($('bAiFeatures'));
+    // Keep the engine status accessible in the centred header, but do not show an AI/status chip in the chat footer.
+    if ($('bAiFeatures')) { $('bAiFeatures').classList.add('action-item'); $('bAiFeatures').innerHTML = '<span class="action-emoji">🧠</span><span>AI Features</span>'; $('headerActionsMenu')?.append($('bAiFeatures')); }
     if ($('provDrop')) bar.append($('provDrop'));
     comp.append(bar);
     // The real cancellation endpoint remains callable but never floats above the input.

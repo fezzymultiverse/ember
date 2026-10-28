@@ -7,15 +7,13 @@
 <link rel="icon" href="ember-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="ember_v79.css"><link rel="stylesheet" href="ember_v80.css"><link rel="stylesheet" href="ember_v81.css"><link rel="stylesheet" href="ember_v82.css"><link rel="stylesheet" href="ember_v83.css"><link rel="stylesheet" href="ember_acc.css"><link rel="stylesheet" href="ember_engines.css">
-<link rel="stylesheet" href="ember_blue.css"><link rel="stylesheet" href="ember_v89.css"><link rel="stylesheet" href="ember_command_center.css"><link rel="stylesheet" href="ember_routing.css"><link rel="stylesheet" href="ember_workspace.css"><link rel="stylesheet" href="ember_v96.css">
+<link rel="stylesheet" href="ember_blue.css"><link rel="stylesheet" href="ember_v89.css"><link rel="stylesheet" href="ember_command_center.css"><link rel="stylesheet" href="ember_routing.css"><link rel="stylesheet" href="ember_workspace.css"><link rel="stylesheet" href="ember_v96.css?v=1.9.101"><link rel="stylesheet" href="ember_v96_ui.css?v=1.9.101"><link rel="stylesheet" href="ember_hub.css?v=1.9.102"><link rel="stylesheet" href="ember_gitflow.css?v=1.9.102">
 </head><body>
 <div id="app">
 <header>
 <div class="hl"><button class="hb" id="bHist" aria-label="Chat history">☰</button><button class="hb" id="bProv" aria-label="Providers" aria-expanded="false" title="Providers: live engine status"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 2.5v3M12 2.5v3M15 2.5v3M9 18.5v3M12 18.5v3M15 18.5v3M2.5 9h3M2.5 12h3M2.5 15h3M18.5 9h3M18.5 12h3M18.5 15h3"/></svg></button></div>
-<div class="who"><b id="pName">Ember</b><button id="engs" class="engpill" aria-label="Engine status. Tap to open the Keys tab"></button></div>
-<div class="hr"><button id="bCommandCenter" class="hb" aria-label="Open Command Center" aria-controls="emberCommandCenter" aria-expanded="false" title="Command Center">◫</button><button id="bGlobe" class="hb" aria-label="Browser" title="Browser: read or open a web page">🌐</button>
-<button id="bTermux" title="Termux Mode" aria-label="Open the Termux tab" class="hb">💻</button>
-<button class="hb" id="bSet" aria-label="Settings">⚙</button></div>
+<div class="who"><b id="pName">Ember</b><span class="ember-signal" aria-label="Ember active"><i></i><i></i><i></i></span><button id="engs" class="engpill" aria-label="Engine status. Tap to open the Keys tab"></button></div>
+<div class="hr"><button id="bActionMenu" class="hb" aria-label="Open actions" aria-haspopup="menu" aria-expanded="false" title="Actions">✦<span class="act-caret">▾</span></button><div id="headerActionsMenu" class="header-actions-menu hidden" role="menu" aria-label="Ember actions"><button id="bCommandCenter" class="action-item" role="menuitem" aria-label="Open Ember Command Centre" aria-controls="emberCommandCenter" aria-expanded="false"><span class="action-emoji">◫</span><span>Ember Command Centre</span></button><button id="bKeysMenu" class="action-item" role="menuitem" aria-label="API keys and providers, opens to the right"><span class="action-emoji">⛁</span><span>API Keys</span></button><button id="bGlobe" class="action-item" role="menuitem" aria-label="Browser"><span class="action-emoji">🌐</span><span>Browser</span></button><button id="bTermux" class="action-item" role="menuitem" aria-label="Open the Termux tab"><span class="action-emoji">💻</span><span>Termux</span></button><button id="bSet" class="action-item" role="menuitem" aria-label="Settings"><span class="action-emoji">⚙️</span><span>Settings</span></button></div></div>
 <div id="provDrop" class="provdrop hidden" role="menu" aria-label="Providers"></div>
 </header>
 <div id="projBadge" class="projbadge hidden"><button id="projBadgeOpen" class="pb-main" aria-label="Open the Projects tab"><span class="pb-ico">📁</span><span id="projBadgeName"></span></button><button id="projBadgeX" class="pb-x" aria-label="Close the open project" title="Close project">✕</button></div>
@@ -47,7 +45,7 @@
 
 <button id="eccBackdrop" class="ecc-backdrop" aria-label="Close Command Center" hidden tabindex="-1"></button>
 <aside id="emberCommandCenter" class="ecc-panel" aria-labelledby="eccTitle" inert aria-hidden="true">
-  <div class="ecc-panel-head"><div><span class="ecc-eyebrow">EMBER / WORKSPACE</span><h2 id="eccTitle">Command Center</h2></div><button id="eccClose" aria-label="Close Command Center">✕</button></div>
+  <div class="ecc-panel-head"><div><span class="ecc-eyebrow">EMBER / WORKSPACE</span><h2 id="eccTitle">Ember Command Centre</h2></div><button id="eccClose" aria-label="Close Command Center">✕</button></div>
   <div class="ecc-panel-content">
     <section class="ecc-card"><div class="ecc-card-title"><span class="ecc-icon">◈</span><h3>Thought Inspector</h3><span class="ecc-chip">SUMMARY</span></div><p class="ecc-description">Ember’s public three-phase summary, not private internal reasoning.</p><pre id="eccThought" aria-live="polite">No three-phase summary received yet.</pre></section>
     <section class="ecc-card"><div class="ecc-card-title"><span class="ecc-icon ecc-blue">▦</span><h3>Memory Matrix</h3><span id="eccMemoryCount" class="ecc-chip">0</span></div><p class="ecc-description">File excerpts present in the latest observed model request. Not the entire library or repository.</p><ul id="eccMemory"></ul><p id="eccMemoryEmpty" class="ecc-empty">No file excerpts observed in the context window.</p><small id="eccContextStatus">Waiting for a model request.</small></section>
@@ -373,7 +371,7 @@
 <div class="btnrow"><button class="btn" id="bExp">Export backup</button><button class="btn g" id="bImp">Import backup</button></div>
 <input type="file" id="fImp" accept="application/json,.json" hidden>
 <button class="btn g danger" id="bWipe" style="margin-top:10px">Delete everything</button>
-<p class="hint" id="ver">Ember V1.9.92 · Whole-repo brain + Repo Runner</p></div>
+<p class="hint" id="ver">Ember V1.10.0 · Side panel (Hub), unified GitHub panel, Command Centre widget, API Keys dropdown</p></div>
 </div></section>
 
 <section id="react" class="sheet"><div class="sh"><b>Reasoning</b><button class="hb" id="bRx" aria-label="Close reasoning">✕</button></div>
@@ -655,5 +653,5 @@
 })();
 </script>
 <script src="ember_v79.js"></script><script src="ember_v80.js"></script><script src="ember_v83.js"></script><script src="ember_acc.js"></script><script src="ember_v89.js"></script>
-<script src="ember_features.js"></script><script src="ember_workspace.js"></script>
+<script src="ember_features.js"></script><script src="ember_workspace.js"></script><script src="ember_action_menu.js"></script><script src="ember_v96_ui.js?v=1.9.101"></script><script src="ember_hub.js?v=1.9.102"></script><script src="ember_gitflow.js?v=1.9.102"></script>
 </body></html>
