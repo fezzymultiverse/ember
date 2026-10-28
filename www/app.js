@@ -409,7 +409,24 @@ async function reply(o) {
   const turnId = conv.id + ':' + conv.msgs.length; curTurn = turnId;
   const L = o.force ? { lane: 'deep', deep: true } : laneFor();
   const TLn = window.EmberTimeline; // V1.9.35: richer steps in the thinking card
-  if (TLn) { TLn.note('Reading your message', 'r1'); TLn.note(L.deep ? 'Deep lane: taking extra care on this one' : 'Quick lane: answering directly', 'r2'); TLn.note('Checking memory, conversation context and safety', 'r3'); TLn.note('Preparing enabled tools: web, files, graph and device actions', 'r4'); TLn.note('Choosing the best engine and fallback route', 'r5'); }
+  try { window.dispatchEvent(new CustomEvent('ember-turn-start', { detail: { lane: L.lane } })); } catch (_) { /* no listener */ }
+  if (TLn && TLn.step) { // V1.9.78: every line below is read from the app's real state at send time, nothing is canned
+    try {
+      const lu = [...conv.msgs].reverse().find(m => m.r == 'u'), wc = lu ? (String(lu.t || '').trim().match(/\S+/g) || []).length : 0;
+      TLn.step('msg', 'Reading your message · ' + wc + ' word' + (wc == 1 ? '' : 's'), 'r1');
+      TLn.step('bolt', L.deep ? 'Deep lane: careful engines first' : 'Quick lane: fast engines first', 'r2');
+      const nf = mem && Array.isArray(mem.facts) ? mem.facts.length : 0;
+      TLn.step('brain', 'Memory: ' + nf + ' saved fact' + (nf == 1 ? '' : 's') + ' · ' + conv.msgs.length + ' message' + (conv.msgs.length == 1 ? '' : 's') + ' in this chat', 'r3');
+      const lvl = Safety.lastLevel(); TLn.step('shield', lvl >= 2 ? 'Safety level in this chat: ' + lvl + ' (care mode)' : 'Safety level in this chat: calm', 'r3b');
+      const chips = [...document.querySelectorAll('#plusChips > *')].map(x => x.textContent.replace(/[×✕]/g, '').trim()).filter(Boolean);
+      if (S.termuxMode) chips.push('Termux Mode');
+      TLn.step(chips.some(c => /device|termux/i.test(c)) ? 'termux' : chips.some(c => /web/i.test(c)) ? 'globe' : 'files', chips.length ? 'Switched on: ' + chips.join(', ') : 'No extra tools switched on', 'r4');
+      let gh = 0; try { gh = window.EmberGithub && window.EmberGithub.token() ? window.EmberGithub.slots().length : 0; } catch (_) { gh = 0; }
+      if (gh) TLn.step('github', 'GitHub Hub connected · ' + gh + ' repo slot' + (gh == 1 ? '' : 's'), 'r4b');
+      const pin = Prov.getPinned(), usable = Prov.route(L.lane).filter(id => (Prov.keys()[id] || []).some(e => !e.bad));
+      TLn.step('egg', pin ? 'Engine: ' + Prov.label(pin) + ' (pinned)' : usable.length ? 'Route: ' + usable.map(id => Prov.label(id)).join(' → ') : 'Route: Free Mode (no keys saved)', 'r5');
+    } catch (_) { /* the card is a view; it never blocks the reply */ }
+  }
   try {
     const lastU = conv.msgs.length ? [...conv.msgs].reverse().find(m => m.r == 'u') : null;
     const call = Persona.respond(conv, { S, mem, directive: o.directive, lane: L.lane, deep: L.deep, uiState: uiStateBlock(), planHint: !o.directive && lastU ? planHint(lastU.t) : '', shouldCancel: () => cancelRequested, onToken: (piece, full) => { try { window.dispatchEvent(new CustomEvent('ember-token', { detail: { piece, text: full } })); } catch (_) {} } });
@@ -424,6 +441,7 @@ async function reply(o) {
     else if (finalText) finalText = await resolveAddonCalls(finalText, L, { provider: r.provider, model: r.model });
     if (finalText && TLn && window.EmberArtifacts) { const made=window.EmberArtifacts.parse(finalText).items; if(made.length) TLn.note('Writing ' + made.map(a=>a.title).join(', ')); }
     if (finalText && !bgWon()) {
+      try { window.dispatchEvent(new CustomEvent('ember-turn-end', { detail: { words: (String(streamText || '').trim().match(/\S+/g) || []).length } })); } catch (_) { /* no listener */ }
       const tlSnap = window.EmberTimeline ? window.EmberTimeline.snapshot() : null;
       conv.msgs.push({ r: 'a', t: finalText, ts: Date.now(), turn: turnId, tl: tlSnap || undefined, deep: L.deep || undefined, eng: { p: r.provider, m: r.model, ms: r.ms, pm: r.pinMiss ? r.pinMiss.want : undefined } });
       if (window.EmberNative && window.EmberNative.aiAvailable) window.EmberNative.aiCancel(turnId);

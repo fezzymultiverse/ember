@@ -8,7 +8,7 @@ const ok = (n, c) => { if (c) { pass++; console.log('PASS ' + n); } else { fail+
 // ---- 1. OpenRouter removed everywhere in the app ----
 const files = fs.readdirSync(path.join(__dirname, '..', 'www')).filter(f => /\.(js|html|css)$/.test(f));
 ok('no OpenRouter reference left in www/', files.every(f => !/openrouter|sk-or-v1/i.test(W(f))));
-ok('provider router has no openrouter', !/openrouter/.test(W('providers.js')) && /ACTIVE_IDS = \['groq', 'cohere', 'gemini', 'mistral', 'anthropic'\]/.test(W('providers.js')));
+ok('provider router has no openrouter', !/openrouter/.test(W('providers.js')) && /ACTIVE_IDS = \['groq', 'cohere', 'gemini', 'mistral', 'anthropic', 'puter'\]/.test(W('providers.js')));
 ok('Settings dropdown has no OpenRouter option', !/value="openrouter"/.test(W('index.html')));
 
 // ---- 2. Bojack easter egg removed ----

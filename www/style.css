@@ -1820,3 +1820,39 @@ header{padding:10px 12px!important;gap:6px!important}
 header .hl,header .hr{gap:6px!important}
 header .hb,header .hr .hb,header .hl .hb,#bGlobe.hb,#bTermux.hb,#bSet.hb{flex:0 0 38px!important;width:38px!important;min-width:38px!important;max-width:38px!important;height:38px!important}
 .engpill{overflow:visible!important;text-overflow:clip!important}
+
+
+/* ===== V1.9.78: calmer, roomier layout (Manus-style). Appended last so nothing above is edited. ===== */
+/* Stop: a floating pill above the composer instead of a button squeezed into the input row */
+html body .comp .row .side #bStop:not(.hidden){position:fixed!important;right:16px;bottom:calc(var(--dock,150px) + 12px);width:auto!important;height:42px!important;padding:0 20px!important;border-radius:999px!important;font-size:14px!important;font-weight:700;box-shadow:0 8px 26px rgba(0,0,0,.38);z-index:40;display:inline-flex!important;align-items:center;gap:6px}
+html body .comp .row .side #bStop:not(.hidden)::after{content:"Stop"}
+html body .comp .row .side #bStop:disabled::after{content:""}
+/* Bottom bar: one quiet row of modes; the tool buttons live in the + menu already */
+html body .comp .tools{display:none!important}
+html body .comp #bDocsQuick span{display:none}
+html body .comp #bDocsQuick{min-width:38px;padding:0 10px!important}
+html body .comp .mrow{padding:0 4px 8px!important;gap:10px}
+html body .comp .pchips{gap:6px;padding:0 4px 8px}
+html body .comp{padding:10px 14px calc(14px + env(safe-area-inset-bottom,0px))!important}
+html body .comp .row{border-radius:26px!important;padding:6px 8px!important;border:1px solid color-mix(in srgb,currentColor 18%,transparent)!important;box-shadow:0 8px 30px rgba(0,0,0,.16)}
+html body .comp .row textarea#inp{padding:10px 8px!important;font-size:16px;line-height:1.5}
+/* Fields are visibly fields: soft fill plus a clear border and a focus ring */
+html body input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=file]):not([type=color]),html body select{background:color-mix(in srgb,currentColor 7%,transparent)!important;border:1px solid color-mix(in srgb,currentColor 30%,transparent)!important;border-radius:12px!important;padding-left:12px}
+html body input:focus,html body select:focus{border-color:var(--ac,#8ab4ff)!important;outline:0;box-shadow:0 0 0 3px color-mix(in srgb,var(--ac,#8ab4ff) 25%,transparent)}
+html body input::placeholder{opacity:.6}
+/* Chat: more air. Ember's replies sit on the page, his messages in a soft bubble */
+#log{padding:24px 18px 32px!important;gap:22px!important}
+html body .msg{max-width:94%!important;padding:14px 18px!important;line-height:1.7!important;border-radius:22px!important}
+html body .msg.u{border-radius:22px 22px 6px 22px!important}
+html body .msg.a,html body #log>.msg.a:last-child{background:transparent!important;border:0!important;box-shadow:none!important;padding-left:2px!important;padding-right:2px!important}
+html body .msg.a p,html body .msg.a ul,html body .msg.a ol,html body .msg.a pre{margin:0 0 .9em}
+/* Welcome copy and the Prompts drawer */
+.empty{gap:18px!important}
+.empty h1{font-size:28px!important;letter-spacing:-.3px}
+.empty p{font-size:15px!important;line-height:1.6;max-width:320px!important;opacity:.82}
+#dp_prompts{padding:14px 14px 28px}
+#pQ{margin-bottom:12px}
+#pTags{gap:8px;margin:12px 0}
+#plist>*{margin-bottom:12px}
+#drawer .dtabs{gap:6px;padding:10px 12px}
+.puterrow{margin-top:8px}

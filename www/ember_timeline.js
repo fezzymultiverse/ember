@@ -235,7 +235,7 @@
       if (live.lines.length > MAX) live.lines.shift();
     }
     line.text = clip(text, opt.max || 120); line.k = k || line.k || 't'; line.st = st || '';
-    line.bad = st === 'bad'; line.pill = opt.pill || ''; line.err = opt.err ? clip(opt.err, 140) : ''; line.pct = +opt.pct || 0;
+    line.bad = st === 'bad'; line.pill = opt.pill || ''; line.err = opt.err ? clip(opt.err, 140) : ''; line.pct = +opt.pct || 0; if (opt.ic) line.ic = opt.ic;
     // V1.9.70: new keyed lines wait their turn in the reveal queue so they drop in one by one like the rest.
     if (line.k === 'a') live.toolRan = true;
     paint(); pump();
@@ -248,7 +248,7 @@
   function collapse() { if (!live) return; live.open = false; paint(); }
   function snapshot() {
     if (!live || (!live.toolRan && live.lines.length < 2)) return null;
-    return { ms: Date.now() - live.t0, lines: live.lines.slice(-MAX).map(l => [l.text, l.bad ? 1 : 0, l.k || 't', l.pill || '', l.err || '', l.tool || '', l.key || '']) };
+    return { ms: Date.now() - live.t0, lines: live.lines.slice(-MAX).map(l => [l.text, l.bad ? 1 : 0, l.k || 't', l.pill || '', l.err || '', l.tool || '', l.key || '', l.ic || '']) };
   }
 
   // ---------- html ----------
@@ -288,7 +288,13 @@
     image: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 3.5 3L16 12l4 4"/></svg>',
     github: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.2"/><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="9" r="2.2"/><path d="M6 8.2v7.6M18 11.2c0 3.6-6 2.4-12 5.6"/></svg>',
     graph: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="7" r="2.3"/><circle cx="18" cy="8" r="2.3"/><circle cx="12" cy="18" r="2.3"/><path d="M8 8l8 .6M7.3 9l3.7 7M16.8 10l-3.8 6.2"/></svg>',
-    egg: '<img class="ek-egg-mini" src="ember-icon.svg" alt="">'
+    egg: '<img class="ek-egg-mini" src="ember-icon.svg" alt="">',
+    brain: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5a3 3 0 0 0-3 3v.2A3.2 3.2 0 0 0 4.5 11a3 3 0 0 0 1.3 2.5A3.2 3.2 0 0 0 9 19.5h.5V4.6zM15 4.5a3 3 0 0 1 3 3v.2a3.2 3.2 0 0 1 1.5 3.3 3 3 0 0 1-1.3 2.5 3.2 3.2 0 0 1-3.2 6h-.5V4.6z"/></svg>',
+    shield: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5.5c0 4.2-2.9 7.6-7 9.5-4.1-1.9-7-5.3-7-9.5V6z"/><path d="M9 12l2.2 2.2L15.2 10"/></svg>',
+    pen: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1-4L16.5 4.5a2 2 0 0 1 2.8 2.8L7.8 18.8z"/><path d="M14.5 6.5l3 3"/></svg>',
+    bolt: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3L5 13.5h5.5L10 21l8-10.5h-5.5z"/></svg>',
+    key: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="3.6"/><path d="M10.6 12.4L19 4M16 7l2.5 2.5M13.5 9.5L15.5 11.5"/></svg>',
+    msg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10H9.5L5.5 19v-3.5H4z"/></svg>'
   };
   const iconKey = (tool, text, k) => {
     const x = String(tool || '').toLowerCase() + ' ' + String(text || '').toLowerCase();
@@ -307,14 +313,14 @@
     return '';
   };
   const ekRowHtml = (l, drop) => {
-    const act = l.k === 'a', key = iconKey(l.tool, l.text, l.k);
+    const act = l.k === 'a', key = l.ic && IC[l.ic] ? l.ic : iconKey(l.tool, l.text, l.k);
     const ico = key ? '<span class="ek-ico">' + IC[key] + '</span>' : '<span class="ek-ico"><i class="ek-dot"></i></span>';
     const pillCls = /^(saved|done|playing)$/i.test(l.pill || '') ? 'tl-pill-ok' : /^failed$/i.test(l.pill || '') ? 'tl-pill-bad' : 'tl-pill-warn';
     const pill = !act ? '' : l.pill ? '<span class="tl-pill ' + pillCls + '">' + esc(l.pill) + '</span>'
       : l.st === 'ok' ? '<span class="tl-pill tl-pill-ok">SUCCESS</span>'
       : l.st === 'bad' ? '<span class="tl-pill tl-pill-bad">FAILED</span>'
       : l.st === 'run' ? '<span class="tl-pill tl-pill-run">RUNNING</span>' : '';
-    const sig = [l.text, l.st, l.pill, l.err, l.bad ? 1 : 0, l.pct || 0].join('|');
+    const sig = [l.text, l.st, l.pill, l.err, l.bad ? 1 : 0, l.pct || 0, l.ic || ''].join('|');
     return '<div class="ek-row' + (act ? ' ek-act' : '') + (l.st === 'run' ? ' ek-run' : '') + (l.bad ? ' ek-bad' : '') + (drop ? ' ek-drop' : '') + '" data-id="' + esc(l.id == null ? '' : l.id) + '"' + (l.key ? ' data-key="' + esc(l.key) + '"' : '') + ' data-sig="' + esc(sig) + '">'
       + ico + '<div class="ek-txt">' + esc(l.text) + pill + (l.err ? '<div class="tl-err">' + esc(l.err) + '</div>' : '') + (l.st === 'run' && l.pct > 0 ? '<div class="ek-bar"><i style="width:' + Math.min(100, Math.round(l.pct)) + '%"></i></div>' : '') + '</div></div>';
   };
@@ -330,7 +336,7 @@
     v.forEach(l => {
       const cur = have[String(l.id)], fresh = ekRowHtml(l, !cur);
       if (!cur) { box.insertAdjacentHTML('beforeend', fresh); return; }
-      const sig = [l.text, l.st, l.pill, l.err, l.bad ? 1 : 0, l.pct || 0].join('|');
+      const sig = [l.text, l.st, l.pill, l.err, l.bad ? 1 : 0, l.pct || 0, l.ic || ''].join('|');
       if (cur.getAttribute('data-sig') !== sig) { const t = document.createElement('div'); t.innerHTML = fresh; const nn = t.firstChild; nn.classList.remove('ek-drop'); cur.replaceWith(nn); }
     });
   }
@@ -371,7 +377,7 @@
     if (!tl || !Array.isArray(tl.lines) || !tl.lines.length) return '';
     const secs = tl.ms ? (tl.ms / 1000).toFixed(1) + 's' : '\u2013';
     if (getStyle() === 'claude') {
-      const saved = tl.lines.map(l => ({ id: '', text: l[0], bad: !!l[1], k: l[2] === 'a' ? 'a' : 't', st: l[2] === 'a' ? (l[1] ? 'bad' : 'ok') : '', pill: l[3], err: l[4], tool: l[5], key: l[6] || '' }));
+      const saved = tl.lines.map(l => ({ id: '', text: l[0], bad: !!l[1], k: l[2] === 'a' ? 'a' : 't', st: l[2] === 'a' ? (l[1] ? 'bad' : 'ok') : '', pill: l[3], err: l[4], tool: l[5], key: l[6] || '', ic: l[7] || '' }));
       return '<details class="et-saved et-claude-saved ek-saved"><summary><span class="et-egg et-egg-static" aria-hidden="true"><img class="et-egg-img" src="ember-icon.svg" alt=""></span><span class="ek-done-t">Thought for ' + secs + '</span>' + DOWN + '</summary><div class="et-lines">' + rowsHtml(saved, false) + '</div></details>';
     }
     if (getStyle() === 'dd') {
@@ -465,5 +471,7 @@
   });
   window.addEventListener('ember-agent-note', e => { if (live && e.detail) note(String(e.detail)); });
   window.addEventListener('ember-duty', e => { if (live && e.detail && e.detail.text) note(String(e.detail.text), e.detail.key || 'duty'); });
-  window.EmberTimeline = { patchSaved, getStyle, setStyle, begin, drop, note, tool, upsert, unkey, collapse, snapshot, liveHtml, savedHtml, label, flush, _failed: failed, _live: () => live };
+  // V1.9.78: step(icon, text, key, opt): a thinking line with its own icon. Same key = the same line updated in place.
+  function step(ic, text, key, opt) { return upsert(key || ('st' + (++uidc)), text, 't', '', Object.assign({ ic }, opt || {})); }
+  window.EmberTimeline = { step, patchSaved, getStyle, setStyle, begin, drop, note, tool, upsert, unkey, collapse, snapshot, liveHtml, savedHtml, label, flush, _failed: failed, _live: () => live };
 })();

@@ -10,13 +10,15 @@ const CFG = {
   gemini: { name: 'Gemini', base: 'https://generativelanguage.googleapis.com/v1beta', kind: 'gem', color: '#ffffff' },
   cohere: { name: 'Cohere', base: 'https://api.cohere.com', kind: 'cohere', color: '#d9d9d9' },
   // V1.9.72: Claude (Anthropic Messages API). PAID, so it is never in the automatic order: it answers only while it is pinned (Providers chip).
-  anthropic: { name: 'Claude', base: 'https://api.anthropic.com/v1', kind: 'claude', color: '#d97757' }
+  anthropic: { name: 'Claude', base: 'https://api.anthropic.com/v1', kind: 'claude', color: '#d97757' },
+  // V1.9.78: Puter (puter.js). No API key: he signs in once with Connect Puter. Last in the automatic order, and only while connected.
+  puter: { name: 'Puter', base: 'https://js.puter.com/v2/', kind: 'puter', color: '#4f7cff' }
 };
 const IDS = Object.keys(CFG);
 // Automatic profile for this installation. Mistral stays active because it is working for him.
-const ACTIVE_IDS = ['groq', 'cohere', 'gemini', 'mistral', 'anthropic'];
+const ACTIVE_IDS = ['groq', 'cohere', 'gemini', 'mistral', 'anthropic', 'puter'];
 // fast = quick everyday replies. deep = slow, careful turns. util = background jobs (memory, titles).
-const ORDER = { fast: ['groq', 'cohere', 'gemini', 'mistral'], deep: ['gemini', 'cohere', 'mistral', 'groq'], util: ['groq', 'cohere', 'gemini', 'mistral'] };
+const ORDER = { fast: ['groq', 'cohere', 'gemini', 'mistral', 'puter'], deep: ['gemini', 'cohere', 'mistral', 'groq', 'puter'], util: ['groq', 'cohere', 'gemini', 'mistral'] };
 
 // V1.5.6: pasted keys often carry invisible junk (zero-width chars, quotes, "Bearer ", "key=", a trailing comma). Any of it makes
 // the provider answer 401/403 even though the key itself is fine, so every key is cleaned before it is stored or sent.
@@ -30,6 +32,7 @@ function clean(k) {
 function load() {
   const k = LS.get('ember_keys', {}), o = {};
   IDS.forEach(id => { o[id] = (Array.isArray(k[id]) ? k[id] : []).filter(e => e && typeof e.key === 'string' && e.key).map(e => { e.key = clean(e.key); return e; }).filter(e => e.key); });
+  o.puter = LS.get('ember_puter_on', false) ? [{ key: 'puter-signin' }] : []; // V1.9.78: no real key; presence = connected
   return o;
 }
 let keys = load();
@@ -46,7 +49,10 @@ function setPinnedModel(id, model) { pinnedModel = (id && CFG[id] && model) ? { 
 let strictPin = LS.get('ember_pin_strict', true) !== false;
 function setStrict(v) { strictPin = !!v; LS.set('ember_pin_strict', strictPin); }
 const onlyPinned = lane => !!(strictPin && pinnedEngine && lane != 'util');
-function orderFor(lane) { const base = ORDER[lane] || ORDER.fast; if (!pinnedEngine) return base; return [pinnedEngine].concat(base.filter(id => id != pinnedEngine)); }
+function orderFor(lane) { const base = ORDER[lane] || ORDER.fast; if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
+    const lg = lane == 'fast' ? LS.get('ember_last_good', null) : null;
+    if (lg && base.includes(lg) && keys[lg] && keys[lg].some(e => !e.bad)) return [lg].concat(base.filter(x => x != lg));
+    return base; } return [pinnedEngine].concat(base.filter(id => id != pinnedEngine)); }
 const save = () => LS.set('ember_keys', keys);
 const cool = new Map(); // key -> timestamp until which it is resting after a 429
 const activeControllers = new Set(), activeReaders = new Set(); let routeCancelled = false;
@@ -161,9 +167,51 @@ async function streamClaude(url, body, key, o, timeout) {
   return out;
 }
 
+// ---------- V1.9.78: Puter (puter.js) ----------
+// puter.js is loaded on demand. Nothing is requested from Puter until he taps Connect Puter and signs in.
+let puterLoad = null;
+function puterReady() {
+  if (window.puter && window.puter.ai) return Promise.resolve(window.puter);
+  if (puterLoad) return puterLoad;
+  puterLoad = new Promise((res, rej) => {
+    const fail = m => { puterLoad = null; rej(Object.assign(new Error(m), { status: 0 })); };
+    try {
+      const s = document.createElement('script'); s.src = 'https://js.puter.com/v2/';
+      s.onload = () => (window.puter && window.puter.ai ? res(window.puter) : fail('Puter loaded but its AI module is missing.'));
+      s.onerror = () => fail('Puter could not load (offline or blocked).');
+      document.head.appendChild(s); setTimeout(() => { if (!(window.puter && window.puter.ai)) fail('Puter timed out while loading.'); }, 15000);
+    } catch (e) { fail('Puter could not start: ' + e.message); }
+  });
+  return puterLoad;
+}
+async function puterConnect() { const P = await puterReady(); await P.auth.signIn(); LS.set('ember_puter_on', true); keys = load(); return true; }
+function puterOff() { LS.set('ember_puter_on', false); keys = load(); }
+async function callPuter(model, o) {
+  const P = await puterReady();
+  let signed = false; try { signed = !!(P.auth && await P.auth.isSignedIn()); } catch (e) { signed = false; }
+  if (!signed) throw Object.assign(new Error('Puter is not signed in. Open Settings > Keys and tap Connect Puter.'), { status: 0 }); // no status: counts as transient, the router moves on
+  const msgs = [{ role: 'system', content: o.system || '' }].concat(o.messages);
+  const opt = model && model != 'default' ? { model } : {};
+  const work = (async () => {
+    if (typeof o.onToken == 'function' && !o.json) {
+      opt.stream = true; const it = await P.ai.chat(msgs, opt); let t = '';
+      for await (const part of it) {
+        if (routeCancelled) throw Object.assign(new Error('Stopped by user.'), { code: 'cancelled' });
+        const d = part && typeof part.text == 'string' ? part.text : ''; if (d) { t += d; try { o.onToken(d, t); } catch (_) { /* UI callback */ } }
+      }
+      return t;
+    }
+    const r = await P.ai.chat(msgs, opt), c = r && r.message && r.message.content;
+    return typeof c == 'string' ? c : Array.isArray(c) ? c.map(x => (x && x.text) || '').join('') : (r && r.toString ? String(r) : '');
+  })();
+  let timer; const lim = new Promise((_, rej) => { timer = setTimeout(() => rej(Object.assign(new Error('Puter timed out'), { status: 408 })), 45000); });
+  try { return await Promise.race([work, lim]); } finally { clearTimeout(timer); }
+}
+
 // ---------- models ----------
 async function listModels(id, key) {
   const c = CFG[id];
+  if (c.kind == 'puter') return ['default']; // Puter picks its own default model; no key, no list to fetch
   if (c.kind == 'oai') {
     const j = await jfetch(c.base + '/models', { headers: { Authorization: 'Bearer ' + key } }, 15000);
     return (j.data || []).map(m => m.id).filter(Boolean);
@@ -220,6 +268,7 @@ function rank(id, list, lane) {
 }
 const MC = 12 * 3600 * 1000;
 async function modelsFor(id, key, lane) {
+  if (CFG[id].kind == 'puter') return ['default'];
   const cache = LS.get('ember_models', {});
   if (cache[id] && Date.now() - cache[id].at < MC && cache[id].list.length) return rank(id, cache[id].list, lane);
   const list = await listModels(id, key);
@@ -293,6 +342,8 @@ async function streamOAI(url, key, body, o, timeout) {
     const data = line.slice(5).trim(); if (!data || data === '[DONE]') return;
     let packet; try { packet = JSON.parse(data); } catch (_) { return; }
     const choice = packet.choices && packet.choices[0], delta = choice && choice.delta;
+    const rs = delta && (typeof delta.reasoning_content === 'string' ? delta.reasoning_content : typeof delta.reasoning === 'string' ? delta.reasoning : ''); // V1.9.78: the model's own reasoning, when the engine sends it, goes to the thinking card live
+    if (rs) { o._th = (o._th || '') + rs; try { window.dispatchEvent(new CustomEvent('ember-thought', { detail: { piece: rs, text: o._th } })); } catch (_) { /* no listener */ } }
     const piece = delta && typeof delta.content === 'string' ? delta.content : '';
     if (piece) { out += piece; if (typeof o.onToken === 'function') { try { o.onToken(piece, out); } catch (_) {} } }
   };
@@ -312,7 +363,9 @@ async function streamOAI(url, key, body, o, timeout) {
 async function call(id, key, model, o) {
   const c = CFG[id], t0 = performance.now();
   let text = '';
-  if (c.kind == 'oai') {
+  if (c.kind == 'puter') {
+    text = await callPuter(model, o);
+  } else if (c.kind == 'oai') {
     const body = { model, messages: [{ role: 'system', content: o.system }].concat(o.messages), temperature: o.temp == null ? 0.8 : o.temp, max_tokens: o.max || 400 };
     if (o.json) body.response_format = { type: 'json_object' };
     const decl = (!o.json && o.tools && o.tools.length) ? toolDecls(o.tools, false) : [];
@@ -526,7 +579,7 @@ function factsBlock(id, model, failed) {
   else L.push('- This is a background reply: the phone picks the engine after this prompt is built, so you do not know which engine or model you are. Do not name one.');
   const noKey = IDS.filter(x => !keys[x].length).map(x => CFG[x].name);
   if (noKey.length) L.push('- NO key is saved for: ' + noKey.join(', ') + '. You cannot be any of those engines, and you must never say you are one of them.');
-  L.push('- Automatic AI route in this build: Groq → Cohere → Gemini → Mistral. Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
+  L.push('- Automatic AI route in this build: Groq → Cohere → Gemini → Mistral → Puter (Puter only after he taps Connect Puter; it needs no key). Ember stays on the engine that last answered and only moves on when it fails. Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
   if (pinnedEngine) {
     const miss = id && id != pinnedEngine, why = (failed || []).find(f => f.id == pinnedEngine);
     L.push('- Pinned engine in Settings: ' + CFG[pinnedEngine].name + (pinnedModel && pinnedModel.id == pinnedEngine ? ' (model ' + pinnedModel.model + ')' : '') + ' [' + STATE_TXT[st[pinnedEngine]] + ']' + (miss ? '. It could not answer this message' + (why ? ' (' + String(why.why || '').slice(0, 120) + ')' : '') + ', so ' + (id == 'pollinations' ? 'Free Mode' : CFG[id].name) + ' answered instead. Tell him that plainly if he asks.' : '.'));
@@ -535,6 +588,7 @@ function factsBlock(id, model, failed) {
   const ev = engineVoice(id); if (ev) L.push('- ' + ev);
   L.push('- If he says he switched engine or model and it does not match these lines, say it does not match what is running. Settings changes apply from his next message and only when that engine has a working key. Never agree just because he said so.');
   try { const km = window.EmberKeys && window.EmberKeys.line(); if (km) L.push('- ' + km); } catch (e) { /* key map unavailable */ }
+  L.push('- GitHub: Ember has a built-in GitHub Hub (Settings > GitHub). He saves a token and up to 12 repos, and one tap syncs a real file index and digest. When it is connected you can use the github_repos, github_sync, github_repo_map, github_list_files, github_find and github_read_file tools to answer from his real code. github_write_file and github_run only act after his latest message asks for it. If a GitHub tool says it is not connected, tell him to open Settings > GitHub; never guess at repo contents or claim you read a file without a tool result.');
   L.push('- Never say you searched, scraped or looked something up, and never show a table of "results", unless a [TOOL RESULTS] block is in this turn. No tool block means you did not look. Call the tool or say you have not looked yet.');
   return L.join('\n');
 }
@@ -563,7 +617,7 @@ async function runInner(lane, o, tok) {
   const halted = () => { if (tok && tok.stop) throw HANDOFF(); if (routeCancelled || (tok && tok.abort)) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' }); };
   const trying = (name, model) => { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-try', { detail: { name, model } })); } catch (e) { /* no listener */ } } }; // V1.8.3: once the native worker took the request, the page makes no further paid calls
   // when an engine failed and a different one answered, tell the UI (ai.js shows a toast). Background jobs stay silent.
-  const done = r => { if (pinnedEngine && r.provider != pinnedEngine) { const p0 = failed.find(x => x.id == pinnedEngine); r.pinMiss = { want: pinnedEngine, why: p0 ? (p0.why || '') : 'no usable key' }; } const f = failed.find(x => x.id != r.provider); if (f && pl && !(pinnedEngine && r.provider == pinnedEngine)) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
+  const done = r => { if (!pinnedEngine && lane == 'fast' && r.provider && CFG[r.provider] && r.provider != 'anthropic') LS.set('ember_last_good', r.provider); if (pinnedEngine && r.provider != pinnedEngine) { const p0 = failed.find(x => x.id == pinnedEngine); r.pinMiss = { want: pinnedEngine, why: p0 ? (p0.why || '') : 'no usable key' }; } const f = failed.find(x => x.id != r.provider); if (f && pl && !(pinnedEngine && r.provider == pinnedEngine)) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
   let tried = false, routeStop = null;
   halted();
   if (o.routeProvider && !CFG[o.routeProvider]) throw Object.assign(new Error('The original engine cannot continue this tool result. No other engine was called for this follow-up.'), { code: 'fail' });
@@ -577,14 +631,14 @@ async function runInner(lane, o, tok) {
     if (!o.routeProvider && onlyPinned(lane) && id != pinnedEngine) break; // V1.9.15: strict pin
     const soft = false;
     for (const e of keys[id]) {
-      if (e.bad || isCool(e.key)) continue;
+      if (e.bad || isCool(e.key)) { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-skip', { detail: { id, why: e.bad ? 'key rejected' : 'resting after a rate limit' } })); } catch (_) { /* no listener */ } } continue; } // V1.9.78: a skipped engine is a real step
       halted();
       let models;
       try { models = await modelsFor(id, e.key, lane); }
       catch (er) {
         if (er.code === 'cancelled' || routeCancelled) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' });
         if (er.status == 401 || er.status == 403) { e.bad = true; save(); } else if (er.status == 429) coolKey(e.key, er.retryAfter);
-        if (er.status != 429 && !transient(er)) routeStop = { id, error: er };
+        if (er.status != 429 && er.status != 401 && er.status != 403 && !transient(er)) routeStop = { id, error: er }; // V1.9.78: a rejected key is that key's problem, not a reason to stop the chain
         errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message }); continue;
       }
       const pm = pinnedModel && pinnedModel.id == id ? pinnedModel.model : null;
@@ -597,7 +651,7 @@ async function runInner(lane, o, tok) {
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
           if (soft && (er.status == 400 || er.status == 402 || er.status == 403 || er.status == 422) && !pm) continue; // V1.9.15: try the next model, keep the key, the reason stays in failed[]
           if (er.status == 429) { coolKey(e.key, er.retryAfter); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: true, code: 429 }); break; }
-          if (!transient(er)) routeStop = { id, error: er };
+          if (er.status != 401 && er.status != 403 && !transient(er)) routeStop = { id, error: er }; // V1.9.78: same: bad key falls through to the next engine
           if (er.status == 401 || er.status == 403) { e.bad = true; e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: false, limited: false, code: er.status, msg: 'key rejected (' + er.status + ')' }); save(); break; }
           if (er.status == 404 || (er.status == 400 && /model/i.test(er.message)) || transient(er)) continue;
           // A model-specific or transient failure advances through models; auth/permission failures invalidate the key above.
@@ -703,5 +757,5 @@ function detail(id) {
 }
 async function pingAll() { await Promise.all(IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); }
 function status() { const o = {}; IDS.forEach(id => { o[id] = stateOf(id); }); return o; }
-window.Prov = { toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
+window.Prov = { route: lane => orderFor(lane), puterConnect, puterOff, puterOn: () => !!LS.get('ember_puter_on', false), toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
 })();
