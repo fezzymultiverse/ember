@@ -85,7 +85,7 @@
 
       '<section class="egit-step"><h3><span>3</span>Clone &amp; push update</h3>' +
         '<p class="egit-hint">Your output repo receives the clones. GitHub Actions does the cloning and pushing, never this phone, and nothing is force-pushed.</p>' +
-        '<label class="egit-lb" for="egOut">Output repo (must be different from the brain)</label>' +
+        '<label class="egit-lb" for="egOut">Output repo (may be the brain itself)</label>' +
         '<div class="egit-row egit-inline"><input id="egOut" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="owner/repo"><button type="button" class="ehub-btn ehub-sm" data-eg="out-set">Set</button></div>' +
         '<p class="egit-msg" id="egOutMsg"></p>' +
         '<button type="button" class="ehub-btn ehub-btn-hot egit-wide" id="egClone" data-eg="clone">Clone &amp; push update</button>' +

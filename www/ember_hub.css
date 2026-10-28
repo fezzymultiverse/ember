@@ -97,3 +97,9 @@
 body.ehub-on{overflow:hidden}
 @media(max-width:360px){.ehub{width:92vw}.ehub-tiles{gap:6px}.ehub-cc-btns{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.ehub,.ehub-keys,.ehub-chev,.ehub-live.busy{transition:none;animation:none}}
+
+/* V1.10.2: Command Centre is a widget at the bottom of the panel; the header row expands it. */
+.ehub-cc-top{width:100%;text-align:left;background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer}
+.ehub-cc-top .ehub-chip{margin-left:auto}
+.ehub-cc-body{margin-top:2px}
+.ehub-cc.open .ehub-chev{transform:rotate(90deg);color:#ffb47c}

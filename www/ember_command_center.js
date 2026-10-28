@@ -39,10 +39,14 @@
     const previousTop = out.scrollTop;
     const filter = $('eccTerminalFilter').value, fragment = document.createDocumentFragment();
     for (const line of state.lines) {
-      if (filter !== 'all' && filter !== line.stream) continue;
-      const row = document.createElement('div'); row.className = 'ecc-line ecc-line-' + line.stream;
+      if (filter.indexOf('tag:') === 0 ? line.tag !== filter.slice(4) : (filter !== 'all' && filter !== line.stream)) continue;
+      const row = document.createElement('div'); row.className = 'ecc-line ecc-line-' + line.stream + (line.tag ? ' ecc-tag-' + line.tag.toLowerCase() : '');
       const time = document.createElement('span'); time.className = 'ecc-time'; time.textContent = line.time + ' ';
-      row.append(time, document.createTextNode('[' + line.source + '/' + line.stream + '] ' + line.text)); fragment.append(row);
+      row.append(time);
+      if (line.tag) { const badge = document.createElement('span'); badge.className = 'ecc-badge'; badge.textContent = line.tag; row.append(badge, document.createTextNode(' ')); }
+      row.append(document.createTextNode('[' + line.source + '/' + line.stream + '] ' + line.text));
+      if (line.ms != null) { const ms = document.createElement('span'); ms.className = 'ecc-ms'; ms.textContent = ' ' + (line.ms >= 1000 ? (line.ms / 1000).toFixed(1) + 's' : Math.round(line.ms) + 'ms'); row.append(ms); }
+      fragment.append(row);
     }
     out.replaceChildren(fragment); $('eccTerminalCount').textContent = state.lines.length + ' lines';
     out.scrollTop = $('eccTerminalFollow').checked ? out.scrollHeight : previousTop;
@@ -52,14 +56,20 @@
     if (renderPending || destroyed) return; renderPending = true;
     requestAnimationFrame(() => { renderPending = false; if (!destroyed && !$('eccTerminalBody').hidden) renderLines(); });
   }
+  const TAGS = ['TOOL', 'ROUTE', 'CREATE', 'WEB', 'GIT', 'DL', 'THINK', 'TURN'];
   function write(data) {
     if (destroyed || !data || typeof data !== 'object') return;
     const kind = ['stdout','stderr','status','merged'].includes(data.stream) ? data.stream : 'status';
     const text = clean(data.text, 60000); if (!text) return;
     const source = clean(data.source || 'Backend', 60), time = new Date().toLocaleTimeString([], { hour12: false });
-    text.split(/\r?\n|\r/).slice(-MAX_LINES).forEach(t => state.lines.push({ stream: kind, source, time, text: t.slice(0, MAX_LINE) }));
+    const tag = TAGS.includes(String(data.tag || '').toUpperCase()) ? String(data.tag).toUpperCase() : '';
+    const ms = Number.isFinite(Number(data.ms)) && data.ms !== null && data.ms !== '' ? Math.max(0, Number(data.ms)) : null;
+    text.split(/\r?\n|\r/).slice(-MAX_LINES).forEach(t => state.lines.push({ stream: kind, source, time, text: t.slice(0, MAX_LINE), tag, ms }));
     if (state.lines.length > MAX_LINES) state.lines.splice(0, state.lines.length - MAX_LINES);
-    $('eccTerminalCount').textContent = state.lines.length + ' lines'; scheduleLines();
+    $('eccTerminalCount').textContent = state.lines.length + ' lines';
+    const tk = $('eccTerminalTicker'); if (tk) tk.textContent = (tag ? tag + ' · ' : '') + text.split(/\r?\n|\r/)[0].slice(0, 70);
+    if (tag && tag !== 'TURN' && $('eccTerminalAuto') && $('eccTerminalAuto').checked && $('eccTerminalBody').hidden) drawer(true);
+    scheduleLines();
   }
   function activity(key, active) {
     if (active) state.active.set(key, true); else state.active.delete(key);
@@ -242,7 +252,14 @@
       }
     });
     on($('eccTerminalToggle'), 'click', () => drawer($('eccTerminalBody').hidden));
-    on($('eccTerminalClear'), 'click', () => { state.lines.length = 0; renderLines(); });
+    on($('eccTerminalClear'), 'click', () => { state.lines.length = 0; const tk = $('eccTerminalTicker'); if (tk) tk.textContent = ''; renderLines(); });
+    on($('eccTerminalCopy'), 'click', async () => {
+      const text = state.lines.map(l => l.time + ' ' + (l.tag ? '[' + l.tag + '] ' : '') + '[' + l.source + '/' + l.stream + '] ' + l.text + (l.ms != null ? ' (' + Math.round(l.ms) + 'ms)' : '')).join('\n');
+      const b = $('eccTerminalCopy'); let ok = false;
+      try { await navigator.clipboard.writeText(text); ok = true; } catch (_) { try { const t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.append(t); t.select(); ok = document.execCommand('copy'); t.remove(); } catch (__) { ok = false; } }
+      if (b) { b.textContent = ok ? 'Copied' : 'Blocked'; setTimeout(() => { b.textContent = 'Copy'; }, 1400); }
+    });
+    try { const auto = $('eccTerminalAuto'); if (auto) { auto.checked = localStorage.getItem('ember_term_auto') !== '0'; on(auto, 'change', () => { try { localStorage.setItem('ember_term_auto', auto.checked ? '1' : '0'); } catch (_) { /* storage blocked */ } }); } } catch (_) { /* storage blocked */ }
     on($('eccTerminalFilter'), 'change', renderLines); on($('eccTerminalFollow'), 'change', renderLines);
     document.querySelectorAll('[data-ecc-action]').forEach(b => on(b, 'click', () => action(b.dataset.eccAction)));
     on(W, 'ember-turn-start', begin);

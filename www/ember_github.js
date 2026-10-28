@@ -807,6 +807,21 @@ window.EmberGithub = {
     if (method !== 'GET' && (!m || m[1].toLowerCase() !== cleanRepo(c.target).toLowerCase())) return { ok:false, error:'Writes are restricted to the configured output repo.' };
     return gh(path, Object.assign({}, options || {}, { repoManager: true }));
   },
+  // V1.10.5: read-only look at ANY public/accessible repo (for dossiers) + commit writes to the Brain repo only. No arbitrary URLs, no other writes.
+  brainRequest: async (path, options) => {
+    const method = options && options.method || 'GET', p = String(path);
+    if (!p.startsWith('/') || p.includes('..') || p.includes('\\') || p.includes('#')) return { ok: false, error: 'Invalid API path.' };
+    const m = p.match(/^\/repos\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)(\/[^?]*)?(\?.*)?$/);
+    if (!m) return { ok: false, error: 'Only repository paths are allowed.' };
+    const tail = m[2] || '';
+    if (method === 'GET') {
+      if (tail && !/^\/(readme|languages|topics|contents(\/.*)?|git\/(trees|ref|commits)\/.+|branches\/.+)$/.test(tail)) return { ok: false, error: 'That GitHub read is not allowed.' };
+      return gh(p, Object.assign({}, options || {}, { repoManager: true }));
+    }
+    if (m[1].toLowerCase() !== knowledgeRepo().toLowerCase()) return { ok: false, error: 'Writes are restricted to the Brain repo.' };
+    if (!/^\/git\/(trees|commits)$|^\/git\/refs\/heads\/.+$/.test(tail)) return { ok: false, error: 'That GitHub write is not allowed.' };
+    return gh(p, Object.assign({}, options || {}, { repoManager: true }));
+  },
   provisionRunnerSecret: async () => {
     try {
       const c = rawLoad('ember_repo_runner'), target = cleanRepo(c.target), sodium = window.sodium;

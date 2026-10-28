@@ -22,7 +22,7 @@ function save(patch) {
   c.sources = c.sources.filter((x, i, a) => a.findIndex(y => y.repo.toLowerCase() === x.repo.toLowerCase()) === i);
   if (c.sources.length > 100) throw new Error('At most 100 whole repositories per runner.');
   if (c.target && !/^[A-Za-z0-9_-][A-Za-z0-9_.-]*\/[A-Za-z0-9_-][A-Za-z0-9_.-]*$/.test(c.target)) throw new Error('Output repo must be owner/name.');
-  if (c.sources.some(s => s.repo.toLowerCase() === c.target.toLowerCase())) throw new Error('The output repo must be different from the brain and imported sources.');
+  if (c.sources.some(s => s.repo.toLowerCase() === c.target.toLowerCase() && s.repo.toLowerCase() !== c.brain.toLowerCase())) throw new Error('The output repo must be different from the imported sources (it may be the brain itself).');
   if (!/^[A-Za-z0-9_.-]+\.ya?ml$/.test(c.buildWorkflow)) throw new Error('Build workflow must be a filename such as build.yml.');
   if (c.branch && (!/^[A-Za-z0-9_-][A-Za-z0-9._/-]{0,99}$/.test(c.branch) || c.branch.includes('..'))) throw new Error('Invalid output branch.');
   localStorage.setItem(KEY, JSON.stringify(c)); changed(); return c;
@@ -30,7 +30,6 @@ function save(patch) {
 function applyBrain(value) {
   const next = clean(value), previous = G.knowledgeRepo(), c = config();
   if (!next) return { ok: false, error: 'Use a GitHub owner/repository or repository URL.' };
-  if (next.toLowerCase() === c.target.toLowerCase()) return { ok: false, error: 'Brain and Ember output must be different repositories. Change the output first to avoid copying a repo into itself.' };
   const result = G.setKnowledgeRepo(next);
   if (result.ok) {
     try {

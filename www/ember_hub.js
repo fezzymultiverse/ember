@@ -1,7 +1,7 @@
 // Ember V1.9.102 - ember_hub.js: NEW right-hand side panel ("Ember Hub").
 // Opens when you tap Settings in the header dropdown. Your existing Settings screen is not modified:
 // it stays available, untouched, through "Open classic settings" and through every row in this panel.
-//   1) Ember Command Centre pinned at the top as a live widget.
+//   1) Ember Command Centre sits at the bottom as a live widget: tap it to expand.
 //   2) API Keys: tap to drop down every provider with its logo, key count and masked keys.
 //   3) Every Settings section listed as a clear option row.
 // Key values are only ever shown masked (first 6 + last 4 characters, via Prov.mask).
@@ -25,6 +25,7 @@
   const TAB_FOR_KIND = { scraper: 'scraping', 'web search': 'scraping', 'code host': 'github', 'song id': 'music' };
   const CC_WAIT = /^(No three-phase|Waiting for)/;
 
+  let ccOpen = false;
   let isOpen = false, keysOpen = false, lastFocus = null, painting = false, checking = false;
   const openProv = new Set();
   let panel = null, backdrop = null;
@@ -48,21 +49,6 @@
       '<div class="ehub-head"><div><span class="ehub-eyebrow">EMBER / SIDE PANEL</span><h2 id="ehubTitle">Settings</h2></div>' +
       '<button type="button" id="ehubClose" class="ehub-x" aria-label="Close side panel">✕</button></div>' +
       '<div class="ehub-body">' +
-
-      '<section class="ehub-cc" id="ehubCC" aria-label="Ember Command Centre widget">' +
-        '<div class="ehub-cc-top"><span class="ehub-cc-ico" aria-hidden="true">◫</span>' +
-        '<div class="ehub-cc-t"><b>Ember Command Centre</b><small id="ehubCCCtx">Waiting for a model request.</small></div>' +
-        '<span class="ehub-chip"><i class="ehub-live"></i>LIVE</span></div>' +
-        '<div class="ehub-tiles">' +
-          '<div class="ehub-tile"><small>Memory files</small><b id="ehubCCMem">0</b></div>' +
-          '<div class="ehub-tile"><small>Terminal</small><b id="ehubCCTerm">Idle</b></div>' +
-          '<div class="ehub-tile"><small>Log lines</small><b id="ehubCCLines">0</b></div>' +
-        '</div>' +
-        '<div class="ehub-cc-git"><small>GITHUB</small><p id="ehubCCGit">GitHub engine not loaded.</p></div>' +
-        '<div class="ehub-cc-thought"><small>THOUGHT SUMMARY</small><p id="ehubCCThought">No three-phase summary yet.</p></div>' +
-        '<div class="ehub-cc-btns"><button type="button" class="ehub-btn ehub-btn-hot" id="ehubCCOpen">Open Command Centre</button>' +
-        '<button type="button" class="ehub-btn" id="ehubCCRepos">GitHub &amp; Repos</button></div>' +
-      '</section>' +
 
       '<section class="ehub-sec" aria-label="API keys">' +
         '<button type="button" class="ehub-row ehub-keys-btn" id="ehubKeysBtn" aria-expanded="false" aria-controls="ehubKeysList">' +
@@ -88,6 +74,23 @@
       '</section>' +
 
       '<button type="button" class="ehub-btn ehub-classic" id="ehubClassic">Open classic settings (unchanged)</button>' +
+
+      '<section class="ehub-cc" id="ehubCC" aria-label="Ember Command Centre widget">' +
+        '<button type="button" class="ehub-cc-top" id="ehubCCToggle" aria-expanded="false" aria-controls="ehubCCBody"><span class="ehub-cc-ico" aria-hidden="true">◫</span>' +
+        '<div class="ehub-cc-t"><b>Ember Command Centre</b><small id="ehubCCCtx">Waiting for a model request.</small></div>' +
+        '<span class="ehub-chip"><i class="ehub-live"></i>LIVE</span><span class="ehub-chev" aria-hidden="true">›</span></button>' +
+        '<div class="ehub-cc-body" id="ehubCCBody" hidden>' +
+        '<div class="ehub-tiles">' +
+          '<div class="ehub-tile"><small>Memory files</small><b id="ehubCCMem">0</b></div>' +
+          '<div class="ehub-tile"><small>Terminal</small><b id="ehubCCTerm">Idle</b></div>' +
+          '<div class="ehub-tile"><small>Log lines</small><b id="ehubCCLines">0</b></div>' +
+        '</div>' +
+        '<div class="ehub-cc-git"><small>GITHUB</small><p id="ehubCCGit">GitHub engine not loaded.</p></div>' +
+        '<div class="ehub-cc-thought"><small>THOUGHT SUMMARY</small><p id="ehubCCThought">No three-phase summary yet.</p></div>' +
+        '<div class="ehub-cc-btns"><button type="button" class="ehub-btn ehub-btn-hot" id="ehubCCOpen">Open Command Centre</button>' +
+        '<button type="button" class="ehub-btn" id="ehubCCRepos">GitHub &amp; Repos</button></div>' +
+      '</div>' +
+      '</section>' +
       '</div>';
 
     D.body.appendChild(backdrop);
@@ -225,6 +228,14 @@
       if (sum) sum.textContent = total + ' key' + (total === 1 ? '' : 's') + ' across ' + withKeys + ' provider' + (withKeys === 1 ? '' : 's') + ' · tap to ' + (keysOpen ? 'close' : 'drop down');
     } finally { painting = false; }
   }
+  function setCCOpen(open) {
+    ccOpen = open;
+    const cc = $('ehubCC'), btn = $('ehubCCToggle'), body = $('ehubCCBody');
+    if (cc) cc.classList.toggle('open', open);
+    if (btn) btn.setAttribute('aria-expanded', String(open));
+    if (body) body.hidden = !open;
+    if (open) { paintCC(); if (cc) setTimeout(() => { try { cc.scrollIntoView({ block: 'end', behavior: 'smooth' }); } catch (e) { /* older WebView */ } }, 30); }
+  }
   function setKeysOpen(open) {
     keysOpen = open;
     const btn = $('ehubKeysBtn'), list = $('ehubKeysList');
@@ -258,6 +269,7 @@
       const t = e.target;
       if (t.closest('#ehubClose')) { setOpen(false); return; }
       if (t.closest('#ehubKeysBtn')) { setKeysOpen(!keysOpen); return; }
+      if (t.closest('#ehubCCToggle')) { setCCOpen(!ccOpen); return; }
       if (t.closest('#ehubCCOpen')) { openCommandCentre(false); return; }
       if (t.closest('#ehubCCRepos') || t.closest('#ehubGitBtn')) { if (window.EmberGit) { window.EmberGit.open(); } else { openCommandCentre(true); } return; }
       if (t.closest('#ehubClassic')) { classic(''); return; }

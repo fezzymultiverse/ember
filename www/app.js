@@ -295,9 +295,11 @@ function toolCatalog() {
 window.EmberToolCatalog = () => { try { return toolCatalog(); } catch (e) { return []; } }; // V1.9.27: engines get these as native function declarations
 const toolOn = tool => toolCatalog().some(t => t.name == tool);
 async function runTool(tool, args) { // every call (chat, plan, ReAct) shows on the thinking timeline
-  const TL = window.EmberTimeline, h = TL ? TL.tool(tool, args) : null;
+  const TL = window.EmberTimeline, h = TL ? TL.tool(tool, args) : null, t0 = Date.now();
+  try { window.dispatchEvent(new CustomEvent('ember-tool-log', { detail: { phase: 'start', tool, args } })); } catch (_) { /* live terminal is optional */ }
   let res; try { res = await runToolRaw(tool, args); } catch (e) { res = { error: (e && e.message) || 'Tool failed.' }; }
   if (h) h.end(res);
+  try { window.dispatchEvent(new CustomEvent('ember-tool-log', { detail: { phase: 'end', tool, args, res, ms: Date.now() - t0 } })); } catch (_) { /* live terminal is optional */ }
   try { if (window.EmberCommandCenter) window.EmberCommandCenter.observeTool(tool, args, res); } catch (_) { /* independent view */ }
   // Download rows come from the real 'ember-dl' job events (ember_timeline.js), so a model saying "downloading" or a failed start never creates one.
   return res;
@@ -563,17 +565,36 @@ async function send() {
   if (conv.auto && conv.title == 'New chat') conv.title = t.length > 38 ? t.slice(0, 38).trim() + '…' : t;
   $('inp').value = ''; grow();
   await persist(); renderLog();
-  if (window.EmberMedia?.cfg().enabled && /\b(create|generate|make|draw|render|produce)\b/i.test(t) && /\b(image|picture|artwork|illustration|video|animation|audio|music|sound|speech)\b/i.test(t)) {
+  const plusImage = !!(window.EmberPlus && window.EmberPlus.consume && window.EmberPlus.consume('image')); // V1.10.4: + > Create image always wins over the AI Features hand-off
+  { // V1.10.5: + > Create audio / Create video, and the Stability bridge (image, audio, video, speech straight from chat)
+    const MP = window.EmberMediaPlus; let mk = null;
+    if (MP) { mk = MP.take(); if (!mk && MP.bridgeOn()) { const k = MP.detect(t); if (k) mk = { kind: k, provider: 'stability' }; else if (plusImage) mk = { kind: 'image', provider: 'stability' }; } }
+    if (mk && await mediaRoute(t, mk, plusImage)) return;
+  }
+  const mediaKindOnly = /\b(video|animation|audio|music|sound|speech|spoken)\b/i.test(t);
+  if (!plusImage && window.EmberMedia?.cfg().enabled && /\b(create|generate|make|draw|render|produce)\b/i.test(t) && /\b(image|picture|artwork|illustration|video|animation|audio|music|sound|speech)\b/i.test(t) && (mediaKindOnly || !(window.EmberEngines && window.EmberEngines.intent && window.EmberEngines.intent(t) == 'image'))) {
     const kind=/\b(video|animation)\b/i.test(t)?'video':/\b(speech|spoken)\b/i.test(t)?'speech':/\b(audio|music|sound)\b/i.test(t)?'audio':'image';
     const provider=/stability/i.test(t)?'stability':/puter/i.test(t)?'puter':(kind==='video'||kind==='speech'?'puter':'stability');
     await window.EmberAgentAddon.dispatch('media_prepare',{provider,kind,prompt:t});
     conv.msgs.push({r:'a',t:provider==='stability'&&kind==='video'?'Stability hosted video is retired. Choose Puter video in AI Features if you want to use that platform.':'I prepared your '+kind+' request in AI Features. Review the platform and press Generate to authorize it; nothing has been submitted yet.',ts:Date.now()}); await persist();renderLog();return;
   }
-  if ((window.EmberPlus && window.EmberPlus.consume && window.EmberPlus.consume('image')) || (window.EmberEngines && window.EmberEngines.intent && window.EmberEngines.intent(t) == 'image')) { await imageRoute(t); return; } // V1.9.84: + > Create image. V1.9.87: plain-English picture requests route here too
+  if (plusImage || (window.EmberEngines && window.EmberEngines.intent && window.EmberEngines.intent(t) == 'image')) { await imageRoute(t); return; } // V1.9.84: + > Create image. V1.9.87: plain-English picture requests route here too
   if (await directNewPipe(t)) return;
+  if (window.EmberPlus && window.EmberPlus.isOn && window.EmberPlus.isOn('pdf')) { try { window.dispatchEvent(new CustomEvent('ember-create-log', { detail: { kind: 'pdf', text: 'PDF mode: Ember writes the document, then Save PDF builds the file with the bundled pdfmake engine.' } })); } catch (_) { /* live terminal optional */ } try { await reply(); } finally { window.EmberPlus.consume('pdf'); } return; }
   reply();
 }
 // V1.9.84: the picture goes to Pollinations, never to a chat engine. The answer is an HTML artifact with the image and Ember's thought process.
+async function mediaRoute(t, mk, plusImage) {
+  const MP = window.EmberMediaPlus, TLn = window.EmberTimeline;
+  busy = true; lastErr = null; $('bSend').disabled = true; typing(true);
+  const turnId = conv.id + ':' + conv.msgs.length; curTurn = turnId;
+  try { if (TLn && TLn.step) TLn.step('🎨', 'Making ' + mk.kind + ' with ' + (mk.kind === 'video' || mk.kind === 'speech' ? 'Puter' : 'Stability AI'), 'im-media'); } catch (_) { /* timeline optional */ }
+  let r; try { r = await MP.make(mk.kind, mk.provider, t); } catch (e) { r = { ok: false, kind: mk.kind, error: (e && e.message) || 'The media job failed.' }; }
+  if (curTurn !== turnId) return true;
+  if (!r.ok && mk.kind === 'image' && r.noKey && plusImage) { busy = false; $('bSend').disabled = false; typing(false); curTurn = null; return false; } // no Stability key: the picture router (Pollinations, Forge) answers instead
+  conv.msgs.push({ r: 'a', t: MP.text(Object.assign({ kind: mk.kind }, r)), ts: Date.now(), turn: turnId }); await persist();
+  busy = false; $('bSend').disabled = false; typing(false); curTurn = null; renderLog(); return true;
+}
 async function imageRoute(t) {
   const EC = window.EmberCreate, EE = window.EmberEngines, TLn = window.EmberTimeline;
   const run = EE && EE.imageRoute ? EE.imageRoute : EC && EC.route; // V1.9.87: engine router (Pollinations, then Forge)

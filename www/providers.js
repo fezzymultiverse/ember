@@ -76,6 +76,8 @@ function rotation(id, lane) {
   if (!list.length) return [];
   cursors.set(k, (at + 1) % list.length); return list.slice(at).concat(list.slice(0,at));
 }
+// V1.10.3: read-only look at the key cursor for the "next up" dot. It never advances the cursor.
+function peek(id, lane) { const n = (keys[id] || []).length; return { n, at: n ? (cursors.get(id + ':' + lane) || 0) % n : 0 }; }
 function stats() {
   const out = JSON.parse(JSON.stringify(metrics));
   IDS.forEach(id => { const p = out[id] || (out[id] = { requests:0, success:0, failed:0, models:{} }); p.cooldowns = [];
@@ -810,5 +812,5 @@ function detail(id) {
 }
 async function pingAll() { await Promise.all(IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); }
 function status() { const o = {}; IDS.forEach(id => { o[id] = stateOf(id); }); return o; }
-window.Prov = { stats, setEnabled, record, rotation, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), puterConnect, puterOff, puterOn: () => (keys.puter || []).length > 0, toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
+window.Prov = { stats, setEnabled, record, rotation, peek, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), puterConnect, puterOff, puterOn: () => (keys.puter || []).length > 0, toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
 })();

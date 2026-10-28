@@ -13,6 +13,7 @@
   const safeTitle = t => String(t || 'Ember document').replace(/[<>"'\\/\x00-\x1f]/g, '').trim().slice(0, 90) || 'Ember document';
   function intent(prompt) {
     const t = String(prompt || '');
+    if (W.EmberPlus && W.EmberPlus.isOn && W.EmberPlus.isOn('pdf') && t.trim()) return { type: 'pdf', title: 'Ember document.pdf' };
     if (/^\s*(how|why|what|explain|does|is|can (?:i|ember))\b/i.test(t) || /\b(?:do not|don't|never)\s+(?:make|create|generate|write|export)\b/i.test(t)) return null;
     if (!/\b(make|create|generate|write|draft|build|export|save|prepare|produce)\b/i.test(t)) return null;
     const type = /\bpdf\b/i.test(t) ? 'pdf' : /\b(docx|word|document|report|proposal|resume|cv|letter|brief)\b/i.test(t) ? 'document' : /\bcsv\b/i.test(t) ? 'csv' : /\bjson\b/i.test(t) ? 'json' : /\b(?:markdown|\.md)\b/i.test(t) ? 'markdown' : null;

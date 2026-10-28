@@ -1,6 +1,6 @@
 // Ember V1.9.101 - ember_v96_ui.js: right-panel refinements.
 // 1) "Ember" title sits on a grid line with 3 flashing blue lights (big to small) sweeping left to right.
-// 2) The Command Centre is pinned as a widget at the top of the right-side Settings panel.
+// 2) The Command Centre is a widget at the bottom of the Settings list; tap its header to expand it.
 // 3) Tapping the API-keys section opens a dedicated right sub-panel listing every provider
 //    with its real brand logo and its name as the title.
 // Nothing here rewrites existing behaviour: it only wraps, pins and opens.
@@ -28,23 +28,57 @@
       }
     } catch (e) { /* header polish is cosmetic */ }
 
-    /* ---- 2) Command Centre widget at the top of the right-side Settings panel ---- */
+    /* ---- 2) Command Centre widget at the BOTTOM of Settings; tap the header to expand ---- */
     try {
       const settings = $('settings'), sb = settings && settings.querySelector('.sb');
       if (settings && sb && !$('ccWidget')) {
+        const CHEV = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
         const w = document.createElement('section');
-        w.id = 'ccWidget'; w.className = 'ccw';
+        w.id = 'ccWidget'; w.className = 'ccw'; w.setAttribute('aria-label', 'Ember Command Centre widget');
         w.innerHTML =
-          '<div class="ccw-top"><span class="ccw-ico" aria-hidden="true">◫</span>' +
-          '<div class="ccw-t"><b>Ember Command Centre</b><small>Workspace widget · docked to this panel</small></div>' +
-          '<span class="ecc-chip">WIDGET</span></div>' +
-          '<p class="ccw-sub" id="ccWidgetStatus">Three-phase thought summary, memory matrix and repo actions — opened to the right, never a dropdown.</p>' +
-          '<div class="ccw-btns"><button type="button" id="ccWidgetOpen">Open Command Centre</button>' +
-          '<button type="button" id="ccWidgetRepos">Repos &amp; Brain</button></div>';
-        sb.insertBefore(w, sb.firstChild); // above the accordion wrap
+          '<button type="button" class="ccw-top" id="ccWidgetToggle" aria-expanded="false" aria-controls="ccWidgetBody">' +
+          '<span class="ccw-ico" aria-hidden="true">◫</span>' +
+          '<span class="ccw-t"><b>Ember Command Centre</b><small id="ccWidgetStatus">Waiting for a model request.</small></span>' +
+          '<span class="ecc-chip">WIDGET</span><span class="ccw-chev" aria-hidden="true">' + CHEV + '</span></button>' +
+          '<div class="ccw-body" id="ccWidgetBody" hidden>' +
+            '<div class="ccw-tiles">' +
+              '<div class="ccw-tile"><small>Memory files</small><b id="ccwMem">0</b></div>' +
+              '<div class="ccw-tile"><small>Terminal</small><b id="ccwTerm">Idle</b></div>' +
+              '<div class="ccw-tile"><small>Log lines</small><b id="ccwLines">0</b></div>' +
+            '</div>' +
+            '<div class="ccw-box ccw-git"><small>GITHUB</small><p id="ccwGit">GitHub engine not loaded.</p></div>' +
+            '<div class="ccw-box ccw-thought"><small>THOUGHT SUMMARY</small><p id="ccwThought">No three-phase summary yet.</p></div>' +
+            '<div class="ccw-btns"><button type="button" id="ccWidgetOpen">Open Command Centre</button>' +
+            '<button type="button" id="ccWidgetRepos">Repos &amp; Brain</button></div>' +
+          '</div>';
+        sb.appendChild(w); // below the accordion wrap = bottom of the Settings list
         const openCC = () => { const b = $('bCommandCenter'); if (b) b.click(); };
+        const txt = (id, fb) => { const e = $(id); return e && e.textContent ? e.textContent : fb; };
+        const set = (id, v) => { const e = $(id); if (e && e.textContent !== v) e.textContent = v; };
+        const paint = () => {
+          const thought = txt('eccThought', '').replace(/\s+/g, ' ').trim();
+          set('ccwThought', !thought || /^(No three-phase|Waiting for)/.test(thought) ? 'No three-phase summary yet. It appears here after Ember’s next reply.' : (thought.length > 220 ? thought.slice(0, 220) + '…' : thought));
+          set('ccwMem', txt('eccMemoryCount', '0'));
+          set('ccwTerm', txt('eccTerminalStatus', 'Idle'));
+          set('ccwLines', (txt('eccTerminalCount', '0 lines').match(/\d+/) || ['0'])[0]);
+          set('ccWidgetStatus', txt('eccContextStatus', 'Waiting for a model request.'));
+          try { if (window.EmberGit) set('ccwGit', window.EmberGit.line()); } catch (e) { /* github state is cosmetic */ }
+        };
+        const setOpen = open => {
+          w.classList.toggle('open', open);
+          w.querySelector('#ccWidgetToggle').setAttribute('aria-expanded', String(open));
+          w.querySelector('#ccWidgetBody').hidden = !open;
+          if (open) { paint(); setTimeout(() => { try { w.scrollIntoView({ block: 'end', behavior: 'smooth' }); } catch (e) { /* older WebView */ } }, 30); }
+        };
+        w.querySelector('#ccWidgetToggle').addEventListener('click', () => setOpen(!w.classList.contains('open')));
         w.querySelector('#ccWidgetOpen').addEventListener('click', openCC);
         w.querySelector('#ccWidgetRepos').addEventListener('click', () => { openCC(); setTimeout(() => { const r = $('eccRepos'); if (r) r.click(); }, 380); });
+        if (window.MutationObserver) {
+          const mo = new MutationObserver(paint);
+          ['eccThought', 'eccMemoryCount', 'eccTerminalStatus', 'eccTerminalCount', 'eccContextStatus'].forEach(id => { const e = $(id); if (e) mo.observe(e, { childList: true, characterData: true, subtree: true }); });
+        }
+        window.addEventListener('ember-git-state', paint);
+        paint();
       }
     } catch (e) { /* widget is additive */ }
 

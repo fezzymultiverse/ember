@@ -9,7 +9,11 @@ const $ = id => document.getElementById(id);
 if (!$('bPlus')) return;
 const KEY = 'ember_plus';
 const TOGGLES = [
-  { id: 'image', icon: '🎨', label: 'Create image', hint: 'Your next message becomes a picture (Pollinations)', chip: 'Create image', once: true },
+  { id: 'image', icon: '🎨', label: 'Create image', hint: 'Next message becomes a picture: Pollinations, Forge, then Stability if you saved a key', chip: 'Create image', once: true },
+  { id: 'audio_gen', icon: '🎵', label: 'Create audio', hint: 'Next message becomes music or sound, made by Stability AI', chip: 'Create audio', once: true },
+  { id: 'video_gen', icon: '🎬', label: 'Create video', hint: 'Next message becomes a video, made by Puter (Stability video is retired)', chip: 'Create video', once: true },
+  { id: 'stab', icon: '⚡', label: 'Stability bridge', hint: 'ON: just ask in chat for an image, audio or video and Ember makes it with Stability / Puter. OFF: only the Create buttons do', chip: 'Stability bridge' },
+  { id: 'pdf', icon: '📄', label: 'Create PDF', hint: 'Next message becomes a full PDF artifact (Save PDF builds the file)', chip: 'Create PDF', once: true },
   { id: 'device', icon: '📱', label: 'Device Access', hint: 'Let Ember read local files & Termux', chip: 'Device Access' },
   { id: 'web', icon: '🌐', label: 'Web Search', hint: 'Force live scraping/DuckDuckGo', chip: 'Web Search' },
   { id: 'reason', icon: '🧠', label: 'Reasoning', hint: 'Use chain-of-thought / slower model', chip: 'Reasoning' },
@@ -22,6 +26,9 @@ const ONCE = [
 ];
 const LINES = {
   image: '',
+  audio_gen: '', video_gen: '',
+  stab: 'STABILITY BRIDGE is ON: when he asks for an image, music/sound/audio, a video or speech, call media_generate (kind image|audio|video|speech, prompt). It really makes the file with Stability AI (image, audio) or Puter (video, speech) and saves it; tell him where to find it (Settings > Command Centre > Media). If it fails, say the exact error. Do not claim anything was made unless the tool said ok.',
+  pdf: 'PDF MODE is ON for this message: write the whole answer as ONE complete document inside <artifact type="pdf" title="Short-Title.pdf"> ... </artifact> in Markdown: a title, a short summary, numbered sections with real detail, tables where they help, and a closing list of next steps. No filler, no truncation. Before the artifact write one short sentence only.',
   device: 'DEVICE ACCESS is ON for this chat: he allowed you to use his saved Documents tools (list, search, read) and the Termux panel when it helps. Use them instead of saying you cannot reach his files. You still cannot see anything outside those tools.',
   web: 'WEB SEARCH is FORCED ON for this chat: before answering anything that could be current or factual, call web_search (or search_and_read) first, then answer from the results and name the source. If the search fails, say so; do not answer from memory as if it had worked.',
   reason: 'REASONING is ON for this chat: work the problem step by step, check your own answer once before you give it, and say plainly where you are unsure.',
@@ -48,10 +55,11 @@ const QUICK = [
 ];
 const tRow = t => '<button class="pm-i" data-t="' + t.id + '" role="menuitemcheckbox" aria-checked="false"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span><span class="pm-sw"></span></button>';
 const aRow = t => '<button class="pm-i" data-action="' + t.id + '" role="menuitem"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span></button>';
-menu.innerHTML = '<div class="pm-h">Create</div>' + TOGGLES.filter(t => t.id == 'image').map(tRow).join('') +
+const CREATE = ['image', 'audio_gen', 'video_gen', 'pdf', 'stab'];
+menu.innerHTML = '<div class="pm-h">Create</div>' + CREATE.map(id => TOGGLES.find(t => t.id == id)).map(tRow).join('') +
   '<div class="pm-h pm-action">Think</div>' + THINK.map(aRow).join('') +
   '<div class="pm-h pm-action">Chat tools</div>' + QUICK.map(aRow).join('') +
-  '<div class="pm-h pm-action">Enable for this chat</div>' + TOGGLES.filter(t => t.id != 'image').map(tRow).join('') +
+  '<div class="pm-h pm-action">Enable for this chat</div>' + TOGGLES.filter(t => !CREATE.includes(t.id)).map(tRow).join('') +
   '<div class="pm-h pm-action">Attach or capture</div>' +
   ONCE.map(t => '<button class="pm-i" data-o="' + t.id + '" role="menuitem"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span></button>').join('');
 function paint() {
@@ -60,6 +68,7 @@ function paint() {
   chips.classList.toggle('hidden', !act.length);
   chips.innerHTML = act.map(t => '<span class="pchip">' + t.icon + ' ' + esc(t.chip) + ' <button data-x="' + t.id + '" aria-label="Turn off ' + esc(t.chip) + '">×</button></span>').join('');
   btn.classList.toggle('has', act.length > 0);
+  try { window.dispatchEvent(new CustomEvent('ember-plus-change')); } catch (e) { /* listeners optional */ }
 }
 function setMenu(v) { menu.classList.toggle('hidden', !v); btn.classList.toggle('open', v); btn.setAttribute('aria-expanded', v ? 'true' : 'false'); }
 const isOpen = () => !menu.classList.contains('hidden');
@@ -78,9 +87,15 @@ menu.addEventListener('click', e => {
     else toast('This tool is not available on this screen.');
     return;
   }
-  if (t) { const id = t.dataset.t; on[id] = !on[id]; save(); paint();
-    if (id == 'image') { toast(on[id] ? '🎨 Describe the picture and send it' : 'Image mode off'); if (on[id]) { setMenu(false); const i = $('inp'); if (i) { try { i.focus(); } catch (e) { /* no focus */ } } } return; }
-    toast((on[id] ? '✔ ' : '✖ ') + TOGGLES.find(x => x.id == id).label + (on[id] ? ' on' : ' off')); return; } // toggles keep the menu open so several can be switched at once
+  if (t) { const id = t.dataset.t, def = TOGGLES.find(x => x.id == id); on[id] = !on[id]; save();
+    if (def.once) { // one-shot: only one of image / audio / video / pdf at a time
+      if (on[id]) TOGGLES.forEach(x => { if (x.once && x.id != id) on[x.id] = false; });
+      paint(); toast(on[id] ? def.icon + ' Describe it and send' : def.label + ' off');
+      if (on[id]) { setMenu(false); const i = $('inp'); if (i) { try { i.focus(); } catch (e) { /* no focus */ } } }
+      return; }
+    paint();
+    if (id == 'stab') { if (on[id] && window.EmberMediaPlus) window.EmberMediaPlus.enable(); toast(on[id] ? '⚡ Stability bridge on: ask for images, audio or video in chat' : 'Stability bridge off'); return; }
+    toast((on[id] ? '✔ ' : '✖ ') + def.label + (on[id] ? ' on' : ' off')); return; } // toggles keep the menu open so several can be switched at once
   if (o) { setMenu(false); fire(o.dataset.o); }
 });
 

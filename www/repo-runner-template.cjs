@@ -49,7 +49,7 @@ function validate(c) {
   if (c.buildWorkflow && !/^[A-Za-z0-9_.-]+\.ya?ml$/.test(c.buildWorkflow)) fail('Invalid build workflow filename.');
   if (!Array.isArray(c.sources) || !c.sources.length || c.sources.length > 100) fail('Runner needs 1–100 sources.');
   const seen = new Set();
-  c.sources.forEach(s => { if (Object.keys(s).some(k => k !== 'repo')) fail('Sources accept only a repository name, never credentials or paths.'); repo(s.repo); if (s.repo.toLowerCase() === c.target.toLowerCase()) fail('Output repo cannot also be a source.'); if (seen.has(s.repo.toLowerCase())) fail('Duplicate source.'); seen.add(s.repo.toLowerCase()); });
+  c.sources.forEach(s => { if (Object.keys(s).some(k => k !== 'repo')) fail('Sources accept only a repository name, never credentials or paths.'); repo(s.repo); if (s.repo.toLowerCase() === c.target.toLowerCase() && s.repo.toLowerCase() !== c.brain.toLowerCase()) fail('Output repo cannot also be a source (only the brain may be both).'); if (seen.has(s.repo.toLowerCase())) fail('Duplicate source.'); seen.add(s.repo.toLowerCase()); });
   if (!seen.has(c.brain.toLowerCase())) fail('The entire brain must remain a source.');
   return c;
 }
@@ -125,10 +125,11 @@ async function sync(c, install = false) {
       if (JSON.stringify(latest) !== JSON.stringify(c)) fail('Runner configuration changed after this job started. Re-run the latest workflow; stale settings were not pushed.');
     }
     const old = readLock(output, c.brain), locks = [];
-    const previousPaths = old.sources.map(s => s.path), currentPaths = c.sources.map(s => destination(s.repo, c.brain));
+    const copySources = c.sources.filter(s => s.repo.toLowerCase() !== c.target.toLowerCase()); // brain == output: it is already here, never copy it into itself
+    const previousPaths = old.sources.map(s => s.path), currentPaths = copySources.map(s => destination(s.repo, c.brain));
     if (new Set(currentPaths).size !== currentPaths.length) fail('Sources map to overlapping destinations.');
-    for (let i = 0; i < c.sources.length; i++) {
-      const source = c.sources[i], rel = destination(source.repo, c.brain), dest = path.join(output, rel);
+    for (let i = 0; i < copySources.length; i++) {
+      const source = copySources[i], rel = destination(source.repo, c.brain), dest = path.join(output, rel);
       assertParents(output, rel);
       if (fs.existsSync(dest) && !previousPaths.includes(rel)) fail('Destination already exists and is not runner-owned: ' + rel);
       const clone = path.join(tmp, 'source-' + i);

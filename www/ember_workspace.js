@@ -11,7 +11,7 @@
     const providers = $('bProv');
     if (providers) { const label = document.createElement('span'); label.textContent = 'Providers'; providers.append(label); bar.append(providers); }
     // Keep the engine status accessible in the centred header, but do not show an AI/status chip in the chat footer.
-    if ($('bAiFeatures')) { $('bAiFeatures').classList.add('action-item'); $('bAiFeatures').innerHTML = '<span class="action-emoji">🧠</span><span>AI Features</span>'; $('headerActionsMenu')?.append($('bAiFeatures')); }
+    if ($('bAiFeatures')) { $('bAiFeatures').classList.add('action-item'); $('bAiFeatures').innerHTML = '<span class="action-emoji">🧠</span><span class="action-txt"><b>AI Features</b><small>AI routing, media artifacts and downloads</small></span>'; $('headerActionsMenu')?.append($('bAiFeatures')); }
     if ($('provDrop')) bar.append($('provDrop'));
     comp.append(bar);
     // The real cancellation endpoint remains callable but never floats above the input.
