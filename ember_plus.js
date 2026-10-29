@@ -51,21 +51,17 @@ const THINK = [
 ];
 const QUICK = [
   { id: 'bGraph', icon: '🕸', label: 'Knowledge Graph', hint: 'Map local documents, memory and chats' },
-  { id: 'bPriv', icon: '🔓', label: 'Normal mode', hint: 'Toggle normal privacy mode' },
-  { id: 'bApis', icon: '🔌', label: 'Free APIs', hint: 'IP, grammar, photos, whois, words, lyrics' }
+  { id: 'bPriv', icon: '🔓', label: 'Normal mode', hint: 'Toggle normal privacy mode' }
 ];
 const tRow = t => '<button class="pm-i" data-t="' + t.id + '" role="menuitemcheckbox" aria-checked="false"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span><span class="pm-sw"></span></button>';
 const aRow = t => '<button class="pm-i" data-action="' + t.id + '" role="menuitem"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span></button>';
 const CREATE = ['image', 'audio_gen', 'video_gen', 'pdf', 'stab'];
-const PLUG = (id, icon, label, sumId, hint) => '<button class="pm-i pm-plug" data-plug="' + id + '" role="menuitem"><span class="pm-ic">' + icon + '</span><span class="pm-tx"><b>' + label + '</b><small id="' + sumId + '">' + hint + '</small></span><span class="pm-go">›</span></button>';
-menu.innerHTML = '<div class="pm-h">Plugins</div>' +
-  PLUG('web', '🌐', 'Web &amp; Scraping', 'pmWebSum', 'Scrapers, search and the free reader') +
-  PLUG('media', '🎛', 'Media &amp; Music', 'pmMediaSum', 'Create image, audio, video, PDF · song ID') +
+menu.innerHTML = '<div class="pm-h">Create</div>' + CREATE.map(id => TOGGLES.find(t => t.id == id)).map(tRow).join('') +
   '<div class="pm-h pm-action">Think</div>' + THINK.map(aRow).join('') +
-  '<div class="pm-h pm-action">Enable for this chat</div>' + TOGGLES.filter(t => !CREATE.includes(t.id) && t.id != 'web').map(tRow).join('') +
+  '<div class="pm-h pm-action">Chat tools</div>' + QUICK.map(aRow).join('') +
+  '<div class="pm-h pm-action">Enable for this chat</div>' + TOGGLES.filter(t => !CREATE.includes(t.id)).map(tRow).join('') +
   '<div class="pm-h pm-action">Attach or capture</div>' +
-  ONCE.map(t => '<button class="pm-i" data-o="' + t.id + '" role="menuitem"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span></button>').join('') +
-  '<div class="pm-h pm-action">Chat tools</div>' + QUICK.map(aRow).join('');
+  ONCE.map(t => '<button class="pm-i" data-o="' + t.id + '" role="menuitem"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span></button>').join('');
 function paint() {
   menu.querySelectorAll('[data-t]').forEach(b => { const v = !!on[b.dataset.t]; b.classList.toggle('on', v); b.setAttribute('aria-checked', v ? 'true' : 'false'); });
   const act = TOGGLES.filter(t => on[t.id]);
@@ -84,8 +80,6 @@ chips.addEventListener('click', e => { const x = e.target.closest('[data-x]'); i
 menu.addEventListener('click', e => {
   const action = e.target.closest('[data-action]');
   const t = e.target.closest('[data-t]'), o = e.target.closest('[data-o]');
-  const plug = e.target.closest('[data-plug]');
-  if (plug) { setMenu(false); if (window.EmberPlugins) window.EmberPlugins.open(plug.dataset.plug); else toast('Plugins did not load.'); return; }
   if (action) {
     setMenu(false);
     const target = $(action.dataset.action);
@@ -93,20 +87,17 @@ menu.addEventListener('click', e => {
     else toast('This tool is not available on this screen.');
     return;
   }
-  if (t) { const id = t.dataset.t, def = TOGGLES.find(x => x.id == id); if (flip(id) && def.once) setMenu(false); return; } // toggles keep the menu open so several can be switched at once
+  if (t) { const id = t.dataset.t, def = TOGGLES.find(x => x.id == id); on[id] = !on[id]; save();
+    if (def.once) { // one-shot: only one of image / audio / video / pdf at a time
+      if (on[id]) TOGGLES.forEach(x => { if (x.once && x.id != id) on[x.id] = false; });
+      paint(); toast(on[id] ? def.icon + ' Describe it and send' : def.label + ' off');
+      if (on[id]) { setMenu(false); const i = $('inp'); if (i) { try { i.focus(); } catch (e) { /* no focus */ } } }
+      return; }
+    paint();
+    if (id == 'stab') { if (on[id] && window.EmberMediaPlus) window.EmberMediaPlus.enable(); toast(on[id] ? '⚡ Stability bridge on: ask for images, audio or video in chat' : 'Stability bridge off'); return; }
+    toast((on[id] ? '✔ ' : '✖ ') + def.label + (on[id] ? ' on' : ' off')); return; } // toggles keep the menu open so several can be switched at once
   if (o) { setMenu(false); fire(o.dataset.o); }
 });
-
-// V1.10.12: one toggle path for the + menu AND the Plugins sheet (one-shot exclusivity, Stability enable, toasts).
-function flip(id, v) {
-  const def = TOGGLES.find(x => x.id == id); if (!def) return false;
-  on[id] = v == null ? !on[id] : !!v;
-  if (def.once && on[id]) TOGGLES.forEach(x => { if (x.once && x.id != id) on[x.id] = false; });
-  save(); paint();
-  if (def.once) { toast(on[id] ? def.icon + ' Describe it and send' : def.label + ' off'); if (on[id]) { const i = $('inp'); if (i) { try { i.focus(); } catch (e) { /* no focus */ } } } return on[id]; }
-  if (id == 'stab') { if (on[id] && window.EmberMediaPlus) window.EmberMediaPlus.enable(); toast(on[id] ? '⚡ Stability bridge on: ask for images, audio or video in chat' : 'Stability bridge off'); return on[id]; }
-  toast((on[id] ? '✔ ' : '✖ ') + def.label + (on[id] ? ' on' : ' off')); return on[id];
-}
 
 // ---------- put a result into the message box ----------
 function addToBox(block) {
@@ -197,9 +188,9 @@ async function fire(id) {
 window.EmberPlus = {
   isOn: id => !!on[id],
   lane: () => !!on.reason,
-  stateLine: () => [TOGGLES.filter(t => on[t.id] && LINES[t.id]).map(t => LINES[t.id]).join(' '), window.EmberPlugins ? window.EmberPlugins.abilities() : ''].filter(Boolean).join(' '),
+  stateLine: () => TOGGLES.filter(t => on[t.id] && LINES[t.id]).map(t => LINES[t.id]).join(' '),
   consume: id => { if (!on[id]) return false; on[id] = false; save(); paint(); return true; },
-  flip, _fire: fire, _set: (id, v) => { on[id] = !!v; save(); paint(); }
+  _fire: fire, _set: (id, v) => { on[id] = !!v; save(); paint(); }
 };
 paint();
 })();

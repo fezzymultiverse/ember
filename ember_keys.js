@@ -30,7 +30,6 @@ function inventory() {
   const A = window.EmberAgentAddon, tn = SC && SC.keysOf ? SC.keysOf('tavily').length : (A && A.hasTavilyKey && A.hasTavilyKey() ? 1 : 0); out.push({ id: 'tavily', name: 'Tavily', kind: 'web search', saved: tn, usable: tn, use: USE.tavily, where: WHERE('tavily') });
   const GH = window.EmberGithub; out.push({ id: 'github', name: 'GitHub', kind: 'code host', saved: GH && GH.on() ? 1 : 0, usable: GH && GH.on() ? 1 : 0, use: USE.github, where: 'Settings > GitHub' });
   const D = window.EmberAudd; const hasAudd = !!(D && D.hasKey && D.hasKey()); out.push({ id: 'audd', name: 'Audd.io', kind: 'song id', saved: hasAudd ? 1 : 0, usable: hasAudd ? 1 : 0, use: USE.audd, where: WHERE('audd') });
-  if (window.EmberApis && window.EmberApis.inventory) window.EmberApis.inventory().forEach(x => out.push(x));
   return out;
 }
 // one compact paragraph for the system prompt

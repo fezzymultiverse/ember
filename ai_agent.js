@@ -68,7 +68,6 @@ const toolsFor = S => {
   if (S.agentAddon) { o.push(T_SEARCH); if (scraperOn()) o.push(T_SAR); }
   if (S.youtubeAddon) o.push(T_YT_SEARCH, T_YT_DL, T_PL_LIST, T_PL_DL, T_PLAY);
   if (S.visionAddon) o.push(T_SEE);
-  if (window.EmberApis) o.push(...window.EmberApis.tools()); // V1.10.12: free APIs (ember_apis.js), only while its master switch is on
   return o;
 };
 
@@ -425,9 +424,8 @@ async function pollJobs() {
 
 const HANDLERS = { media_generate:async a=>{ const MP=window.EmberMediaPlus; if(!MP||!MP.bridgeOn())return{error:'Stability bridge is OFF in the + menu.'}; const kind=String(a.kind||'').toLowerCase(); if(!['image','audio','video'].includes(kind))return{error:'kind must be image, audio or video.'}; const r=await MP.make(kind,String(a.provider||'').toLowerCase(),String(a.prompt||'')); return r.ok?{ok:true,kind:r.kind,provider:r.provider,file:r.name,seconds:r.secs,where:'Settings > Command Centre > Media'}:{error:r.error}; }, media_prepare:async a=>{ if(!window.EmberMedia?.cfg().enabled)return{error:'Media generation is OFF'}; if(!EmberMedia.supported[a.provider]?.includes(a.kind))return{error:'Unsupported media kind. Use image, audio or video with provider stability.'}; window.dispatchEvent(new CustomEvent('ember-media-request',{detail:{provider:a.provider,kind:a.kind,prompt:String(a.prompt||'').slice(0,10000)}}));return{status:'awaiting_user_confirmation',note:'Nothing generated or charged. Review in AI Features and press Generate.'}; },media_artifacts:async()=>({artifacts:(await EmberMedia.list()).map(({id,provider,kind,model,name,at})=>({id,provider,kind,model,name,at}))}), web_search, search_and_read, youtube_search, youtube_download, playlist_list, playlist_download, play_song, see_image };
 async function dispatch(name, args) {
-  const API = window.EmberApis && window.EmberApis.handlers, H = Object.prototype.hasOwnProperty.call(HANDLERS, name) ? HANDLERS[name] : (API && Object.prototype.hasOwnProperty.call(API, name) ? API[name] : null);
-  if (!H) return { error: 'Unknown agent tool: ' + name };
-  try { return await H(args && typeof args == 'object' && !Array.isArray(args) ? args : {}); }
+  if (!Object.prototype.hasOwnProperty.call(HANDLERS, name)) return { error: 'Unknown agent tool: ' + name };
+  try { return await HANDLERS[name](args && typeof args == 'object' && !Array.isArray(args) ? args : {}); }
   catch (e) { return { error: (e && e.message) || 'Agent tool failed.' }; }
 }
 
@@ -439,7 +437,6 @@ function stateBlock(S) {
   if (S.agentAddon && scraperOn()) o.push('search_and_read(query) searches and opens the top pages in one call: use it when he wants an answer from the real pages, and report any page that failed to open.');
   if (S.youtubeAddon) o.push(yt() ? 'YouTube and SoundCloud search, playlist listing and audio download work on this phone (SoundCloud: track links, set links and search). Download only when he asks, and plain talk counts as asking: "get me X", "grab X", "put X on my phone", "add X", "I want X" all mean download it, he does not have to say the word download. For a song name, run youtube_search, pick the best match, then call youtube_download with that url. Only for links he gave you or a listing returned, and tell him it saves to Music/Ember. Progress shows in the chat by itself, and a message appears when each track is saved, so you can confirm it is done. To PLAY a song on his phone ("play X", "put on X"), call play_song with the song and artist: it checks his library, and if the song is missing it finds it with NewPipe, saves it to Music/Ember and plays it in Ember\'s player. Say only what the tool result says happened.' : 'YouTube is on but the native downloader is not in this build, so those tools will fail.'); if (dlLast) o.push('Last download result: ' + dlLast);
   if (S.visionAddon) o.push('see_image only works on https image links he pastes; you cannot see images he has not linked. Never describe an image you did not get a description for.');
-  if (window.EmberApis && window.EmberApis.enabled() && window.EmberApis.tools().length) o.push(window.EmberApis.promptLine());
   return o.length ? 'AGENT TOOLS STATE: ' + o.join(' ') : '';
 }
 
