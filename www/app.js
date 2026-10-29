@@ -947,7 +947,9 @@ function renderKeys() {
   kl.innerHTML = h || '<p class="hint">No keys yet.</p>';
   try { paintEngPin(); } catch (e) { }
 }
-$('kList').addEventListener('click', e => { if (e.target.closest('[data-key-back]')) { keyDetailId = null; renderKeys(); return; } const b = e.target.closest('[data-key-provider-open]'); if (!b) return; keyDetailId = b.dataset.keyProviderOpen; const card = $('kList').closest('.card'), body = card && card.closest('.acc-b'); if (card && body) { body.querySelectorAll(':scope > .card').forEach(c => c.classList.remove('card-selected')); body.classList.add('card-subpage'); card.dataset.wasCollapsed = card.classList.contains('collapsed') ? '1' : '0'; card.classList.add('card-selected'); card.classList.remove('collapsed'); if (!card.querySelector('.acc-card-backbar')) { const bar = document.createElement('div'); bar.className = 'acc-card-backbar'; bar.innerHTML = '<button type="button" data-card-back>‹ <span>Back to Engine Keys</span></button>'; card.prepend(bar); } } renderKeys(); });
+$('kList').addEventListener('click', e => { if (e.target.closest('[data-key-back]')) { keyDetailId = null; renderKeys(); return; } const b = e.target.closest('[data-key-provider-open]'); if (!b) return; keyDetailId = b.dataset.keyProviderOpen; renderKeys(); const sc = $('kList').closest('.acc-b'); if (sc) sc.scrollTop = 0; });
+// V1.10.11: the settings menu calls this when a page is closed so the provider list is back on top next time.
+window.emberKeysReset = () => { if (keyDetailId !== null) { keyDetailId = null; renderKeys(); } };
 
 // ---------- V1.6.1: Get Key buttons ----------
 const KEY_LINKS = { openrouter:'https://openrouter.ai/settings/keys', plugsky:'https://plugsky.com/dashboard', stability:'https://platform.stability.ai/dashboard/api-keys', groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', anthropic: 'https://console.anthropic.com/settings/keys', puter: 'https://puter.com/dashboard#account' };
@@ -1086,23 +1088,30 @@ const MEM_GROUPS = [
   ['Projects & building', /(project|\bapp\b|script|termux|\bbuild|\bcode\b|github|\brepo|\bapk\b|scrap|\bflow\b|setup|\btool|android|\bbash\b)/i]
 ];
 const memShut = () => { try { const a = JSON.parse(localStorage.getItem('ember_memgrp_shut') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+let memGrpOpen = null;   // V1.10.11: the memory group whose page is open (null = the list of groups)
 function memGroupHtml(a, item) {
-  if (!a.length) return '<p class="hint">Nothing yet.</p>';
+  if (!a.length) { memGrpOpen = null; return '<p class="hint">Nothing yet.</p>'; }
   const names = MEM_GROUPS.map(g => g[0]).concat('Other'), box = {}; names.forEach(n => { box[n] = []; });
   a.forEach((f, i) => { const t = String((f && f.t) || ''), g = MEM_GROUPS.find(x => x[1].test(t)); box[g ? g[0] : 'Other'].push(i); });
-  const shut = memShut();
-  return names.filter(n => box[n].length).map(n => '<details class="mg" data-g="' + esc(n) + '"' + (shut.indexOf(n) < 0 ? ' open' : '') + '><summary><span>' + esc(n) + '</span><b>' + box[n].length + '</b></summary>' + box[n].map(i => item('facts', a[i], i)).join('') + '</details>').join('');
+  if (memGrpOpen && !(box[memGrpOpen] && box[memGrpOpen].length)) memGrpOpen = null;
+  if (memGrpOpen) {
+    const n = memGrpOpen;
+    return '<button type="button" class="mrow mrow-back" data-mg-back><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span class="mrow-t"><b>' + esc(n) + '</b><small>' + box[n].length + (box[n].length === 1 ? ' fact' : ' facts') + ' · tap to go back to all groups</small></span></button>' +
+      '<div class="mg-items">' + box[n].map(i => item('facts', a[i], i)).join('') + '</div>';
+  }
+  return '<div class="mgrp mg-list">' + names.filter(n => box[n].length).map(n => '<button type="button" class="mrow" data-mg-open="' + esc(n) + '"><span class="mrow-t"><b>' + esc(n) + '</b></span><span class="mrow-n">' + box[n].length + '</span><svg class="mrow-c" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>').join('') + '</div>';
 }
 function renderMem() {
   const item = (k, f, i) => '<div class="mi' + (S.learn ? '' : ' off') + '"><span>' + esc(f.t) + '</span><button class="ed" data-m="' + k + '" data-i="' + i + '" data-e="1">Edit</button><button data-m="' + k + '" data-i="' + i + '" title="Delete">✕</button></div>';
   const row = (k, a) => a.map((f, i) => item(k, f, i)).join('') || '<p class="hint">Nothing yet.</p>';
   $('mFacts').innerHTML = memGroupHtml(mem.facts, item); $('mThreads').innerHTML = row('threads', mem.threads);
 }
-$('mFacts').addEventListener('toggle', e => {
-  const d = e.target; if (!d || !d.classList || !d.classList.contains('mg')) return;
-  const n = d.dataset.g, a = memShut().filter(x => x != n); if (!d.open) a.push(n);
-  try { localStorage.setItem('ember_memgrp_shut', JSON.stringify(a)); } catch (x) { /* storage blocked */ }
-}, true);
+$('mFacts').addEventListener('click', e => {
+  const o = e.target.closest('[data-mg-open]'), bk = e.target.closest('[data-mg-back]');
+  if (!o && !bk) return;
+  memGrpOpen = o ? o.dataset.mgOpen : null; renderMem();
+  const sc = $('mFacts').closest('.acc-b'); if (sc) sc.scrollTop = 0;
+});
 function renderSet() {
   renderKeys(); renderMem();
   $('sName').value = S.name; $('sAbout').value = S.about; $('sPname').value = S.pname; $('sInt').value = S.interests;
@@ -1292,23 +1301,7 @@ function showStab(name) {
   $('settings').scrollTop = 0; const sb = document.querySelector('#settings .sb'); if (sb) sb.scrollTop = 0;
 }
 $('stabs') && $('stabs').addEventListener('click', e => { const b = e.target.closest('.stab'); if (b) showStab(b.dataset.st); });
-// collapsible cards: tap the .ct header to fold/unfold everything else in that card
-document.querySelector('#settings .sb').addEventListener('click', e => {
-  const back = e.target.closest('[data-card-back]');
-  if (back) {
-    const card = back.closest('.card'), body = card && card.closest('.acc-b');
-    if (card && card.querySelector('#kList')) { keyDetailId = null; renderKeys(); }
-    if (card) { card.classList.remove('card-selected'); if (card.dataset.wasCollapsed === '1') card.classList.add('collapsed'); delete card.dataset.wasCollapsed; card.querySelector('.acc-card-backbar')?.remove(); }
-    if (body) body.classList.remove('card-subpage');
-    return;
-  }
-  const ct = e.target.closest('.card>.ct'); if (!ct) return;
-  const card = ct.parentElement, body = card.closest('.acc-b'); if (!body) return;
-  body.querySelectorAll(':scope > .card').forEach(c => c.classList.remove('card-selected'));
-  body.classList.add('card-subpage'); card.dataset.wasCollapsed = card.classList.contains('collapsed') ? '1' : '0';
-  card.classList.add('card-selected'); card.classList.remove('collapsed');
-  if (!card.querySelector('.acc-card-backbar')) { const bar = document.createElement('div'); bar.className = 'acc-card-backbar'; bar.innerHTML = '<button type="button" data-card-back>‹ <span>Back to ' + ((body.querySelector('.acc-backbar b')?.textContent)||'Settings') + '</span></button>'; card.prepend(bar); }
-});
+// V1.10.11: card headers no longer fold or open anything here. ember_menu.js owns the whole Settings menu (rows open pages to the right).
 function openSettings(tab) { drawer(false); renderSet(); renderPerms(); showStab(typeof tab == 'string' ? tab : 'none'); $('settings').classList.add('show'); setUI('Settings'); }
 function closeSettings() { $('settings').classList.remove('show'); S.name = $('sName').value.trim(); S.about = $('sAbout').value; S.pname = $('sPname').value.trim() || 'Ember'; S.interests = $('sInt').value.trim() || DEF.interests; S.persona = $('sPersona').value.trim().slice(0, 2000); S.talk = $('sTalk').value.trim().slice(0, 300); saveS(); renderLog(); setUI('Chat'); }
 $('bSet').onclick = openSettings; $('bSx').onclick = closeSettings; $('bGoKeys').onclick = openSettings;
