@@ -1,0 +1,111 @@
+EMBER V1.10.16 — KEYLESS ROUTER
+=================================
+Deliverable: ember-V1_10_16-keyless-router.zip (complete source tree, not an APK)
+Source: uploaded V1.10.15 chat-bar-fix archive.
+
+IMPLEMENTED
+-----------
+New www/ember_keyless.js and www/ember_keyless.css; existing public window objects/events are the integration surface. ember_plugins.js is unchanged.
+20 independent persisted toggles plus an informational preserved Forge route, grouped in the existing Plugins sheet and inline Settings > Engine & Media Control.
+Single healthy tool runs automatically. Multiple candidates show an explicit keyboard-accessible bottom sheet: once, always, Auto. It never submits on idle. Preferences persist; disabling the remembered engine removes it from candidates.
+Task routing for documents, images, avatars, placeholder photos, QR, speech, music search, lyrics, code, mock data, page reading, metadata, IP, microphone and text structuring.
+At most three fallback tool attempts, no repeated engine within an attempt chain. Random-photo fallback is clearly labelled as a placeholder, not an image of the prompt.
+Routing summaries feed ember-terminal, EmberTimeline note/step/tool and ember-agent-note; fallback uses ember-try and ember-switch. Activity reports waiting for the chooser. The abilities line updates immediately on tool switches.
+Pasted essay chain: available LanguageTool -> existing AI structure route -> bundled pdfmake -> normal Artifact Card. Long grammar input is chunked and a local rate budget is enforced. Failure preserves the complete input rather than silently truncating it. No unsolicited cover, QR or speech generation.
+Actual PDF/DOCX blobs are built with bundled engines; Markdown uses EmberArtifacts. New artifacts use the existing parser/cards, local save handlers and file sharing when available (download fallback otherwise).
+Package and web manifest version: 1.10.16. Service worker cache: ember-v1.10.16-keyless.
+
+PUBLIC INFORMATION AND YOUR EXISTING API KEYS
+--------------------------------------------
+Your chat addition permits existing configured web-provider keys for public-source reading; it does not introduce accounts or credentials for the 20 new tools.
+Public URL reading selects existing configured scraper providers through EmberScraper.plan/scrape_url, preserving existing provider/key rotation, and falls back to enabled/healthy Jina only if the existing free-reader switch permits it.
+Public-information/name research without a URL selects the existing configured search providers, then reads at most two returned public pages. Returned names are source-published claims, not verified identity matches. Output includes source URLs and retrieval timestamps; failed page reads are labelled as search snippets, not complete pages.
+The router does not read, copy, persist or log key values. Existing legacy provider settings and credential storage remain unchanged, not removed by this update. No real user API key was supplied to or exercised in QA; provider selection/rotation integration was tested with mocked public methods.
+Scraping OFF prevents requests. Private/local addresses, URL userinfo and credential-bearing query parameters are rejected. Pages are treated as untrusted evidence, never instructions. No login, paywall or CAPTCHA bypass is added. Published professional names may be extracted; no private contact-detail inference or identity disambiguation claim is made.
+Example prompts:
+  Extract the published staff names from https://example.com/staff
+  Find public information and names for Example staff
+  Make a PDF and fix grammar:
+  [paste the full essay after a newline]
+Replace example.com with a real publicly accessible source.
+
+LIVE CHECKS AND EXPLICIT LIMITATIONS
+-----------------------------------
+Endpoint checks recorded at 2026-10-29T11:43:38Z from the release build server. Availability, CORS, quota and phone connectivity may differ. The in-app Check availability action performs fresh checks from the device.
+
+| Tool | Endpoint | Worked | HTTP | Notes |
+|---|---|---|---|---|
+| LanguageTool | https://api.languagetool.org/v2/check | YES | 200 | HTTP response and content checked |
+| Pollinations | https://image.pollinations.ai/prompt/a%20small%20orange%20circle?width=64&height=64&seed=11016&nologo=true | YES | 200 | Anonymous GET returned JPEG; 64 by 64 smoke image, actual model may vary |
+| DiceBear | https://api.dicebear.com/9.x/bottts/svg?seed=Ember | YES | 200 | HTTP response and content checked |
+| Picsum | https://picsum.photos/32/32 | YES | 200 | HTTP response and content checked |
+| QRServer | https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=Ember | YES | 200 | HTTP response and content checked |
+| Robohash | https://robohash.org/Ember.png?size=32x32 | YES | 200 | HTTP response and content checked |
+| StreamElements TTS | https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=Hello | NO | 403 | HTTP Error 403: Forbidden |
+| JioSaavn (unofficial) | https://saavn.dev/api/search/songs?query=hello&limit=1 | NO |  | <urlopen error [Errno -2] Name or service not known> |
+| iTunes Search | https://itunes.apple.com/search?term=hello&media=music&limit=1 | YES | 200 | HTTP response and content checked |
+| LRCLIB | https://lrclib.net/api/search?q=hello | YES | 200 | HTTP response and content checked |
+| Piston | https://emkc.org/api/v2/piston/execute | NO | 401 | HTTP Error 401: Unauthorized |
+| DummyJSON | https://dummyjson.com/products?limit=1 | YES | 200 | HTTP response and content checked |
+| Jina Reader | https://r.jina.ai/https://example.com | YES | 200 | HTTP response and content checked |
+| Microlink | https://api.microlink.io/?url=https%3A%2F%2Fexample.com | YES | 200 | HTTP response and content checked |
+| IPify | https://api.ipify.org?format=json | YES | 200 | HTTP response and content checked |
+| Forge | https://aihorde.net/api/v2/status/heartbeat | Heartbeat YES; generation not verified | 200 | HTTP response and content checked; original adapter unchanged; unavailable in strict router (header/queue conflict) |
+| PDF (pdfmake) | local: vendor/pdfmake-0.2.20.min.js | YES |  | Real bundled PDF generated in browser; real offline export also passed |
+| Word (docx) | local: vendor/docx-9.5.1.iife.js | YES |  | Real bundled DOCX generated in browser; ZIP signature validated |
+| Markdown | local: ember_artifacts.js | YES |  | Bundled Markdown rendering and artifact generation passed |
+| Text structuring | local: providers.js | Conditional |  | Existing text router callable; full model answers mocked for browser QA; runtime depends on configured providers / Free Mode |
+| Speech-to-text | local: ember_voice.js | Conditional |  | Existing device speech bridge; permission and on-device transcription not exercised |
+
+StreamElements TTS: live 403, unavailable, skipped. Piston: live 401, unavailable, skipped; no authentication workaround added. JioSaavn: documented public host failed DNS; remains unofficial, OFF by default and unavailable. The upstream project still documents https://saavn.dev/docs (https://github.com/sumitkolhe/jiosaavn-api); no working replacement was verified.
+DiceBear uses the tested 9.x endpoint rather than the old 7.x suggestion. Pollinations anonymous GET returned a real 64x64 JPEG in the smoke check; a service-chosen model is not promised to be Flux. Production requests use the requested 1024x1024 size and remain subject to service limits.
+Forge's heartbeat worked, but generation was not tested. The unchanged existing adapter uses an anonymous API header and long queue, which conflict with the strict no-header/10-second network contract. It remains intact as a public legacy route but is marked unavailable in the strict router. Consequently the requested Pollinations -> Forge -> Picsum generation chain was NOT claimed as passing; production skips unavailable Forge. Tests verify bounded fallback among the remaining healthy image engines.
+Strict new keyless HTTP calls use AbortController, 10-second timeout covering response bodies, credentials:omit, cache:no-store and no authentication headers. Existing saved-key scraper and text-router implementations remain outside that no-auth contract, since your addition explicitly asks to use those providers. Existing scraper methods expose no cancellation signal: the router stops waiting after 10 seconds, but cannot guarantee cancellation of a legacy in-flight provider request. Their internal deadlines/key rotation are unchanged.
+Speech recognition was not physically tested on an Android phone. Availability depends on device/browser speech support and permissions; the router delegates to the device mic path, not a new credential-based transcription provider. AI model calls and TTS/audio contents were mocked in deterministic QA; real PDF/DOCX serialization was not mocked.
+
+NETWORK / CSP / ANDROID / OFFLINE
+---------------------------------
+Existing Android patch already grants INTERNET and RECORD_AUDIO. All newly routed remote services use HTTPS. No cleartext opt-in or broad network-security exception was added. No native Android build or handset was available, so APK build/device reachability is not claimed.
+No new CDN script or external export library was added. Existing bundled pdfmake 0.2.20/Roboto and docx 9.5.1 are reused.
+The existing artifact iframe policy gained media-src data: blob: for locally embedded audio, and the existing sandbox gained allow-downloads for explicit artifact download links. No new remote script permission was added.
+The service worker now caches only its bundled static-asset allowlist, never external APIs or same-origin non-asset proxy/API paths. Only version query parameters are cacheable. Failed/non-OK responses are not cached. New JS/CSS and the static build health snapshot are pre-cached.
+A real service-worker test found the new cache, all new assets, zero cached external responses, successful offline boot and successful offline PDF creation; no page errors.
+
+VALIDATION
+----------
+New browser suite: 47/47 checks PASS; 0 failures. Chromium via Playwright 1.56.1, 412x915 and 1280x900, reduced-motion mode, mocked third-party HTTP.
+Checks include toggle persistence/abilities, chooser once/always/Auto, no idle submit, bounded fallback and timeout abort, disabled tools, terminal/thought parity, actual PDF/DOCX export signatures, plain-chat Artifact Card and actual PDF download, public names with sources, configured-keyed-reader dispatch without new key storage, all other HTTP adapters, no authentication headers/cookies in keyless traffic, no new credential fields and zero browser page errors.
+All eight required protected backend files AND ember_plugins.js match uploaded SHA-256 bytes. See tests/keyless-protected-hashes.json and KEYLESS_1_10_16_MANIFEST.json.
+
+Legacy suites (not hidden; failures were reproduced on the untouched upload):
+term-test.js: FAIL (updated exit 1); untouched original also FAIL (exit 1)
+v1992-repo-runner-test.js: FAIL (updated exit 1); untouched original also FAIL (exit 1)
+knowledge-brain-test.js: FAIL (updated exit 1); untouched original also FAIL (exit 1)
+artifact-test.js: PASS (updated exit 0)
+routing-fallback-test.js: PASS (updated exit 0)
+streaming-routing-test.js: PASS (updated exit 0)
+safety-test.js: PASS (updated exit 0)
+scrape-test.js: PASS (updated exit 0)
+keyscan-test.js: PASS (updated exit 0)
+workspace95-test.js: FAIL (updated exit 1); untouched original also FAIL (exit 1)
+command-center-test.js: FAIL (updated exit 1); untouched original also FAIL (exit 1)
+routing94-test.js: PASS (updated exit 0)
+download94-test.js: PASS (updated exit 0)
+app-test.js: FAIL (updated exit 2); untouched original also FAIL (exit 2)
+
+Known three failures requested in the brief:
+- term-test: old browser click targets a hidden control; 26 core checks pass before the browser failure.
+- v1992-repo-runner-test: old integration expects an exception no longer thrown.
+- knowledge-brain-test: old assertion expects ghRunnerCard in the advanced tab.
+Additional baseline failures discovered:
+- workspace95-test: expects output cannot be applied as Brain.
+- command-center-test: old hard-coded V1.9.94 ai_agent.js hash no longer matches the input archive.
+- app-test: old browser click target is hidden. Its environment-specific Playwright path was supplied through the existing PW environment variable for both original and updated runs; same click timeout reproduced on both.
+This is not a claim that the entire legacy npm test chain passes. Complete logs are bundled under tests/results/keyless/.
+
+REPRODUCE / REVIEW
+------------------
+Install the project's development dependencies and Playwright Chromium, then run npm run test:keyless. The browser suite starts its own local static server and mocks third-party HTTP. It writes the test report and screenshots to tests/results/keyless/.
+Production preview: npm run serve, then open the served app. To test only local export without sending text to a provider, switch OFF Grammar and Text structuring; PDF/Word export itself stays local.
+Screenshots: chooser-412.png, chooser-1280.png, plugins-412.png, plugins-1280.png, terminal-chain-412.png, terminal-chain-1280.png and chat-artifact variants under tests/results/keyless/.
+Source files and historical tests/docs are kept complete. No protected backend implementation was patched.

@@ -1,0 +1,7 @@
+EMBER V1.10.15
+==============
+Header: the blue dot now sits in front of the Ember name and flashes (1.2 s pulse; respects reduced-motion).
+Chat footer: Providers selector on the left (opens the real provider health dropdown), verified active API key count far right.
+Providers dropdown: Check button no longer overflows.
+No backend files touched. Offline cache version ember-v1.10.15-cockpit.
+Settings repair: Media engines cards (Keyless engines, Pictures) now have even padding and full width, no jammed caption.

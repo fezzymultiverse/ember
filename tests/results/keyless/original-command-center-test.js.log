@@ -1,0 +1,39 @@
+PASS separate component markup outside chat log
+PASS timeline script still included
+PASS inspector has no timeline side effects
+PASS no raw hidden-reasoning fields inspected
+PASS public three-phase contract has exact required headings
+PASS tool-only formats explicitly preserved
+PASS bounded output and explicit backend adapter
+PASS no innerHTML sinks in new components
+PASS same-origin streams without credentials in query
+PASS styles isolated and reduced-motion accessible
+PASS new assets included in offline shell
+PASS timeline event emitters remain present
+PASS requested in-row Stop added to ember_timeline.js
+PASS requested in-row Stop added to ember_think_inline.js
+PASS unchanged uploaded V1.9.94 ember_react.js
+PASS unchanged uploaded V1.9.94 ember_steps.js
+node:internal/assert/utils:77
+    throw err;
+    ^
+
+AssertionError [ERR_ASSERTION]: unchanged uploaded V1.9.94 ai_agent.js
+    at check (/home/user/ember-work/baseline/tests/command-center-test.js:4:48)
+    at Object.<anonymous> (/home/user/ember-work/baseline/tests/command-center-test.js:24:2)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v22.23.4

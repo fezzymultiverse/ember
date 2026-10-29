@@ -20,7 +20,7 @@
     // ONE GitHub place: the Command Centre card. The same DOM nodes, IDs and handlers as before, just moved here.
     const card = $('eccGitHub');
     if (!card) return;
-    const TABS = ['connect', 'repos', 'build', 'files', 'activity'];
+    const TABS = ['connect', 'repos', 'build'];
     const tabBtns = Array.from(card.querySelectorAll('.ecc-gtabs [role="tab"]'));
     const stamp = () => new Date().toLocaleTimeString([], { hour12: false });
     function setTab(name) {
@@ -32,14 +32,15 @@
     }
     tabBtns.forEach(x => x.addEventListener('click', () => setTab(x.dataset.gtab)));
     card.querySelector('.ecc-gtabs').addEventListener('keydown', e => {
-      const i = TABS.indexOf(card.dataset.gtab); let n = -1;
+      const i = TABS.indexOf(e.target.closest('[role="tab"]')?.dataset.gtab || card.dataset.gtab); let n = -1;
       if (e.key === 'ArrowRight') n = (i + 1) % TABS.length; else if (e.key === 'ArrowLeft') n = (i + TABS.length - 1) % TABS.length;
+      if (e.key === 'Home') n = 0; else if (e.key === 'End') n = TABS.length - 1;
       if (n < 0) return; e.preventDefault(); setTab(TABS[n]); const t = tabBtns[n]; if (t) t.focus();
     });
     let saved = 'connect'; try { saved = localStorage.getItem('ember_gh_tab') || 'connect'; } catch (_) { /* storage blocked */ }
     setTab(saved);
     function openRepos(tab) {
-      if (typeof tab === 'string') setTab(tab);
+      if (typeof tab === 'string') setTab(tab === 'files' ? 'repos' : tab === 'activity' ? 'build' : tab);
       const settings = $('settings'); if (settings && settings.classList.contains('show') && $('bSx')) $('bSx').click();
       const ecc = $('emberCommandCenter');
       if (ecc && !ecc.classList.contains('ecc-open')) { if (window.EmberCommandCenter) window.EmberCommandCenter.open(); else if ($('bCommandCenter')) $('bCommandCenter').click(); }

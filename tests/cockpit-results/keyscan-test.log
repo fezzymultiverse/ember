@@ -1,0 +1,45 @@
+PASS Name: key  Name2: key2 on one line: each key goes to its own provider 
+PASS blank lines after a label do not use up the window 
+PASS Cohere key on the line below its label is kept 
+PASS CO_API_KEY=... is recognised as Cohere 
+PASS a key written BEFORE its name ("key <- mistral") is kept 
+PASS a hex-only 32 character string under a Mistral label is a hash, not a key 
+PASS Audd.io token is extracted from a paste 
+PASS EasyVoice ev_ key is extracted with no label 
+PASS Bright Data key (64 hex) is extracted next to its name 
+PASS prefixed keys of every provider are found with no label 
+PASS several keys in a row under one name (bullets) all belong to it 
+PASS far from its name a key must still have the provider shape 
+PASS JSON one-liner with three providers 
+PASS OpenAI is counted as foreign and Anthropic is filed only under its own provider 
+PASS an unlabelled key-like string is only counted, never saved 
+PASS an unlabelled 40 character string is handed back to be probed on Cohere 
+PASS placeholders, variable names and a 160 character blob are never keys 
+PASS Bright Data zone names are read (SERP and Web Unlocker) 
+PASS the report masks keys (first 4 + last 4 only) 
+PASS Prov.extract: old shape, groq/mistral/cohere found 
+PASS Prov.extract: an unlabelled 40 character string lands in unknownCohere for a live test 
+PASS ingest saves ALL keys: first primary, second extra 
+PASS re-pasting never overwrites: a known key is a dupe, a new one is another extra 
+PASS the keys never appear in the settings read for the UI except the primary; extras only through keysOf 
+PASS first key rejected (401): the extra key answers, every call still gets a page 
+PASS the rejected key is parked: it is tried once, then skipped 
+PASS healthy keys take turns so credits are used evenly 
+PASS a 5xx stops at once and is not retried on the next key (no double bill) 
+PASS removing the primary promotes the first extra 
+PASS every saved key is hidden from error text, extras included 
+PASS Bright Data is the 10th key provider, after SerpApi 
+PASS with only a SERP zone it is NOT a page fetcher (snippets are the last resort, after the reader) 
+PASS Bright Data is a search backup 
+PASS Bright SERP call: POST /request, Bearer key, zone serp_api1, brd_json=1, format raw 
+PASS Bright SERP rows (organic: link, title, description) are mapped, non-http results dropped 
+PASS with no Web Unlocker zone a page request returns snippets flagged degraded, never passed off as the page 
+PASS with a Web Unlocker zone it becomes a page fetcher in the rotation 
+PASS Web Unlocker call sends the unlocker zone and the page url, raw format 
+PASS the saved SERP zone name is used for search 
+PASS ingest saves the Bright key and both zones (only into empty slots) 
+PASS an already saved zone is never overwritten by a later paste 
+PASS ingestAll: chat key, two ZenRows, Bright, Audd.io and EasyVoice all filed in one go 
+PASS ingestAll: the report lines are plain text, masked, no key value inside 
+PASS ingestAll on text with no keys says so in plain words 
+44 passed, 0 failed

@@ -666,7 +666,7 @@ $('etHead').addEventListener('click', e => { if (e.target.closest('button')) ret
 let lastKey = '';
 function sync() {
   const tab = document.querySelector('#stabs .stab.on');
-  const vis = settings.classList.contains('show') && !!tab && tab.dataset.st === 'hacking';
+  const vis = settings.classList.contains('show') && (window.EmberCockpit ? true : !!tab && tab.dataset.st === 'hacking'); // Cockpit: inline terminal stays with the flat Hacking section.
   const key = vis + '|' + cfg.state; if (key === lastKey) return; lastKey = key;
   panel.classList.toggle('hidden', !vis); settings.classList.toggle('hk', vis);
   if (vis) { applyState(); fit(); if (wantOn && state === 'off' && !userDown) connect(false); }

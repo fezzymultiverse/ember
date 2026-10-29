@@ -1,0 +1,12 @@
+PASS 503 advances to next configured provider 
+PASS fallback returns the successful response 
+PASS both providers were attempted 
+PASS 400 from Groq moves on to Mistral 
+PASS 413 from Groq moves on to Mistral 
+PASS 404 from Groq moves on to Mistral 
+PASS all engines refusing returns the provider reason 
+PASS both engines were tried before giving up 
+PASS pinned engine still fails plainly 
+PASS pinned engine does not call another engine 
+
+10 passed, 0 failed

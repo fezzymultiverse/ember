@@ -1,6 +1,6 @@
 {
   "name": "ember",
-  "version": "1.10.13",
+  "version": "1.10.16",
   "private": true,
   "license": "UNLICENSED",
   "description": "Ember - a companion to talk to about anything (PWA, APK-ready via Capacitor)",
@@ -32,7 +32,9 @@
     "test:downloads94": "node tests/download94-test.js",
     "test:workspace": "node tests/workspace95-browser-test.js",
     "test:workspace:unit": "node tests/workspace95-test.js",
-    "test:release": "node tests/workspace95-test.js && node tests/knowledge-brain-test.js && node tests/v1992-repo-runner-test.js && node tests/command-center-test.js && node tests/routing94-test.js && node tests/download94-test.js && node tests/workspace95-browser-test.js && node tests/knowledge-brain-browser-test.js && node tests/v1992-repo-runner-browser-test.js && node tests/command-center-browser-test.js && node tests/routing94-browser-test.js"
+    "test:release": "node tests/workspace95-test.js && node tests/knowledge-brain-test.js && node tests/v1992-repo-runner-test.js && node tests/command-center-test.js && node tests/routing94-test.js && node tests/download94-test.js && node tests/workspace95-browser-test.js && node tests/knowledge-brain-browser-test.js && node tests/v1992-repo-runner-browser-test.js && node tests/command-center-browser-test.js && node tests/routing94-browser-test.js",
+    "test:cockpit": "node tests/cockpit-browser-test.js",
+    "test:keyless": "node tests/keyless-browser-test.cjs"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",
