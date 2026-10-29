@@ -75,3 +75,27 @@ html body #settings #repoWorkspace .btn{box-sizing:border-box;width:auto;max-wid
   html body .et-think .et-drop-hint{display:none}
 }
 @media(prefers-reduced-motion:reduce){#chatProviderBar *,#repoWorkspace *{scroll-behavior:auto;animation:none!important}}
+/* Ember 1.10.13: the one GitHub card inside the Command Centre (tabs: Connect, Repos, Build & Run, Files, Activity). */
+.ecc-gtabs{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--ecc-border);margin:6px 0 12px;scrollbar-width:none}
+.ecc-gtabs::-webkit-scrollbar{display:none}
+.ecc-gtabs button{flex:0 0 auto;background:none;border:0;border-bottom:2px solid transparent;color:var(--ecc-muted);font:600 12px system-ui,sans-serif;padding:10px 11px;min-height:40px;cursor:pointer}
+.ecc-gtabs button[aria-selected="true"]{color:var(--ecc-orange);border-bottom-color:var(--ecc-orange)}
+.ecc-gtabs button:focus-visible{outline:2px solid var(--ecc-blue);outline-offset:-2px}
+.ecc-gbody{display:flex;flex-direction:column;min-width:0}
+#eccGitHub[data-gtab="connect"] [data-ghp]:not([data-ghp~="connect"]),
+#eccGitHub[data-gtab="repos"] [data-ghp]:not([data-ghp~="repos"]),
+#eccGitHub[data-gtab="build"] [data-ghp]:not([data-ghp~="build"]),
+#eccGitHub[data-gtab="files"] [data-ghp]:not([data-ghp~="files"]),
+#eccGitHub[data-gtab="activity"] [data-ghp]:not([data-ghp~="activity"]){display:none!important}
+#eccGitHub #ghHub,#eccGitHub #repoRunnerFeature,#eccGitHub #ghRunnerCard{display:flex;flex-direction:column;gap:6px;min-width:0}
+#eccGitHub .gh-sec,#eccGitHub .rr-section,#eccGitHub #ghRunnerCard{display:flex;flex-direction:column;gap:10px;min-width:0;padding:12px 0!important;border:0!important;background:none!important}
+#eccGitHub details.gh-sec:not([open])>*:not(summary){display:none}
+#eccGitHub .gh-h,#eccGitHub .rr-section h3,#eccGitHub .ct{font:650 14px/1.5 system-ui,sans-serif;color:#e0edff;margin:0}
+#eccGitHub .lb{display:block;font:600 12px/1.4 system-ui,sans-serif;color:var(--ecc-muted);margin:4px 0 0}
+#eccGitHub .hint{font:12px/1.6 system-ui,sans-serif;color:var(--ecc-muted);margin:0}
+#eccGitHub input:not([type=checkbox]),#eccGitHub select,#eccGitHub textarea{box-sizing:border-box;width:100%;min-width:0;max-width:100%;min-height:42px;padding:9px 11px;border-radius:9px;border:1px solid var(--ecc-border);background:#080d15;color:#edf3fc;font:13px ui-monospace,SFMono-Regular,Consolas,monospace}
+#eccGitHub .btn{box-sizing:border-box;width:auto;max-width:100%;min-width:0;min-height:42px;height:auto;padding:10px 14px;border-radius:10px;white-space:normal;overflow-wrap:anywhere;line-height:1.4;font-size:13px}
+#eccGitHub .btnrow{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+#eccGitHub .btnrow>.btn{flex:1 1 140px}
+#eccGitHub .ecc-actions button{width:100%}
+@media(max-width:480px){#eccGitHub .btnrow>.btn{flex-basis:100%}}

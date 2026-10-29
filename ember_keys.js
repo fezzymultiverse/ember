@@ -28,8 +28,9 @@ function inventory() {
   });
   if (SC && SC.KEY_IDS) { const k = (SC.get() || {}).keys || {}; const cnt = id => (SC.keysOf ? SC.keysOf(id).length : (k[id] ? 1 : 0)); SC.KEY_IDS.filter(id => id != 'tavily').forEach(id => out.push({ id, name: (SC.LABEL && SC.LABEL[id]) || id, kind: 'scraper', saved: cnt(id), usable: cnt(id), use: USE[id], where: WHERE(id) })); }
   const A = window.EmberAgentAddon, tn = SC && SC.keysOf ? SC.keysOf('tavily').length : (A && A.hasTavilyKey && A.hasTavilyKey() ? 1 : 0); out.push({ id: 'tavily', name: 'Tavily', kind: 'web search', saved: tn, usable: tn, use: USE.tavily, where: WHERE('tavily') });
-  const GH = window.EmberGithub; out.push({ id: 'github', name: 'GitHub', kind: 'code host', saved: GH && GH.on() ? 1 : 0, usable: GH && GH.on() ? 1 : 0, use: USE.github, where: 'Settings > GitHub' });
+  const GH = window.EmberGithub; out.push({ id: 'github', name: 'GitHub', kind: 'code host', saved: GH && GH.on() ? 1 : 0, usable: GH && GH.on() ? 1 : 0, use: USE.github, where: 'Command Centre > GitHub' });
   const D = window.EmberAudd; const hasAudd = !!(D && D.hasKey && D.hasKey()); out.push({ id: 'audd', name: 'Audd.io', kind: 'song id', saved: hasAudd ? 1 : 0, usable: hasAudd ? 1 : 0, use: USE.audd, where: WHERE('audd') });
+  if (window.EmberApis && window.EmberApis.inventory) window.EmberApis.inventory().forEach(x => out.push(x));
   return out;
 }
 // one compact paragraph for the system prompt

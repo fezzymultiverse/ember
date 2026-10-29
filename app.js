@@ -465,7 +465,7 @@ async function reply(o) {
     if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });
     if (finalText && window.EmberDeliverables && Safety.lastLevel() < 3) finalText = window.EmberDeliverables.normalize(finalText, latest);
     GHr.assertReadFirst();
-    if (finalText && (GHr.isCodeQuestion(latest, previous) || (window.EmberDeliverables ? window.EmberDeliverables.answerHasCode(finalText) : GHr.isCodeQuestion(finalText, latest)))) { const proof = GHr.lastRead(); if (!GHr.hasLiveRead(proof)) throw new Error('Read-First blocked this code answer: no live file was read from Knowledge Brain Repo. Check Settings > GitHub.'); }
+    if (finalText && (GHr.isCodeQuestion(latest, previous) || (window.EmberDeliverables ? window.EmberDeliverables.answerHasCode(finalText) : GHr.isCodeQuestion(finalText, latest)))) { const proof = GHr.lastRead(); if (!GHr.hasLiveRead(proof)) throw new Error('Read-First blocked this code answer: no live file was read from Knowledge Brain Repo. Check Command Centre > GitHub.'); }
     if (finalText && TLn && window.EmberArtifacts) { const made=window.EmberArtifacts.parse(finalText).items; if(made.length) TLn.note('Writing ' + made.map(a=>a.title).join(', ')); }
     try { if (window.EmberCommandCenter && finalText) window.EmberCommandCenter.inspect(finalText); } catch (_) { /* independent view */ }
     if (finalText && !bgWon()) {

@@ -20,13 +20,14 @@
     if (open) lastFocus = document.activeElement;
     el.classList.toggle('ecc-open', open); el.inert = !open;
     el.setAttribute('aria-hidden', String(!open)); $('bCommandCenter').setAttribute('aria-expanded', String(open));
-    const docked = open && W.matchMedia('(min-width: 1100px)').matches;
+    const docked = open && (W.EmberPanelLayout ? W.EmberPanelLayout.canDock() : W.matchMedia('(min-width: 1100px)').matches);
     document.body.classList.toggle('ecc-docked', docked);
     $('eccBackdrop').hidden = !open || docked;
     $('app').inert = open && !docked;
     el.setAttribute('role', docked ? 'complementary' : 'dialog');
     if (open && !docked) el.setAttribute('aria-modal', 'true'); else el.removeAttribute('aria-modal');
-    if (open) $('eccClose').focus(); else if (lastFocus && lastFocus.isConnected) lastFocus.focus();
+    if (open) $('eccClose').focus({ preventScroll: true }); else if (lastFocus && lastFocus.isConnected) lastFocus.focus({ preventScroll: true });
+    W.EmberPanelLayout?.refresh();
   }
   function drawer(open) {
     $('eccTerminalBody').hidden = !open;

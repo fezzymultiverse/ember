@@ -49,7 +49,7 @@
             '<div class="ccw-box ccw-git"><small>GITHUB</small><p id="ccwGit">GitHub engine not loaded.</p></div>' +
             '<div class="ccw-box ccw-thought"><small>THOUGHT SUMMARY</small><p id="ccwThought">No three-phase summary yet.</p></div>' +
             '<div class="ccw-btns"><button type="button" id="ccWidgetOpen">Open Command Centre</button>' +
-            '<button type="button" id="ccWidgetRepos">Repos &amp; Brain</button></div>' +
+            '<button type="button" id="ccWidgetRepos">GitHub</button></div>' +
           '</div>';
         sb.appendChild(w); // below the accordion wrap = bottom of the Settings list
         const openCC = () => { const b = $('bCommandCenter'); if (b) b.click(); };
@@ -72,7 +72,7 @@
         };
         w.querySelector('#ccWidgetToggle').addEventListener('click', () => setOpen(!w.classList.contains('open')));
         w.querySelector('#ccWidgetOpen').addEventListener('click', openCC);
-        w.querySelector('#ccWidgetRepos').addEventListener('click', () => { openCC(); setTimeout(() => { const r = $('eccRepos'); if (r) r.click(); }, 380); });
+        w.querySelector('#ccWidgetRepos').addEventListener('click', () => { if (window.EmberWorkspace) window.EmberWorkspace.open(); else openCC(); });
         if (window.MutationObserver) {
           const mo = new MutationObserver(paint);
           ['eccThought', 'eccMemoryCount', 'eccTerminalStatus', 'eccTerminalCount', 'eccContextStatus'].forEach(id => { const e = $(id); if (e) mo.observe(e, { childList: true, characterData: true, subtree: true }); });
