@@ -54,6 +54,12 @@
       case 'youtube_download':    return 'Downloading audio';
       case 'playlist_download':   return 'Downloading playlist audio';
       case 'see_image':           return 'Looking at the image';
+      case 'get_public_ip':       return 'Checking the public IP';
+      case 'check_grammar':       return 'Checking grammar';
+      case 'search_photos':       return 'Searching photos' + (q ? ': \u201c' + clip(q, 40) + '\u201d' : '');
+      case 'get_whois':           return 'Looking up the domain';
+      case 'get_word_info':       return 'Looking up the word';
+      case 'get_lyrics':          return 'Fetching lyrics';
       case 'playlist_list':       return 'Reading the playlist';
       case 'play_song':           return 'Playing' + (q ? ' \u201c' + clip(q, 40) + '\u201d' : ' a song');
       case 'play_playlist':       return 'Playing playlist' + (a.name ? ' \u201c' + clip(a.name, 36) + '\u201d' : '');
