@@ -9,6 +9,7 @@
     { id: 'settings', open: () => has('settings', 'show'), close: () => { const b = $('bSx'); if (b) b.click(); } },
     { id: 'hub', open: () => D.body.classList.contains('ehub-on'), close: () => { if (W.EmberHub && W.EmberHub.close) W.EmberHub.close(); } },
     { id: 'apis', open: () => has('emberApis', 'open'), close: () => { const b = $('emberApisClose'); if (b) b.click(); } },
+    { id: 'plugins', open: () => D.body.classList.contains('epl-on'), close: () => { if (W.EmberPlugins) W.EmberPlugins.close(); } },
     { id: 'plus', open: () => { const m = $('plusMenu'); return !!(m && !m.classList.contains('hidden')); }, close: () => D.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })) },
   ];
   let stack = [];      // ids of panels that are open, oldest first

@@ -10,7 +10,6 @@
   const SECTIONS = [
     { id: 'general', ico: 'sliders', title: 'General, Persona & Memory', desc: 'Free Mode, your name, voice and pacing, memory, look, backup' },
     { id: 'keys', ico: 'key', title: 'Engine Keys & Providers', desc: 'Which engine answers, API keys, engine names' },
-    { id: 'github', ico: 'branch', title: 'GitHub', desc: 'Knowledge Brain Repo, token, live files and activity' },
     { id: 'features', ico: 'spark', title: 'Features', desc: 'AI routing, media artifacts, downloads and Repo Runner' },
     { id: 'advanced', ico: 'gear', title: 'Advanced', desc: 'Optional GitHub Actions Runner for builds and tests' },
     { id: 'scraping', ico: 'globe', title: 'Web Scraping', desc: 'Scraper keys, the free reader, health checks and tests' },
@@ -63,7 +62,6 @@
       '<div class="ehub-view" data-view="root">' +
         '<div class="mgrp">' +
           ROW('id="ehubKeysBtn" data-view-open="keys"', TILE('key'), 'API keys', 'Tap to see every provider', 'ehubKeysSum') +
-          ROW('id="ehubGitBtn"', TILE('branch'), 'GitHub · Brain &amp; repos', 'Load brain, find repos, clone and push', 'ehubGitSum') +
           ROW('id="ehubCCToggle" data-view-open="cc"', TILE('panel'), 'Command Centre', 'Waiting for a model request.', 'ehubCCCtx', '<span class="ehub-chip" id="ehubCC"><i class="ehub-live"></i>LIVE</span>') +
         '</div>' +
         '<h3 class="ehub-h">All settings</h3>' +
@@ -81,15 +79,22 @@
 
       /* ---- Command Centre ---- */
       '<div class="ehub-view" data-view="cc" hidden>' +
-        '<div class="ehub-tiles">' +
-          '<div class="ehub-tile"><small>Memory files</small><b id="ehubCCMem">0</b></div>' +
-          '<div class="ehub-tile"><small>Terminal</small><b id="ehubCCTerm">Idle</b></div>' +
-          '<div class="ehub-tile"><small>Log lines</small><b id="ehubCCLines">0</b></div>' +
+        '<h3 class="ehub-h">Live</h3>' +
+        '<div class="ecx-grid">' +
+          '<div class="ecx-tile"><small>Memory files</small><b id="ehubCCMem">0</b></div>' +
+          '<div class="ecx-tile"><small>Terminal</small><b id="ehubCCTerm">Idle</b></div>' +
+          '<div class="ecx-tile"><small>Log lines</small><b id="ehubCCLines">0</b></div>' +
+          '<div class="ecx-tile"><small>Scrapers</small><b id="ehubCCScr">0</b></div>' +
         '</div>' +
-        '<div class="ehub-note-box"><small>GitHub</small><p id="ehubCCGit">GitHub engine not loaded.</p></div>' +
-        '<div class="ehub-note-box"><small>Thought summary</small><p id="ehubCCThought">No three-phase summary yet.</p></div>' +
-        '<div class="ehub-cc-btns"><button type="button" class="ehub-btn ehub-btn-hot" id="ehubCCOpen">Open Command Centre</button>' +
-        '<button type="button" class="ehub-btn" id="ehubCCRepos">GitHub &amp; repos</button></div>' +
+        '<div class="ecx-card"><small>Thought summary</small><p id="ehubCCThought">No three-phase summary yet.</p></div>' +
+        '<h3 class="ehub-h">GitHub</h3>' +
+        '<div class="ecx-card"><small>Status</small><p id="ehubCCGit">GitHub engine not loaded.</p></div>' +
+        '<div class="mgrp">' +
+          ROW('id="ehubGitBtn"', TILE('branch'), 'Brain &amp; repos', 'Load brain, find repos, clone and push', 'ehubGitSum') +
+          ROW('data-go="github"', TILE('branch'), 'GitHub settings', 'Knowledge Brain repo, token, live files and activity') +
+        '</div>' +
+        '<div class="ecx-btns"><button type="button" class="ehub-btn ehub-btn-hot" id="ehubCCOpen">Open Command Centre</button>' +
+        '<button type="button" class="ehub-btn" id="ehubCCRepos">Repos</button></div>' +
       '</div>' +
       '</div>';
 
@@ -172,6 +177,7 @@
     set('ehubCCMem', txt('eccMemoryCount', '0'));
     set('ehubCCTerm', txt('eccTerminalStatus', 'Idle'));
     set('ehubCCLines', (txt('eccTerminalCount', '0 lines').match(/\d+/) || ['0'])[0]);
+    try { if (window.EmberPlugins) { const s = window.EmberPlugins.scrapers(); set('ehubCCScr', s.on ? String(s.live.length) : 'Off'); } } catch (e) { /* cosmetic */ }
     set('ehubCCCtx', txt('eccContextStatus', 'Waiting for a model request.'));
     try {
       if (window.EmberGit) {
@@ -311,6 +317,6 @@
     window.addEventListener('ember-provider-stats', () => { if (isOpen) { paintKeys(); paintProv(); } });
     window.addEventListener('ember-names', () => { if (isOpen) { paintKeys(); paintProv(); } });
     window.addEventListener('ember-git-state', () => { if (isOpen) paintCC(); });
-    window.EmberHub = { open: () => setOpen(true), close: () => setOpen(false), isOpen: () => isOpen };
+    window.EmberHub = { section: tab => classic(tab), open: () => setOpen(true), close: () => setOpen(false), isOpen: () => isOpen };
   });
 })();
