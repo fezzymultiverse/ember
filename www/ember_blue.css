@@ -33,3 +33,6 @@ html body input[type="checkbox"],html body input[type="radio"],html body input[t
 html body .hi.on,html body .pj.on{border-color:var(--blue)!important;box-shadow:0 0 14px color-mix(in srgb,var(--blue) 25%,transparent)!important}
 html body .trk.on>button:first-child{color:var(--blue-soft)!important}
 html body .gh-slot:focus-within{border-color:color-mix(in srgb,var(--blue) 60%,#333)}
+/* V1.10.12: switched-on rows in the + menu touched each other and read as one blue block. A small gap and a hairline edge keep them apart. */
+html body .pmenu .pm-i + .pm-i{margin-top:4px}
+html body .pmenu .pm-i.on,html body .pmenu .pm-i[aria-checked="true"]{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--blue) 38%,transparent)}
