@@ -196,7 +196,7 @@
     const html=a.type==='html', svg=a.type==='svg', paper=a.type==='pdf'||a.type==='document';
     let body, sub, foot = '';
     const fb = (k, label, cls) => '<button type="button" class="artifact-action' + (cls ? ' ' + cls : '') + '" data-vact="' + k + '">' + label + '</button>';
-    if (html) { body = '<iframe class="artifact-frame" title="Preview of '+esc(a.title)+'" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe>'; sub = 'Sandboxed preview'; foot = fb('pdf', 'Print / PDF') + fb('download', 'Download', 'secondary'); }
+    if (html) { body = '<iframe class="artifact-frame" title="Preview of '+esc(a.title)+'" sandbox="allow-scripts allow-downloads" referrerpolicy="no-referrer"></iframe>'; sub = 'Sandboxed preview'; foot = fb('pdf', 'Print / PDF') + fb('download', 'Download', 'secondary'); }
     else if (svg) { const s = cleanSvg(a.content); body = s ? '<div class="artifact-svg" id="artSvg"><img alt="' + esc(a.title) + '" src="' + svgUrl(s) + '"></div>' : '<pre class="artifact-text">' + esc(a.content) + '</pre>'; sub = s ? 'SVG image' : 'Not a valid SVG - showing source'; foot = fb('png', 'Save PNG') + fb('download', 'Save SVG', 'secondary') + fb('bg', 'Background', 'secondary') + fb('copy', 'Copy code', 'secondary'); }
     else if (paper) { body = '<div class="artifact-paper-wrap"><div class="artifact-paper">' + markdownHtml(mdOf(a)) + '</div></div>'; sub = a.type === 'pdf' ? 'PDF preview - Save PDF builds the real file' : 'Document preview'; foot = fb('pdf', 'Save PDF') + (a.type === 'document' ? fb('doc', 'Word .docx', 'secondary') : '') + fb('copy', 'Copy', 'secondary') + (a.type === 'document' ? fb('download', 'Markdown', 'secondary') : ''); }
     else if (isMd(a.type)) { body = '<div class="artifact-dark">' + markdownHtml(a.content) + '</div>'; sub = 'Markdown'; foot = fb('pdf', 'Save PDF') + fb('download', 'Download .md', 'secondary') + fb('copy', 'Copy', 'secondary'); }
@@ -215,7 +215,7 @@
       else if(k==='copy') copyContent(a.content).then(ok=>T(ok?'Copied':'Could not copy'));
       else if(k==='bg'){ const s=overlay.querySelector('#artSvg'); if(s) s.classList.toggle('dark'); }
     });
-    if(html) overlay.querySelector('iframe').srcdoc='<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data: https:; style-src \'unsafe-inline\' https:; font-src data: https:; script-src \'unsafe-inline\'; connect-src \'none\'; form-action \'none\'; base-uri \'none\'"><meta name="viewport" content="width=device-width,initial-scale=1">'+a.content;
+    if(html) overlay.querySelector('iframe').srcdoc='<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data: https:; media-src data: blob:; style-src \'unsafe-inline\' https:; font-src data: https:; script-src \'unsafe-inline\'; connect-src \'none\'; form-action \'none\'; base-uri \'none\'"><meta name="viewport" content="width=device-width,initial-scale=1">'+a.content;
   }
   document.addEventListener('click', e => {
     const q = k => e.target.closest && e.target.closest('[data-artifact-' + k + ']');

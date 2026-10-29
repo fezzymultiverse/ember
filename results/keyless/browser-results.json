@@ -1,0 +1,242 @@
+{
+  "tests": 47,
+  "passed": 47,
+  "failed": 0,
+  "results": [
+    {
+      "name": "byte hash providers.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "byte hash ai.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "byte hash ember_github.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "byte hash ember_repo_runner.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "byte hash repo-runner-template.cjs",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "byte hash ember_command_center.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "byte hash ai_scraper.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "byte hash ember_downloads.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "byte hash ember_plugins.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 default switches: 20 tools plus preserved Forge, unofficial OFF",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 all toggles persist, terminal events, abilities update immediately",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 plugins and inline cockpit include all switches without overflow",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 single-tool route runs automatically and timeline matches terminal",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 chooser waits indefinitely; accessible radio cards and once choice",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 always preference persists and skips chooser",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 Auto policy, disabled tools never called, all-failure max 3 attempts",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 essay → grammar → structuring → real local PDF; no optional media",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 real DOCX zip signature and Markdown artifact export",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 grammar OFF is never called in document chain",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 public page evidence includes published names and source; no fabricated identity",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 configured scraper chosen automatically using public API; no new key storage",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 scraping OFF prevents public fetching",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 all remaining keyless adapters respond to mocked HTTP",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 chooser keyboard cancellation leaves no running task",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 10-second timeout aborts fetch and fallback succeeds",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 plain chat triggers router, normal Artifact Card, actual Save PDF download",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 strict keyless requests omit cookies/auth, have AbortController, never cache",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "412 zero browser page errors and no sideways page overflow",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 default switches: 20 tools plus preserved Forge, unofficial OFF",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 all toggles persist, terminal events, abilities update immediately",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 plugins and inline cockpit include all switches without overflow",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 single-tool route runs automatically and timeline matches terminal",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 chooser waits indefinitely; accessible radio cards and once choice",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 always preference persists and skips chooser",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 Auto policy, disabled tools never called, all-failure max 3 attempts",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 essay → grammar → structuring → real local PDF; no optional media",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 real DOCX zip signature and Markdown artifact export",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 grammar OFF is never called in document chain",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 public page evidence includes published names and source; no fabricated identity",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 configured scraper chosen automatically using public API; no new key storage",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 scraping OFF prevents public fetching",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 all remaining keyless adapters respond to mocked HTTP",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 chooser keyboard cancellation leaves no running task",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 10-second timeout aborts fetch and fallback succeeds",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 plain chat triggers router, normal Artifact Card, actual Save PDF download",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 strict keyless requests omit cookies/auth, have AbortController, never cache",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280 zero browser page errors and no sideways page overflow",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}

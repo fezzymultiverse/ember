@@ -930,7 +930,7 @@ function renderKeys() {
   const kl = $('kList'); if (!kl) return;
   kl.classList.toggle('key-detail-mode', !!detail);
   Prov.IDS.forEach(id => {
-    const list = Prov.entries(id); if (!list.length) return;
+    const list = Prov.entries(id);
     let rows = '';
     list.forEach(e => {
       const st = e.st, cls = !st ? '' : st.ok ? (st.limited ? 'limited' : 'ok') : 'bad';
@@ -938,16 +938,21 @@ function renderKeys() {
       rows += '<div class="kr"><span class="d ' + (DOT[cls] || '') + '"></span><div class="kt"><b>' + esc(Prov.mask(e.key)) + '</b><small>' + esc(line) + '</small></div><button data-k="chk" data-id="' + id + '" data-key="' + esc(e.key) + '" title="Check">↻</button><button data-k="rm" data-id="' + id + '" data-key="' + esc(e.key) + '" title="Remove">✕</button></div>';
     });
     const title = (window.EmberProviderBadge ? EmberProviderBadge(id) : '') + Prov.CFG[id].name + (Prov.CFG[id].status == 'prototype' ? ' <span class="pbadge">Prototype</span>' : '') + ' <small>(' + list.length + ')</small>';
-    const active = detail === id;
-    h += '<section class="kgrp ' + (detail ? (active ? 'key-current' : 'key-away') : '') + '" data-key-provider="' + id + '">' +
-      (active ? '<button type="button" class="key-back" data-key-back>‹ <span>All API Providers</span></button>' : '') +
-      '<button type="button" class="kghead" data-key-provider-open="' + id + '">' + title + '<span class="chev">›</span></button>' +
-      '<div class="kgbody"' + (active ? '' : ' hidden') + '>' + rows + '</div></section>';
+    const folded = keyFold()[id] !== false;
+    const models = Prov.cachedModels(id) || [];
+    h += '<details class="kgrp cockpit-provider" data-key-provider="' + id + '"' + (folded ? '' : ' open') + '>' +
+      '<summary class="kghead">' + title + '</summary><div class="kgbody">' + (rows || '<p class="hint">No key saved. Add one below.</p>') +
+      '<p class="hint">' + (models.length ? 'Available models: ' + esc(models.map(m => m + (/:free$/.test(m) ? ' (free)' : '')).join(', ')) : 'Pin this engine and load models to see its live catalog. Availability and free quotas depend on your account.') + '</p></div></details>';
+
   });
   kl.innerHTML = h || '<p class="hint">No keys yet.</p>';
   try { paintEngPin(); } catch (e) { }
 }
-$('kList').addEventListener('click', e => { if (e.target.closest('[data-key-back]')) { keyDetailId = null; renderKeys(); return; } const b = e.target.closest('[data-key-provider-open]'); if (!b) return; keyDetailId = b.dataset.keyProviderOpen; renderKeys(); const sc = $('kList').closest('.acc-b'); if (sc) sc.scrollTop = 0; });
+$('kList').addEventListener('toggle', e => {
+  const id = e.target.dataset.keyProvider;
+  if (id) { const f = keyFold(); f[id] = !e.target.open; LS.set(KEY_FOLD, f); }
+}, true);
+
 // V1.10.11: the settings menu calls this when a page is closed so the provider list is back on top next time.
 window.emberKeysReset = () => { if (keyDetailId !== null) { keyDetailId = null; renderKeys(); } };
 
@@ -961,8 +966,8 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-link
 function paintEngPin() {
   const sel = $('engPin'); if (!sel) return;
   const dotOf = id => ({ ok: '🟢', limited: '🟡', bad: '🔴', none: '⚪', unknown: '⚪' }[Prov.stateOf(id)] || '⚪');
-  sel.innerHTML = '<option value="">🔄 Auto (fastest working key)</option>' + (Prov.ACTIVE_IDS || Prov.IDS).map(id => '<option value="' + id + '">' + dotOf(id) + ' ' + Prov.CFG[id].name + '</option>').join('');
-  sel.value = Prov.getPinned() || '';
+  sel.innerHTML = '<option value="">🔄 Auto (fastest working key)</option><option value="pollinations">Pollinations · free / no key</option>' + (Prov.ACTIVE_IDS || Prov.IDS).map(id => '<option value="' + id + '">' + dotOf(id) + ' ' + Prov.CFG[id].name + '</option>').join('');
+  sel.value = Prov.getPinned() || (Prov.freeOn() && LS.get('ember_cockpit_pollinations', false) ? 'pollinations' : '');
   paintEngModel();
 }
 function paintEngModel(list) {
@@ -978,6 +983,18 @@ function paintEngModel(list) {
 }
 $('engPin') && $('engPin').addEventListener('change', () => {
   const v = $('engPin').value || null, pm = Prov.getPinnedModel();
+  if (v === 'pollinations') {
+    LS.set('ember_cockpit_pollinations', true);
+    Prov.setPinned(null); Prov.setPinnedModel(null);
+    if (!Prov.freeOn()) $('swFree').click();
+    paintEngModel(); $('engPin').value = 'pollinations';
+    $('engTruth').textContent = 'Pollinations goes first through the existing Free Mode route; keyed engines remain fallbacks. The hosted model is not disclosed.';
+    renderTop(); return;
+  }
+  const wasFreeChoice = LS.get('ember_cockpit_pollinations', false);
+  LS.set('ember_cockpit_pollinations', false);
+  if (wasFreeChoice && Prov.freeOn()) { $('swFree').click(); $('engPin').value = v || ''; }
+
   Prov.setPinned(v); if (!v || (pm && pm.id != v)) Prov.setPinnedModel(null);
   toast(v ? Prov.CFG[v].name + ' goes first now' : 'Back to auto'); paintEngModel(); renderTop();
 });
@@ -1093,13 +1110,7 @@ function memGroupHtml(a, item) {
   if (!a.length) { memGrpOpen = null; return '<p class="hint">Nothing yet.</p>'; }
   const names = MEM_GROUPS.map(g => g[0]).concat('Other'), box = {}; names.forEach(n => { box[n] = []; });
   a.forEach((f, i) => { const t = String((f && f.t) || ''), g = MEM_GROUPS.find(x => x[1].test(t)); box[g ? g[0] : 'Other'].push(i); });
-  if (memGrpOpen && !(box[memGrpOpen] && box[memGrpOpen].length)) memGrpOpen = null;
-  if (memGrpOpen) {
-    const n = memGrpOpen;
-    return '<button type="button" class="mrow mrow-back" data-mg-back><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span class="mrow-t"><b>' + esc(n) + '</b><small>' + box[n].length + (box[n].length === 1 ? ' fact' : ' facts') + ' · tap to go back to all groups</small></span></button>' +
-      '<div class="mg-items">' + box[n].map(i => item('facts', a[i], i)).join('') + '</div>';
-  }
-  return '<div class="mgrp mg-list">' + names.filter(n => box[n].length).map(n => '<button type="button" class="mrow" data-mg-open="' + esc(n) + '"><span class="mrow-t"><b>' + esc(n) + '</b></span><span class="mrow-n">' + box[n].length + '</span><svg class="mrow-c" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>').join('') + '</div>';
+  return names.filter(n => box[n].length).map(n => '<section class="cockpit-memory-group"><h4>' + esc(n) + ' <small>(' + box[n].length + ')</small></h4><div class="mg-items">' + box[n].map(i => item('facts', a[i], i)).join('') + '</div></section>').join('');
 }
 function renderMem() {
   const item = (k, f, i) => '<div class="mi' + (S.learn ? '' : ' off') + '"><span>' + esc(f.t) + '</span><button class="ed" data-m="' + k + '" data-i="' + i + '" data-e="1">Edit</button><button data-m="' + k + '" data-i="' + i + '" title="Delete">✕</button></div>';

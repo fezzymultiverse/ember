@@ -12,6 +12,8 @@
 <link rel="stylesheet" href="ember_cc_widget.css?v=1.10.5"><link rel="stylesheet" href="ember_blue.css"><link rel="stylesheet" href="ember_v89.css"><link rel="stylesheet" href="ember_command_center.css"><link rel="stylesheet" href="ember_routing.css"><link rel="stylesheet" href="ember_workspace.css"><link rel="stylesheet" href="ember_v96.css?v=1.9.101"><link rel="stylesheet" href="ember_v96_ui.css?v=1.10.7"><link rel="stylesheet" href="ember_hub.css?v=1.10.12-panel1"><link rel="stylesheet" href="ember_v104.css?v=1.10.8"><link rel="stylesheet" href="ember_v108.css?v=1.10.9"><link rel="stylesheet" href="ember_v110.css?v=1.10.10"><link rel="stylesheet" href="ember_menu.css?v=1.10.11">
 <link rel="stylesheet" href="ember_plugins.css">
 <link rel="stylesheet" href="ember_panel.css?v=1.10.12-panel1">
+<link rel="stylesheet" href="ember_cockpit.css?v=1.10.15">
+<link rel="stylesheet" href="ember_keyless.css?v=1.10.16">
 </head><body>
 <div id="app">
 <header>
@@ -54,14 +56,12 @@
     <section class="ecc-card"><div class="ecc-card-title"><span class="ecc-icon">◈</span><h3>Thought Inspector</h3><span class="ecc-chip">SUMMARY</span></div><p class="ecc-description">Ember’s public three-phase summary, not private internal reasoning.</p><pre id="eccThought" aria-live="polite">No three-phase summary received yet.</pre></section>
     <section class="ecc-card"><div class="ecc-card-title"><span class="ecc-icon ecc-blue">▦</span><h3>Memory Matrix</h3><span id="eccMemoryCount" class="ecc-chip">0</span></div><p class="ecc-description">File excerpts present in the latest observed model request. Not the entire library or repository.</p><ul id="eccMemory"></ul><p id="eccMemoryEmpty" class="ecc-empty">No file excerpts observed in the context window.</p><small id="eccContextStatus">Waiting for a model request.</small></section>
     <section class="ecc-card" id="eccGitHub" data-gtab="connect" aria-label="GitHub">
-      <div class="ecc-card-title"><span class="ecc-icon">ϟ</span><h3>GitHub</h3><span class="ecc-chip" id="eccGitChip">—</span></div>
+      <div class="ecc-card-title"><span class="ecc-icon">ϟ</span><h3>Repository Cockpit</h3><span class="ecc-chip" id="eccGitChip">—</span></div>
       <p id="eccRepoSummary" class="ecc-description"></p>
-      <div class="ecc-gtabs" role="tablist" aria-label="GitHub sections">
-        <button type="button" role="tab" id="eccGTab_connect" aria-selected="true" data-gtab="connect">Connect</button>
-        <button type="button" role="tab" id="eccGTab_repos" aria-selected="false" data-gtab="repos">Repos</button>
-        <button type="button" role="tab" id="eccGTab_build" aria-selected="false" data-gtab="build">Build &amp; Run</button>
-        <button type="button" role="tab" id="eccGTab_files" aria-selected="false" data-gtab="files">Files</button>
-        <button type="button" role="tab" id="eccGTab_activity" aria-selected="false" data-gtab="activity">Activity</button>
+      <div class="ecc-gtabs" role="tablist" aria-label="Command Centre workflow">
+        <button type="button" role="tab" id="eccGTab_connect" aria-selected="true" data-gtab="connect">1 · Brain</button>
+        <button type="button" role="tab" id="eccGTab_repos" aria-selected="false" data-gtab="repos">2 · Search</button>
+        <button type="button" role="tab" id="eccGTab_build" aria-selected="false" data-gtab="build">3 · Run &amp; Push</button>
       </div>
       <div id="repoWorkspace" class="ecc-gbody">
         <div id="ghCard"><div id="ghHub"></div></div>
@@ -154,7 +154,7 @@
 <input type="text" id="siteName" placeholder="Name (e.g. GitHub)" autocomplete="off"><input type="text" id="siteUrl" placeholder="https://github.com/you" autocomplete="off" style="margin-top:6px"><button class="btn g" id="siteAdd" style="margin-top:6px">Save site</button></div>
 </div></section>
 <section id="browser" class="sheet"><div class="sh"><b>Browser</b><button class="hb" id="brX" aria-label="Close">✕</button></div>
-<div class="stabs" id="brTabs"><button class="stab on" data-bt="web">Browser</button><button class="stab" data-bt="docs">Documents</button></div>
+<div class="stabs" id="brTabs"><button class="stab on" data-bt="web">Browser</button><button class="stab" data-bt="docs">Documents</button><button class="stab" id="brNotesTab" data-bt="notes">Notes</button></div>
 <div class="brbody" id="brWeb">
 <div class="brbar"><button class="hb" id="brBack" aria-label="Back">←</button><button class="hb" id="brFwd" aria-label="Forward">→</button><button class="hb" id="brReload" aria-label="Reload">⟳</button><input type="text" id="brUrl" placeholder="Search or paste a link" autocomplete="off" autocapitalize="off" enterkeyhint="go"><button class="hb" id="brGo" aria-label="Go">Go</button></div>
 <div id="brSites" class="ptags"></div>
@@ -177,7 +177,7 @@
 <button class="stab" data-st="none" tabindex="-1">None</button>
 <button class="stab on" data-st="general">General</button>
 <button class="stab" data-st="keys">Keys</button>
-<button class="stab" data-st="features">Features</button>
+<button class="stab" data-st="features">Providers</button>
 <button class="stab" data-st="scraping">Scraping</button>
 <button class="stab" data-st="hacking">Hacking</button>
 <button class="stab" data-st="music">Music</button>
@@ -376,7 +376,7 @@
 <div class="btnrow"><button class="btn" id="bExp">Export backup</button><button class="btn g" id="bImp">Import backup</button></div>
 <input type="file" id="fImp" accept="application/json,.json" hidden>
 <button class="btn g danger" id="bWipe" style="margin-top:10px">Delete everything</button>
-<p class="hint" id="ver">Ember V1.10.11 · Settings menus open to the right, compact rows · One Settings button, blue dot by the name · Command Centre widget under Settings, brain search-and-push, + Create audio / video, Stability bridge · Scroll fix, live terminal, + Create PDF</p></div>
+<p class="hint" id="ver">Ember V1.10.15 · The Cockpit Update · Full-screen flat settings · Brain → Search → Queue → Run & Push</p></div>
 </div></section>
 
 <section id="react" class="sheet"><div class="sh"><b>Reasoning</b><button class="hb" id="bRx" aria-label="Close reasoning">✕</button></div>
@@ -658,6 +658,8 @@
   document.addEventListener('ember-player-state', syncTrack);
 })();
 </script>
-<script src="ember_v79.js"></script><script src="ember_v80.js"></script><script src="ember_v83.js"></script><script src="ember_acc.js"></script><script src="ember_v89.js"></script>
-<script src="ember_features.js"></script><script src="ember_workspace.js?v=1.10.13-github1"></script><script src="ember_action_menu.js"></script><script src="ember_v96_ui.js?v=1.10.2"></script><script src="ember_prov_next.js?v=1.10.3"></script><script src="ember_icons.js?v=1.10.11"></script><script src="ember_hub.js?v=1.10.13-github1"></script><script src="ember_v104.js?v=1.10.4"></script><script src="ember_mediaplus.js?v=1.10.5"></script><script src="ember_brainpush.js?v=1.10.5"></script><script src="ember_cc_widget.js?v=1.10.5"></script><script src="ember_v108.js?v=1.10.9"></script><script src="ember_v110.js?v=1.10.10"></script><script src="ember_menu.js?v=1.10.11"></script><script src="ember_apis.js?v=1.10.12"></script><script src="ember_back.js?v=1.10.12-panel1"></script>
+<script src="ember_v79.js"></script><script src="ember_v80.js"></script><script src="ember_v83.js"></script><script src="ember_v89.js"></script>
+<script src="ember_features.js"></script><script src="ember_workspace.js?v=1.10.14-cockpit"></script><script src="ember_action_menu.js"></script><script src="ember_prov_next.js?v=1.10.3"></script><script src="ember_icons.js?v=1.10.11"></script><script src="ember_v104.js?v=1.10.4"></script><script src="ember_mediaplus.js?v=1.10.5"></script><script src="ember_brainpush.js?v=1.10.5"></script><script src="ember_v110.js?v=1.10.10"></script><script src="ember_apis.js?v=1.10.12"></script><script src="ember_back.js?v=1.10.12-panel1"></script>
+<script src="ember_cockpit.js?v=1.10.15"></script>
+<script src="ember_keyless.js?v=1.10.16"></script>
 </body></html>

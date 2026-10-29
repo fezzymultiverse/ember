@@ -1,0 +1,177 @@
+/* Run: npm run test:cockpit (requires Playwright Chromium: npx playwright install chromium).
+   Browser integration tests use deterministic GitHub fixtures. No real repository writes. */
+'use strict';
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+const {spawn}=require('node:child_process');
+const root=path.join(__dirname,'..'), out=path.join(__dirname,'cockpit-results');
+fs.mkdirSync(out,{recursive:true});
+let passed=0;const checks=[];
+function check(name,condition){assert.ok(condition,name);passed++;checks.push(name);console.log('PASS '+name);}
+const server=spawn(process.execPath,['serve.js','8124'],{cwd:root,stdio:'ignore'});
+let browser;
+(async()=>{
+  for(const [file,hash] of Object.entries(require('./cockpit-protected.json'))){check('protected backend unchanged: '+file,crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'www',file))).digest('hex')===hash);}
+  browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+  const ctx=await browser.newContext({viewport:{width:412,height:915},isMobile:true,hasTouch:true,serviceWorkers:'block'});
+  const page=await ctx.newPage(), errors=[],requests=[];
+  let accept=true,sshLinked=true,searchFails=false;
+  const ssh='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE1vY2tQdWJsaWNLZXlGb3JUZXN0c09ubHkxMjM0';
+  page.on('pageerror',e=>errors.push(e.message));
+  page.on('dialog',d=>accept?d.accept():d.dismiss());
+  await ctx.route('**/*',async route=>{
+    const req=route.request(),u=new URL(req.url());
+    if(u.hostname==='127.0.0.1')return route.continue();
+    if(u.hostname==='api.github.com'){
+      requests.push({path:u.pathname,method:req.method()});
+      if(req.method()!=='GET')return route.fulfill({status:500,body:JSON.stringify({message:'Unexpected write in UI test'})});
+      if(u.pathname==='/user')return route.fulfill({json:{login:'cockpit-tester'}});
+      if(u.pathname==='/users/cockpit-tester/keys')return route.fulfill({json:sshLinked?[{id:11,key:ssh}]:[]});
+      if(u.pathname==='/search/repositories')return route.fulfill(searchFails?{status:403,json:{message:'Fixture rate limit'}}:{json:{total_count:2,items:[{full_name:'sample/cockpit-addon',description:'Fixture repo',html_url:'https://github.com/sample/cockpit-addon',license:{spdx_id:'MIT'}},{full_name:'sample/second',description:'Second fixture',html_url:'https://github.com/sample/second'}]}});
+      if(u.pathname==='/user/repos')return route.fulfill({json:[]});
+      return route.fulfill({json:{default_branch:'main',permissions:{push:true},workflow_runs:[]}});
+    }
+    return route.abort();
+  });
+  await page.addInitScript(()=>{
+    // Seed health fixtures only once. These are dummy non-functional credentials.
+    if(!localStorage.getItem('cockpit_test_seed')){
+      localStorage.setItem('ember_keys',JSON.stringify({groq:[{key:'gsk_'+ 'a'.repeat(30),st:{ok:true,ms:50,model:'fixture-model'}},{key:'gsk_'+ 'b'.repeat(30)}],gemini:[{key:'AIza'+ 'c'.repeat(35),st:{ok:false,msg:'fixture rejected'}}]}));
+      localStorage.setItem('cockpit_test_seed','1');
+    }
+  });
+  await new Promise(r=>setTimeout(r,250));
+  await page.goto('http://127.0.0.1:8124');
+  await page.waitForFunction(()=>window.EmberCockpit?.version==='1.10.14');
+  await page.waitForTimeout(1700);
+  await page.evaluate(()=>{Prov.entries('groq')[0].st={ok:true,limited:false,model:'fixture-model'};Prov.entries('groq')[1].st=null;Prov.entries('gemini')[0].st={ok:false,msg:'fixture rejected'};window.dispatchEvent(new Event('ember-provider-stats'));});
+  check('chat Panel button removed',await page.locator('#bPanelTop').count()===0);
+  check('only API-count indicator in chat provider footer',await page.locator('#chatProviderBar').evaluate(x=>x.children.length===1&&x.firstElementChild.id==='cockpitApiCount'));
+  check('active count excludes unchecked and rejected keys',await page.locator('#cockpitApiCount').innerText()==='1 active API key');
+  check('footer badge aligned to far right',await page.locator('#cockpitApiCount').evaluate(x=>{const r=x.getBoundingClientRect();return r.right<=innerWidth&&r.right>innerWidth-30;}));
+  await page.screenshot({path:path.join(out,'chat-412x915.png')});
+  await page.evaluate(()=>{EmberBridge.getMem().facts=[{t:'My name is Cockpit Tester.'},{t:'I like music and playlists.'}];});
+  await page.locator('#bSetTop').click();
+  const geometry=await page.locator('#settings').boundingBox();
+  check('Settings exactly full-screen at 412x915',geometry.x===0&&geometry.y===0&&geometry.width===412&&geometry.height===915);
+  check('Settings header says Settings',await page.locator('#setTitle').textContent()==='Settings');
+  check('nine flat visible categories',await page.locator('#cockpitSettings > section').count()===9);
+  check('old settings navigation is not visible',!(await page.locator('#accWrap').isVisible())&&!(await page.locator('#stabs').isVisible())&&await page.locator('#emberHub').count()===0);
+  check('all original controls visible without submenu',await page.locator('#engPin').isVisible()&&await page.locator('#sName').isVisible()&&await page.locator('#swScrape').isVisible()&&await page.locator('#swMusic').isVisible());
+  check('media controls inline and no extra open button',await page.locator('#bMediaEng').count()===0&&await page.locator('#cockpit_engine #egNl').isVisible());
+  check('Voice lives in Memory and Settings',await page.locator('#cockpit_general #sEngine').count()===1);
+  check('Device tools has own settings slot',await page.locator('#cockpit_device #bDevOpen').count()===1);
+  check('YouTube and yt-dlp live in Hacking',await page.locator('#cockpit_hacking #efDlEngine').count()===1&&await page.locator('#cockpit_hacking #swYoutube').count()===1);
+  check('Music tools and system integration merged',await page.locator('#cockpitMusicPanel #auToken').count()===1&&await page.locator('#cockpitMusicPanel #swPing').count()===1&&await page.locator('#cockpitMusicPanel #swAgent').count()===1);
+  check('Termux cards merged',await page.locator('#cockpitTermuxPanel .cockpit-control-group').count()===2);
+  check('actual terminal is inline within merged Termux section',await page.locator('#cockpitTermuxPanel #etPanel').isVisible()&&await page.locator('#etPanel').evaluate(x=>getComputedStyle(x).position==='relative'));
+  await page.locator('#etTabs [data-v="setup"]').click();
+  check('existing Termux setup handlers still work',await page.locator('#cockpitTermuxPanel #etCmd').isVisible());
+  await page.locator('#etTabs [data-v="term"]').click();
+  check('memory groups expose all facts without child pages',await page.locator('#mFacts .mi').count()===2&&await page.locator('#mFacts [data-mg-open]').count()===0);
+  check('one scraping panel with paste and inline checks',await page.locator('#cockpitScrapingPanel #swPad').count()===1&&await page.locator('#wp_health').isVisible()&&await page.locator('#wp_test').isVisible());
+  check('key count not in Settings',await page.locator('#settings #cockpitApiCount').count()===0);
+  check('Free Mode split into Providers and Features',await page.locator('#cockpit_providers').count()===1&&await page.locator('#cockpit_features #swFree').count()===1);
+  const scrolling=await page.locator('#settings > .sb').evaluate(async x=>{x.scrollTop=0;x.scrollTo({top:600,behavior:'smooth'});await new Promise(r=>setTimeout(r,90));const mid=x.scrollTop;await new Promise(r=>setTimeout(r,600));return{mid,end:x.scrollTop,total:x.scrollHeight,client:x.clientHeight,width:x.scrollWidth,local:x.clientWidth};});
+  check('Settings smooth scroll advances and settles',scrolling.mid>0&&scrolling.end>=595&&scrolling.total>scrolling.client);
+  check('Settings has no horizontal scrolling',scrolling.width<=scrolling.local+1);
+  await page.locator('#settings > .sb').evaluate(x=>{x.style.scrollBehavior='auto';x.scrollTop=0;});
+  await page.screenshot({path:path.join(out,'settings-412x915.png')});
+  const list=page.locator('#cockpitProviderList');
+  check('provider list initially collapsed',!(await list.getAttribute('open')));
+  await list.locator(':scope > summary').click();
+  check('all configured providers available as accordions',await page.locator('#kList details.cockpit-provider').count()===await page.evaluate(()=>Prov.IDS.length));
+  const groq=page.locator('#kList [data-key-provider="groq"]');
+  await groq.locator('summary').click();
+  check('provider expands inline without hiding others',await groq.locator('.kgbody').isVisible()&&await page.locator('#kList [data-key-provider="gemini"] summary').isVisible());
+  await groq.locator('summary').click();
+  check('provider accordion collapses',!(await groq.locator('.kgbody').isVisible()));
+  await page.locator('#engPin').selectOption('pollinations');
+  check('Pollinations selectable through unchanged Free Mode route',await page.evaluate(()=>Prov.freeOn()&&!Prov.getPinned()&&document.getElementById('engPin').value==='pollinations'));
+  await page.locator('#engPin').selectOption('groq');
+  check('selecting keyed provider still uses original pin logic',await page.evaluate(()=>Prov.getPinned()==='groq'&&!Prov.freeOn()));
+  await page.evaluate(()=>{Prov.coolKey(Prov.entries('groq')[0].key,60);window.dispatchEvent(new Event('ember-provider-stats'));});
+  check('active key indicator excludes cooled-down keys',await page.locator('#cockpitApiCount').innerText()==='0 active API keys');
+  await page.locator('#padText').fill('Cockpit notepad regression');await page.locator('#padSave').click();
+  check('notepad handler retained',await page.evaluate(()=>JSON.parse(localStorage.getItem('ember_pad')))==='Cockpit notepad regression');
+  await page.keyboard.press('Escape');
+  check('Escape closes Settings and restores chat interactivity',!(await page.locator('#settings').isVisible())&&await page.locator('#app').evaluate(x=>!x.inert));
+  // Browser notes is the actual existing notes editor, embedded as a sibling tab.
+  await page.evaluate(()=>EmberBrowser.open('notes'));
+  await page.waitForSelector('#nNew');
+  check('Notes is directly in Browser tab',await page.locator('#brNotes').isVisible()&&await page.locator('#browser #nNew').isVisible());
+  await page.locator('#brNotesTab').click();await page.locator('#nNew').click();
+  await page.waitForSelector('#eB');
+  await page.locator('#eB').fill('Notes survive cockpit restructuring.');
+  await page.locator('#brNotesTab').click();
+  check('reselecting Notes does not reset the active editor',await page.locator('#eB').inputValue()==='Notes survive cockpit restructuring.');
+  await page.locator('#brX').click();await page.waitForTimeout(150);
+  check('existing notes autosave preserved',await page.evaluate(async()=>!!(await EmberDocs.all()).find(x=>x.src==='note'&&x.text==='Notes survive cockpit restructuring.')));
+  await page.evaluate(()=>EmberWorkspace.open('connect'));await page.waitForTimeout(350);
+  check('Command Centre has exactly three workflow tabs',await page.locator('#eccGitHub [role="tab"]').count()===3);
+  check('Files tab and all Files UI logic removed',await page.locator('#eccGTab_files,#ghFilePath,#ghFileList,#ghQuery').count()===0);
+  for(const name of ['connect','repos','build']){
+    await page.locator('#eccGTab_'+name).click();
+    check('Command Centre '+name+' tab switches correctly',await page.locator('#eccGitHub').getAttribute('data-gtab')===name&&await page.locator('#eccGTab_'+name).getAttribute('aria-selected')==='true');
+  }
+  await page.locator('#eccGTab_connect').focus();await page.keyboard.press('ArrowRight');
+  check('Command tabs support keyboard navigation',await page.locator('#eccGitHub').getAttribute('data-gtab')==='repos');
+  await page.locator('#eccGTab_connect').click();await page.locator('#ghBrainRepo').fill('sample/brain');await page.locator('[data-gh-action="save-repo"]').click();
+  check('Apply Brain uses existing handler',await page.evaluate(()=>EmberGithub.knowledgeRepo()==='sample/brain'));
+  await page.locator('#ghTok').fill('ghp_'+'z'.repeat(40));await page.locator('[data-gh-action="save-token"]').click();
+  check('existing token save works after Files removal',await page.evaluate(()=>EmberGithub.on()));
+  await page.locator('#eccGTab_repos').click();await page.locator('#rrSearch').fill('cockpit');await page.locator('[data-rr="search"]').click();
+  await page.waitForSelector('#rrResults [data-rr-add]');
+  check('repo search automatically opens live terminal dropdown',await page.locator('#cockpitRepoTerminal').evaluate(x=>x.open));
+  check('live terminal contains actual results and status',await page.locator('#cockpitRepoTerminal #rrResults').innerText().then(x=>x.includes('sample/cockpit-addon'))&&await page.locator('#cockpitSearchLog').innerText().then(x=>x.includes('repos shown')));
+  await page.locator('#rrResults [data-rr-add]').first().click();
+  check('Apply alone does not stage or enqueue',await page.evaluate(()=>EmberCockpitQueue.snapshot().length===0&&EmberRepoRunner.config().sources.length===1));
+  await page.locator('[data-pending="sample/cockpit-addon"]').check();
+  accept=false;await page.locator('#cockpitConfirmQueue').click();
+  check('queue confirmation cancel is non-mutating',await page.evaluate(()=>EmberCockpitQueue.snapshot().length===0&&EmberRepoRunner.config().sources.length===1));
+  accept=true;await page.locator('#cockpitConfirmQueue').click();
+  check('confirmed selection waits in persistent queue',await page.evaluate(()=>EmberCockpitQueue.snapshot().length===1&&EmberCockpitQueue.snapshot()[0].state==='waiting'&&EmberRepoRunner.config().sources.length===1));
+  check('queue flow made no GitHub writes',requests.every(x=>x.method==='GET'));
+  await page.screenshot({path:path.join(out,'search-queue-412x915.png')});
+  await page.locator('#eccGTab_build').click();await page.locator('#rrTarget').fill('sample/output');
+  await page.evaluate(()=>{window.__installs=0;window.__originalInstall=EmberRepoRunner.install;EmberRepoRunner.install=async()=>{window.__installs++;return{ok:true,dispatched:true,url:'https://github.com/sample/output/actions'};};});
+  await page.locator('#cockpitRunPush').click();
+  check('Run blocked without linked public SSH key',await page.evaluate(()=>window.__installs===0)&&await page.locator('#rrStatus').innerText().then(x=>x.includes('public key')));
+  await page.locator('#cockpitSshPublic').fill('-----BEGIN OPENSSH PRIVATE KEY-----');await page.locator('#cockpitVerifySsh').click();
+  check('private SSH keys explicitly rejected',await page.locator('#cockpitSshStatus').innerText().then(x=>x.includes('Private keys are not accepted')));
+  await page.locator('#cockpitSshPublic').fill(ssh);sshLinked=false;await page.locator('#cockpitRunPush').click();
+  await page.waitForFunction(()=>document.getElementById('rrStatus').textContent.includes('not found'));
+  check('unlinked SSH key cannot run',await page.evaluate(()=>window.__installs===0));
+  sshLinked=true;accept=false;await page.locator('#cockpitRunPush').click();await page.waitForFunction(()=>!document.getElementById('cockpitRunPush').disabled);
+  check('cancelled Run does not change configured sources',await page.evaluate(()=>window.__installs===0&&EmberRepoRunner.config().sources.length===1));
+  accept=true;await page.locator('#cockpitRunPush').click();await page.waitForFunction(()=>window.__installs===1);
+  await page.waitForFunction(()=>!document.getElementById('cockpitRunPush').disabled);
+  check('confirmed Run stages chosen source using existing runner API',await page.evaluate(()=>EmberRepoRunner.config().sources.some(x=>x.repo==='sample/cockpit-addon')));
+  check('dispatch labelled honestly, not claimed complete',await page.locator('#rrStatus').innerText().then(x=>x.includes('Workflow dispatched')&&x.includes('actual completion')));
+  check('SSH public key is never stored',await page.evaluate(key=>!Object.keys(localStorage).some(k=>localStorage.getItem(k).includes(key)),ssh));
+  await page.screenshot({path:path.join(out,'run-push-412x915.png')});
+  await page.locator('[data-queue="sample/cockpit-addon"]').uncheck();await page.locator('#cockpitRunPush').click();
+  check('unchecked queue cannot dispatch',await page.evaluate(()=>window.__installs===1));
+  // Failed installation leaves queued work for retry, not a false success.
+  await page.locator('[data-queue="sample/cockpit-addon"]').check();
+  await page.evaluate(()=>EmberRepoRunner.install=async()=>{throw new Error('Fixture install failure');});
+  await page.locator('#cockpitRunPush').click();await page.waitForFunction(()=>document.getElementById('rrStatus').textContent.includes('Fixture install failure'));
+  check('failed Run leaves retryable queue',await page.evaluate(()=>EmberCockpitQueue.snapshot()[0].state==='waiting · review failure'));
+  await page.reload();await page.waitForFunction(()=>window.EmberCockpitQueue);
+  check('queue survives reload without automatic execution',await page.evaluate(()=>EmberCockpitQueue.snapshot().length===1&&EmberCockpitQueue.snapshot()[0].state==='waiting'));
+  await page.evaluate(()=>EmberWorkspace.open('repos'));await page.waitForTimeout(350);searchFails=true;
+  await page.locator('#rrSearch').fill('rate-limited');await page.locator('[data-rr="search"]').click();
+  await page.waitForFunction(()=>document.getElementById('rrStatus').textContent.includes('Fixture rate limit'));
+  check('search errors surfaced in live terminal',await page.locator('#cockpitSearchLog').innerText().then(x=>x.includes('Fixture rate limit')));
+  await page.locator('#eccClose').click();
+  await page.setViewportSize({width:1280,height:900});await page.locator('#bSetTop').click();
+  check('Settings remains full-screen on desktop',await page.locator('#settings').boundingBox().then(x=>x.width===1280&&x.height===900));
+  await page.locator('#bSx').click();await page.evaluate(()=>EmberWorkspace.open('build'));await page.waitForTimeout(350);
+  check('Command Centre remains unified on desktop',await page.locator('#emberCommandCenter').boundingBox().then(x=>x.width===1280));
+  check('desktop full-screen Command Centre is modal',await page.locator('#emberCommandCenter').getAttribute('role')==='dialog'&&await page.locator('#app').evaluate(x=>x.inert));
+  check('no JavaScript page errors',errors.length===0);
+  const result={status:'passed',viewport:'412x915',additionalViewport:'1280x900',passed,checks,errors,githubWrites:requests.filter(x=>x.method!=='GET'),notes:'GitHub HTTP responses are fixtures; runner dispatch is stubbed. No real credentials, SSH sessions, repository writes or cloud builds were used.'};
+  fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(result,null,2)+'\n');
+  console.log('\n'+passed+' cockpit assertions passed. Screenshots and report: tests/cockpit-results');
+})().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();server.kill();});
