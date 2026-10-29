@@ -28,7 +28,6 @@
     [/^Which engine answers/i, 'Which engine answers', 'Pin an engine or a model', 'route'],
     [/^Paste keys/i, 'Paste keys', 'Detect keys and sort them by provider', 'clip'],
     [/^Engine keys/i, 'Engine keys', 'Providers, saved keys and checks', 'key'],
-    [/^Puter$/i, 'Puter', 'Auth token for Puter models', 'cloud'],
     [/^GitHub$/i, 'GitHub', 'Token and Knowledge Brain Repo', 'branch'],
     [/^Notepad/i, 'Notepad', 'Paste anything, pull the keys out', 'note'],
     [/^AI routing/i, 'AI routing, media & downloads', 'Fallback rules, media artifacts, downloads', 'route'],
@@ -51,7 +50,6 @@
     repoRunnerFeature: ['Repo Runner', 'Run work across the whole brain', 'play'],
     ghRunnerCard: ['GitHub Runner', 'Builds and tests through GitHub Actions', 'play'],
     efRouting: ['AI routing, media & downloads', 'Fallback rules, media artifacts, downloads', 'route'],
-    puterCard: ['Puter', 'Auth token for Puter models', 'cloud'],
     usageCard: ['Usage', 'Replies per engine, today and this week', 'chart'],
     devToolsCard: ['Device tools', 'Wi-Fi, storage, RAM, battery', 'phone']
   };

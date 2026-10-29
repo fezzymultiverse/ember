@@ -1855,7 +1855,6 @@ html body .msg.a p,html body .msg.a ul,html body .msg.a ol,html body .msg.a pre{
 #pTags{gap:8px;margin:12px 0}
 #plist>*{margin-bottom:12px}
 #drawer .dtabs{gap:6px;padding:10px 12px}
-.puterrow{margin-top:8px}
 
 /* Verified per-answer GitHub provenance, separate from answer text. */
 .gh-last-read{display:table;max-width:100%;box-sizing:border-box;margin:10px 0 4px;padding:4px 9px;border:1px solid currentColor;border-radius:12px;font-size:11px;line-height:1.5;opacity:.8;overflow-wrap:anywhere}

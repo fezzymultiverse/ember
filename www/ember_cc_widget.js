@@ -1,5 +1,5 @@
 // Ember V1.10.5 - ember_cc_widget.js: fills the Command Centre widget at the bottom of Settings (the expandable one from V1.9.6) with the real controls.
-// Brain (token + repo), Find & write (search -> write what you found into the brain -> push), Media (Stability / Puter), Live terminal.
+// Brain (token + repo), Find & write (search -> write what you found into the brain -> push), Media (Stability), Live terminal.
 'use strict';
 (() => {
   const W = window, D = document, $ = id => D.getElementById(id), G = W.EmberGithub, R = W.EmberRepoRunner;
@@ -30,7 +30,7 @@
 
       '<h3 class="cwx-h"><span>3</span>Media</h3>' +
       '<div class="cwx-row"><button type="button" class="btn g" id="cwBridge" data-cw="bridge">Stability bridge: OFF</button><button type="button" class="btn g" data-cw="ai">All AI settings</button></div>' +
-      '<div class="cwx-row"><select id="cwKind" aria-label="What to make"><option value="image">Image · Stability</option><option value="audio">Audio / music · Stability</option><option value="video">Video · Puter</option><option value="speech">Speech · Puter</option></select></div>' +
+      '<div class="cwx-row"><select id="cwKind" aria-label="What to make"><option value="image">Image · Stability</option><option value="audio">Audio / music · Stability</option><option value="video">Video · Stability (images + music)</option></select></div>' +
       '<textarea id="cwPrompt" rows="2" placeholder="Describe it, then Make"></textarea>' +
       '<button type="button" class="btn cwx-wide" data-cw="make">Make it</button><p class="cwx-msg" id="cwMediaMsg" role="status"></p><div id="cwArt" class="cwx-art"></div>';
     host.appendChild(w);
@@ -115,7 +115,7 @@
       const MP = W.EmberMediaPlus; if (!MP) throw new Error('The media engine did not load.');
       const kind = $('cwKind').value, p = $('cwPrompt').value.trim(); if (!p) { msg.media = 'Describe it first.'; setMsg('cwMediaMsg', msg.media); return; }
       setMsg('cwMediaMsg', 'Making ' + kind + '… this can take a few minutes.');
-      const r = await MP.make(kind, kind === 'video' || kind === 'speech' ? 'puter' : 'stability', p);
+      const r = await MP.make(kind, 'stability', p);
       msg.media = r.ok ? 'Saved ' + r.name + ' in ' + r.secs + 's.' : r.error; setMsg('cwMediaMsg', msg.media);
     }, 'media');
   }
