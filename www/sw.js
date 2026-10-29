@@ -1,6 +1,9 @@
 // Ember V1.8.3 service worker: app files only. Network first so updates arrive, cache as the offline fallback. API calls are never touched.
 // Generated from index.html plus the documented lazy/static asset closure.
-const V = 'ember-v1.10.17-wired', FILES = [
+const V = 'ember-v1.10.17-panel-wired-2', FILES = [
+  "ember_right_panel.js",
+  "ember_right_panel.css",
+  "ember_output_archive.js",
   "./",
   "ai.js",
   "ai_agent.js",

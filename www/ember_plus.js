@@ -77,7 +77,7 @@ function paint() {
 function setMenu(v) { menu.classList.toggle('hidden', !v); btn.classList.toggle('open', v); btn.setAttribute('aria-expanded', v ? 'true' : 'false'); }
 const isOpen = () => !menu.classList.contains('hidden');
 btn.onclick = e => { e.stopPropagation(); setMenu(!isOpen()); };
-document.addEventListener('click', e => { if (isOpen() && !menu.contains(e.target) && e.target !== btn) setMenu(false); });
+document.addEventListener('click', e => { if (isOpen() && !menu.contains(e.target) && !btn.contains(e.target)) setMenu(false); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen()) setMenu(false); });
 window.addEventListener('popstate', () => { if (isOpen()) setMenu(false); });
 chips.addEventListener('click', e => { const x = e.target.closest('[data-x]'); if (!x) return; on[x.dataset.x] = false; save(); paint(); });
@@ -151,9 +151,10 @@ async function doImage(file) {
   else toast((r && r.error) || 'The image could not be read.');
 }
 async function doText(file) {
+  if (file.size > 2 * 1024 * 1024) return toast('This text file exceeds 2 MB. Split it into smaller files; nothing has been attached or cut.');
   let t; try { t = await readText(file); } catch (e) { return toast(e.message); }
   if (/[\u0000]/.test(t.slice(0, 4000))) return toast('That looks like a binary file, not text.');
-  const cut = t.length > 20000; addToBox('[File: ' + file.name + (cut ? ' - first 20,000 characters' : '') + ']\n' + t.slice(0, 20000)); toast('File added');
+  addToBox('[File: ' + file.name + ']\n' + t); toast('Full file added');
 }
 function songBlock(r) {
   if (!r || r.ok === false) return null;

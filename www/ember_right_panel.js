@@ -1,333 +1,121 @@
-/* Right-panel bridge. The visible panel lives in the workspace shell and drives these screens. */
+/* Wire the supplied right-panel concept to existing Ember controllers. No mock tool actions. */
 'use strict';
 (() => {
-  const $ = id => document.getElementById(id);
-  const embedded = window.parent && window.parent !== window;
-  const log = [];
-
-  function post(event, payload) {
-    if (!embedded) return;
-    try { window.parent.postMessage({ type: 'ember-nav', event, payload: payload || null }, location.origin); } catch (_) { /* shell not listening */ }
-  }
-
-  function engineLabel() {
-    const sel = $('engPin');
-    if (!sel || !sel.value) return 'Auto route';
-    const text = (sel.selectedOptions[0] && sel.selectedOptions[0].textContent) || sel.value;
-    return text.replace(/^[^A-Za-z0-9]+/, '').trim() || 'Auto route';
-  }
-
-  function metrics() {
-    return { online: navigator.onLine, engine: engineLabel(), lines: log.slice(0, 4) };
-  }
-
-  function pushLog(text) {
-    const line = new Date().toLocaleTimeString([], { hour12: false }) + '  ' + String(text || '').slice(0, 180);
-    log.unshift(line);
-    if (log.length > 8) log.pop();
-    post('metrics', metrics());
-  }
-
-  function note(text) {
-    const r = $('selectionResult');
-    if (r) r.textContent = text;
-    const t = $('toast');
-    if (t) {
-      t.textContent = text;
-      t.classList.add('show');
-      clearTimeout(note._t);
-      note._t = setTimeout(() => t.classList.remove('show'), 2400);
+  const W = window, D = document, $ = id => D.getElementById(id);
+  function init() {
+    const panel = $('emberRightPanel'); if (!panel || !W.EmberCockpit) return;
+    const backdrop = $('erpBackdrop'), trigger = $('bActionMenu'), search = $('erpToolSearch');
+    let lastFocus = null;
+    function close(restore = true) {
+      panel.hidden = true; panel.inert = true; backdrop.hidden = true;
+      D.body.classList.remove('erp-open'); trigger.setAttribute('aria-expanded', 'false');
+      $('app').inert = $('settings').classList.contains('show') || $('emberCommandCenter').classList.contains('ecc-open');
+      if (restore && lastFocus?.isConnected && !lastFocus.closest('[hidden]')) lastFocus.focus({ preventScroll: true });
     }
-    post('result', { text });
-    pushLog(text);
-  }
-
-  function openSettings(section) {
-    if (window.EmberHub && window.EmberHub.section) window.EmberHub.section(section);
-    else if (window.EmberCockpit && window.EmberCockpit.open) window.EmberCockpit.open(section);
-    else if ($('bSet')) $('bSet').click();
-  }
-
-  function openMusic(tab) {
-    if (window.EmberMusicUI && window.EmberMusicUI.open) window.EmberMusicUI.open();
-    else if ($('music')) $('music').classList.add('show');
-    if (tab) {
-      const b = document.querySelector('.mtab[data-m="' + tab + '"]');
-      if (b) b.click();
+    function refresh() {
+      const summary = W.EmberCommandCenter.snapshot();
+      $('erpActiveEngine').textContent = $('engs')?.textContent.trim() || 'Auto route';
+      const live = panel.querySelector('.erp-live'); live.textContent = navigator.onLine ? 'CONNECTED' : 'OFFLINE';
+      panel.querySelector('.erp-metric strong').textContent = navigator.onLine ? 'Network available' : 'Offline';
+      $('erpActivityLog').textContent = W.EmberTasks.count() + ' active timers · ' + summary.lineCount + ' recent log lines\n' + ($('eccTerminalStatus')?.textContent || 'Idle') + '\nNetwork connectivity is not a provider health check.';
     }
-  }
-
-  function closeChatBlockers() {
-    if ($('settings') && $('settings').classList.contains('show') && $('bSx')) $('bSx').click();
-    ['browser', 'music', 'device', 'react', 'graph', 'chats', 'nine'].forEach(id => {
-      const el = $(id);
-      if (el && el.classList.contains('show')) el.classList.remove('show');
+    function open() {
+      if (!panel.hidden) return close();
+      lastFocus = D.activeElement;
+      if ($('settings').classList.contains('show')) W.EmberCockpit.close();
+      if ($('emberCommandCenter').classList.contains('ecc-open')) W.EmberCommandCenter.close();
+      $('headerActionsMenu').classList.add('hidden');
+      panel.hidden = false; panel.inert = false; backdrop.hidden = false;
+      D.body.classList.add('erp-open'); $('app').inert = true; trigger.setAttribute('aria-expanded', 'true');
+      refresh(); $('erpClose').focus({ preventScroll: true });
+    }
+    function invoke(object, method, ...args) {
+      if (!object || typeof object[method] !== 'function') throw new Error('This module has not loaded. Reload Ember and try again.');
+      return object[method](...args);
+    }
+    function click(id) { const b = $(id); if (!b) throw new Error('This control is not available: ' + id); b.click(); }
+    function settings(section, id) { W.EmberCockpit.open(section); if (id) requestAnimationFrame(() => $(id)?.scrollIntoView({ block: 'center' })); }
+    function draft(text) { const input = $('inp'); input.value = text; input.dispatchEvent(new Event('input', { bubbles: true })); input.focus(); }
+    const actions = {
+      'Start a conversation': () => { $('inp').focus(); },
+      'Choose an AI engine': () => click('bProv'),
+      'Memory & persona': () => settings('general'),
+      'Create music': () => { W.EmberPlus.flip('audio_gen', true); $('inp').focus(); },
+      'Write lyrics': () => { W.EmberPlus.flip('audio_gen', false); draft('Write original lyrics about '); },
+      'Draft a document': () => invoke(W.EmberCreate, 'open', 'notes'),
+      'Web search': () => { W.EmberPlus.flip('web', true); $('inp').focus(); },
+      'Open browser': () => invoke(W.EmberBrowser, 'open'),
+      'Scrape a page': () => settings('scraping', 'tUrl'),
+      'Music player': () => invoke(W.EmberMusicUI, 'open'),
+      'Find media': () => { invoke(W.EmberMusicUI, 'open'); $('dzQ')?.focus(); },
+      'Downloads': () => settings('hacking', 'cockpitYouTube'),
+      'Projects': () => { click('bHist'); D.querySelector('.dtab[data-d="projects"]')?.click(); W.EmberProjects.render(); },
+      'Tasks': () => showTasks(),
+      'Files & deliverables': () => invoke(W.EmberBrowser, 'open', 'docs'),
+      'Device controls': () => settings('device'),
+      'Terminal': () => settings('hacking', 'cockpitTermuxPanel'),
+      'GitHub & integrations': () => invoke(W.EmberWorkspace, 'open', 'connect'),
+      'AI providers & API keys': () => settings('engine'),
+      'Permissions & privacy': () => settings('permissions'),
+      'App settings': () => settings('general')
+    };
+    async function showTasks() {
+      const box = $('erpTasks'); box.hidden = false; box.inert = false; $('app').inert = true;
+      const result = await W.EmberTasks.dispatch('list_timers', {}), list = $('erpTasksList'); list.replaceChildren();
+      for (const t of result.timers || []) {
+        const row = D.createElement('div'), label = D.createElement('p'), button = D.createElement('button');
+        label.textContent = (t.note || 'Timer') + ' · ' + t.firesAt; button.type = 'button'; button.textContent = 'Cancel timer';
+        button.onclick = async () => { W.EmberTasks.setIntent('cancel timer'); const r = await W.EmberTasks.dispatch('cancel_timer', { id: t.id }); if (r.error) label.textContent = r.error; else showTasks(); };
+        row.append(label, button); list.append(row);
+      }
+      if (!list.children.length) list.textContent = result.error || 'No active timers. Ask Ember in chat to set a timer or reminder.';
+      $('erpTasksClose').focus();
+    }
+    function closeTasks() { $('erpTasks').hidden = true; $('erpTasks').inert = true; $('app').inert = false; trigger.focus(); }
+    $('erpTasksClose').onclick = closeTasks;
+    trigger.setAttribute('aria-controls', 'emberRightPanel'); trigger.setAttribute('aria-label', 'Open tools and settings panel');
+    trigger.addEventListener('click', e => { e.preventDefault(); e.stopImmediatePropagation(); open(); }, true);
+    backdrop.addEventListener('click', () => close()); $('erpClose').onclick = () => close();
+    panel.addEventListener('click', async e => {
+      e.stopPropagation(); // An outer document click must not immediately close a tool opened here.
+      const h = e.target.closest('.erp-group-head');
+      if (h) { const g = h.closest('.erp-group'), value = !g.classList.contains('open'); g.classList.toggle('open', value); h.setAttribute('aria-expanded', String(value)); return; }
+      if (e.target.closest('#erpCcToggle')) { const value = !$('erpCc').classList.contains('expanded'); $('erpCc').classList.toggle('expanded', value); $('erpCcToggle').setAttribute('aria-expanded', String(value)); refresh(); return; }
+      const cc = e.target.closest('[data-cc]');
+      if (cc) { close(false); if (cc.dataset.cc === 'routing') settings('providers'); else { W.EmberWorkspace.open('build'); if (cc.dataset.cc === 'activity') { if ($('eccTerminalBody').hidden) click('eccTerminalToggle'); W.EmberCommandCenter.close(); } } return; }
+      const item = e.target.closest('[data-name]'); if (!item) return;
+      const fn = actions[item.dataset.name]; close(false);
+      try { if (!fn) throw new Error('This tool is not wired.'); if (item.dataset.name === 'Tasks') W.EmberTasks.setIntent('list timers'); await fn(); }
+      catch (error) { W.EmberCommandCenter.write({ source: 'Right panel', stream: 'stderr', text: error.message }); const t = $('toast'); t.textContent = error.message; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 4000); }
     });
-    const created = $('xcreate');
-    if (created) created.classList.remove('show');
-    if (window.EmberCommandCenter && window.EmberCommandCenter.close) window.EmberCommandCenter.close();
-  }
-
-  function engines() {
-    const P = window.Prov;
-    const list = [
-      { id: '', name: 'Auto route', hint: 'Fastest working key, then the rest' },
-      { id: 'pollinations', name: 'Pollinations', hint: 'Free · no key' }
-    ];
-    if (P && P.CFG) {
-      (P.ACTIVE_IDS || P.IDS || []).forEach(id => {
-        if (!P.CFG[id]) return;
-        const state = P.stateOf ? P.stateOf(id) : '';
-        list.push({ id, name: P.CFG[id].name, hint: state || P.CFG[id].status || 'saved on this phone' });
+    const groups = [...panel.querySelectorAll('.erp-group')];
+    search.addEventListener('input', () => {
+      const term = search.value.toLowerCase().trim(); let matches = 0;
+      groups.forEach(g => {
+        const title = g.querySelector('.erp-label').textContent.toLowerCase(), titleMatch = title.includes(term); let visible = 0;
+        if (term && !g.dataset.beforeSearch) g.dataset.beforeSearch = g.classList.contains('open') ? 'open' : 'closed';
+        g.querySelectorAll('[data-name]').forEach(b => { b.hidden = !!term && !titleMatch && !b.textContent.toLowerCase().includes(term); if (!b.hidden) visible++; });
+        g.hidden = visible === 0; matches += visible;
+        if (term) g.classList.toggle('open', visible > 0);
+        else if (g.dataset.beforeSearch) { g.classList.toggle('open', g.dataset.beforeSearch === 'open'); delete g.dataset.beforeSearch; }
+        g.querySelector('.erp-group-head').setAttribute('aria-expanded', String(g.classList.contains('open')));
       });
-    }
-    let freePoll = false;
-    try { freePoll = JSON.parse(localStorage.getItem('ember_cockpit_pollinations') || 'false') === true; } catch (_) { freePoll = false; }
-    const pinned = freePoll ? 'pollinations' : ((P && P.getPinned && P.getPinned()) || '');
-    return { list, pinned };
-  }
-
-  function pin(id) {
-    const sel = $('engPin');
-    if (sel) {
-      if (![...sel.options].some(o => o.value === id)) {
-        const option = document.createElement('option');
-        option.value = id;
-        option.textContent = id || 'Auto route';
-        sel.append(option);
-      }
-      sel.value = id;
-      sel.dispatchEvent(new Event('change', { bubbles: true }));
-    } else if (window.Prov && window.Prov.setPinned) {
-      window.Prov.setPinned(id || null);
-    }
-    const label = id ? engineLabel() : 'Auto route';
-    note(id ? 'Engine set to ' + label + '.' : 'Engine routing is back on auto.');
-    const data = engines();
-    post('engines', data);
-    return data;
-  }
-
-  function timers() {
-    let rows = [];
-    try { rows = JSON.parse(localStorage.getItem('ember_timers') || '[]'); } catch (_) { rows = []; }
-    if (!Array.isArray(rows)) return [];
-    return rows.filter(t => t && t.id).map(t => ({
-      id: String(t.id),
-      note: t.note || 'Reminder',
-      fires: new Date(t.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }));
-  }
-
-  function ask(text) {
-    const inp = $('inp');
-    if (!inp) { note('Message box is not ready yet.'); return; }
-    const clean = String(text || '').trim().slice(0, 2000);
-    if (!clean) { note('Write something first.'); return; }
-    closeChatBlockers();
-    inp.value = clean;
-    inp.dispatchEvent(new Event('input', { bubbles: true }));
-    if ($('bSend')) $('bSend').click();
-    note('Sent to Ember.');
-  }
-
-  function githubTab(tab) {
-    return tab === 'connect' || tab === 'build' || tab === 'repos' ? tab : 'repos';
-  }
-
-  function activate(action, payload) {
-    payload = payload && typeof payload === 'object' ? payload : {};
-    try {
-      switch (action) {
-        case 'start':
-          closeChatBlockers();
-          if ($('bNew')) $('bNew').click();
-          if ($('inp')) $('inp').focus();
-          note('New conversation ready.');
-          break;
-        case 'engines':
-          post('engines', engines());
-          note('Pick an engine. Auto tries the fastest working key.');
-          break;
-        case 'pin':
-          pin(String(payload.id || ''));
-          break;
-        case 'memory':
-          openSettings('general');
-          note('Memory and persona are open.');
-          break;
-        case 'music-panel': {
-          const tab = payload.tab === 'get' || payload.tab === 'lib' || payload.tab === 'ai' ? payload.tab : 'lib';
-          openMusic(tab);
-          note(tab === 'get' ? 'Find media is open.' : tab === 'ai' ? 'Music studio is open.' : 'Music player is open.');
-          break;
-        }
-        case 'ask':
-          ask(payload.text);
-          break;
-        case 'docs':
-          if (window.EmberBrowser && window.EmberBrowser.open) window.EmberBrowser.open('docs');
-          else if ($('bDocsQuick')) $('bDocsQuick').click();
-          if (payload.fresh) setTimeout(() => { if ($('dcNew')) $('dcNew').click(); }, 140);
-          note(payload.fresh ? 'A new document is open.' : 'Files and documents are open.');
-          break;
-        case 'browser':
-          if (window.EmberBrowser && window.EmberBrowser.open) window.EmberBrowser.open('web');
-          else if ($('bGlobe')) $('bGlobe').click();
-          if (payload.q && window.EmberBrowser && window.EmberBrowser.go) window.EmberBrowser.go(String(payload.q).slice(0, 300));
-          note(payload.q ? 'Searching for “' + String(payload.q).slice(0, 80) + '”.' : 'Browser is open.');
-          break;
-        case 'scrape':
-          if (payload.url) {
-            if (window.EmberBrowser && window.EmberBrowser.open) window.EmberBrowser.open('web');
-            if (window.EmberBrowser && window.EmberBrowser.go) window.EmberBrowser.go(String(payload.url).slice(0, 500));
-            note('Reading that page.');
-          } else {
-            openSettings('scraping');
-            note('Web scraping tools are open.');
-          }
-          break;
-        case 'downloads':
-          openMusic('get');
-          setTimeout(() => { if ($('gtJobs')) $('gtJobs').scrollIntoView({ block: 'center' }); }, 90);
-          note('Downloads are open.');
-          break;
-        case 'projects':
-          if ($('bHist')) $('bHist').click();
-          setTimeout(() => {
-            const tab = document.querySelector('.dtab[data-d="projects"]');
-            if (tab) tab.click();
-          }, 40);
-          note('Projects are open.');
-          break;
-        case 'tasks':
-          post('timers', { timers: timers() });
-          note('Tasks and reminders. They fire while Ember is open.');
-          break;
-        case 'add-timer': {
-          const minutes = Math.round(Number(payload.minutes));
-          const label = String(payload.note || 'Reminder').slice(0, 160);
-          if (!window.EmberTasks) { note('Timers are not loaded yet.'); break; }
-          window.EmberTasks.setIntent('remind me in ' + minutes + ' minutes');
-          Promise.resolve(window.EmberTasks.dispatch('set_timer', { minutes, note: label })).then(r => {
-            note(r && r.error ? r.error : 'Reminder set' + (r && r.firesAt ? ' for ' + r.firesAt : '') + '.');
-            post('timers', { timers: timers() });
-          });
-          break;
-        }
-        case 'cancel-timer':
-          if (!window.EmberTasks) break;
-          window.EmberTasks.setIntent('cancel the timer');
-          Promise.resolve(window.EmberTasks.dispatch('cancel_timer', { id: String(payload.id || '') })).then(r => {
-            note(r && r.error ? r.error : 'Reminder cancelled.');
-            post('timers', { timers: timers() });
-          });
-          break;
-        case 'device': {
-          if ($('bDevice')) $('bDevice').click();
-          const tab = payload.tab === 'priv' || payload.tab === 'about' ? payload.tab : '';
-          if (tab) setTimeout(() => {
-            const b = document.querySelector('.dvtab[data-dv="' + tab + '"]');
-            if (b) b.click();
-          }, 70);
-          note(tab === 'priv' ? 'Privacy is open.' : 'Device controls are open.');
-          break;
-        }
-        case 'terminal':
-          if ($('eccTerminalBody') && $('eccTerminalBody').hidden && $('eccTerminalToggle')) $('eccTerminalToggle').click();
-          if (window.EmberCommandCenter && window.EmberCommandCenter.write) {
-            window.EmberCommandCenter.write({ source: 'Tools', stream: 'status', tag: 'TOOL', text: 'Terminal opened from the tools panel' });
-          }
-          note('Live terminal is open under the chat.');
-          break;
-        case 'termux':
-          openSettings('hacking');
-          note('Termux tools are open.');
-          break;
-        case 'github': {
-          const tab = githubTab(payload.tab);
-          if (window.EmberWorkspace && window.EmberWorkspace.open) window.EmberWorkspace.open(tab);
-          else if (window.EmberCommandCenter && window.EmberCommandCenter.open) window.EmberCommandCenter.open();
-          note(tab === 'connect' ? 'GitHub brain is open.' : tab === 'build' ? 'Run & Push is open.' : 'Repository search is open.');
-          break;
-        }
-        case 'keys':
-          openSettings('engine');
-          note('AI providers and API keys are open.');
-          break;
-        case 'permissions':
-          openSettings('permissions');
-          note('Permissions and privacy controls are open.');
-          break;
-        case 'settings':
-          openSettings('general');
-          note('App settings are open.');
-          break;
-        case 'cc-activity':
-          if (window.EmberCommandCenter && window.EmberCommandCenter.open) window.EmberCommandCenter.open();
-          pushLog('Activity log opened');
-          note('Command Centre activity is open.');
-          break;
-        case 'cc-routing':
-          pin(($('engPin') && $('engPin').value) ? '' : 'pollinations');
-          pushLog('Routing preference updated');
-          break;
-        case 'cc-status':
-          note(navigator.onLine ? 'Workspace is online and ready.' : 'Workspace is offline.');
-          break;
-        case 'metrics':
-          post('ready', metrics());
-          post('engines', engines());
-          post('timers', { timers: timers() });
-          break;
-        default:
-          note('That tool is not available.');
-      }
-    } catch (_) {
-      note('Could not open that yet.');
-    }
-  }
-
-  function boot() {
-    document.documentElement.classList.add('ember-ready');
-    const emptyP = document.querySelector('#empty > p');
-    if (emptyP && !$('selectionResult')) {
-      emptyP.textContent = 'Choose a category from the right panel, or ask Ember directly.';
-      const live = document.createElement('div');
-      live.id = 'selectionResult';
-      live.setAttribute('aria-live', 'polite');
-      emptyP.after(live);
-    }
-    try {
-      const host = location.hostname;
-      if ((host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') && 'serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
-      }
-    } catch (_) { /* storage or sw blocked */ }
-    const cc = window.EmberCommandCenter;
-    if (cc && typeof cc.write === 'function' && !cc.write._navWrapped) {
-      const orig = cc.write.bind(cc);
-      const wrapped = data => {
-        try { orig(data); } catch (_) { /* terminal optional */ }
-        if (data && data.text) pushLog(String(data.text).split(/\n/)[0]);
-      };
-      wrapped._navWrapped = true;
-      cc.write = wrapped;
-    }
-    window.EmberNav = { activate, engines, timers, metrics };
-    window.addEventListener('message', event => {
-      if (event.origin !== location.origin) return;
-      const data = event.data;
-      if (!data || data.type !== 'ember-nav' || typeof data.action !== 'string') return;
-      activate(data.action, data.payload || {});
+      $('erpNoResults').hidden = matches > 0;
     });
-    window.addEventListener('online', () => post('metrics', metrics()));
-    window.addEventListener('offline', () => post('metrics', metrics()));
-    post('ready', metrics());
-    post('engines', engines());
-    post('timers', { timers: timers() });
+    D.addEventListener('keydown', e => {
+      const taskOpen = !$('erpTasks').hidden;
+      if (panel.hidden && !taskOpen) return;
+      if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); if (taskOpen) closeTasks(); else close(); return; }
+      if (e.key === 'Tab') {
+        const host = taskOpen ? $('erpTasks') : panel;
+        const nodes = [...host.querySelectorAll('button,input,[tabindex="0"]')].filter(el => !el.disabled && el.getClientRects().length);
+        const first = nodes[0], last = nodes.at(-1);
+        if (e.shiftKey && D.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && D.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }, true);
+    for (const event of ['ember-provider-stats', 'ember-route', 'online', 'offline']) W.addEventListener(event, () => { if (!panel.hidden) refresh(); });
+    W.EmberRightPanel = Object.freeze({ open, close, isOpen: () => !panel.hidden, actions: () => Object.keys(actions) });
   }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-  else boot();
+  if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', init); else init();
 })();

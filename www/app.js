@@ -1419,9 +1419,10 @@ $('fImp').onchange = async e => {
   } catch (er) { toast('Import failed: ' + er.message); }
 };
 $('bWipe').onclick = async () => {
-  if (!(await sure('Delete everything?', 'All chats, memory, settings, chat and scraping keys, the Tavily key, the notepad, uploaded music, playlists and the Audd.io token on this device. This cannot be undone.'))) return;
+  if (!(await sure('Delete everything?', 'All chats, memory, settings, chat and scraping keys, the Tavily key, the notepad, uploaded music, playlists, archived terminal output and the Audd.io token on this device. This cannot be undone.'))) return;
   try { if (window.EmberPlayer) await window.EmberPlayer.wipe(); if (window.EmberAudd) window.EmberAudd.wipe(); if (window.EmberDocs) { for (const d of await window.EmberDocs.all()) await window.EmberDocs.remove(d.id); } } catch (e) { /* storage already blocked */ }
   if(window.EmberMedia)for(const a of await EmberMedia.list())await EmberMedia.remove(a.id);
+  if (window.EmberOutputArchive) await window.EmberOutputArchive.purge();
   await Store.wipe(); ['ember_route_metrics','ember_route_enabled','ember_media_cfg','ember_download_cfg','ember_pin','ember_pin_model','ember_pin_strict','ember_last_good','ember_set', 'ember_keys', 'ember_models', 'ember_voice', 'ember_voice_gm', 'ember_scrape', 'ember_scrape_rot', 'ember_agent', 'ember_github', 'ember_gh_digest', 'ember_gh_log', 'ember_repo_runner', 'ember_pad', 'ember_saved', 'ember_imagine'].forEach(k => LS.del(k)); location.reload();
 };
 

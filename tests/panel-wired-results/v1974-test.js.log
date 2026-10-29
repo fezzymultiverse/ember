@@ -1,0 +1,8 @@
+/home/user/ember-work/tests/v1974-test.js:28
+  ok('search returns exact paths', s.ok && s.hits[0].path === REAL);
+                                                     ^
+
+TypeError: Cannot read properties of undefined (reading 'path')
+    at /home/user/ember-work/tests/v1974-test.js:28:54
+
+Node.js v22.23.4

@@ -2,12 +2,14 @@
 'use strict';
 (() => {
   const W = window, $ = id => document.getElementById(id);
-  const MAX_LINES = 1000, MAX_LINE = 3000, MAX_SOURCES = 100;
+  const MAX_LINES = 1000, MAX_LINE = Infinity, MAX_SOURCES = 100;
+  const archive = W.EmberOutputArchive;
+  let historyOffset = 0, historyRows = null;
   const state = { lines: [], candidates: new Map(), files: [], active: new Map(), seen: new Map(), summary: '', request: 0 };
   let stream = null, generation = 0, jobs = new Map(), destroyed = false, lastFocus = null;
   const cleanup = [];
   function on(target, name, fn) { target.addEventListener(name, fn); cleanup.push(() => target.removeEventListener(name, fn)); }
-  function clean(value, n = MAX_LINE) {
+  function clean(value, n = Infinity) {
     return String(value == null ? '' : value)
       .replace(/\x1b\][^\x07]*(?:\x07|$)/g, '').replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
       .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
@@ -39,7 +41,7 @@
     const out = $('eccTerminalOutput'); if (!out) return;
     const previousTop = out.scrollTop;
     const filter = $('eccTerminalFilter').value, fragment = document.createDocumentFragment();
-    for (const line of state.lines) {
+    for (const line of (historyRows || state.lines)) {
       if (filter.indexOf('tag:') === 0 ? line.tag !== filter.slice(4) : (filter !== 'all' && filter !== line.stream)) continue;
       const row = document.createElement('div'); row.className = 'ecc-line ecc-line-' + line.stream + (line.tag ? ' ecc-tag-' + line.tag.toLowerCase() : '');
       const time = document.createElement('span'); time.className = 'ecc-time'; time.textContent = line.time + ' ';
@@ -49,8 +51,9 @@
       if (line.ms != null) { const ms = document.createElement('span'); ms.className = 'ecc-ms'; ms.textContent = ' ' + (line.ms >= 1000 ? (line.ms / 1000).toFixed(1) + 's' : Math.round(line.ms) + 'ms'); row.append(ms); }
       fragment.append(row);
     }
-    out.replaceChildren(fragment); $('eccTerminalCount').textContent = state.lines.length + ' lines';
-    out.scrollTop = $('eccTerminalFollow').checked ? out.scrollHeight : previousTop;
+    out.replaceChildren(fragment); $('eccTerminalCount').textContent = (archive?.snapshot().total || state.lines.length) + ' lines';
+    updateHistory();
+    out.scrollTop = !historyRows && $('eccTerminalFollow').checked ? out.scrollHeight : previousTop;
   }
   let renderPending = false;
   function scheduleLines() {
@@ -63,13 +66,14 @@
   function write(data) {
     if (destroyed || !data || typeof data !== 'object') return;
     const kind = ['stdout','stderr','status','merged'].includes(data.stream) ? data.stream : 'status';
-    const text = clean(data.text, 60000); if (!text) return;
+    const text = clean(data.text); if (!text) return;
     const source = clean(data.source || 'Backend', 60), time = new Date().toLocaleTimeString([], { hour12: false });
     const tag = TAGS.includes(String(data.tag || '').toUpperCase()) ? String(data.tag).toUpperCase() : '';
     const ms = Number.isFinite(Number(data.ms)) && data.ms !== null && data.ms !== '' ? Math.max(0, Number(data.ms)) : null;
-    text.split(/\r?\n|\r/).slice(-MAX_LINES).forEach(t => state.lines.push({ stream: kind, source, time, text: t.slice(0, MAX_LINE), tag, ms }));
+    for (const t of text.split(/\r?\n|\r/)) { const row = { stream: kind, source, time, text: t, tag, ms }; state.lines.push(row); archive?.append(row); }
     if (state.lines.length > MAX_LINES) state.lines.splice(0, state.lines.length - MAX_LINES);
-    $('eccTerminalCount').textContent = state.lines.length + ' lines';
+    $('eccTerminalCount').textContent = (archive?.snapshot().total || state.lines.length) + ' lines';
+    updateHistory();
     const tk = $('eccTerminalTicker'); if (tk) tk.textContent = (tag ? tag + ' · ' : '') + text.split(/\r?\n|\r/)[0].slice(0, 70);
     if (armed && tag && tag !== 'TURN' && $('eccTerminalAuto') && $('eccTerminalAuto').checked && $('eccTerminalBody').hidden) drawer(true);
     scheduleLines();
@@ -92,7 +96,7 @@
     const block = t.slice(start).split(/\n\s*Implementation\s*:|<artifact\b|```|<tool_call\b/i)[0];
     const p2 = block.indexOf('Phase 2: Tactical Execution Plan.'), p3 = block.indexOf('Phase 3: Edge-Case Mitigation.');
     if (p2 < 0 || p3 <= p2) return;
-    state.summary = clean(block.trim(), 6000); if ($('eccThought').textContent !== state.summary) $('eccThought').textContent = state.summary;
+    state.summary = clean(block.trim()); if ($('eccThought').textContent !== state.summary) $('eccThought').textContent = state.summary;
   }
   function registerContext(meta) {
     if (!meta || !meta.needle || !meta.name) return;
@@ -241,8 +245,45 @@
     stream.onerror = () => { if (stream === current) { activity('relay', false); if (changed('relay:error', String(current.readyState))) write({ source: 'Relay', stream: 'status', text: current.readyState === 2 ? 'Live stream closed.' : 'Stream interrupted; reconnecting…' }); } };
     stream.addEventListener('end', () => { if (stream === current) disconnectStream(); }); return disconnectStream;
   }
+  function updateHistory() {
+    if (!$('eccHistoryNotice')) return;
+    const info = archive?.snapshot() || { total: state.lines.length, persistent: false };
+    const rows = historyRows || state.lines;
+    const end = Math.max(0, info.total - historyOffset), start = rows.length ? Math.max(1, end - rows.length + 1) : 0;
+    $('eccHistoryNotice').textContent = 'Showing ' + start + '–' + end + ' of ' + info.total + ' lines. Full output is available via Older / Newer and Save full log.' + (info.persistent ? '' : ' Storage unavailable: history is session-only; export before closing.');
+    $('eccHistoryOlder').disabled = historyOffset + MAX_LINES >= info.total;
+    $('eccHistoryNewer').disabled = historyOffset === 0;
+  }
+  async function historyPage(offset) {
+    if (!archive) return;
+    for (const id of ['eccHistoryOlder','eccHistoryNewer','eccHistoryLatest']) $(id).disabled = true;
+    try {
+      historyOffset = Math.max(0, offset);
+      historyRows = historyOffset ? await archive.page(historyOffset, MAX_LINES) : null;
+      if (!historyOffset) { const rows = await archive.page(0, MAX_LINES); state.lines = rows; }
+      renderLines();
+    } catch (e) { $('eccHistoryNotice').textContent = e.message; }
+    finally { $('eccHistoryLatest').disabled = false; updateHistory(); }
+  }
+  function initHistory() {
+    const host = document.createElement('div'); host.className = 'ecc-history-controls';
+    host.innerHTML = '<button type="button" id="eccHistoryOlder">Older</button><button type="button" id="eccHistoryNewer">Newer</button><button type="button" id="eccHistoryLatest">Latest</button><button type="button" id="eccHistorySave">Save full log</button><span id="eccHistoryNotice" role="status"></span>';
+    $('eccTerminalOutput').before(host);
+    on($('eccHistoryOlder'), 'click', () => historyPage(historyOffset + MAX_LINES));
+    on($('eccHistoryNewer'), 'click', () => historyPage(historyOffset - MAX_LINES));
+    on($('eccHistoryLatest'), 'click', () => historyPage(0));
+    on($('eccHistorySave'), 'click', async () => {
+      const b = $('eccHistorySave'); b.disabled = true;
+      try { const blob = archive ? await archive.blob() : new Blob([state.lines.map(l => l.text).join('\n')], {type:'text/plain'}); const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = 'ember-full-output-' + new Date().toISOString().replace(/[:.]/g,'-') + '.txt'; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000); }
+      catch (e) { $('eccHistoryNotice').textContent = e.message; } finally { b.disabled = false; }
+    });
+    on(W, 'ember-output-history', updateHistory);
+    archive?.ready.then(async () => { if (!state.lines.length) { state.lines = await archive.page(0, MAX_LINES); if (!$('eccTerminalBody').hidden) renderLines(); } updateHistory(); }).catch(e => { $('eccHistoryNotice').textContent = e.message; });
+    updateHistory();
+  }
   function init() {
     if (!$('emberCommandCenter') || !$('emberTerminal')) return;
+    initHistory();
     on($('bCommandCenter'), 'click', () => panel(!$('emberCommandCenter').classList.contains('ecc-open')));
     on($('eccClose'), 'click', () => panel(false)); on($('eccBackdrop'), 'click', () => panel(false));
     on(document, 'keydown', e => {
@@ -255,9 +296,13 @@
       }
     });
     on($('eccTerminalToggle'), 'click', () => drawer($('eccTerminalBody').hidden));
-    on($('eccTerminalClear'), 'click', () => { state.lines.length = 0; const tk = $('eccTerminalTicker'); if (tk) tk.textContent = ''; renderLines(); });
+    on($('eccTerminalClear'), 'click', async () => {
+      const b = $('eccTerminalClear'); b.disabled = true;
+      try { await archive?.clear(); state.lines.length = 0; historyOffset = 0; historyRows = null; const tk = $('eccTerminalTicker'); if (tk) tk.textContent = ''; renderLines(); }
+      catch (e) { $('eccHistoryNotice').textContent = e.message; } finally { b.disabled = false; }
+    });
     on($('eccTerminalCopy'), 'click', async () => {
-      const text = state.lines.map(l => l.time + ' ' + (l.tag ? '[' + l.tag + '] ' : '') + '[' + l.source + '/' + l.stream + '] ' + l.text + (l.ms != null ? ' (' + Math.round(l.ms) + 'ms)' : '')).join('\n');
+      const text = archive ? await archive.text() : state.lines.map(l => l.time + ' ' + (l.tag ? '[' + l.tag + '] ' : '') + '[' + l.source + '/' + l.stream + '] ' + l.text + (l.ms != null ? ' (' + Math.round(l.ms) + 'ms)' : '')).join('\n');
       const b = $('eccTerminalCopy'); let ok = false;
       try { await navigator.clipboard.writeText(text); ok = true; } catch (_) { try { const t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.append(t); t.select(); ok = document.execCommand('copy'); t.remove(); } catch (__) { ok = false; } }
       if (b) { b.textContent = ok ? 'Copied' : 'Blocked'; setTimeout(() => { b.textContent = 'Copy'; }, 1400); }
@@ -296,7 +341,7 @@
   }
   W.EmberCommandCenter = {
     inspect, registerContext, observeTool, observeRequest, write, open: () => panel(true), close: () => panel(false), connectStream, disconnectStream,
-    snapshot: () => ({ files: state.files.map(x => ({ ...x })), summary: state.summary, lineCount: state.lines.length }),
+    snapshot: () => ({ files: state.files.map(x => ({ ...x })), summary: state.summary, lineCount: state.lines.length, totalLines: archive?.snapshot().total || state.lines.length }),
     destroy: () => { destroyed = true; generation++; disconnectStream(); [...jobs.keys()].forEach(stopJob); cleanup.splice(0).forEach(f => f()); }
   };
   init();

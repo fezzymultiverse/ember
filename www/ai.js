@@ -164,7 +164,7 @@ $('tRun').onclick = async () => {
   const b = $('tRun'); b.disabled = true; b.textContent = 'Running…'; $('tMeta').textContent = ''; $('tOut').classList.add('hidden');
   const r = await SC.test($('tUrl').value, $('tObj').value, $('tProv').value);
   $('tMeta').textContent = r.error ? 'Failed' + (r.ms ? ' after ' + r.ms + ' ms' : '') : r.provider + ' · ' + r.ms + ' ms · ' + r.chars + ' chars' + (r.trimmed ? ' · trimmed to the objective' : '');
-  $('tOut').textContent = r.error || r.markdown.slice(0, 3000) + (r.markdown.length > 3000 ? '\n\n[preview cut at 3000 chars]' : ''); $('tOut').classList.remove('hidden');
+  $('tOut').textContent = r.error || r.markdown; $('tOut').classList.remove('hidden');
   b.disabled = false; b.textContent = 'Run scrape test';
 };
 $('tSelf').onclick = () => {

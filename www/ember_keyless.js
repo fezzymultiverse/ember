@@ -400,8 +400,16 @@
     const c=e.target.closest?.('[data-kl-check]');if(c&&!c.disabled){c.disabled=true;checkAvailability().finally(()=>{if(c.isConnected)c.disabled=false;});}
   });
   // Observe only insertion/removal; a guarded mount avoids rebuilding existing plugin UI.
-  let mounted=false;
-  new MutationObserver(()=>{if(mounted)return;mounted=true;queueMicrotask(()=>{mount();mounted=false;});}).observe(D.body,{childList:true,subtree:true});
+  let mountFrame=0, watchedPlugin=null;
+  function watchPlugin(){
+    const target=D.getElementById('eplBody');if(!target||target===watchedPlugin)return;
+    watchedPlugin=target;
+    new MutationObserver(()=>{if(!mountFrame)mountFrame=requestAnimationFrame(()=>{mountFrame=0;mount();});}).observe(target,{childList:true});
+    mount();
+  }
+  D.addEventListener('click',watchPlugin);
+  W.addEventListener('ember-plus-change',watchPlugin);
+  watchPlugin();
   const oldLine=W.EmberPlus?.stateLine;if(oldLine)W.EmberPlus.stateLine=()=>oldLine()+' '+abilities();
   const oldIntent=W.EmberEngines?.intent;
   if(W.EmberEngines){W.EmberEngines.intent=p=>classify(p)?'image':oldIntent?.(p);W.EmberEngines.imageRoute=(p,hk)=>route(p,hk||{});}

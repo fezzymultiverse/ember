@@ -177,7 +177,9 @@
         badge.setAttribute('aria-label',badge.title);
       }
       countKeys(); W.addEventListener('ember-provider-stats',countKeys); W.addEventListener('ember-names',countKeys); W.addEventListener('storage',countKeys);
-      setInterval(countKeys,1500);
+      D.addEventListener('visibilitychange',()=>{if(!D.hidden)countKeys();});
+      settings.addEventListener('input',countKeys);
+      setInterval(()=>{if(!D.hidden && settings.classList.contains('show'))countKeys();},15000);
     }
     // Browser has a real Notes tab; reuse the original notes editor and autosave handlers inline.
     const notes = $('xcreate'), br = $('browser');

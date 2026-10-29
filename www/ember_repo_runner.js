@@ -6,7 +6,7 @@ const KEY = 'ember_repo_runner', $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const clean = G._clean.cleanRepo;
 let intent = '', templatePromise, operation = false, uiBusy = false;
-let discovery = { kind: 'search', query: '', page: 1, more: false };
+let discovery = { kind: 'search', query: '', page: 1, more: false, repositories: [], selected: '' };
 function changed() { try { window.dispatchEvent(new CustomEvent('ember-repo-config', { detail: { brain: G.knowledgeRepo() } })); } catch (_) {} }
 function config() {
   let c; try { c = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (_) { c = {}; }
@@ -175,7 +175,7 @@ function paint() {
     '<p class="hint" data-ghp="repos">One GitHub connection for Brain, discovery and builds. Search is read-only. Add whole repositories to stage them, then Install / update to publish the manifest and dispatch the GitHub runner. Staging alone does not merge code or push files.</p>' +
     '<section class="rr-section" data-ghp="repos"><h3>Linked whole repositories</h3><div id="rrSources"></div><p id="rrOutputSummary" class="hint"></p>' +
     '<label class="lb" for="rrSource">Add a whole repo directly</label><input id="rrSource" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="owner/repo or GitHub URL"><div class="btnrow"><button class="btn g" data-rr="add">Add entire repo</button><button class="btn g" data-rr="brain-direct">Apply as Brain</button></div></section>' +
-    '<section class="rr-section" data-ghp="repos"><h3>Discover repositories</h3><label class="lb" for="rrSearch">Search GitHub repositories</label><input id="rrSearch" type="search" placeholder="Ember features, topic, language or owner/repo"><div class="btnrow"><button class="btn g" data-rr="search">Search repos</button><button class="btn g" data-rr="owned">My repos</button></div><div id="rrResults" aria-live="polite"></div><div class="rr-pagination"><button class="btn g" data-rr="prev" disabled>Previous</button><span id="rrPage">No search yet</span><button class="btn g" data-rr="next" disabled>Next</button></div></section>' +
+    '<section class="rr-section" data-ghp="repos"><h3>Discover repositories</h3><label class="lb" for="rrSearch">Search GitHub repositories</label><input id="rrSearch" type="search" placeholder="Ember features, topic, language or owner/repo"><div class="btnrow"><button class="btn g" data-rr="search">Search repos</button><button class="btn g" data-rr="owned">My repos</button></div><div id="rrResults" class="rr-console" aria-live="polite"><div class="rr-console-head"><b>REPOSITORY CONSOLE</b><span id="rrConsoleState">IDLE</span></div><div class="rr-console-empty">Search GitHub or choose “My repos”. Results will stay inside this console.</div></div><div class="rr-pagination"><button class="btn g" data-rr="prev" disabled>Previous</button><span id="rrPage">No search yet</span><button class="btn g" data-rr="next" disabled>Next</button></div></section>' +
     '<section class="rr-section" data-ghp="build"><h3>Ember build / output repository</h3><label class="lb" for="rrTarget">Your existing output / build repo</label><input id="rrTarget" type="text" value="' + esc(c.target) + '" autocapitalize="off" spellcheck="false" placeholder="your-account/Ember"><label class="lb" for="rrBranch">Output branch · blank uses default</label><input id="rrBranch" type="text" value="' + esc(c.branch) + '"><label class="lb" for="rrWorkflow">Existing build workflow</label><input id="rrWorkflow" type="text" value="' + esc(c.buildWorkflow) + '">' +
     '<label class="rr-check"><input id="rrBuild" type="checkbox"' + (c.autoBuild ? ' checked' : '') + '> Dispatch build after source updates</label><label class="rr-check"><input id="rrAuto" type="checkbox"' + (c.autoSync ? ' checked' : '') + '> Check upstream repos about every 15 minutes in GitHub Actions</label>' +
     '<div class="btnrow"><button class="btn g" data-rr="save">Save settings</button><button class="btn g" data-rr="output">Export standalone runner</button></div></section>' +
@@ -184,18 +184,30 @@ function paint() {
     '<p class="hint">Complete current snapshots stay isolated under external/fezzy-super-brain and external/repos/owner/repo; they are not automatically wired into Ember entry points. No force-push, no execution of source package hooks. Check licenses before redistribution. Private-to-public copying is blocked. Symlinks/submodules fail closed. Run status, not dispatch, determines success.</p></section><pre id="rrStatus" class="gh-pre" role="status" aria-live="polite">Ready. Apply your Brain, choose Ember output, then save and install.</pre>';
   paintSources();
 }
+function paintRepoConsole() {
+  const host = $('rrResults'); if (!host) return;
+  const repos = discovery.repositories || [];
+  const selected = repos.find(x => x.repo === discovery.selected) || repos[0];
+  const rows = repos.map((x, i) => '<button type="button" class="rr-console-row' + (selected && selected.repo === x.repo ? ' is-selected' : '') + '" data-rr-select="' + esc(x.repo) + '" aria-pressed="' + String(!!(selected && selected.repo === x.repo)) + '"><span class="rr-console-index">' + String(i + 1).padStart(2, '0') + '</span><span class="rr-console-name">' + esc(x.repo) + '</span><span class="rr-console-tag">' + (x.private ? 'PRIVATE' : 'PUBLIC') + '</span><span class="rr-console-caret">›</span></button>').join('');
+  const detail = selected ? '<div class="rr-console-detail"><div class="rr-console-kicker">SELECTED REPOSITORY</div><b>' + esc(selected.repo) + '</b><p>' + esc(selected.description || (selected.can_push ? 'You have push access to this repository.' : 'Repository discovered on GitHub.')) + '</p><small>' + (selected.license ? 'License: ' + esc(selected.license) + ' · ' : '') + (selected.can_push ? 'Push access available' : 'Read/discovery access') + '</small><div class="rr-card-actions"><button class="btn g" data-rr-add="' + esc(selected.repo) + '">Add whole repo</button><button class="btn g" data-rr-brain="' + esc(selected.repo) + '">Apply as Brain</button>' + (selected.can_push ? '<button class="btn g" data-rr-target="' + esc(selected.repo) + '">Use as Ember output</button>' : '') + '</div></div>' : '<div class="rr-console-empty">No repositories found. Try different words or check token access.</div>';
+  host.innerHTML = '<div class="rr-console-head"><b>REPOSITORY CONSOLE</b><span>' + (repos.length ? 'RESULTS · ' + repos.length : 'NO RESULTS') + '</span></div><div class="rr-console-scroll" role="listbox" aria-label="Repository search results">' + (rows || '<div class="rr-console-empty">No repositories found. Try different words or check token access.</div>') + '</div>' + detail;
+}
 function renderResults(r) {
-  $('rrResults').innerHTML = r.repositories.length ? r.repositories.map(x => '<article class="rr-repo-card"><div class="rr-role">' + (x.private ? 'PRIVATE REPOSITORY' : 'GITHUB REPOSITORY') + '</div><b>' + esc(x.repo) + '</b><small>' + esc(x.description || (x.can_push ? 'Push access with your saved token' : 'Repository discovery result')) + (x.license ? ' · license: ' + esc(x.license) : '') + '</small><div class="rr-card-actions"><button class="btn g" data-rr-add="' + esc(x.repo) + '">Add whole repo</button><button class="btn g" data-rr-brain="' + esc(x.repo) + '">Apply as Brain</button>' + (x.can_push ? '<button class="btn g" data-rr-target="' + esc(x.repo) + '">Use as Ember output</button>' : '') + '</div></article>').join('') : '<p class="hint">No repositories found. Try different words or check token access.</p>';
+  discovery.repositories = Array.isArray(r.repositories) ? r.repositories : [];
+  discovery.total = Number(r.total) || 0;
+  discovery.partial = !!r.partial;
+  discovery.selected = discovery.repositories.length ? discovery.repositories[0].repo : '';
+  paintRepoConsole();
   discovery.more = r.more === true || (discovery.kind === 'search' && discovery.page * 30 < Math.min(1000, r.total || 0));
   $('rrPage').textContent = 'Page ' + discovery.page + (r.total != null ? ' · ' + r.total + ' matches' : ' · your repositories');
-  message(r.repositories.length + ' repos shown' + (r.total ? ' of ' + r.total : '') + (r.partial ? ' · GitHub returned partial results' : '') + '. Select a role on a result; nothing has been pushed.');
+  message(r.repositories.length + ' repos in Repo Console' + (r.total ? ' of ' + r.total : '') + (r.partial ? ' · GitHub returned partial results' : '') + '. Select a repo to view details; nothing has been pushed.');
 }
 async function discover(kind, page) {
   const query = kind === 'search' ? (page === 1 ? $('rrSearch').value.trim() : discovery.query) : '';
   message('Searching GitHub…');
   const r = kind === 'search' ? await search({ query, page }) : await owned({ page });
   if (!r.ok) throw new Error(r.error || 'Repository search failed.');
-  discovery = { kind, query, page, more: false }; renderResults(r);
+  discovery = { kind, query, page, more: false, repositories: [], selected: '' }; renderResults(r);
 }
 function controlsBusy(value) {
   $('repoRunnerFeature').setAttribute('aria-busy', String(value));
@@ -206,9 +218,10 @@ function controlsBusy(value) {
   }
 }
 async function click(e) {
-  const b = e.target.closest('[data-rr], [data-rr-add], [data-rr-target], [data-rr-remove], [data-rr-brain]'); if (!b || b.disabled || uiBusy) return;
+  const b = e.target.closest('[data-rr], [data-rr-add], [data-rr-target], [data-rr-remove], [data-rr-brain], [data-rr-select]'); if (!b || b.disabled || uiBusy) return;
   uiBusy = true; controlsBusy(true);
   try {
+    if (b.dataset.rrSelect) { discovery.selected = b.dataset.rrSelect; paintRepoConsole(); message('Selected ' + discovery.selected + '. Review its details, then choose a role.'); return; }
     if (b.dataset.rrAdd) { addSource(b.dataset.rrAdd); message('Added entire repo. Install/update to publish new manifest.'); return; }
     if (b.dataset.rrBrain) { const r = applyBrain(b.dataset.rrBrain); if (!r.ok) throw new Error(r.error); message('Applied ' + r.repo + ' as the whole Brain. Live reads now use it. Install/update to publish the changed manifest.'); return; }
     if (b.dataset.rrTarget) { setTarget(b.dataset.rrTarget); message('Ember output selected and saved. Review build options before installing.'); return; }

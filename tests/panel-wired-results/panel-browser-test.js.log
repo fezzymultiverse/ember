@@ -1,0 +1,10 @@
+AssertionError [ERR_ASSERTION]: 320 labeled Panel button visible
+    at check (/home/user/ember-work/tests/panel-browser-test.js:7:31)
+    at /home/user/ember-work/tests/panel-browser-test.js:27:7 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
