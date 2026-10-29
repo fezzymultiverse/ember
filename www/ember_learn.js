@@ -74,7 +74,7 @@ async function linkRepo(repo) {
   const g = window.EmberGithub;
   if (g && g.knowledgeRepo && String(repo).toLowerCase() === g.knowledgeRepo().toLowerCase()) return { ok: true, repo: g.knowledgeRepo(), linked: true, already: true };
   // Other GitHub links may be learned as ordinary web pages, never as repository tools.
-  return { ok: false, reason: 'single-knowledge-brain', error: 'Only Knowledge Brain Repo can be connected in Settings > GitHub.' };
+  return { ok: false, reason: 'single-knowledge-brain', error: 'Only Knowledge Brain Repo can be connected in Command Centre > GitHub.' };
 }
 
 // ---------- many pages (a document's links) ----------
@@ -111,8 +111,8 @@ async function learnFromDocument(fileId, o) {
       await sleep(500); // be gentle with the providers
     }
   } finally { busy = false; say(''); }
-  if (res.linkedRepos.length) res.note = 'Linked repos are added as reference slots. Run a sync in Settings > GitHub to pull their files.';
-  if (res.needsToken.length) res.note = (res.note ? res.note + ' ' : '') + 'No GitHub token is saved, so ' + res.needsToken.length + ' repo page(s) were read as plain web pages instead. Add a token in Settings > GitHub to link them properly.';
+  if (res.linkedRepos.length) res.note = 'Linked repos are added as reference slots. Run a sync in Command Centre > GitHub to pull their files.';
+  if (res.needsToken.length) res.note = (res.note ? res.note + ' ' : '') + 'No GitHub token is saved, so ' + res.needsToken.length + ' repo page(s) were read as plain web pages instead. Add a token in Command Centre > GitHub to link them properly.';
   if (urls.length > work.length) res.leftOver = urls.length - work.length;
   emit(); return res;
 }

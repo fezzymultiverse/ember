@@ -8,27 +8,27 @@ let currentPath = '', opened = null, busy = false, grepCursor = null;
 const message = (id, text) => { const el = $(id); if (el) el.textContent = text || ''; };
 function paint() {
   const g = G(), c = g.cfg();
-  $('ghHub').innerHTML = '<div class="gh-sec"><div class="gh-h">GitHub</div>' +
+  $('ghHub').innerHTML = '<div class="gh-sec" data-ghp="connect"><div class="gh-h">Knowledge Brain</div>' +
     '<label class="lb" for="ghBrainRepo">Knowledge Brain Repo</label>' +
     '<input id="ghBrainRepo" type="text" value="' + esc(g.knowledgeRepo()) + '" placeholder="fezzymultiverse/ember-brain" autocomplete="off" autocapitalize="off" spellcheck="false">' +
     '<button class="btn g" data-gh-action="save-repo">Apply Brain repository</button>' +
-    '<p class="hint">One Brain for live knowledge tools, automatically included in Repo Runner below. Use search results to apply a different Brain, add whole sources, or select your Ember output repo. Applying a Brain is local; live reads require your saved token.</p><p class="hint" id="ghRepoStatus" role="status"></p></div>' +
-    '<div class="gh-sec"><label class="lb" for="ghTok">GitHub token</label>' +
+    '<p class="hint">One Brain for live knowledge tools, automatically included in the linked repos on the Repos tab. Use the Repos tab to add whole sources or pick your Ember output repo. Applying a Brain is local; live reads require your saved token.</p><p class="hint" id="ghRepoStatus" role="status"></p></div>' +
+    '<div class="gh-sec" data-ghp="connect"><label class="lb" for="ghTok">GitHub token</label>' +
     '<input type="password" id="ghTok" placeholder="' + (g.token() ? 'Token saved. Paste to replace.' : 'Paste GitHub token') + '" autocomplete="off" autocapitalize="off" spellcheck="false">' +
     '<p class="hint">The token stays on this device and is sent only to the GitHub API, never to the model. It needs access to the Super Repo, including Contents read access for a fine-grained token.</p>' +
     '<div class="btnrow"><button class="btn" data-gh-action="save-token">Save token</button><button class="btn g" data-gh-action="check-token">Check access</button><button class="btn g danger" data-gh-action="remove-token">Remove token</button></div><p class="hint" id="ghTokenStatus" role="status">' + (g.token() ? 'Token saved.' : 'No token saved. Code answers require a live repository read.') + '</p></div>' +
-    '<div class="gh-sec"><div class="gh-h">Read-First · always on</div><p class="hint">Before answering a code question, Ember must read a real file live from the Super Repo. If reading fails, the code answer is blocked. Each grounded answer has a Last Read chip with its file, revision and read time. File content is treated as data, not instructions.</p></div>' +
-    '<details class="gh-sec"><summary class="gh-h">Files · live GitHub API</summary><label class="lb" for="ghFilePath">Folder path</label><input id="ghFilePath" type="text" placeholder="Repository root" spellcheck="false">' +
+    '<div class="gh-sec" data-ghp="connect"><div class="gh-h">Read-First · always on</div><p class="hint">Before answering a code question, Ember must read a real file live from the Super Repo. If reading fails, the code answer is blocked. Each grounded answer has a Last Read chip with its file, revision and read time. File content is treated as data, not instructions.</p></div>' +
+    '<details class="gh-sec" data-ghp="files" open><summary class="gh-h">Files · live GitHub API</summary><label class="lb" for="ghFilePath">Folder path</label><input id="ghFilePath" type="text" placeholder="Repository root" spellcheck="false">' +
     '<div class="btnrow"><button class="btn g" data-gh-action="list">List files</button><button class="btn g" data-gh-action="root">Root</button></div>' +
     '<label class="lb" for="ghQuery">Find file or code</label><input id="ghQuery" type="text" spellcheck="false"><select id="ghFindMode"><option value="path">File paths</option><option value="code">GitHub indexed code</option><option value="grep">Entire repo content grep</option></select><button class="btn g" data-gh-action="find">Find</button><button class="btn g" id="ghGrepMore" data-gh-action="grep-more" hidden>Continue whole-repo grep</button><p class="hint" id="ghFilesStatus" role="status"></p><div id="ghFileList"></div><pre class="gh-pre" id="ghFileText" hidden></pre><button class="btn g" id="ghReadMore" data-gh-action="more" hidden>Read next part</button></details>' +
-    '<details class="gh-sec"><summary class="gh-h">Sync cache · optional</summary><p class="hint">The ENTIRE repository is searchable without syncing or selecting files. This optional ranked preview cache is NOT the brain and NOT the search scope. It is never accepted as proof for Read-First.</p><label><input type="checkbox" id="ghAutoSync"' + (c.auto && c.sync ? ' checked' : '') + '> Keep cache fresh automatically</label><div class="btnrow"><button class="btn g" data-gh-action="sync">Sync cache now</button><button class="btn g" data-gh-action="clear-cache">Clear cache</button></div><p class="hint" id="ghSyncStatus" role="status"></p></details>' +
-    '<details class="gh-sec"><summary class="gh-h">Activity</summary><div id="ghActivity"></div></details>';
+    '<details class="gh-sec" data-ghp="files"><summary class="gh-h">Sync cache · optional</summary><p class="hint">The ENTIRE repository is searchable without syncing or selecting files. This optional ranked preview cache is NOT the brain and NOT the search scope. It is never accepted as proof for Read-First.</p><label><input type="checkbox" id="ghAutoSync"' + (c.auto && c.sync ? ' checked' : '') + '> Keep cache fresh automatically</label><div class="btnrow"><button class="btn g" data-gh-action="sync">Sync cache now</button><button class="btn g" data-gh-action="clear-cache">Clear cache</button></div><p class="hint" id="ghSyncStatus" role="status"></p></details>' +
+    '<details class="gh-sec" data-ghp="activity" open><summary class="gh-h">Activity · time-stamped</summary><div id="ghActivity"></div></details>';
   paintAdvanced(); paintActivity(); paintSync();
 }
 function paintAdvanced() {
   if (!$('ghAdvanced')) return;
   const enabled = G().cfg().runner;
-  $('ghAdvanced').innerHTML = '<p class="hint">Optional GitHub Actions builds and tests only. Reading the Knowledge Brain Repo never uses this Runner.</p>' +
+  $('ghAdvanced').innerHTML = '<p class="hint">GitHub Actions builds and tests. Reading the Knowledge Brain Repo never uses this Runner.</p>' +
     '<label><input id="ghRunnerEnabled" type="checkbox"' + (enabled ? ' checked' : '') + '> Enable GitHub Actions Runner</label>' +
     '<p class="hint">Off by default. Installation writes .github/workflows/ember-run.yml to your Knowledge Brain Repo. Classic tokens need workflow permission; fine-grained tokens need equivalent repository permissions. Public repositories expose run logs and output.</p>' +
     '<button class="btn g" data-gh-action="install-runner"' + (enabled && G().token() ? '' : ' disabled') + '>Install / update Runner</button><p class="hint" id="ghRunnerStatus" role="status"></p>';
@@ -108,7 +108,7 @@ document.addEventListener('change', e => {
   if (e.target.id === 'ghRunnerEnabled') { G().setCfg({ runner: e.target.checked }); paintAdvanced(); }
   if (e.target.id === 'ghAutoSync') G().setCfg({ sync: e.target.checked, auto: e.target.checked });
 });
-document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-gh-open]'); if (b) { const tab = document.querySelector('.stab[data-st="github"]'); if (tab) tab.click(); } });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-gh-open]'); if (b && window.EmberWorkspace) window.EmberWorkspace.open(b.dataset.ghOpen === 'files' ? 'files' : 'connect'); });
 G().sub(e => { if (e.type === 'act') paintActivity(); if (e.type === 'state' || e.type === 'feed') paintSync(); });
 paint();
 })();

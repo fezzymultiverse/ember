@@ -10,9 +10,7 @@
   const SECTIONS = [
     { id: 'general', ico: 'sliders', title: 'General, Persona & Memory', desc: 'Free Mode, your name, voice and pacing, memory, look, backup' },
     { id: 'keys', ico: 'key', title: 'Engine Keys & Providers', desc: 'Which engine answers, API keys, engine names' },
-    { id: 'github', ico: 'branch', title: 'GitHub', desc: 'Knowledge Brain Repo, token, live files and activity' },
-    { id: 'features', ico: 'spark', title: 'Features', desc: 'AI routing, media artifacts, downloads and Repo Runner' },
-    { id: 'advanced', ico: 'gear', title: 'Advanced', desc: 'Optional GitHub Actions Runner for builds and tests' },
+    { id: 'features', ico: 'spark', title: 'Features', desc: 'AI routing, media artifacts and downloads' },
     { id: 'scraping', ico: 'globe', title: 'Web Scraping', desc: 'Scraper keys, the free reader, health checks and tests' },
     { id: 'hacking', ico: 'terminal', title: 'Termux & Hacking', desc: 'Termux mode, pen-test persona and the built-in terminal' },
     { id: 'music', ico: 'music', title: 'Music', desc: 'Player, song identification, music control, documents' },
@@ -39,7 +37,7 @@
     '<span class="mrow-t"><b>' + title + '</b><small' + (subId ? ' id="' + subId + '"' : '') + '>' + sub + '</small></span>' + (extra || '') + CHEV + '</button>';
 
   // view stack: root > (keys > prov) | cc
-  const VIEW_TITLE = { root: 'Settings', keys: 'API keys', prov: 'Provider', cc: 'Command Centre' };
+  const VIEW_TITLE = { workspace: 'Workspace', root: 'Settings', keys: 'API keys', prov: 'Provider', cc: 'Command Centre' };
   let stack = ['root'], curProv = null;
 
   function build() {
@@ -59,11 +57,24 @@
       '</div>' +
       '<div class="ehub-body">' +
 
+      '<div class="ehub-view" data-view="workspace" hidden>' +
+        '<p id="ehubWorkspaceContext" class="ehub-note"></p>' +
+        '<div id="ehubChatContext" class="ehub-context-group">' +
+          '<div class="mgrp">' + ROW('data-context-action="docs"', TILE('doc'), 'Files &amp; notes', 'Open the existing Documents workspace') + '</div>' +
+          '<details class="ehub-context-details" open><summary>Sources in the latest request</summary><ul id="ehubSources"></ul><p id="ehubSourcesEmpty" class="ehub-note">No file excerpts observed yet.</p></details>' +
+        '</div>' +
+        '<div id="ehubTerminalContext" class="ehub-context-group" hidden>' +
+          '<div class="ecx-card"><small>Connection status</small><p id="ehubConnection"></p></div>' +
+          '<div class="mgrp">' + ROW('data-context-action="setup"', TILE('terminal'), 'Terminal setup', 'Open the existing bridge setup controls') + '</div>' +
+        '</div>' +
+        '<details class="ehub-context-details"><summary>Recent activity</summary><p id="ehubRecentActivity" class="ehub-note"></p></details>' +
+        '<div class="mgrp">' + ROW('data-context-action="command"', TILE('panel'), 'Command Centre', 'Inspect live context and existing repository actions') + '</div>' +
+      '</div>' +
+
       /* ---- root ---- */
       '<div class="ehub-view" data-view="root">' +
         '<div class="mgrp">' +
           ROW('id="ehubKeysBtn" data-view-open="keys"', TILE('key'), 'API keys', 'Tap to see every provider', 'ehubKeysSum') +
-          ROW('id="ehubGitBtn"', TILE('branch'), 'GitHub · Brain &amp; repos', 'Load brain, find repos, clone and push', 'ehubGitSum') +
           ROW('id="ehubCCToggle" data-view-open="cc"', TILE('panel'), 'Command Centre', 'Waiting for a model request.', 'ehubCCCtx', '<span class="ehub-chip" id="ehubCC"><i class="ehub-live"></i>LIVE</span>') +
         '</div>' +
         '<h3 class="ehub-h">All settings</h3>' +
@@ -81,15 +92,21 @@
 
       /* ---- Command Centre ---- */
       '<div class="ehub-view" data-view="cc" hidden>' +
-        '<div class="ehub-tiles">' +
-          '<div class="ehub-tile"><small>Memory files</small><b id="ehubCCMem">0</b></div>' +
-          '<div class="ehub-tile"><small>Terminal</small><b id="ehubCCTerm">Idle</b></div>' +
-          '<div class="ehub-tile"><small>Log lines</small><b id="ehubCCLines">0</b></div>' +
+        '<h3 class="ehub-h">Live</h3>' +
+        '<div class="ecx-grid">' +
+          '<div class="ecx-tile"><small>Memory files</small><b id="ehubCCMem">0</b></div>' +
+          '<div class="ecx-tile"><small>Terminal</small><b id="ehubCCTerm">Idle</b></div>' +
+          '<div class="ecx-tile"><small>Log lines</small><b id="ehubCCLines">0</b></div>' +
+          '<div class="ecx-tile"><small>Scrapers</small><b id="ehubCCScr">0</b></div>' +
         '</div>' +
-        '<div class="ehub-note-box"><small>GitHub</small><p id="ehubCCGit">GitHub engine not loaded.</p></div>' +
-        '<div class="ehub-note-box"><small>Thought summary</small><p id="ehubCCThought">No three-phase summary yet.</p></div>' +
-        '<div class="ehub-cc-btns"><button type="button" class="ehub-btn ehub-btn-hot" id="ehubCCOpen">Open Command Centre</button>' +
-        '<button type="button" class="ehub-btn" id="ehubCCRepos">GitHub &amp; repos</button></div>' +
+        '<div class="ecx-card"><small>Thought summary</small><p id="ehubCCThought">No three-phase summary yet.</p></div>' +
+        '<h3 class="ehub-h">GitHub</h3>' +
+        '<div class="ecx-card"><small>Status</small><p id="ehubCCGit">GitHub engine not loaded.</p></div>' +
+        '<div class="mgrp">' +
+          ROW('id="ehubGitBtn"', TILE('branch'), 'GitHub', 'Token, brain, repos, builds and files in the Command Centre', 'ehubGitSum') +
+        '</div>' +
+        '<div class="ecx-btns"><button type="button" class="ehub-btn ehub-btn-hot" id="ehubCCOpen">Open Command Centre</button>' +
+        '<button type="button" class="ehub-btn" id="ehubCCRepos">GitHub</button></div>' +
       '</div>' +
       '</div>';
 
@@ -102,6 +119,7 @@
     const cur = stack[stack.length - 1], t = $('ehubTitle'), c = $('ehubCrumb'), b = $('ehubBack');
     let title = VIEW_TITLE[cur] || 'Settings', crumb = 'Ember';
     if (cur === 'prov') { const P = window.Prov; title = (P && P.CFG && curProv && P.CFG[curProv] ? P.CFG[curProv].name : 'Provider'); crumb = 'API keys'; }
+    else if (cur === 'workspace') crumb = terminalContext() ? 'Termux' : 'Current chat';
     else if (cur !== 'root') crumb = 'Settings';
     if (t) t.textContent = title; if (c) c.textContent = crumb; if (b) b.hidden = stack.length < 2;
   }
@@ -127,22 +145,82 @@
   function resetStack() { stack = ['root']; curProv = null; if (panel) showView('root', null); }
 
   /* ---------------- open / close ---------------- */
+  let workspaceMode = false, inertRoots = [];
+  function terminalContext() {
+    const s = $('settings'), t = $('etPanel');
+    return !!(s?.classList.contains('show') && t && !t.classList.contains('hidden') && t.getClientRects().length);
+  }
+  function paintWorkspace() {
+    if (!panel || !workspaceMode) return;
+    const terminal = terminalContext();
+    $('ehubChatContext').hidden = terminal; $('ehubTerminalContext').hidden = !terminal;
+    const project = $('projBadge');
+    $('ehubWorkspaceContext').textContent = terminal ? 'Terminal setup and live connection details.' :
+      (project && !project.classList.contains('hidden') ? 'Project: ' + ($('projBadgeName')?.textContent || 'Current project') : 'Files, notes and observed sources for this chat.');
+    $('ehubConnection').textContent = $('etSub')?.textContent || 'Not connected';
+    $('ehubRecentActivity').textContent = $('eccTerminalTicker')?.textContent || 'No recent activity.';
+    // Read the public provenance list, not keys, private reasoning or terminal screen text.
+    const sources = $('eccMemory'), out = $('ehubSources');
+    const text = sources?.textContent || '';
+    if (out.dataset.sourceText !== text) {
+      out.replaceChildren();
+      sources?.querySelectorAll('li').forEach(item => {
+        const row = D.createElement('li'); row.textContent = item.textContent; out.append(row);
+      });
+      out.dataset.sourceText = text;
+    }
+    $('ehubSourcesEmpty').hidden = !!out.children.length;
+    paintHead();
+  }
+  function restoreRoots() {
+    inertRoots.forEach(([el, value]) => { el.inert = value; }); inertRoots = [];
+  }
+  function focusInside() {
+    if (isOpen && !D.body.classList.contains('ehub-docked') && !panel.contains(D.activeElement)) $('ehubClose').focus({ preventScroll: true });
+  }
+  function syncLayout() {
+    if (!panel) return;
+    restoreRoots();
+    const docked = isOpen && workspaceMode && window.EmberPanelLayout?.canDock();
+    D.body.classList.toggle('ehub-docked', !!docked);
+    backdrop.hidden = !isOpen || !!docked;
+    panel.setAttribute('role', docked ? 'complementary' : 'dialog');
+    if (isOpen && !docked) {
+      panel.setAttribute('aria-modal', 'true');
+      ['app', 'settings'].forEach(id => { const el = $(id); if (el) { inertRoots.push([el, el.inert]); el.inert = true; } });
+      if (!panel.contains(D.activeElement)) $('ehubClose').focus({ preventScroll: true });
+      requestAnimationFrame(() => requestAnimationFrame(focusInside));
+    } else panel.removeAttribute('aria-modal');
+    $('bPanelTop')?.setAttribute('aria-expanded', String(isOpen && workspaceMode));
+    $('bPanelTerm')?.setAttribute('aria-expanded', String(isOpen && workspaceMode));
+    window.EmberPanelLayout?.refresh();
+  }
+  function openWorkspace() {
+    if (isOpen && workspaceMode) { setOpen(false); return; }
+    workspaceMode = true;
+    if (!isOpen) setOpen(true);
+    stack = ['workspace']; panel.dataset.context = 'workspace';
+    showView('workspace', null); paintWorkspace(); syncLayout();
+  }
   function setOpen(open) {
     if (open === isOpen || !panel) return;
     isOpen = open;
-    if (open) lastFocus = D.activeElement;
+    if (open) { window.EmberCommandCenter?.close(); lastFocus = D.activeElement; }
     panel.classList.toggle('ehub-open', open);
     panel.inert = !open;
     panel.setAttribute('aria-hidden', String(!open));
     backdrop.hidden = !open;
     D.body.classList.toggle('ehub-on', open);
     if (open) { resetStack(); paintCC(); paintKeys(); const c = $('ehubClose'); if (c) c.focus({ preventScroll: true }); }
-    else if (lastFocus && lastFocus.isConnected) { try { lastFocus.focus({ preventScroll: true }); } catch (e) { /* element may be gone */ } }
+    else { workspaceMode = false; delete panel.dataset.context; }
+    syncLayout();
+    if (!open && lastFocus && lastFocus.isConnected) { try { lastFocus.focus({ preventScroll: true }); } catch (e) { /* element may be gone */ } }
   }
 
   // Opens the original, untouched Settings screen (optionally on one section).
   function classic(tab) {
     setOpen(false);
+    if (tab === 'github') { setTimeout(() => { if (window.EmberGit) window.EmberGit.open('connect'); }, 250); return; } // GitHub lives only in the Command Centre
     const bSet = $('bSet'); if (!bSet) return;
     if (!$('settings').classList.contains('show')) bSet.click(); // synthetic click: our interceptor ignores it, the original handler runs
     if (!tab) return;
@@ -158,7 +236,7 @@
     setTimeout(() => {
       const b = $('bCommandCenter'), ecc = $('emberCommandCenter');
       if (b && !(ecc && ecc.classList.contains('ecc-open'))) b.click();
-      if (repos) setTimeout(() => { const r = $('eccRepos'); if (r) r.click(); }, 380);
+      if (repos) setTimeout(() => { if (window.EmberWorkspace) window.EmberWorkspace.open(); }, 380);
     }, 250);
   }
 
@@ -172,20 +250,21 @@
     set('ehubCCMem', txt('eccMemoryCount', '0'));
     set('ehubCCTerm', txt('eccTerminalStatus', 'Idle'));
     set('ehubCCLines', (txt('eccTerminalCount', '0 lines').match(/\d+/) || ['0'])[0]);
+    try { if (window.EmberPlugins) { const s = window.EmberPlugins.scrapers(); set('ehubCCScr', s.on ? String(s.live.length) : 'Off'); } } catch (e) { /* cosmetic */ }
     set('ehubCCCtx', txt('eccContextStatus', 'Waiting for a model request.'));
     try {
       if (window.EmberGit) {
         const g = window.EmberGit.summary();
         set('ehubCCGit', window.EmberGit.line());
-        set('ehubGitSum', g.ready ? (g.synced ? g.brain + ' · ' + g.files + ' files' : 'Brain not loaded yet') + ' · ' + g.linked + ' linked · tap to manage' : 'Load brain, find repos, clone and push');
+        set('ehubGitSum', g.ready ? (g.synced ? g.brain + ' · ' + g.files + ' files' : 'Brain not loaded yet') + ' · ' + g.linked + ' linked · tap to manage' : 'Token, brain, repos, builds and files in the Command Centre');
       }
     } catch (e) { /* github state is cosmetic here */ }
     const live = D.querySelector('#ehubCC .ehub-live'); if (live) live.classList.toggle('busy', /active/i.test(txt('eccTerminalStatus', '')));
   }
   function watchCC() {
     if (!window.MutationObserver) return;
-    const mo = new MutationObserver(() => { if (isOpen) paintCC(); });
-    ['eccThought', 'eccMemoryCount', 'eccTerminalStatus', 'eccTerminalCount', 'eccContextStatus'].forEach(id => {
+    const mo = new MutationObserver(() => { if (isOpen) { paintCC(); paintWorkspace(); } });
+    ['eccThought', 'eccMemoryCount', 'eccMemory', 'eccTerminalTicker', 'etSub', 'eccTerminalStatus', 'eccTerminalCount', 'eccContextStatus'].forEach(id => {
       const e = $(id); if (e) mo.observe(e, { childList: true, characterData: true, subtree: true });
     });
   }
@@ -275,6 +354,26 @@
   ready(() => {
     if ($('emberHub')) return;
     build(); watchCC();
+    panel.addEventListener('transitionend', focusInside);
+    function addPanelButton(host, id) {
+      if (!host || $(id)) return;
+      const b = D.createElement('button'); b.type = 'button'; b.id = id; b.className = 'ember-panel-button';
+      b.textContent = 'Panel'; b.setAttribute('aria-label', 'Open workspace panel');
+      b.setAttribute('aria-controls', 'emberHub'); b.setAttribute('aria-expanded', 'false');
+      b.addEventListener('click', openWorkspace); host.prepend(b);
+    }
+    addPanelButton(D.querySelector('#app > header .hr'), 'bPanelTop');
+    addPanelButton($('etHead'), 'bPanelTerm');
+    window.addEventListener('resize', syncLayout);
+    window.matchMedia('(min-width: 1100px)').addEventListener('change', syncLayout);
+    panel.addEventListener('keydown', e => {
+      if (e.key !== 'Tab' || !isOpen || D.body.classList.contains('ehub-docked')) return;
+      const nodes = [...panel.querySelectorAll('button:not(:disabled), summary, input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]')]
+        .filter(el => !el.closest('[hidden], [inert]') && el.getClientRects().length);
+      const first = nodes[0], last = nodes[nodes.length - 1];
+      if (e.shiftKey && D.activeElement === first) { e.preventDefault(); last?.focus(); }
+      else if (!e.shiftKey && D.activeElement === last) { e.preventDefault(); first?.focus(); }
+    });
 
     // Real taps on Settings (header dropdown) open this panel. Programmatic clicks (other features) keep the classic screen.
     D.addEventListener('click', e => {
@@ -286,12 +385,24 @@
 
     panel.addEventListener('click', e => {
       const t = e.target;
+      const action = t.closest('[data-context-action]')?.dataset.contextAction;
+      if (action) {
+        const terminal = terminalContext();
+        setOpen(false);
+        if (action === 'docs') $('bDocsQuick')?.click();
+        if (action === 'command') openCommandCentre(false);
+        if (action === 'setup' && terminal) {
+          window.EmberTerm?.setPanel('full');
+          D.querySelector('#etTabs [data-v="setup"]')?.click();
+        }
+        return;
+      }
       if (t.closest('#ehubClose')) { setOpen(false); return; }
       if (t.closest('#ehubBack')) { pop(); return; }
       const vo = t.closest('[data-view-open]'); if (vo) { push(vo.getAttribute('data-view-open')); return; }
       const po = t.closest('[data-prov-open]'); if (po) { curProv = po.getAttribute('data-prov-open'); push('prov'); return; }
       if (t.closest('#ehubCCOpen')) { openCommandCentre(false); return; }
-      if (t.closest('#ehubCCRepos') || t.closest('#ehubGitBtn')) { if (window.EmberGit) { window.EmberGit.open(); } else { openCommandCentre(true); } return; }
+      if (t.closest('#ehubCCRepos') || t.closest('#ehubGitBtn')) { if (window.EmberGit) { setOpen(false); window.EmberGit.open(); } else { openCommandCentre(true); } return; }
       const chk = t.closest('[data-check]'); if (chk) { checkProvider(chk.getAttribute('data-check'), chk); return; }
       if (t.closest('[data-manage]')) { classic('keys'); return; }
       const go = t.closest('[data-go]'); if (go) classic(go.getAttribute('data-go'));
@@ -310,7 +421,7 @@
 
     window.addEventListener('ember-provider-stats', () => { if (isOpen) { paintKeys(); paintProv(); } });
     window.addEventListener('ember-names', () => { if (isOpen) { paintKeys(); paintProv(); } });
-    window.addEventListener('ember-git-state', () => { if (isOpen) paintCC(); });
-    window.EmberHub = { open: () => setOpen(true), close: () => setOpen(false), isOpen: () => isOpen };
+    window.addEventListener('ember-git-state', () => { if (isOpen) { paintCC(); paintWorkspace(); } });
+    window.EmberHub = { section: tab => classic(tab), workspace: openWorkspace, open: () => { workspaceMode = false; delete panel.dataset.context; if (isOpen) { resetStack(); syncLayout(); } else setOpen(true); }, close: () => setOpen(false), isOpen: () => isOpen };
   });
 })();

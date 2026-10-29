@@ -11,9 +11,7 @@
   const SECTIONS = [
     { id: 'general', title: 'General, Persona & Memory', desc: 'Free Mode, your name, voice and pacing, system prompt, memory, look, usage, backup' },
     { id: 'keys', title: 'Engine Keys & Providers', desc: 'Which engine answers, API keys, engine names' },
-    { id: 'github', title: 'GitHub', desc: 'Knowledge Brain Repo, token, live files and activity' },
-    { id: 'features', title: 'Features', desc: 'AI routing, media artifacts, audio/video downloads and Repo Runner' },
-    { id: 'advanced', title: 'Advanced', desc: 'Optional GitHub Actions Runner for builds and tests' },
+    { id: 'features', title: 'Features', desc: 'AI routing, media artifacts and audio/video downloads' },
     { id: 'scraping', title: 'Web Scraping', desc: 'Scraper keys, the free reader, health checks and tests' },
     { id: 'hacking', title: 'Termux & Hacking', desc: 'Termux mode, pen-test persona and the built-in terminal' },
     { id: 'music', title: 'Music', desc: 'Player, song identification, music control, documents' },
