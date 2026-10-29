@@ -73,7 +73,6 @@
         ).join('') +
       '</section>' +
 
-      '<button type="button" class="ehub-btn ehub-classic" id="ehubClassic">Open classic settings (unchanged)</button>' +
 
       '<section class="ehub-cc" id="ehubCC" aria-label="Ember Command Centre widget">' +
         '<button type="button" class="ehub-cc-top" id="ehubCCToggle" aria-expanded="false" aria-controls="ehubCCBody"><span class="ehub-cc-ico" aria-hidden="true">◫</span>' +
@@ -272,7 +271,6 @@
       if (t.closest('#ehubCCToggle')) { setCCOpen(!ccOpen); return; }
       if (t.closest('#ehubCCOpen')) { openCommandCentre(false); return; }
       if (t.closest('#ehubCCRepos') || t.closest('#ehubGitBtn')) { if (window.EmberGit) { window.EmberGit.open(); } else { openCommandCentre(true); } return; }
-      if (t.closest('#ehubClassic')) { classic(''); return; }
       const chk = t.closest('[data-check]'); if (chk) { checkProvider(chk.getAttribute('data-check'), chk); return; }
       if (t.closest('[data-manage]')) { classic('keys'); return; }
       const tog = t.closest('[data-toggle]');
