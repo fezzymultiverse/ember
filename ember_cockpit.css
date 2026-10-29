@@ -1,0 +1,118 @@
+/* Ember 1.10.14 — full-screen, single-scroll Settings and unified repo cockpit. */
+html body.cockpit-ui #settings.sheet{position:fixed!important;inset:0!important;width:100%!important;max-width:none!important;height:100dvh!important;max-height:100dvh!important;border:0!important;border-radius:0!important;transform:none!important;transition:none!important;animation:none!important;background:#080b10!important;z-index:220!important;display:none!important;flex-direction:column!important;overflow:hidden!important;box-sizing:border-box}
+html body.cockpit-ui #settings.sheet.show{display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;transform:none!important}
+body.cockpit-settings-open{overflow:hidden}
+html body.cockpit-ui #settings>.sh{display:flex!important;flex:0 0 auto!important;position:relative!important;inset:auto!important;padding:calc(14px + env(safe-area-inset-top,0px)) 18px 14px!important;min-height:72px!important;height:auto!important;border-bottom:1px solid #233042!important;background:#0d121a!important;gap:14px!important}
+html body.cockpit-ui #settings .sh-t{display:flex!important;flex:1!important;flex-direction:column!important;gap:4px!important;min-width:0!important}
+html body.cockpit-ui #settings .sh-t b{font:700 20px/1.2 system-ui!important;color:#f1f4fb!important}
+html body.cockpit-ui #settings .sh-t small{font:12px/1.4 system-ui!important;color:#91a6bf!important}
+html body.cockpit-ui #settings #bSx{display:block!important;order:3!important;min-width:44px!important;width:44px!important;height:44px!important;border:1px solid #2d3b4f!important;border-radius:12px!important;background:#151e2b!important;color:#eff5ff!important}
+html body.cockpit-ui #settings .sh-logo{display:block!important;order:-1!important;width:34px!important;height:34px!important}
+html body.cockpit-ui #settings>.sb{display:block!important;position:relative!important;flex:1 1 auto!important;min-height:0!important;height:auto!important;max-height:none!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important;touch-action:pan-y;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;padding:0 16px calc(36px + env(safe-area-inset-bottom,0px))!important;scrollbar-gutter:stable}
+#cockpitSettings{width:100%;max-width:980px;margin:0 auto;min-width:0;box-sizing:border-box;padding-bottom:18px}
+.cockpit-intro{padding:22px 0 6px}
+.cockpit-kicker{font:750 10px/1.4 system-ui;letter-spacing:.18em;color:#ff9c53}
+.cockpit-intro p{font:650 23px/1.3 system-ui;color:#edf3fe;margin:8px 0 18px}
+.cockpit-section{padding-top:28px;min-width:0;scroll-margin-top:18px}
+.cockpit-section>h2{font:700 18px/1.4 system-ui;color:#edf3fe;margin:0 0 5px}
+.cockpit-section>h2::before{content:'';display:inline-block;width:5px;height:16px;border-radius:4px;background:#ff9042;margin-right:9px;vertical-align:-2px}
+.cockpit-desc{font:12px/1.6 system-ui;color:#8da2bd;margin:0 0 14px}
+html body #settings #cockpitSettings .card{display:block!important;position:static!important;min-width:0!important;width:100%!important;max-width:100%!important;height:auto!important;max-height:none!important;overflow:visible!important;margin:0 0 12px!important;padding:16px!important;background:#101720!important;border:1px solid #263348!important;border-radius:14px!important;box-sizing:border-box!important;animation:none!important;transform:none!important}
+html body #settings #cockpitSettings .card>*:not([hidden]){visibility:visible}
+html body #settings #cockpitSettings .card.collapsed>*:not(.ct){display:revert!important}
+html body #settings #cockpitSettings .ct{display:flex!important;align-items:center!important;margin:0 0 14px!important;min-height:0!important;cursor:default!important;font:650 14px/1.4 system-ui!important;color:#dceaff!important;white-space:normal!important}
+html body #settings #cockpitSettings .ct::after{display:none!important}
+html body #settings #cockpitSettings .hint{font:12px/1.65 system-ui!important;color:#9cb0c9!important;overflow-wrap:anywhere}
+html body #settings #cockpitSettings input:not([type=checkbox]):not([type=range]),html body #settings #cockpitSettings select,html body #settings #cockpitSettings textarea{box-sizing:border-box;min-width:0!important;width:100%;max-width:100%!important;font-size:16px!important;background:#0b111b;color:#e6eefc;border:1px solid #34435a;border-radius:9px}
+html body #settings #cockpitSettings input[type=range]{max-width:100%;min-width:0}
+html body #settings #cockpitSettings .lb{display:block;margin:14px 0 7px;font-size:12px!important;color:#a5bad4}
+html body #settings #cockpitSettings .btn{width:auto!important;min-width:0!important;max-width:100%!important;min-height:44px!important;height:auto!important;padding:10px 13px!important;font:600 12px/1.4 system-ui!important;white-space:normal!important;overflow-wrap:anywhere}
+html body #settings #cockpitSettings .btnrow{display:flex!important;flex-wrap:wrap!important;gap:8px!important;min-width:0!important}
+html body #settings #cockpitSettings .btnrow>.btn{flex:1 1 130px!important}
+html body #settings #cockpitSettings .cr{min-width:0;gap:12px}
+html body #settings #cockpitSettings .cr>span{min-width:0;flex:1;overflow-wrap:anywhere;font-size:13px!important;line-height:1.5}
+.cockpit-subtitle{font:650 13px/1.5 system-ui;color:#c6defa;margin:0 0 12px}
+.cockpit-control-group+.cockpit-control-group{border-top:1px solid #263348;margin-top:20px;padding-top:20px}
+html body #settings #accWrap,html body #settings #stabs,html body #settings #ccWidget,html body #settings .acc-card-backbar,html body #settings #cockpitSettings .key-back{display:none!important}
+html body #settings #cockpitProviderList{display:block;border:0;background:none}
+#cockpitProviderList>summary{font:650 14px/1.5 system-ui;cursor:pointer;color:#d8e8ff;padding:8px 0;min-height:44px;box-sizing:border-box}
+#cockpitProviderList[open]>summary{margin-bottom:14px;border-bottom:1px solid #2b3b52}
+html body #settings .cockpit-provider{display:block!important;border:1px solid #2b3b52;border-radius:10px;background:#0c131e;margin:10px 0;overflow:hidden}
+html body #settings .cockpit-provider>summary.kghead{display:list-item!important;min-height:44px!important;padding:12px 14px!important;cursor:pointer;background:#141e2d;font:600 13px/1.5 system-ui;color:#dceaff;list-style-position:inside}
+html body #settings .cockpit-provider .kgbody{display:block!important;padding:10px}
+html body #settings .cockpit-provider:not([open])>.kgbody{display:none!important}
+html body #settings .cockpit-provider .kr{min-width:0;gap:8px;overflow-wrap:anywhere}
+html body #settings .cockpit-provider .kt{min-width:0}
+html body #settings .cockpit-provider .kt b{overflow-wrap:anywhere;white-space:normal}
+html body #settings .cockpit-provider .kt small{white-space:normal;overflow-wrap:anywhere}
+html body #settings .cockpit-provider .kr>button{min-width:36px;min-height:40px}
+html body #settings .cockpit-inline-media.sheet,html body #browser .cockpit-inline-notes.sheet{display:block!important;position:static!important;inset:auto!important;width:100%!important;height:auto!important;max-height:none!important;transform:none!important;opacity:1!important;visibility:visible!important;border:0!important;border-radius:0!important;background:none!important;overflow:visible!important;box-shadow:none!important;transition:none!important;z-index:auto!important}
+html body #settings .cockpit-inline-media>.sb{display:block!important;height:auto!important;max-height:none!important;overflow:visible!important;padding:0!important}
+html body #settings .cockpit-inline-media .eg-hero{padding:0 0 12px}
+html body #settings .cockpit-inline-media .eg-hero h2{font-size:17px}
+html body #settings .cockpit-inline-media .eg-seg{flex-wrap:wrap}
+html body #settings .cockpit-inline-media .eg-opt{flex:1 1 88px;min-height:44px;padding:8px}
+.cockpit-scrape-pane{border-top:1px solid #28374c;padding-top:16px;margin-top:18px}
+html body #settings .cockpit-scrape-pane{display:block!important}
+html body #settings #etPanel{position:relative!important;inset:auto!important;width:100%!important;max-width:100%!important;margin-top:14px;z-index:auto!important}
+html body #settings .prow{display:flex!important;flex-wrap:wrap!important;gap:10px;min-width:0}
+html body #settings .prow>span{min-width:0;overflow-wrap:anywhere}
+html body #settings .prow .btn{flex:0 1 auto}
+html body.cockpit-ui #emberCommandCenter{top:0!important;bottom:0!important;height:100dvh!important;max-height:100dvh!important}
+html body.cockpit-ui #emberCommandCenter.ecc-open{width:100%!important;max-width:none!important;inset:0!important;transform:none!important;border-radius:0!important}
+html body.cockpit-ui #emberCommandCenter .ecc-panel-content{overflow:auto;min-height:0;overscroll-behavior:contain;touch-action:pan-y;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+html body.cockpit-ui #emberCommandCenter #eccGitHub{max-width:980px;width:100%;margin-left:auto;margin-right:auto;box-sizing:border-box}
+html body.cockpit-ui #emberCommandCenter .ecc-gtabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;overflow:visible}
+html body.cockpit-ui #emberCommandCenter .ecc-gtabs button{padding:12px 4px;font-size:12px;min-width:0;min-height:44px;white-space:normal}
+html body.cockpit-ui #ghRunnerCard[hidden]{display:none!important}
+html body.cockpit-ui #repoWorkspace .btn{min-height:44px;white-space:normal;max-width:100%}
+#cockpitQueueCount{display:inline-flex;align-items:center;justify-content:center;min-width:24px;background:#192e46;border-radius:8px;padding:2px 5px;font-size:12px;color:#9ad0ff}
+.cockpit-queue-row{padding:12px 0;border-top:1px solid #28394f;display:flex;gap:12px;align-items:center;justify-content:space-between}
+.cockpit-queue-row .rr-check{flex:1;flex-wrap:wrap;overflow-wrap:anywhere}
+.cockpit-queue-row small{color:#89a3c1;font-size:10px}
+.cockpit-terminal{border:1px solid #314862;background:#090f17;border-radius:12px;padding:12px;min-width:0;margin-top:12px}
+.cockpit-terminal>summary{cursor:pointer;min-height:32px;line-height:1.5;font:600 12px/1.6 ui-monospace,monospace;color:#95d2b8}
+.cockpit-terminal:not([open])>*:not(summary){display:none!important}
+#cockpitSearchLog{font:11px/1.7 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;color:#91cbb2;margin:10px 0;max-height:150px;overflow:auto}
+#cockpitSshPublic{font-family:ui-monospace,monospace!important;font-size:12px!important;resize:vertical;width:100%;box-sizing:border-box}
+#cockpitRunPush{background:#ff9347!important;color:#120c06!important;font-weight:750!important;width:100%}
+#cockpitSsh a{font-size:12px;color:#8bc4ff}
+html body.cockpit-ui #chatProviderBar{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;min-height:34px!important;margin-top:6px!important;padding-top:5px!important;border-top:0!important}
+html body.cockpit-ui #chatProviderBar #bProv{display:inline-flex!important;min-width:0}
+html body.cockpit-ui #chatProviderBar #cockpitApiCount{flex:0 0 auto;white-space:nowrap}
+#cockpitApiCount{display:inline-flex;align-items:center;gap:6px;color:#92a4bc;font:500 10px/1.5 system-ui;letter-spacing:.02em;margin-left:auto;text-align:right}
+#cockpitApiCount::before{content:'';width:5px;height:5px;background:#6d8caa;border-radius:50%}
+html body.cockpit-ui #bPanelTop,html body.cockpit-ui #bPanelTerm{display:none!important}
+html body #browser .cockpit-inline-notes>.sh,html body #browser .cockpit-inline-notes>#cTabs{display:none!important}
+html body #browser .cockpit-inline-notes>#cBody{display:block!important;height:auto!important;max-height:none!important;overflow:visible!important;padding:16px!important}
+html body #brNotes.hidden{display:none!important}
+html body #brNotes{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
+html body #settings #cockpitTermuxPanel #etPanel{display:flex!important;height:540px!important;max-height:none!important;border:1px solid #2e4355!important;border-radius:12px!important;box-shadow:none!important;transition:none!important;padding-bottom:0!important}
+html body #settings #cockpitTermuxPanel #etExp,html body #settings #cockpitTermuxPanel #etMin{display:none!important}
+html body #settings #cockpitTermuxPanel .etbody{height:auto!important;min-height:0!important}
+html body #settings #cockpitTermuxPanel .etview{min-height:120px}
+html body #settings #cockpitTermuxPanel .eth::after,html body #settings #cockpitTermuxPanel .eth::before{display:none!important}
+html body #settings .cockpit-memory-group{padding:10px 0;border-top:1px solid #263348}
+html body #settings .cockpit-memory-group h4{font:650 13px/1.5 system-ui;color:#c9dff8;margin:0 0 10px}
+html body #settings .cockpit-memory-group .mi{min-width:0;overflow-wrap:anywhere}
+html body #settings .cockpit-flat-detail>summary{list-style:none;cursor:default}
+html body #settings .cockpit-flat-detail>summary::after{display:none!important}
+@media(min-width:1100px){html body.cockpit-ui.ecc-docked #app{width:100%!important;margin:0!important}html body.cockpit-ui.ecc-docked #empty{right:0!important}}
+@media(prefers-reduced-motion:reduce){html body #settings>.sb{scroll-behavior:auto!important}html body #cockpitSettings *{animation:none!important;transition:none!important}}
+
+/* V1.10.15: blue dot sits IN FRONT of the Ember name and flashes */
+html body header .who{flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:center!important;gap:0!important}
+html body header .who .ember-dot{display:inline-block!important;flex:0 0 10px;width:10px;height:10px;margin:0 9px 0 0;border-radius:50%;background:#2f8cff;box-shadow:0 0 6px #2f8cff,0 0 14px #2f8cff;animation:emberDotFlash 1.2s ease-in-out infinite!important}
+html body header .who #pName::after{content:none!important;display:none!important}
+html body header .who #engs{display:none!important}
+@keyframes emberDotFlash{0%,100%{opacity:1;transform:scale(1);box-shadow:0 0 6px #2f8cff,0 0 16px #2f8cff}50%{opacity:.15;transform:scale(.7);box-shadow:0 0 0 #2f8cff00}}
+@media(prefers-reduced-motion:reduce){html body header .who .ember-dot{animation:none!important}}
+/* Providers selector left, verified API key count far right */
+html body.cockpit-ui #chatProviderBar #bProv{order:0!important;margin-right:auto!important;margin-left:0!important}
+html body.cockpit-ui #chatProviderBar #cockpitApiCount{order:2!important;margin-left:auto!important}
+html body #provDrop .pdre{width:auto!important;min-width:34px;height:auto!important;min-height:34px;padding:6px 12px!important;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+/* V1.10.15 repair: media-engine cards inside Settings, even padding, full width, no jammed caption */
+html body #settings .cockpit-inline-media .eg-hero{padding:16px!important;margin:12px 0 12px!important;border-radius:14px}
+html body #settings .cockpit-inline-media .eg-hero h2{margin:10px 0 6px}
+html body #settings .cockpit-inline-media .eg>*{max-width:100%;box-sizing:border-box}
+html body #settings .cockpit-inline-media .eg>div:not(.eg-hero),html body #settings .cockpit-inline-media .eg>section{margin-left:0!important;margin-right:0!important;width:100%}
