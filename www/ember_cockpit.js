@@ -33,6 +33,24 @@
       sections[id] = s; root.append(s);
     });
     sb.prepend(root);
+    // 1.10.18 Part 3: Settings is ONE right-hand panel. Nine rows; tap a row to slot in its sub menu.
+    const ROWS = [
+      {id:'general', title:'Memory and Settings', desc:'Free Mode, your name, voice and pacing, system prompt, memory, look, usage, backup', sections:['general']},
+      {id:'keys', title:'Engine Keys & Providers', desc:'Which engine answers, API keys, Puter token, engine names', sections:['engine']},
+      {id:'github', title:'GitHub \u00b7 Brain & Repo Runner', desc:'One token \u00b7 live Brain \u00b7 repo search \u00b7 Ember output \u00b7 run status', workspace:'connect'},
+      {id:'features', title:'Features \u00b7 Repositories & AI', desc:'Shared repository workspace, routing, media and downloads', sections:['features','providers']},
+      {id:'advanced', title:'Advanced', desc:'Optional GitHub Actions Runner for builds and tests', workspace:'build'},
+      {id:'scraping', title:'Web Scraping', desc:'Scraper keys, the free reader, health checks and tests', sections:['scraping']},
+      {id:'hacking', title:'Termux & Hacking', desc:'Termux mode, pen-test persona, the built-in terminal and YouTube / yt-dlp', sections:['hacking']},
+      {id:'device', title:'Device Tools', desc:'Wi-Fi, storage and RAM, uptime, battery and local diagnostics', sections:['device']},
+      {id:'music', title:'Music', desc:'Player, song identification, music control, documents, system integrations', sections:['music']},
+      {id:'permissions', title:'Permissions, Voice & Background', desc:'Notifications, mic, battery, keep-alive, read aloud', sections:['permissions']}
+    ];
+    const menu = D.createElement('div'); menu.id = 'cockpitMenu';
+    menu.innerHTML = ROWS.map(r => '<button type="button" class="cmenu-row" data-crow="' + r.id + '"><span class="cmenu-t"><b>' + esc(r.title) + '</b><small>' + esc(r.desc) + '</small></span><span class="cmenu-c" aria-hidden="true">\u2304</span></button>').join('');
+    sb.prepend(menu);
+    const backdrop = D.createElement('button'); backdrop.type = 'button'; backdrop.id = 'cockpitBackdrop'; backdrop.tabIndex = -1; backdrop.setAttribute('aria-label', 'Close settings'); D.body.append(backdrop);
+    let view = 'menu';
     cards.forEach(c => {
       const t = titleOf(c), tab = c.dataset.tab;
       let dest = tab;
@@ -66,6 +84,20 @@
       // Inline terminal does not cover settings or require a second Termux page.
       $('etExp').hidden = true; $('etMin').hidden = true;
     }
+    // 1.10.18 Part 5: Termux Mode and Ember Termux are ONE block: mode switch on top, the terminal right under it.
+    (() => {
+      const tp = $('cockpitTermuxPanel'); if (!tp) return;
+      const groups = Array.from(tp.querySelectorAll(':scope > .cockpit-control-group')), mode = groups[0], et = groups[1];
+      const title = tp.querySelector(':scope > .ct'); if (title) title.textContent = 'Ember Termux';
+      if (mode && et) {
+        et.querySelector(':scope > .cockpit-subtitle')?.remove();
+        const divider = D.createElement('div'); divider.className = 'cockpit-termux-divider'; mode.append(divider);
+        while (et.firstChild) mode.append(et.firstChild);
+        et.remove();
+      }
+      if ($('etPanel')) (mode || tp).append($('etPanel'));
+      tp.querySelectorAll('.hint').forEach(h => { if (/docked at the bottom of this tab/.test(h.textContent)) h.textContent = h.textContent.replace('The terminal is docked at the bottom of this tab:', 'The terminal sits right here under the switch:'); });
+    })();
     // One provider list accordion, with independent provider accordions inside it.
     const keyCard = $('kList')?.closest('.card');
     if (keyCard) {
@@ -115,27 +147,54 @@
     // Retire the duplicate command widget, keeping its live observer targets detached and safe.
     if ($('ccWidget')) $('ccWidget').hidden = true;
     const heading = settings.querySelector('.sh-t');
-    if (heading) { heading.querySelector('b').textContent = 'Settings'; heading.querySelector('small').textContent = 'The Cockpit Update'; }
+    if (heading) { heading.querySelector('b').textContent = 'Settings'; heading.querySelector('small').textContent = 'Settings'; }
     settings.setAttribute('role','dialog'); settings.setAttribute('aria-modal','true'); settings.setAttribute('aria-label','Settings');
     let lastFocus;
     const originalOpen = $('bSet').onclick, originalClose = $('bSx').onclick;
     const map = { keys:'engine', features:'providers', general:'general', scraping:'scraping', hacking:'hacking', music:'music', permissions:'permissions' };
+    const homeName = () => ($('pName')?.textContent || '').trim() || 'Ember';
+    function setHead(title, sub, back) {
+      $('setTitle').textContent = title;
+      const small = settings.querySelector('.sh-t small'); if (small) small.textContent = sub;
+      const x = $('bSx'); x.textContent = back ? '\u2039' : '\u2715'; x.setAttribute('aria-label', back ? 'Back to Settings' : 'Close settings');
+    }
+    function showMenu() {
+      view = 'menu'; settings.classList.add('cview-menu'); settings.classList.remove('cview-section');
+      Object.values(sections).forEach(s => s.classList.remove('cshow')); root.classList.remove('cmulti');
+      setHead(homeName(), 'Settings', false); sb.scrollTop = 0;
+    }
+    function showRow(row, target) {
+      if (row.workspace) { closeSettings(); W.EmberWorkspace.open(row.workspace); return; }
+      view = 'section'; settings.classList.add('cview-section'); settings.classList.remove('cview-menu');
+      Object.entries(sections).forEach(([id, s]) => s.classList.toggle('cshow', row.sections.includes(id)));
+      root.classList.toggle('cmulti', row.sections.length > 1);
+      setHead(row.title, 'Settings', true); sb.scrollTop = 0;
+      if (target) requestAnimationFrame(() => target.scrollIntoView({block:'start'}));
+    }
+    function rowFor(section, target) {
+      let id = null;
+      const host = target?.closest?.('.cockpit-section'); if (host) id = host.id.replace('cockpit_', '');
+      if (!id && section) id = map[section] || section;
+      const row = id && ROWS.find(r => r.sections && r.sections.includes(id));
+      return row ? {row, target: target || sections[id]} : null;
+    }
     function openSettings(section, target) {
       W.EmberCommandCenter.close();
       lastFocus = D.activeElement;
-      originalOpen('general'); $('setTitle').textContent = 'Settings';
+      originalOpen('general');
       D.body.classList.add('cockpit-settings-open'); $('app').inert = true;
-      requestAnimationFrame(() => {
-        if (section || target) (target || sections[map[section] || section])?.scrollIntoView({block:'start'});
-        else sb.scrollTop = 0;
-        $('bSx').focus({preventScroll:true});
-      });
+      const hit = rowFor(section, target);
+      if (hit) showRow(hit.row, hit.target); else showMenu();
+      requestAnimationFrame(() => $('bSx').focus({preventScroll:true}));
     }
     function closeSettings() {
       originalClose(); D.body.classList.remove('cockpit-settings-open'); $('app').inert = false;
       if (lastFocus?.isConnected && !$('emberCommandCenter').classList.contains('ecc-open')) lastFocus.focus({preventScroll:true});
     }
-    $('bSet').onclick = () => openSettings(); $('bSx').onclick = closeSettings;
+    const back = () => { if (view === 'section') { showMenu(); $('bSx').focus({preventScroll:true}); } else closeSettings(); };
+    menu.addEventListener('click', e => { const b = e.target.closest('[data-crow]'); if (b) showRow(ROWS.find(r => r.id === b.dataset.crow)); });
+    backdrop.addEventListener('click', closeSettings);
+    $('bSet').onclick = () => openSettings(); $('bSx').onclick = back;
     W.EmberHub = {open:()=>openSettings(),close:closeSettings,isOpen:()=>settings.classList.contains('show'),section:id=>openSettings(id),openWorkspace:()=>W.EmberCommandCenter.open()};
     W.EmberMenu = {sync:()=>{},reveal:el=>openSettings(null,el),openCard:el=>openSettings(null,el),back:closeSettings};
     $('cockpitCommand').onclick = () => { closeSettings(); W.EmberWorkspace.open('connect'); };
@@ -148,7 +207,7 @@
     $('stabs').addEventListener('click', e => { const t = e.target.closest('[data-st]'); if (t) setTimeout(() => (sections[map[t.dataset.st]] || sections.general).scrollIntoView({block:'start'}), 60); });
     D.addEventListener('keydown', e => {
       if (!settings.classList.contains('show')) return;
-      if (e.key === 'Escape') { e.preventDefault(); closeSettings(); }
+      if (e.key === 'Escape') { e.preventDefault(); back(); }
       if (e.key === 'Tab') {
         const list = Array.from(settings.querySelectorAll('button,input,select,textarea,summary,[tabindex="0"]')).filter(x => !x.disabled && x.getClientRects().length);
         const first = list[0], last = list.at(-1);
@@ -204,7 +263,8 @@
       $('brX').addEventListener('click', () => $('cX').click());
     }
     setupCommandCentre(R,G,closeSettings);
-    W.EmberCockpit = {open:openSettings,close:closeSettings,version:'1.10.15'};
+    const dash = unifyCommandCentre(G);
+    W.EmberCockpit = {open:openSettings,close:closeSettings,dash,version:'1.10.18'};
   }
   function setupCommandCentre(R,G,closeSettings) {
     const card = $('eccGitHub'), panel = $('emberCommandCenter'), host = panel.querySelector('.ecc-panel-content');
@@ -338,6 +398,68 @@
     $('rrSearch')?.addEventListener('keydown',e=>{if(e.key==='Enter')term.open=true;});
     renderQueue();
     W.EmberCockpitQueue={snapshot:()=>queue.map(x=>({...x})),pending:()=>Array.from(candidates.values()).map(x=>({...x}))};
+  }
+
+  // 1.10.18 Part 4: ONE Command Centre dashboard. Tabs replace four stacked panels; GitHub (Brain, Search, Run & Push) is one tab.
+  function unifyCommandCentre(G) {
+    const panel = $('emberCommandCenter'), host = panel.querySelector('.ecc-panel-content'), gh = $('eccGitHub');
+    const routing = host.querySelector('.ef-panel');
+    const head = c => (c.querySelector('h2,h3')?.textContent || '').trim();
+    const others = Array.from(host.querySelectorAll(':scope > .ecc-card')).filter(c => c !== gh);
+    const thought = others.find(c => /thought/i.test(head(c))), memory = others.find(c => /memory/i.test(head(c)));
+    const ov = D.createElement('section'); ov.id = 'eccOverview'; ov.className = 'ecc-card eccx-overview';
+    ov.innerHTML = '<h2>Overview</h2><div id="eccxTiles" class="eccx-tiles"></div><h3 class="eccx-h">Providers, free models and key rotation</h3><div id="eccxTable" class="eccx-table" role="table" aria-label="Providers"></div><p class="hint eccx-note">Free Mode needs no key (Pollinations pictures, Forge community GPUs). Add several keys for one provider and Ember rotates between them: a rate-limited or rejected key rests and the next one answers, then the next provider takes over. OpenRouter :free models and Plugsky micro/lite are labelled free once their live catalog is loaded. Claude is paid and pin-only; Stability is media-only. Free tiers are set by each provider, not guaranteed by Ember.</p><div class="btnrow"><button type="button" class="btn g" id="eccxCheck">Check all keys</button><button type="button" class="btn g" id="eccxOpenKeys">Manage keys in Settings</button></div><p id="eccxStatus" class="hint" role="status"></p>';
+    const panels = {overview: ov, github: gh, routing, thought, memory};
+    const LABEL = {overview:'Overview', github:'GitHub', routing:'Routing & keys', thought:'Inspector', memory:'Memory'};
+    const bar = D.createElement('div'); bar.id = 'eccDash'; bar.className = 'eccx-tabs'; bar.setAttribute('role','tablist'); bar.setAttribute('aria-label','Command Centre');
+    bar.innerHTML = Object.keys(panels).filter(k => panels[k]).map(k => '<button type="button" role="tab" data-dash="' + k + '" id="eccDash_' + k + '">' + LABEL[k] + '</button>').join('');
+    host.prepend(ov); host.prepend(bar);
+    let current = 'overview';
+    function paint() {
+      const P = W.Prov; if (!P) return;
+      let active = 0, saved = 0, free = 0, cached = 0, rest = 0; const rows = [];
+      P.IDS.forEach(id => {
+        const c = P.CFG[id], list = P.entries(id) || [], live = list.filter(e => e.st?.ok && !e.st.limited && !P.isCool(e.key)).length, cool = list.filter(e => P.isCool(e.key)).length;
+        const d = P.detail(id) || {}, models = (P.cachedModels && P.cachedModels(id)) || [], fm = models.filter(m => /:free$|^plugsky-(micro|lite)$/.test(m)).length;
+        active += live; saved += list.length; rest += cool; free += fm; cached += models.length ? 1 : 0;
+        const type = id === 'anthropic' ? 'Paid · pin-only' : c.kind === 'media' ? 'Media only' : c.optIn ? 'Opt-in · free models' : 'Chat · free tier by provider';
+        let state = 'no key'; try { state = {ok:'working', limited:'rate-limited', bad:'failing', unknown:'not checked', none:'no key'}[P.stateOf(id)] || P.stateOf(id); } catch (_) { /* cosmetic */ }
+        const rot = list.length < 2 ? (list.length ? '1 key · no rotation' : '—') : live + ' of ' + list.length + ' keys live · rotating' + (cool ? ' · ' + cool + ' resting' + (d.retry ? ' (' + d.retry + 's)' : '') : '');
+        rows.push('<div class="eccx-row" role="row"><b role="cell">' + esc(c.name) + '</b><span role="cell">' + esc(type) + '</span><span role="cell">' + (models.length ? fm + ' free of ' + models.length : (list.length ? 'load catalog' : '—')) + '</span><span role="cell">' + esc(rot) + '</span><span role="cell" class="eccx-st" data-st="' + esc(state.replace(/\s/g,'-')) + '">' + esc(state) + '</span></div>');
+      });
+      $('eccxTable').innerHTML = '<div class="eccx-row eccx-hd" role="row"><span role="columnheader">Provider</span><span role="columnheader">Type</span><span role="columnheader">Free models</span><span role="columnheader">Key rotation</span><span role="columnheader">Status</span></div><div class="eccx-row" role="row"><b role="cell">Free Mode</b><span role="cell">Keyless</span><span role="cell">no key needed</span><span role="cell">—</span><span role="cell" class="eccx-st" data-st="working">always on</span></div>' + rows.join('');
+      const q = W.EmberCockpitQueue ? W.EmberCockpitQueue.snapshot().length : 0, tok = (() => { try { return G.on(); } catch (_) { return false; } })();
+      const tile = (k, v, sub) => '<div class="eccx-tile"><small>' + k + '</small><strong>' + esc(v) + '</strong><span>' + esc(sub) + '</span></div>';
+      $('eccxTiles').innerHTML = tile('Providers', P.ACTIVE_IDS.length + ' chat · ' + (P.IDS.length - P.ACTIVE_IDS.length) + ' media', 'plus keyless Free Mode')
+        + tile('Active keys', active + ' / ' + saved, rest ? rest + ' resting after a rate limit' : 'rotate automatically when one rests')
+        + tile('Free models', cached ? String(free) : '—', cached ? 'from loaded catalogs' : 'load a catalog to count them')
+        + tile('GitHub', tok ? 'Token saved' : 'No token', q + ' repo' + (q === 1 ? '' : 's') + ' in the sync queue');
+    }
+    function setDash(name) {
+      if (!panels[name]) name = 'overview'; current = name;
+      Object.entries(panels).forEach(([k, el]) => { if (el) el.hidden = k !== name; });
+      bar.querySelectorAll('[data-dash]').forEach(b => { const on = b.dataset.dash === name; b.setAttribute('aria-selected', String(on)); b.classList.toggle('on', on); b.tabIndex = on ? 0 : -1; });
+      if (name === 'overview') paint();
+      host.scrollTop = 0;
+    }
+    bar.addEventListener('click', e => { const b = e.target.closest('[data-dash]'); if (b) setDash(b.dataset.dash); });
+    $('eccxOpenKeys').onclick = () => { W.EmberCommandCenter.close(); W.EmberCockpit.open('engine'); };
+    $('eccxCheck').onclick = async e => {
+      const b = e.currentTarget; b.disabled = true; $('eccxStatus').textContent = 'Checking every saved key…';
+      try { await W.Prov.pingAll(); $('eccxStatus').textContent = 'Check finished.'; } catch (er) { $('eccxStatus').textContent = 'Check failed: ' + (er.message || er); }
+      finally { b.disabled = false; paint(); }
+    };
+    // Any shortcut that opens a GitHub step lands on the GitHub tab.
+    const ws = W.EmberWorkspace;
+    if (ws && typeof ws.open === 'function') {
+      const open = ws.open;
+      try { ws.open = function (tab) { const r = open.apply(this, arguments); if (['connect', 'repos', 'build'].includes(tab)) setDash('github'); return r; }; } catch (_) { /* frozen: tabs still work */ }
+    }
+    // Desktop-style repository terminal: open by default, results listed in it, tick Sync, confirm in the queue below.
+    const term = $('cockpitRepoTerminal'); if (term) term.open = true;
+    for (const ev of ['ember-provider-stats', 'ember-names', 'ember-route', 'storage']) W.addEventListener(ev, () => { if (current === 'overview' && panel.classList.contains('ecc-open')) paint(); });
+    setDash('overview');
+    return setDash;
   }
   if(D.readyState==='loading')D.addEventListener('DOMContentLoaded',init);else init();
 })();

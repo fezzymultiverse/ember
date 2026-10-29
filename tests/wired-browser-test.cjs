@@ -57,7 +57,7 @@ const adapter=await p.evaluate(()=>{
 });
 assert.equal(adapter.snapshot.health.qr,true);assert.equal(adapter.snapshot.projectRevision,1);assert(adapter.timeline.includes('Download bridge status'));assert(!JSON.stringify(adapter).includes('SENSITIVE_TEST_VALUE_NEVER_LOG'));assert.equal(extraErrors.length,0);
 // Verify current UI entry points without restoring any old controller.
-await p.evaluate(()=>{EmberTimeline.drop();EmberCockpit.close();});await p.click('#bSetTop');assert(await p.locator('#cockpitSettings').isVisible());
+await p.evaluate(()=>{EmberTimeline.drop();EmberCockpit.close();});await p.click('#bActionMenu');await p.click('.erp-group-head >> nth=6');await p.click('[data-name="App settings"]');assert(await p.locator('#cockpitSettings').isVisible());
 await p.evaluate(()=>EmberCockpit.close());await p.click('#bPlus');assert(await p.locator('#plusMenu').isVisible());
 await c.close();await browser.close();server.close();
 const diffs=[],before=path.join(root,'tests/results/wired/before');

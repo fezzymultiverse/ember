@@ -102,7 +102,7 @@ let browser;
   await page.waitForFunction(()=>document.getElementById('rrStatus').textContent.includes('Fixture rate limit'));
   check('search errors surfaced in live terminal',await page.locator('#cockpitSearchLog').innerText().then(x=>x.includes('Fixture rate limit')));
   await page.locator('#eccClose').click();
-  await page.setViewportSize({width:1280,height:900});await page.locator('#bSetTop').click();
+  await page.setViewportSize({width:1280,height:900});await page.click('#bActionMenu');await page.click('.erp-group-head >> nth=6');await page.click('[data-name="App settings"]');
   check('Settings remains full-screen on desktop',await page.locator('#settings').boundingBox().then(x=>x.width===1280&&x.height===900));
   await page.locator('#bSx').click();await page.evaluate(()=>EmberWorkspace.open('build'));await page.waitForTimeout(350);
   check('Command Centre remains unified on desktop',await page.locator('#emberCommandCenter').boundingBox().then(x=>x.width===1280));

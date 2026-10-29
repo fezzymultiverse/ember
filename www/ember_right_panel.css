@@ -96,3 +96,160 @@ html body #cockpitApiCount{min-width:0;max-width:100%;white-space:normal!importa
 
 @media(max-width:480px){html body #emberRightPanel.erp-sidebar{max-height:100dvh!important}html body #emberRightPanel{inset:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);width:100%;height:100dvh;max-height:100dvh;border-radius:0}#emberRightPanel .erp-side-head{padding:14px 16px 12px}#emberRightPanel .erp-bottom{padding:9px}#emberRightPanel .erp-footnote{display:none}}
 @media(prefers-reduced-motion:reduce){#emberRightPanel *{transition:none!important}}
+
+/* 1.10.18 Part 1 - one scroller, one open category.
+   The tools list is the only scroll area and only scrolls when a phone is too short for it.
+   Command Centre no longer sits in a capped box with its own scrollbar: when expanded it takes over the panel body. */
+html body #emberRightPanel .erp-list{overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+html body #emberRightPanel .erp-bottom{max-height:none;overflow:visible;flex:0 0 auto}
+html body #emberRightPanel .erp-cc-body{max-height:none;overflow:visible}
+html body #emberRightPanel.erp-cc-mode .erp-list,
+html body #emberRightPanel.erp-cc-mode .erp-search,
+html body #emberRightPanel.erp-cc-mode .erp-sub{display:none}
+html body #emberRightPanel.erp-cc-mode .erp-bottom{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;border-top:0}
+html body #emberRightPanel.erp-cc-mode .erp-cc{border-color:transparent;background:none;box-shadow:none;overflow:visible}
+@media(max-width:480px){
+  html body #emberRightPanel .erp-side-head{padding:12px 16px 10px}
+  html body #emberRightPanel .erp-search{margin-top:10px;padding:8px 12px}
+  html body #emberRightPanel .erp-sub{margin-top:5px}
+  html body #emberRightPanel .erp-list{padding:8px 10px 8px}
+  html body #emberRightPanel .erp-group{margin:2px 0}
+  html body #emberRightPanel .erp-group-head{padding:6px 10px;gap:10px}
+  html body #emberRightPanel .erp-icon{width:32px;height:32px;border-radius:10px;font-size:16px}
+}
+/* Short phone screens (browser toolbars showing): compact header, rows and footer so the list still fits without scrolling. */
+@media(max-width:480px) and (max-height:680px){
+  html body #emberRightPanel .erp-group:not(.open) .erp-label small{display:none}
+  html body #emberRightPanel .erp-side-head{padding:8px 14px 8px}
+  html body #emberRightPanel .erp-sub{display:none}
+  html body #emberRightPanel .erp-ember-logo{width:30px;height:30px;border-radius:10px}
+  html body #emberRightPanel .erp-brandrow h2{font-size:17px}
+  html body #emberRightPanel .erp-search{margin-top:8px;padding:6px 12px}
+  html body #emberRightPanel .erp-list{padding:6px 10px 6px}
+  html body #emberRightPanel .erp-group{margin:1px 0}
+  html body #emberRightPanel .erp-group-head,html body #emberRightPanel .erp-cc-head{min-height:40px;padding-top:4px;padding-bottom:4px}
+  html body #emberRightPanel .erp-icon{width:28px;height:28px;border-radius:9px;font-size:14px}
+  html body #emberRightPanel .erp-cc-icon{width:28px;height:28px;border-radius:9px;font-size:14px}
+  html body #emberRightPanel .erp-items{padding-bottom:6px}
+  html body #emberRightPanel .erp-item{padding:7px 2px}
+  html body #emberRightPanel .erp-bottom{padding:6px 9px}
+}
+@media(max-width:480px) and (max-height:680px){html body #emberRightPanel .erp-item{min-height:36px}}
+
+/* 1.10.18 Part 1 (revised) - categories open their sub-menu as its own screen instead of expanding inside the list.
+   Main menu = the category rows only. Tap a category: its tools fill the panel; tap its header (arrow) to go back. */
+html body #emberRightPanel.erp-sub-mode .erp-group:not(.open){display:none}
+html body #emberRightPanel.erp-sub-mode .erp-search,
+html body #emberRightPanel.erp-sub-mode .erp-sub{display:none}
+html body #emberRightPanel.erp-sub-mode .erp-group.open{border-color:transparent;background:none;margin:0}
+html body #emberRightPanel.erp-sub-mode .erp-group.open .erp-group-head{border-bottom:1px solid #202d40;border-radius:0;padding-bottom:12px;margin-bottom:4px}
+html body #emberRightPanel.erp-sub-mode .erp-group.open .erp-chev{order:-1;transform:rotate(90deg);font-size:18px;width:20px;text-align:center}
+html body #emberRightPanel.erp-sub-mode .erp-group.open .erp-label small{display:block}
+html body #emberRightPanel.erp-sub-mode .erp-group.open .erp-items{padding:0 6px 8px}
+html body #emberRightPanel.erp-sub-mode .erp-group.open .erp-item{min-height:52px;font-size:14px;padding:12px 8px}
+html body #emberRightPanel.erp-sub-mode .erp-group.open .erp-item:first-child{border-top:0}
+html body #emberRightPanel:not(.erp-sub-mode):not(.erp-searching) .erp-group-head .erp-chev{transform:rotate(-90deg)}
+
+/* ===== 1.10.18 Part 3 - Settings is ONE right-hand panel: nine rows, tap a row to open its sub menu ===== */
+html body.cockpit-ui #settings.sheet{inset:0 0 0 auto!important;width:min(560px,100vw)!important;max-width:100vw!important;background:#000!important;border-left:1px solid #202024!important;box-shadow:-18px 0 50px #000c!important}
+#cockpitBackdrop{display:none;position:fixed;inset:0;z-index:219;border:0;padding:0;margin:0;background:#000a;cursor:default}
+body.cockpit-settings-open #cockpitBackdrop{display:block}
+html body.cockpit-ui #settings>.sh{background:#000!important;border-bottom:1px solid #1f1f23!important;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px!important;min-height:68px!important;gap:14px!important;align-items:center!important}
+html body.cockpit-ui #settings #bSx{order:0!important;min-width:44px!important;width:44px!important;height:44px!important;border-radius:50%!important;background:#0e0e11!important;border:1px solid #2a2a30!important;font-size:20px!important;line-height:1!important;padding:0!important}
+html body.cockpit-ui #settings .sh-t{order:1!important;gap:2px!important}
+html body.cockpit-ui #settings .sh-t b{font:700 19px/1.25 system-ui!important}
+html body.cockpit-ui #settings .sh-t small{font:13px/1.3 system-ui!important;color:#9aa0a8!important}
+html body.cockpit-ui #settings .sh-logo{order:2!important;width:36px!important;height:36px!important;border-radius:10px}
+html body.cockpit-ui #settings>.sb{background:#000!important;padding:0!important}
+html body.cockpit-ui #settings #cockpitMenu{display:none}
+html body.cockpit-ui #settings.cview-menu #cockpitMenu{display:block}
+html body.cockpit-ui #settings.cview-menu #cockpitSettings{display:none!important}
+html body.cockpit-ui #settings.cview-section #cockpitSettings{display:block}
+html body.cockpit-ui #settings .cmenu-row{display:flex;align-items:center;gap:14px;width:100%;min-height:68px;box-sizing:border-box;padding:16px 18px;margin:0;background:#000;border:0;border-bottom:1px solid #1b1b1f;border-radius:0;color:#f3f3f5;text-align:left;font:inherit;cursor:pointer}
+html body.cockpit-ui #settings .cmenu-row:hover,html body.cockpit-ui #settings .cmenu-row:focus-visible{background:#0d0d10;outline:0}
+html body.cockpit-ui #settings .cmenu-t{display:block;min-width:0;flex:1}
+html body.cockpit-ui #settings .cmenu-t b{display:block;font:600 15px/1.3 system-ui;color:#f3f3f5}
+html body.cockpit-ui #settings .cmenu-t small{display:block;margin-top:5px;font:12.5px/1.4 system-ui;color:#9aa0a8;overflow-wrap:anywhere}
+html body.cockpit-ui #settings .cmenu-c{flex:0 0 auto;color:#aeb4bb;font-size:22px;line-height:1}
+html body.cockpit-ui #settings #cockpitSettings{max-width:none;margin:0;padding:6px 16px 40px;background:#000}
+html body.cockpit-ui #settings .cockpit-section{display:none;padding-top:14px}
+html body.cockpit-ui #settings .cockpit-section.cshow{display:block}
+html body.cockpit-ui #settings .cockpit-intro{display:none!important}
+html body.cockpit-ui #settings #cockpitSettings:not(.cmulti) .cockpit-section>h2,html body.cockpit-ui #settings #cockpitSettings:not(.cmulti) .cockpit-section>.cockpit-desc{display:none}
+html body.cockpit-ui #settings #cockpitSettings.cmulti .cockpit-section+.cockpit-section{margin-top:12px;border-top:1px solid #1f1f23;padding-top:22px}
+@media (max-width:600px){html body.cockpit-ui #settings.sheet{width:100vw!important;border-left:0!important}}
+
+/* 1.10.18 Part 3b - even Permissions rows: name on its own line, status pill + button below at equal sizes (old .acc-b rule no longer applies). */
+html body #settings #cockpitSettings .prow:has(.pstatus){display:flex!important;flex-wrap:wrap!important;align-items:center;gap:10px;padding:14px!important;margin:0 0 10px!important;border:1px solid #1f1f23!important;border-left:3px solid var(--st,#6c6c73)!important;border-radius:14px;background:#0e0e10}
+html body #settings #cockpitSettings .prow:has(.pstatus)>span:first-child{flex:1 1 100%;display:flex;align-items:flex-start;gap:8px;font-size:15px;font-weight:600;line-height:1.35;color:#ececef;min-width:0}
+html body #settings #cockpitSettings .prow:has(.pstatus) .pstatus{flex:1 1 150px;min-width:0;box-sizing:border-box;text-align:center;white-space:normal;margin:0}
+html body #settings #cockpitSettings .prow:has(.pstatus) .btn{flex:0 0 auto;width:auto!important;min-width:96px!important;min-height:42px!important;margin:0!important}
+html body #settings #cockpitSettings .prow:has(.pstatus) .sw{flex:0 0 auto}
+/* 1.10.18 Part 3c - long row titles wrap in the header instead of being cut off on phones. */
+html body.cockpit-ui #settings .sh-t b{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:anywhere}
+
+/* 1.10.18 Part 3d - black colour rules: black surfaces, neutral text, orange + blue accents only (status pills keep their meaning colours). */
+html body.cockpit-ui #settings,html body.cockpit-ui #settings>.sb,html body.cockpit-ui #settings #cockpitSettings{background:#000!important}
+html body #settings #cockpitSettings .card{background:#0a0a0c!important;border:1px solid #1f1f23!important;box-shadow:none!important}
+html body #settings #cockpitSettings .card .card,html body #settings #cockpitSettings .cockpit-control-group{background:transparent!important}
+html body #settings #cockpitSettings input:not([type=checkbox]):not([type=range]),html body #settings #cockpitSettings select,html body #settings #cockpitSettings textarea{background:#050506!important;border-color:#2a2a30!important;color:#f1f1f3!important}
+html body #settings #cockpitSettings .ct,html body #settings .cockpit-section>h2,html body #settings .cockpit-subtitle,html body #settings #cockpitProviderList>summary{color:#f1f1f3!important}
+html body #settings #cockpitSettings .hint,html body #settings .cockpit-desc,html body #settings #cockpitSettings .lb{color:#9a9aa2!important}
+html body #settings .cockpit-provider{background:#050506!important;border-color:#1f1f23!important}
+html body #settings .cockpit-provider>summary.kghead{background:#0e0e11!important;color:#f1f1f3!important}
+html body #settings #cockpitProviderList[open]>summary,html body #settings .cockpit-control-group+.cockpit-control-group,html body #settings .cockpit-scrape-pane{border-color:#1f1f23!important}
+html body #settings #cockpitSettings .btn{background:#0e0e11;border-color:#2a2a30;color:#f1f1f3}
+html body #settings #cockpitSettings .btn.g{background:#0e0e11}
+
+/* 1.10.18 Part 4 - Settings is FULL-SIZE (whole screen); content column centred and capped for readability. */
+html body.cockpit-ui #settings.sheet{inset:0!important;width:100vw!important;max-width:100vw!important;height:100dvh!important;border-left:0!important;box-shadow:none!important}
+#cockpitBackdrop{display:none!important}
+html body.cockpit-ui #settings #cockpitMenu{width:100%;max-width:980px;margin:0 auto;border-left:1px solid #1b1b1f;border-right:1px solid #1b1b1f}
+html body.cockpit-ui #settings #cockpitSettings{width:100%;max-width:980px;margin:0 auto;box-sizing:border-box}
+html body.cockpit-ui #settings>.sh{padding-left:max(16px,calc((100vw - 980px)/2 + 16px))!important;padding-right:max(16px,calc((100vw - 980px)/2 + 16px))!important}
+
+/* 1.10.18 Part 4b - Settings content column lines up with its header. */
+html body.cockpit-ui #settings>.sb{max-width:none!important;width:100%!important;margin:0!important}
+
+/* 1.10.18 Part 4c - ONE Command Centre dashboard: tab bar, overview tiles, provider table, desktop-style terminal. Black + orange + blue. */
+html body #emberCommandCenter,html body #emberCommandCenter .ecc-panel,html body #emberCommandCenter .ecc-panel-content{background:#000!important}
+html body #emberCommandCenter .ecc-panel-content>[hidden]{display:none!important}
+html body #emberCommandCenter .ecc-card,html body #emberCommandCenter .ef-panel{background:#0a0a0c!important;border:1px solid #1f1f23!important;box-shadow:none!important}
+html body #emberCommandCenter .ecc-card input,html body #emberCommandCenter .ecc-card textarea,html body #emberCommandCenter .ecc-card select{background:#050506!important;border-color:#2a2a30!important;color:#f1f1f3!important}
+html body #emberCommandCenter .ecc-card .btn,html body #emberCommandCenter .ecc-card button.btn.g{background:#0e0e11!important;border-color:#2a2a30!important;color:#f1f1f3!important}
+html body #emberCommandCenter .ecc-card .hint,html body #emberCommandCenter .ecc-card p{color:#9a9aa2}
+.eccx-tabs{display:flex;gap:6px;overflow-x:auto;margin:0 0 14px;padding:0 0 10px;border-bottom:1px solid #1f1f23;position:sticky;top:0;z-index:3;background:#000}
+.eccx-tabs button{flex:1 1 auto;min-height:44px;padding:0 16px;border:1px solid #1f1f23;border-radius:12px;background:#0a0a0c;color:#c9c9cf;font:600 13px/1 system-ui;white-space:nowrap;cursor:pointer}
+.eccx-tabs button.on{background:#0d1626;border-color:#2f8cff;color:#7db4ff;box-shadow:inset 0 -2px 0 #2f8cff}
+.eccx-tabs button:focus-visible{outline:2px solid #ff7a1a;outline-offset:2px}
+.eccx-overview h2{font:700 18px/1.3 system-ui;color:#f1f1f3;margin:0 0 14px}
+.eccx-h{font:650 14px/1.4 system-ui;color:#f1f1f3;margin:22px 0 10px}
+.eccx-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.eccx-tile{background:#050506;border:1px solid #1f1f23;border-top:2px solid #ff7a1a;border-radius:12px;padding:12px 14px;min-width:0}
+.eccx-tile small{display:block;font:700 10px/1.4 system-ui;letter-spacing:.14em;text-transform:uppercase;color:#9a9aa2}
+.eccx-tile strong{display:block;margin:4px 0;font:700 18px/1.3 system-ui;color:#f1f1f3;overflow-wrap:anywhere}
+.eccx-tile span{display:block;font:12px/1.45 system-ui;color:#9a9aa2}
+.eccx-table{display:flex;flex-direction:column;border:1px solid #1f1f23;border-radius:12px;overflow:hidden}
+.eccx-row{display:grid;grid-template-columns:1.1fr 1.3fr 1fr 1.8fr .9fr;gap:10px;align-items:center;padding:11px 14px;border-top:1px solid #1b1b1f;font:13px/1.4 system-ui;color:#d6d6db;min-width:0}
+.eccx-row>*{min-width:0;overflow-wrap:anywhere}
+.eccx-row:first-child{border-top:0}
+.eccx-hd{background:#0e0e11;font:700 11px/1.4 system-ui;letter-spacing:.08em;text-transform:uppercase;color:#9a9aa2}
+.eccx-row b{color:#f1f1f3}
+.eccx-st{font-weight:700;color:#9a9aa2}
+.eccx-st[data-st=working]{color:#3ddc84}.eccx-st[data-st=rate-limited]{color:#ffb020}.eccx-st[data-st=failing]{color:#ff5a5a}
+.eccx-note{margin:14px 0}
+@media (max-width:700px){.eccx-row{grid-template-columns:1fr 1fr;gap:4px 10px}.eccx-hd{display:none}.eccx-row b{grid-column:1/-1;font-size:14px}}
+/* repository terminal drawn as a desktop window */
+html body #emberCommandCenter #cockpitRepoTerminal{background:#000!important;border:1px solid #2a2a30!important;border-radius:12px!important;overflow:hidden;margin:12px 0}
+html body #emberCommandCenter #cockpitRepoTerminal>summary{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#111114;border-bottom:1px solid #2a2a30;color:#9fe8c0;font:600 12px/1.4 ui-monospace,Menlo,Consolas,monospace;cursor:pointer;list-style:none}
+html body #emberCommandCenter #cockpitRepoTerminal>summary::-webkit-details-marker{display:none}
+html body #emberCommandCenter #cockpitRepoTerminal>summary::before{content:'';flex:0 0 auto;width:10px;height:10px;border-radius:50%;background:#ff5f57;box-shadow:16px 0 0 #febc2e,32px 0 0 #28c840;margin-right:42px}
+html body #emberCommandCenter #cockpitRepoTerminal>#cockpitSearchLog{margin:0;padding:12px 14px;background:#000;color:#9fe8c0;font:12px/1.6 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;border:0}
+html body #emberCommandCenter #cockpitRepoTerminal #rrResults{padding:6px 14px 12px;max-height:46vh;overflow:auto}
+/* 1.10.18 Part 4d - nothing in the dashboard is squashed by the panel's flex layout; one scroller. */
+html body #emberCommandCenter .ecc-panel-content>*{flex-shrink:0!important;max-height:none!important}
+html body #emberCommandCenter .ecc-panel-content>.eccx-tabs{flex:0 0 auto!important;min-height:64px}
+html body #emberCommandCenter .ef-panel{overflow:visible!important;height:auto!important}
+html body #emberCommandCenter .ef-panel [class*="list"],html body #emberCommandCenter .ef-panel [id*="List"]{max-height:none!important;overflow:visible!important}
+html body #emberCommandCenter #efPanelStats{max-height:none!important;overflow:visible!important}
+.cockpit-termux-divider{height:1px;background:#1f1f23;margin:18px 0 14px}
