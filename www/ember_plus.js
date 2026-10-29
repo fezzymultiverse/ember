@@ -51,7 +51,8 @@ const THINK = [
 ];
 const QUICK = [
   { id: 'bGraph', icon: '🕸', label: 'Knowledge Graph', hint: 'Map local documents, memory and chats' },
-  { id: 'bPriv', icon: '🔓', label: 'Normal mode', hint: 'Toggle normal privacy mode' }
+  { id: 'bPriv', icon: '🔓', label: 'Normal mode', hint: 'Toggle normal privacy mode' },
+  { id: 'bApis', icon: '🔌', label: 'Free APIs', hint: 'IP, grammar, photos, whois, words, lyrics' }
 ];
 const tRow = t => '<button class="pm-i" data-t="' + t.id + '" role="menuitemcheckbox" aria-checked="false"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span><span class="pm-sw"></span></button>';
 const aRow = t => '<button class="pm-i" data-action="' + t.id + '" role="menuitem"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span></button>';
