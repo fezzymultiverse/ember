@@ -16,7 +16,7 @@ assert.match(html, /id="bCommandCenter"[\s\S]*?Ember Command Centre/, 'menu shou
 assert.match(html, /class="ember-signal"[\s\S]*?<i><\/i><i><\/i><i><\/i>/, 'Ember title should have the three-light signal');
 assert.match(acc, /acc-in-detail/, 'settings categories should use a detail page');
 assert.match(acc, /data-acc-back/, 'settings detail page should have return navigation');
-assert.match(app, /card-subpage/, 'settings card options should open in a detail page');
+assert.match(fs.readFileSync(path.join(__dirname, '..', 'www', 'ember_menu.js'), 'utf8'), /mnu-paged/, 'settings card options should open in a detail page (V1.10.11: ember_menu.js)');
 assert.match(app, /data-key-provider-open/, 'provider key groups should open as detail pages');
 assert.match(workspace, /headerActionsMenu/, 'AI Features should be moved to the actions menu');
 assert.doesNotMatch(workspace, /bar\.append\(\$\('engs'\)\)/, 'engine status should not be placed in the lower chat footer');
