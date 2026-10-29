@@ -21,3 +21,12 @@ See docs/history/INDEX.md. Per-version changelogs are historical source evidence
 - Command Centre no longer sits in a capped box with its own scrollbar; when expanded it takes over the panel body and is the only scroll area.
 - Compact spacing on phones so every screen fits without scrolling, including short screens with browser toolbars showing (360x605).
 - Assets re-versioned (?v=1.10.18-p1) and service-worker cache renamed ember-v1.10.18-panel-p1.
+
+## 1.10.18 Part 3-4 - Settings panel + unified Command Centre
+- Settings is full-size and uses the nine-row menu (General, Engine Keys, GitHub, Features, Advanced, Web Scraping, Termux & Hacking, Music, Permissions). Tap a row for its sub menu; back/Escape returns. GitHub and Advanced open the Command Centre. Black surfaces with orange and blue accents.
+- Command Centre is one dashboard with tabs: Overview, GitHub (Brain / Search / Run & Push), Routing & keys, Inspector, Memory. Overview shows providers, free models, key rotation and GitHub status from live data.
+- Repository terminal opens by default as a desktop-style window; results, Sync checkboxes and Confirm sit in the same GitHub > Search flow.
+
+## 1.10.18 Part 5 - Settings re-slotted
+- Device Tools is its own Settings row. General row is "Memory and Settings" (Voice lives there; the panel item is renamed to match). yt-dlp stays in Termux & Hacking; System integrations stay in Music.
+- Termux Mode and Ember Termux are one block: mode switch on top, terminal directly under it.

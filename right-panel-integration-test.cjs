@@ -25,7 +25,7 @@ for(const [width,height,android] of [[1280,900,false],[412,915,false],[390,844,t
  const checks={
   'Start a conversation':()=>p.evaluate(()=>document.activeElement.id==='inp'),
   'Choose an AI engine':()=>p.locator('#provDrop').isVisible(),
-  'Memory & persona':()=>p.locator('#settings.show #cockpit_general').isVisible(),
+  'Memory and Settings':()=>p.locator('#settings.show #cockpit_general').isVisible(),
   'Create music':()=>p.evaluate(()=>EmberPlus.isOn('audio_gen')),
   'Write lyrics':async()=> (await p.inputValue('#inp')).startsWith('Write original lyrics'),
   'Draft a document':()=>p.locator('#browser.show #brNotes').isVisible(),
@@ -43,7 +43,7 @@ for(const [width,height,android] of [[1280,900,false],[412,915,false],[390,844,t
   'GitHub & integrations':()=>p.locator('#emberCommandCenter.ecc-open #ghTok').isVisible(),
   'AI providers & API keys':()=>p.locator('#settings.show #cockpit_engine').isVisible(),
   'Permissions & privacy':()=>p.locator('#settings.show #cockpit_permissions').isVisible(),
-  'App settings':()=>p.locator('#settings.show #cockpit_general').isVisible()
+  'App settings':()=>p.locator('#settings.show #cockpitMenu').isVisible()
  };
  // Full 21-route click-through at mobile + desktop; smallest / Android exercise panel, menus and output.
  if(width===1280||width===412) for(const [name,check] of Object.entries(checks))await test(label+' route: '+name,async()=>{
