@@ -16,7 +16,7 @@
     comp.append(bar);
     // The real cancellation endpoint remains callable but never floats above the input.
     const stop = $('bStop');
-    if (stop) { stop.tabIndex = -1; stop.setAttribute('aria-hidden', 'true'); }
+    if (stop) { stop.tabIndex = 0; stop.removeAttribute('aria-hidden'); }
     // ONE GitHub place: the Command Centre card. The same DOM nodes, IDs and handlers as before, just moved here.
     const card = $('eccGitHub');
     if (!card) return;

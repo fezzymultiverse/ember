@@ -1,0 +1,36 @@
+{
+  "results": [
+    {
+      "name": "Full GitHub published output survives upstream adapter, terminal and archive",
+      "status": "PASS"
+    },
+    {
+      "name": "All media one-shot switches are exclusive and no generation occurs on selection",
+      "status": "PASS"
+    },
+    {
+      "name": "Web plugin scraping and reader switches update authoritative storage",
+      "status": "PASS"
+    },
+    {
+      "name": "Real file picker attaches all text beyond the old 20,000-character limit",
+      "status": "PASS"
+    },
+    {
+      "name": "Archive persists on reload and purge removes stored history",
+      "status": "PASS"
+    },
+    {
+      "name": "Plus Reasoning and Learn actions reach the actual existing panels",
+      "status": "PASS"
+    },
+    {
+      "name": "Real chat Stop cancels a stalled reply and restores the composer",
+      "status": "PASS"
+    },
+    {
+      "name": "No browser exceptions in extended control tests",
+      "status": "PASS"
+    }
+  ]
+}

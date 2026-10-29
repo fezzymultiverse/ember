@@ -1,0 +1,98 @@
+/* Styles imported and scoped from the user-supplied right-panel concept. */
+html body #app>header .hr>#bActionMenu.hb{display:inline-flex!important;align-items:center;justify-content:center;width:40px!important;min-width:40px!important;max-width:40px!important;height:42px!important;flex:0 0 40px!important}
+@media(max-width:480px){html body #app>header .hr>#bActionMenu.hb,html body #app>header .hr>#bSetTop.hb,html body #app>header .hr>#bBrowserTop.hb{width:32px!important;min-width:32px!important;max-width:32px!important;flex:0 0 32px!important;height:38px!important;border-radius:10px!important}html body #app>header .hr{gap:3px!important}}
+
+#emberRightPanel.erp-sidebar{border:1px solid #233247;border-radius:24px;background:linear-gradient(180deg,#111a27,#0d1520);box-shadow:0 24px 70px #0006;display:flex;flex-direction:column;min-height:760px;max-height:calc(100vh - 56px);overflow:hidden}
+#emberRightPanel .erp-side-head{padding:23px 22px 17px;border-bottom:1px solid #202d40}
+#emberRightPanel .erp-brandrow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#emberRightPanel .erp-brandrow h2{font-size:19px;margin:0;letter-spacing:.01em}
+#emberRightPanel .erp-ember-logo{width:42px;height:42px;border-radius:13px;object-fit:cover;box-shadow:0 0 22px #ff8a0030}
+#emberRightPanel .erp-search input{width:100%;min-width:0;background:transparent;border:0;outline:0;color:#edf3fb;font:inherit;font-size:12px}
+#emberRightPanel .erp-search input::placeholder{color:#8497b0}
+#emberRightPanel .erp-item.selected{color:#ffbb80;background:#1b2b3d;border-radius:6px;padding-left:7px;padding-right:7px}
+#emberRightPanel .erp-group[hidden]{display:none}
+#emberRightPanel .erp-group-head:focus-visible,#emberRightPanel .erp-item:focus-visible,#emberRightPanel .erp-cc-head:focus-visible,#emberRightPanel .erp-cc-actions button:focus-visible{outline:2px solid #ffad68;outline-offset:2px}
+#emberRightPanel .erp-sub{color:var(--muted);font-size:12px;margin:9px 0 0}
+#emberRightPanel .erp-search{margin-top:17px;display:flex;align-items:center;gap:9px;border:1px solid #29384c;border-radius:12px;background:#0d1622;padding:10px 12px;color:#8497b0}
+#emberRightPanel .erp-search kbd{margin-left:auto;border:1px solid #34445a;border-radius:5px;padding:1px 5px;font:10px inherit;color:#8497b0}
+#emberRightPanel .erp-list{overflow:auto;flex:1;padding:12px 12px 14px;scrollbar-width:thin;scrollbar-color:#314158 transparent}
+#emberRightPanel .erp-group{border:1px solid transparent;border-radius:15px;margin:3px 0;overflow:hidden;transition:.2s}
+#emberRightPanel .erp-group.open{border-color:#29384c;background:#121e2d}
+#emberRightPanel .erp-group-head{width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:12px 11px;background:transparent;border:0;color:inherit;cursor:pointer}
+#emberRightPanel .erp-icon{width:37px;height:37px;border-radius:12px;display:grid;place-items:center;font-size:18px;flex:none;background:#1c2a3c;color:#ffb46c}
+#emberRightPanel .erp-group:nth-child(2) .erp-icon{color:#bf9dff;background:#251f39}
+#emberRightPanel .erp-group:nth-child(3) .erp-icon{color:#85ccff;background:#182b3b}
+#emberRightPanel .erp-group:nth-child(4) .erp-icon{color:#ff9fa5;background:#35212a}
+#emberRightPanel .erp-group:nth-child(5) .erp-icon{color:#78dfb7;background:#19332e}
+#emberRightPanel .erp-group:nth-child(6) .erp-icon{color:#ffd277;background:#342d1d}
+#emberRightPanel .erp-group:nth-child(7) .erp-icon{color:#a9c1df;background:#202d3d}
+#emberRightPanel .erp-label{min-width:0;flex:1}
+#emberRightPanel .erp-label b{display:block;font-size:13px;font-weight:650}
+#emberRightPanel .erp-label small{display:block;color:#91a2b8;font-size:11px;margin-top:2px;line-height:1.35}
+#emberRightPanel .erp-chev{color:#8092a9;font-size:13px;transition:transform .2s}
+#emberRightPanel .erp-group.open .erp-chev{transform:rotate(180deg);color:#ffad68}
+#emberRightPanel .erp-items{display:none;padding:0 11px 10px 60px}
+#emberRightPanel .erp-group.open .erp-items{display:block}
+#emberRightPanel .erp-item{width:100%;display:flex;justify-content:space-between;align-items:center;border:0;border-top:1px solid #243247;background:transparent;color:#d8e2ef;padding:9px 2px;text-align:left;font:inherit;font-size:12px;cursor:pointer}
+#emberRightPanel .erp-item:hover{color:#ffba80}
+#emberRightPanel .erp-item span:last-child{color:#72869f;font-size:15px}
+#emberRightPanel .erp-badge{font-size:9px!important;color:#a9d5ff!important;background:#20364b;border-radius:5px;padding:3px 5px}
+#emberRightPanel .erp-bottom{padding:12px;border-top:1px solid #202d40;background:linear-gradient(180deg,#0e1722,#0b121b)}
+#emberRightPanel .erp-cc{border:1px solid #34465d;border-radius:16px;background:linear-gradient(140deg,#182638,#111d2b);overflow:hidden;box-shadow:0 8px 28px #0003}
+#emberRightPanel .erp-cc-head{display:flex;align-items:center;gap:11px;width:100%;border:0;background:none;color:inherit;padding:12px;cursor:pointer;text-align:left}
+#emberRightPanel .erp-cc-icon{width:34px;height:34px;border-radius:11px;background:#2b261e;color:#ffb45d;display:grid;place-items:center;font-size:17px}
+#emberRightPanel .erp-cc-title{flex:1}
+#emberRightPanel .erp-cc-title b{display:block;font-size:12px}
+#emberRightPanel .erp-cc-title small{display:block;color:#8da0b8;font-size:10px;margin-top:2px}
+#emberRightPanel .erp-live{font-size:9px;color:#7be3b8;display:flex;align-items:center;gap:5px}
+#emberRightPanel .erp-dot{width:6px;height:6px;border-radius:50%;background:#54d8a6;box-shadow:0 0 8px #54d8a6}
+#emberRightPanel .erp-cc-arrow{color:#a4b2c5;transition:.2s}
+#emberRightPanel .erp-cc.expanded .erp-cc-arrow{transform:rotate(180deg)}
+#emberRightPanel .erp-cc-body{display:none;padding:0 12px 12px}
+#emberRightPanel .erp-cc.expanded .erp-cc-body{display:block}
+#emberRightPanel .erp-metrics{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+#emberRightPanel .erp-metric{padding:9px;border:1px solid #2b3a4e;border-radius:10px;background:#111c29}
+#emberRightPanel .erp-metric small{display:block;color:#8295ad;font-size:9px}
+#emberRightPanel .erp-metric strong{display:block;font-size:12px;margin-top:3px}
+#emberRightPanel .erp-log{border:1px solid #27374a;border-radius:10px;margin-top:8px;padding:8px 9px;color:#a9bacd;font:10px/1.5 ui-monospace,SFMono-Regular,monospace}
+#emberRightPanel .erp-log em{color:#78ddb3;font-style:normal}
+#emberRightPanel .erp-cc-actions{display:flex;gap:7px;margin-top:8px}
+#emberRightPanel .erp-cc-actions button{flex:1;border:1px solid #34445a;border-radius:8px;background:#182536;color:#c5d2e2;padding:7px;font-size:10px;cursor:pointer}
+#emberRightPanel .erp-footnote{text-align:center;color:#657a94;font-size:10px;margin-top:8px}
+html body #emberCommandCenter:not(.ecc-open){display:none!important}
+html body #emberRightPanel.erp-sidebar{min-height:0!important;max-height:calc(100dvh - 24px)!important}
+html body #emberRightPanel{--muted:#8fa1b9;position:fixed;inset:12px 12px 12px auto;z-index:231;width:min(390px,calc(100vw - 24px));height:calc(100dvh - 24px);min-height:0;max-height:calc(100dvh - 24px);margin:0;box-sizing:border-box;color:#edf3fb;font:14px/1.4 Inter,system-ui,sans-serif;display:flex;padding:0;transform:none}
+html body #emberRightPanel[hidden],#erpBackdrop[hidden],#erpTasks[hidden],#emberRightPanel [hidden]{display:none!important}
+#emberRightPanel *,#emberRightPanel *::before,#emberRightPanel *::after{box-sizing:border-box}
+#emberRightPanel .erp-side-head{display:block;position:static;flex:0 0 auto;height:auto;min-height:0;width:auto;margin:0;background:none;box-shadow:none}
+#emberRightPanel h2,#emberRightPanel p{margin-block:0}#emberRightPanel .erp-sub{margin-top:9px}
+#emberRightPanel .erp-list{min-height:0;overscroll-behavior:contain;touch-action:pan-y}
+#emberRightPanel .erp-bottom{position:static;flex:0 0 auto;width:auto;margin:0;max-height:48%;overflow:auto}
+#emberRightPanel button{font-family:inherit;white-space:normal;overflow-wrap:anywhere;min-width:0}
+#emberRightPanel .erp-group-head,#emberRightPanel .erp-item,#emberRightPanel .erp-cc-head{min-height:44px;height:auto}
+#emberRightPanel .erp-item{overflow:visible;text-overflow:clip}
+#emberRightPanel .erp-label b,#emberRightPanel .erp-label small{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+#emberRightPanel .erp-metric strong,#emberRightPanel .erp-log{white-space:pre-wrap;overflow-wrap:anywhere}
+#emberRightPanel .erp-brandrow h2{flex:1}#emberRightPanel .erp-ember-logo{order:2}#emberRightPanel #erpClose{order:3;width:38px;height:38px;border:1px solid #34445a;border-radius:10px;background:#182536;color:#edf3fb;font-size:24px}
+#emberRightPanel .erp-search input{border:0!important;box-shadow:none!important;padding:0!important;height:auto!important;background:transparent!important;border-radius:0!important}
+#emberRightPanel .erp-search:focus-within{outline:2px solid #8fc7ff;outline-offset:2px}
+#erpBackdrop{position:fixed;inset:0;z-index:230;background:#0009;border:0;padding:0}
+body.erp-open{overflow:hidden}
+#erpTasks{position:fixed;inset:10% max(12px,calc((100vw - 700px)/2));z-index:232;background:#101927;color:#edf3fb;border:1px solid #34445a;border-radius:18px;padding:20px;overflow:auto;max-height:80dvh;box-shadow:0 0 0 100vmax #0009}
+#erpTasks header{display:flex;justify-content:space-between;position:static;height:auto;background:none;gap:12px}#erpTasks button{padding:10px;color:inherit;background:#182536;border:1px solid #34445a;border-radius:8px}
+html body .comp .row .side #bStop:not(.hidden){display:inline-flex!important;align-items:center;justify-content:center;position:static!important;min-width:40px;min-height:40px}html body #bStop.hidden{display:none!important}
+.ecc-history-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 14px;color:#9daec4;font-size:11px}.ecc-history-controls button{background:#172231;border:1px solid #30415a;color:#edf3fb;border-radius:6px;padding:6px 10px;min-height:36px}
+#eccHistoryNotice{white-space:normal;overflow-wrap:anywhere}.ecc-line{content-visibility:auto;contain-intrinsic-size:auto 20px}
+#eccTerminalOutput{overflow-anchor:none;min-width:0;max-width:100%}
+html body #emberTerminal .ecc-terminal-bar{flex-wrap:wrap;gap:6px}
+html body #eccTerminalToggle{min-width:0;flex:1 1 140px!important}
+html body #eccTerminalTicker{min-width:0;max-width:24vw;flex:1 1 0}
+html body .ecc-terminal-options{flex-wrap:wrap;gap:8px}
+html body #emberTerminal{max-height:55dvh;display:flex;flex-direction:column;min-width:0}
+html body #eccTerminalBody{min-height:0;overflow:auto;overscroll-behavior:contain}
+html body #eccTerminalBody[hidden]{display:none!important}
+html body #chatProviderBar{flex-wrap:wrap!important;gap:6px}
+html body #cockpitApiCount{min-width:0;max-width:100%;white-space:normal!important;flex:0 1 auto;overflow-wrap:anywhere}
+
+@media(max-width:480px){html body #emberRightPanel.erp-sidebar{max-height:100dvh!important}html body #emberRightPanel{inset:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);width:100%;height:100dvh;max-height:100dvh;border-radius:0}#emberRightPanel .erp-side-head{padding:14px 16px 12px}#emberRightPanel .erp-bottom{padding:9px}#emberRightPanel .erp-footnote{display:none}}
+@media(prefers-reduced-motion:reduce){#emberRightPanel *{transition:none!important}}

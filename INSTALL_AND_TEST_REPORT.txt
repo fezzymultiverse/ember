@@ -1,0 +1,55 @@
+EMBER 1.10.17 — PANEL-WIRED-2 PATCH
+
+This is an updated source project, not an APK. The uploaded original ZIP has not been overwritten.
+
+APPLY SAFELY
+1. Export a backup using Ember's existing backup control before updating your own project.
+2. Use this complete source project, or replace your project's entire www/ directory with the supplied www/ directory. Do not open the concept HTML as the app.
+3. For the web app: npm ci, then npm run serve; open http://localhost:8080.
+4. For Android: copy www into your existing Capacitor project, run npm run sync, and rebuild/install with the same app ID and signing key. This upload contains android_patch, not a complete Android Gradle project; no APK was compiled here.
+5. Reload the app after updating. The service-worker cache and changed script URLs were refreshed. Do not uninstall or clear app data as an update step.
+6. If rolling back, restore the original www/ directory. Retain an app backup independently.
+
+WHAT IS CONNECTED
+- The supplied concept's seven categories and 21 tool routes are imported into the real app, with its original embedded Ember logo.
+- Open the concept panel with the Actions/star button beside Settings. The existing Settings gear still opens the real settings screen.
+- Search filters individual tools; categories expand/collapse; Escape, focus containment, backdrop dismissal and app Back integration are connected.
+- Real provider, notes, browser, music, downloads, project, timer, device, terminal, GitHub and settings controllers are used. Media selection arms the next message; it does not secretly generate media. Lyrics prefill an editable chat request rather than claiming to have created lyrics.
+- Existing GitHub authentication and confirmation gates remain. Only its published-log decode changed: the old 3,500-character tail limit was removed while secret redaction remains.
+- The actual Stop button is accessible again; a stalled reply was cancelled through app.js in the browser test.
+- Body-wide keyless mounting on each DOM insertion was replaced by a plugin-target observer. Idle provider-key polling was reduced. Closed Command Centre layout no longer contributes offscreen document overflow.
+
+FULL OUTPUT
+- Removed 3,000-character terminal-line and 60,000-character event limits.
+- Complete redacted output is archived in local IndexedDB. The live terminal renders at most 1,000 lines; Older/Newer/Latest page through the archive. Copy copies the full archive; Save full log downloads the complete redacted text.
+- Complete output is not the same as unlimited DOM nodes. Paging prevents logs from continually increasing live DOM size.
+- Reload persistence was tested after flushing. Abrupt OS termination, full device storage and browser data clearing are not guaranteed recovery scenarios.
+- If persistent storage is unavailable, a visible warning says history is session-only. Export before closing.
+- Clear removes the current tab session's log; Delete everything also purges the archive across sessions.
+- Scrape-test output and text attachments are no longer silently clipped. Text uploads above 2 MB are explicitly refused instead of attaching only part of a file.
+- This does not bypass provider token limits, GitHub content API limits, upstream omissions or Android permission restrictions. Existing repository context/read budgets remain unchanged.
+
+VERIFICATION
+Focused browser checks: 70 PASS.
+Command Centre / GitHub queue fixture assertions: 29 PASS.
+Extended checks: 8 PASS.
+Total focused passing checks/assertions: 107.
+Viewports: 1280x900, 412x915, 390x844 with Android UA, and 320x640. These are Chromium tests, not a physical Android device.
+Full-output tests included a 75,000-character line and more than 1,500 lines, paging/export, markup escaping and secret redaction. Extended checks verified complete GitHub log retrieval, a 25,000-character text attachment, reload retention/purge and actual chat Stop.
+GitHub reads used deterministic fixtures. Runner installation/dispatch was stubbed for queue safety checks. No real token, SSH session, GitHub write, cloud build or paid media generation was used.
+
+EXISTING REGRESSION SUITE — NOT ALL GREEN
+Attempted all 68 archived top-level tests, with an 18-second per-test budget.
+Patched snapshot: {'TIMEOUT': 13, 'PASS': 26, 'FAIL': 28, 'SKIP': 1}. Original uploaded test files and protected hash fixtures are preserved unchanged.
+Original-upload comparison completed 68 of 68 at report generation: {'TIMEOUT': 13, 'PASS': 26, 'FAIL': 28, 'SKIP': 1}.
+Some tests expect removed selectors, old cache keys, old version strings and protected hashes that already mismatch the uploaded ZIP. Not every failure has been classified; do not assume all failures are harmless. TIMEOUT is not PASS. One native-test skip is not device verification.
+The archived suite snapshot was collected before the final additional upstream-log and purge hooks; focused extended tests exercise those hooks afterward. No claim is made that npm test passes or that the entire application is production-certified.
+Raw reports, failure logs, screenshots and a baseline comparison are in tests/panel-wired-results/.
+
+LIMITS / REMAINING DEVICE ACCEPTANCE
+Verify your own saved provider keys, microphone/camera permissions, native downloads/Termux bridge, real repository permissions and Android lifecycle behavior on your device before replacing a working installation. No guarantee is made that every pre-existing backend or third-party service issue is fixed.
+
+SOURCE INTEGRITY
+PATCH_INTEGRITY.json records this patch's exact files and hashes. FILE_INTEGRITY_1_10_17.json is preserved as the historical base-release manifest; it is not the new patch manifest.
+Modified www files: www/ai.js, www/app.js, www/ember_back.js, www/ember_cockpit.js, www/ember_command_center.js, www/ember_github.js, www/ember_keyless.js, www/ember_plus.js, www/ember_workspace.js, www/index.html, www/sw.js
+Added www files: www/ember_output_archive.js, www/ember_right_panel.css, www/ember_right_panel.js

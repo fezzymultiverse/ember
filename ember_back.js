@@ -5,6 +5,7 @@
   const W = window, D = document, $ = id => D.getElementById(id);
   const has = (id, cls) => { const e = $(id); return !!(e && e.classList.contains(cls)); };
   const DEFS = [
+    { id: 'rightPanel', open: () => !!W.EmberRightPanel?.isOpen(), close: () => W.EmberRightPanel?.close() },
     { id: 'drawer', open: () => has('drawer', 'show'), close: () => { const b = $('bDx'); if (b) b.click(); } },
     { id: 'settings', open: () => has('settings', 'show'), close: () => { const b = $('bSx'); if (b) b.click(); } },
     { id: 'commandCenter', open: () => has('emberCommandCenter', 'ecc-open'), close: () => W.EmberCommandCenter?.close() },
