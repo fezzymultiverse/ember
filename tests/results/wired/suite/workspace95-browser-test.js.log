@@ -1,0 +1,10 @@
+AssertionError [ERR_ASSERTION]: provider status and menu live below chat, not in header
+    at check (/home/user/ember_work/release/tests/workspace95-browser-test.js:7:34)
+    at /home/user/ember_work/release/tests/workspace95-browser-test.js:52:3 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

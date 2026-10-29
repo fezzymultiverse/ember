@@ -1,0 +1,142 @@
+{
+  "version": "1.10.14",
+  "original": "ember-V1_10_13-github-command-centre.zip",
+  "unchanged_original_files": 300,
+  "changed_original_files": [
+    {
+      "file": "package.json",
+      "sha256": "5cb763cf04b2f19677ed531fa9b6e6299ffe89e9703f58cdc9aab3011ac6a60b",
+      "original_sha256": "e55797221f8d966b0ff37b2660648839cf122110f62657c1d1534e5b4f865e23"
+    },
+    {
+      "file": "www/app.js",
+      "sha256": "9e035e38f3691c2f74297014bad7db5b01b1f19b6df024068a491f77d3f6d1d0",
+      "original_sha256": "53497511560db4f57c4f54cff4dccce7c4e324c6c16dc685c2ae1be1f44ed343"
+    },
+    {
+      "file": "www/ember_github_ui.js",
+      "sha256": "74fc960e18465ddd803ad5a2f896bf3875571a9ae0ef95a083673e277cd186e0",
+      "original_sha256": "82b660b08c126a69903c12c991a243a8d69b4a2105b1737fb278540847d2dd2a"
+    },
+    {
+      "file": "www/ember_term.js",
+      "sha256": "d8aa1e612e615e7a0862640855ed0cfba16f8c3f43c51f9c8c202297dc7cec66",
+      "original_sha256": "422deaf28f092971c46b7f7ca6f36d4672e4cdda4a4abcfe5b79d10e0e69c2b8"
+    },
+    {
+      "file": "www/ember_workspace.js",
+      "sha256": "5eaf63be52bc5489bb5ecea34ccf748544eb061f3fdc871395b30582f47d3585",
+      "original_sha256": "00b3573622ae7b25efbd8a19158c40ff6be07ebfb397e760317b0f2eae9f48a4"
+    },
+    {
+      "file": "www/index.html",
+      "sha256": "feb2272e8aa120a04bfe9dc77435e12a38721c629d169f5f02fd6130280dfd48",
+      "original_sha256": "09942b24798207eaaf02edb339135512fcbdfc44f3cb46f82ba772edf4f4a3f3"
+    },
+    {
+      "file": "www/sw.js",
+      "sha256": "e446ab0ae56843fbe53d01021d96c7631f25bdcefddd0e7549d61b1b4bece609",
+      "original_sha256": "d2c212a6b2a7c28daf79d620a1c0f381abfb7ef8316f72a8bcbd45dc2fbb2d55"
+    }
+  ],
+  "added_files": [
+    {
+      "file": "RELEASE_1_10_14.txt",
+      "sha256": "a1307057a9fc70bd748b3005cc225e2c3e026e008e3f61e0d1528848006f8925"
+    },
+    {
+      "file": "tests/cockpit-browser-test.js",
+      "sha256": "9bc4ac10d7f106ccafe7810a17da5f815d0cfd38895458ec7e785b6f548d0d0c"
+    },
+    {
+      "file": "tests/cockpit-protected.json",
+      "sha256": "ac4bc2a3597e4f5ba3a92ab2677393ef940deae9208afd07a928b4199d083350"
+    },
+    {
+      "file": "tests/cockpit-results/artifact-test.log",
+      "sha256": "18f75427683b7cc544f247871a12edb55d0da6547bec04cb8d43d76598787002"
+    },
+    {
+      "file": "tests/cockpit-results/chat-412x915.png",
+      "sha256": "71cd3552c70c1696e25979639aeb941e9091902508499463074785735a029bb5"
+    },
+    {
+      "file": "tests/cockpit-results/keyscan-test.log",
+      "sha256": "355e15aedbc364f2dc6e7bec0ef61e4ad5d06af3c639df5260b3a90a8be03af1"
+    },
+    {
+      "file": "tests/cockpit-results/knowledge-brain-test-original.log",
+      "sha256": "18612129fefe5c29ce31017c1af940033011f686bf768a226c94e6f647a3ba6d"
+    },
+    {
+      "file": "tests/cockpit-results/knowledge-brain-test-updated.log",
+      "sha256": "25338288c71a515b5d7fab7058f6aa48d172dcb258c3f49eae6cb262dd7ec568"
+    },
+    {
+      "file": "tests/cockpit-results/report.json",
+      "sha256": "18f9662a5486147e273c41a83d8e52cc6687def2dfb13c7b6030887b1890da2f"
+    },
+    {
+      "file": "tests/cockpit-results/routing-fallback-test.log",
+      "sha256": "81a467442cd0c0ab092ab977bec312d753f71178b345b367cce2d39db7fa92ce"
+    },
+    {
+      "file": "tests/cockpit-results/routing94-test.log",
+      "sha256": "81ef2f6fa245a98a1b42356eb27b34a1045f49f89a2e138a2ab020f378dd1431"
+    },
+    {
+      "file": "tests/cockpit-results/run-push-412x915.png",
+      "sha256": "6520a3be25ccb8ffec9d3eb5d520bd34b8936c740fe8af6d403b5fb03e9e41b3"
+    },
+    {
+      "file": "tests/cockpit-results/search-queue-412x915.png",
+      "sha256": "e6daa02e1a85ce3334a621a6ffbd942d63641884762af4b75cd06a677b836adf"
+    },
+    {
+      "file": "tests/cockpit-results/settings-412x915.png",
+      "sha256": "03959948f3a19a3510f29adc54b8402d5e07c358e725fa27fbdda492ad86c512"
+    },
+    {
+      "file": "tests/cockpit-results/streaming-routing-test.log",
+      "sha256": "1fe261a2b7b112232500bbd7941ce7290988b83751d6e8569d62d0acb129452a"
+    },
+    {
+      "file": "tests/cockpit-results/term-test-original.log",
+      "sha256": "56c99cb14b79b26355687dbd36f61f13fcc4c924001b2dc3f559da99e8f31c0d"
+    },
+    {
+      "file": "tests/cockpit-results/term-test-updated.log",
+      "sha256": "64e3c450018aa3ba93d583eb1f2859101d7797d324e63de1d324f545b7ca5a1f"
+    },
+    {
+      "file": "tests/cockpit-results/v1992-repo-runner-test-original.log",
+      "sha256": "caae9fd4d061301fd4552a2c9d8a8364ca39bf43891412a4394b6b7da99a792f"
+    },
+    {
+      "file": "tests/cockpit-results/v1992-repo-runner-test-updated.log",
+      "sha256": "85b8ac00f90f199bb045933d0bf30a48fa1982177e5a0e5a24e6de68ec94846c"
+    },
+    {
+      "file": "tests/cockpit-results/verification-summary.json",
+      "sha256": "e17e0bc29266375c1b683fab7401a60056e56a5505f037b570d62ce84b84fe10"
+    },
+    {
+      "file": "www/ember_cockpit.css",
+      "sha256": "77ce0ad1824745bdbc5f12e3cdea704f908ecc8ccc42491ab5ae4f38a2e6f216"
+    },
+    {
+      "file": "www/ember_cockpit.js",
+      "sha256": "7d895c85cd10a81121e5814618fd5e46321d378f57482cdaaeca900e6e533f0b"
+    }
+  ],
+  "backend_hashes": {
+    "providers.js": "dd8020f6cf4aaba10e340683bfb9dd3be9d8a29ed7706cbde2505fd392b98976",
+    "ai.js": "2581c05640814306372d3a0fd4a03591b5fa25a4f8cbe65ba53b22a4138a4415",
+    "ember_github.js": "598fb47a36c530b553aaf7893b1bbf57e0d2584ea0ebce44377b853c17381ade",
+    "ember_repo_runner.js": "23e1a8622f3f38636a8f6fcae991245fd7ce55c827f3a09f59cd9ae2b71b34c0",
+    "repo-runner-template.cjs": "02416c415bf431a29ff9f7d1b9cac5e9ebdf10edcb3acf03c9dfcac5acb1912a",
+    "ember_command_center.js": "2907522b5bb99d539f2862101b1aa6f25cafeed0c8f410c3384813304162fc5b",
+    "ai_scraper.js": "8fca7b54e42985d21ad0983c92a67284e04c2dcf3baba28cdc4fd604d2dfba6b",
+    "ember_downloads.js": "a0518701fc3df3cf79e790bbd917dd2c074a77b94e974b59ad7b2dcab3e67a61"
+  }
+}

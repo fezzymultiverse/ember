@@ -1,0 +1,8 @@
+PASS reply has a 🔊 button, not red 
+PASS while talking the button is red and says Stop 
+FAIL the talking button background is red rgba(0, 0, 0, 0)
+PASS native speech was asked to speak 
+PASS tapping it stops the native voice 
+PASS and it goes back to 🔊, not red 
+PASS when the voice finishes on its own the button goes back 
+PASS still red while it is mid-sentence 

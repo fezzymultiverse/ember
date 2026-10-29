@@ -1,11 +1,11 @@
 {
   "name": "ember",
-  "version": "1.10.16",
+  "version": "1.10.17",
   "private": true,
   "license": "UNLICENSED",
   "description": "Ember - a companion to talk to about anything (PWA, APK-ready via Capacitor)",
   "scripts": {
-    "test": "node tests/artifact-test.js && node tests/routing-fallback-test.js && node tests/streaming-routing-test.js && node tests/term-test.js && node tests/app-test.js && node tests/safety-test.js && node tests/voice-native-test.js && node tests/agent-test.js && node tests/context-test.js && node tests/music-test.js && node tests/speaker-test.js && node tests/scrape-test.js && node tests/keyscan-test.js && node tests/handoff-test.js && node tests/v183-test.js && node tests/v198-test.js && node tests/v1915-test.js && node tests/v1924-test.js && node tests/v1925-test.js && node tests/v1927-test.js && node tests/v1927b-test.js && node tests/v1928-test.js && node tests/v1929-test.js && node tests/v1930-test.js && node tests/v1932-test.js && node tests/v1933-test.js",
+    "test": "node scripts/run-tests.cjs",
     "serve": "node serve.js 8080",
     "sync": "cap sync android",
     "patch:android": "python3 scripts/apply_android_patch.py android android_patch",
@@ -34,7 +34,10 @@
     "test:workspace:unit": "node tests/workspace95-test.js",
     "test:release": "node tests/workspace95-test.js && node tests/knowledge-brain-test.js && node tests/v1992-repo-runner-test.js && node tests/command-center-test.js && node tests/routing94-test.js && node tests/download94-test.js && node tests/workspace95-browser-test.js && node tests/knowledge-brain-browser-test.js && node tests/v1992-repo-runner-browser-test.js && node tests/command-center-browser-test.js && node tests/routing94-browser-test.js",
     "test:cockpit": "node tests/cockpit-browser-test.js",
-    "test:keyless": "node tests/keyless-browser-test.cjs"
+    "test:keyless": "node tests/keyless-browser-test.cjs",
+    "test:wiring": "node tests/wiring-test.cjs",
+    "test:wired:browser": "node tests/wired-browser-test.cjs",
+    "audit:wiring": "node scripts/wiring-audit.cjs --write"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",
@@ -46,6 +49,9 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^6.2.0",
-    "playwright": "^1.64.1"
+    "playwright": "^1.64.1",
+    "acorn": "^8.15.0",
+    "acorn-walk": "^8.3.4",
+    "pngjs": "^7.0.0"
   }
 }

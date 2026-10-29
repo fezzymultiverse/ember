@@ -1,0 +1,187 @@
+{
+  "version": "1.10.17",
+  "sourceArchive": "ember-V1_10_16-keyless-router.zip",
+  "releaseStatus": "CANDIDATE_ACCEPTANCE_INCOMPLETE",
+  "originalFiles": 370,
+  "protectedBackendsUnchanged": 8,
+  "stylesheetsUnchanged": 25,
+  "vendorFilesUnchanged": true,
+  "retiredControllers": 6,
+  "suite": {
+    "total": 68,
+    "completed": 68,
+    "counts": {
+      "TIMEOUT": 11,
+      "PASS": 28,
+      "FAIL": 28,
+      "SKIP": 1
+    },
+    "exit": 1,
+    "legacyTimeoutMs": 15000,
+    "currentBudgets": {
+      "keyless-browser-test.cjs": 180000,
+      "cockpit-browser-test.js": 90000,
+      "term-test.js": 90000,
+      "wired-browser-test.cjs": 90000
+    }
+  },
+  "knownRequestedTests": {
+    "term-test.js": "48 passed; 0 failed",
+    "v1992-repo-runner-test.js": "30 checks passed",
+    "knowledge-brain-test.js": "35 checks passed"
+  },
+  "currentKeylessBrowser": "47/47 checks passed",
+  "structuralWiring": "12/12 checks passed",
+  "wiringGateMutationProof": {
+    "results": [
+      {
+        "name": "unloaded web script",
+        "rejected": true,
+        "exit": 1,
+        "expectedFailure": "every web script"
+      },
+      {
+        "name": "emitted event without consumer",
+        "rejected": true,
+        "exit": 1,
+        "expectedFailure": "emitted application event"
+      },
+      {
+        "name": "duplicate public root API",
+        "rejected": true,
+        "exit": 1,
+        "expectedFailure": "no public object API"
+      },
+      {
+        "name": "precache/page mismatch",
+        "rejected": true,
+        "exit": 1,
+        "expectedFailure": "service worker exact asset closure"
+      }
+    ],
+    "restoredBaselinePass": true
+  },
+  "nativePatcherFixture": "PASS, twice-identical disposable fixture; not compilation",
+  "visual": {
+    "captures": 14,
+    "viewports": [
+      "412x915",
+      "1280x900"
+    ],
+    "pageErrors": 0,
+    "overflowCases": 0,
+    "exactPairs": 13,
+    "diffs": [
+      {
+        "file": "browser-1280x900.png",
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "bounds": null,
+        "totalPixels": 1152000
+      },
+      {
+        "file": "browser-412x915.png",
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "bounds": null,
+        "totalPixels": 376980
+      },
+      {
+        "file": "chat-1280x900.png",
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "bounds": null,
+        "totalPixels": 1152000
+      },
+      {
+        "file": "chat-412x915.png",
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "bounds": null,
+        "totalPixels": 376980
+      },
+      {
+        "file": "chooser-1280x900.png",
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "bounds": null,
+        "totalPixels": 1152000
+      },
+      {
+        "file": "chooser-412x915.png",
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "bounds": null,
+        "totalPixels": 376980
+      },
+      {
+        "file": "command-centre-1280x900.png",
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "bounds": null,
+        "totalPixels": 1152000
+      },
+      {
+        "file": "command-centre-412x915.png",
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "bounds": null,
+        "totalPixels": 376980
+      },
+      {
+        "file": "plugins-1280x900.png",
+        "changedPixels": 31,
+        "maxChannelDelta": 3,
+        "bounds": [
+          282,
+          767,
+          319,
+          840
+        ],
+        "totalPixels": 1152000
+      },
+      {
+        "file": "plugins-412x915.png",
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "bounds": null,
+        "totalPixels": 376980
+      },
+      {
+        "file": "settings-1280x900.png",
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "bounds": null,
+        "totalPixels": 1152000
+      },
+      {
+        "file": "settings-412x915.png",
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "bounds": null,
+        "totalPixels": 376980
+      },
+      {
+        "file": "terminal-1280x900.png",
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "bounds": null,
+        "totalPixels": 1152000
+      },
+      {
+        "file": "terminal-412x915.png",
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "bounds": null,
+        "totalPixels": 376980
+      }
+    ]
+  },
+  "blockers": [
+    "Literal removed-service reference ban conflicts with protected legacy cleanup and preserved historical sources.",
+    "Whole inherited suite is not green; failures, timeouts and a skip are not hidden.",
+    "Four legacy incoming-only events lack bundled producers; no new contract approved.",
+    "Versioned patch consolidation deferred; no passing full behavior baseline.",
+    "Live GitHub writes, live keyless endpoint uptime, Android compilation/device behavior and actual local bridge installation not certified."
+  ]
+}

@@ -1,102 +1,135 @@
-# Testing · V1.4.0
+# Testing — 1.10.17 actual results
 
-*For contributors and reviewers.*
+## Release status
 
-## Commands
+**Candidate; acceptance incomplete.** The full inherited suite is not green. Source: the supplied V1.10.16 Keyless Router, not a fallback. All eight protected backends, all 25 stylesheet files and all vendor files are byte-identical to that source. No loaded patch/CSS merge was attempted.
 
-**Syntax check, every JS file** (the same check CI runs):
+## Reproduction
 
-```
-for f in $(find www tests -name '*.js'); do node --check "$f" || echo "FAIL $f"; done
-```
+Use Node 20+, npm and git. Install with `npm ci --legacy-peer-deps`, then install the browser and OS dependencies with `npx playwright install --with-deps chromium`.
 
-**Safety unit test** (pure Node, no browser, no network):
+`npm test` invokes `scripts/run-tests.cjs`, discovers every top-level `*-test.js` and `*-test.cjs`, runs them sequentially (old harnesses share fixed ports), writes per-test logs and does not short-circuit. It returns nonzero for any failure, skip, printed FAIL or timeout. `scripts/test-preload.cjs` blocks unmocked third-party HTTP while allowing localhost fixtures; routes explicitly installed by an individual test take precedence. No real user credentials are involved.
 
-```
-node tests/safety-test.js
-```
+The delivered full run used `EMBER_TEST_TIMEOUT_MS=15000 npm test`. This sets 15-second deadlines on historical harnesses; the runner gives keyless 180 seconds and cockpit/Termux/current wired browser tests 90 seconds. Default historical deadline without that environment variable is 45 seconds. **A timeout is not a proven product defect or a passed test**: it may be a stale hidden selector, test-specific fixture/dependency issue or insufficient budget. All are unresolved acceptance items until triaged. Rerun without that override for longer diagnosis.
 
-**App test** (headless Chromium against mocked Groq, Mistral, Gemini and Pollinations; needs Playwright):
+Full discovered/completed scripts: **68/68**. Final results: **28 PASS, 28 FAIL, 11 TIMEOUT, 1 SKIP**. Exit status: **1**. Raw logs and the machine-readable summary are in `tests/results/wired/suite/`. The initial baseline run is separately retained under baseline-suite; many early baseline failures were dependency-path/browser-library setup issues, so its raw counts are not a clean behavioral A/B baseline and no causal improvement claim is made from them.
 
-```
-PW=/path/to/node_modules/playwright node tests/app-test.js
-```
+## The three explicitly requested legacy repairs
 
-`PW` defaults to a path that exists on the original build machine only. Set it for your own machine. The run writes screenshots to `tests/shots/` (git-ignored).
-
-## Last recorded results
-
-On 2026-10-22, before these docs were written: `node --check` clean on all JS files, `safety-test.js` 43 of 43, `app-test.js` 103 of 103. The docs change no source file. These were not re-run after packaging.
-
-## The `Safety.detect` table
-
-These cases are in `tests/safety-test.js`.
-
-| Message | Level | Why |
+| Test | Actual correction | Current result |
 |---|---|---|
-| I am dying laughing | 0 | Idiom |
-| I could kill for a coffee | 0 | Idiom |
-| dead tired today | 0 | Idiom |
-| killing time at the mall | 0 | Idiom |
-| my phone is dying | 0 | Idiom |
-| bored to death | 0 | Idiom |
-| I have a plan for the weekend | 0 | A plan alone is not ideation |
-| I have a knife set for cooking | 0 | Means alone is not ideation |
-| tonight is the night, the party starts at 9 | 0 | Timing alone is not ideation |
-| I want to end things at the gym early | 0 | "end things" is not matched |
-| at the end of the day it works | 0 | Removed from level 1 |
-| my fridge is empty | 0 | Removed from level 1 |
-| I feel hopeless | 1 | Distress |
-| everything is falling apart | 1 | Distress |
-| I am so overwhelmed | 1 | Distress |
-| I hate myself | 1 | Distress |
-| having a panic attack | 1 | Distress |
-| I want to die | 2 | Ideation |
-| i wanna die | 2 | Ideation |
-| I’m thinking about killing myself (curly apostrophe) | 2 | Ideation after normalising |
-| nobody would miss me | 2 | Ideation |
-| I don’t want to be here anymore (curly apostrophe) | 2 | Ideation after normalising |
-| wish I was dead | 2 | Ideation |
-| dying laughing but honestly I want to die | 2 | Idiom removed, real phrase kept |
-| I am suicidal | 2 | Ideation |
-| I want to die and I have a plan | 3 | Ideation plus plan |
-| I want to kill myself tonight | 3 | Ideation plus timing |
-| I have pills and I want to die | 3 | Ideation plus means |
-| this is my last message | 3 | Goodbye phrase |
-| goodbye forever | 3 | Goodbye phrase |
-| (empty string) | 0 | No input |
+| term-test.js | Open the authoritative cockpit Hacking section instead of clicking a hidden retired Termux affordance. Assert inline panel, hidden legacy expand/minimize controls and actual viewport-resize WebSocket handling rather than obsolete half-screen geometry. Terminal core, socket handshake, typing, command safety and reconnection checks remain. | 48 passed, 0 failed |
+| v1992-repo-runner-test.js | The protected runner intentionally permits brain==output and filters self-copy. Verify that exception and keep a negative assertion for non-brain source/output collision. Do not change backend behavior to fit an obsolete assertion. | 30 checks passed |
+| knowledge-brain-test.js | Assert the single cockpit Command Centre runner owner and hidden superseded card, not a removed Advanced accordion. Existing Read-First security checks remain. | 35 checks passed |
 
-The test also checks that `wrapSystem` leaves level 0 unchanged, adds the tone override at level 1 and the crisis block with the SADAG number at level 2, that `killSwitch` is true only at 2 and above, and that the crisis card has `tel:` links and no script.
+Developer-machine-specific Playwright require paths in inherited tests were changed to local dependency resolution; no application logic was changed for portability.
 
-## Manual UI checks for V1.3.0
+## Current focused gates
 
-Run these on a phone or in a desktop browser with DevTools. They are **not automated**.
+`npm run test:wiring`: **12/12 structural checks pass**. The requested orphan-script, unconsumed-emitted-event, duplicate-root-API and precache/page-mismatch gates were mutation-tested in `scripts/verify-wiring-gates.cjs`: all four deliberately broken fixtures were rejected and every file was restored before finalization. Proof: mutation-proof.json. Dynamic event names and method-wrapper ownership limits are listed in WIRING_MAP, not pretended exhaustive.
 
-1. **Crisis card.** Send "I want to die". The card (SADAG, Lifeline, 112) appears immediately, before any reply. The red dot shows beside the name. Tap each number and confirm the dialler opens with the right number.
-2. **Card without an engine.** Turn off the network, send the same message. The card still appears.
-3. **Reset.** Tap New chat. The card and dot clear. Reopen the chat from history: they stay clear.
-4. **Learning skipped.** With memory on and a normal chat, send a level 2 message, then send five ordinary messages. Core Memory gains no line from that stretch.
-5. **Directives dropped.** After a level 2 message, tap Spark. The reply stays in crisis tone and does not start a new topic.
-6. **Old save migrates.** Load the app with a V1.2.0 save (`kv` record `mem` with only `facts` and `threads`). It opens without error, the facts and threads are intact, and "Export backup" shows the five new keys.
-7. **Import.** Import a V1.2.0 backup. Memory lines merge, nothing is lost.
-8. **Level 1.** Send "I feel hopeless". No card, no dot; the reply is short, steady and without jokes.
+`npm run test:keyless`: **47/47 mocked browser checks pass**, including both requested viewports, chooser interaction/cancellation/preferences, fallback/timeout behavior, disabled tools, documents with real PDF/DOCX signatures, public-source extraction constraints, chat routing to normal artifact cards and a Save PDF download. No external availability claim follows from a mocked success.
 
-## Not covered yet
+`node scripts/verify-native-fixture.cjs`: **PASS**. The patcher applies twice identically to a disposable minimal project, copies all 15 Kotlin sources, inserts required manifest service declarations and sets version 1.10.17. This is source transformation/idempotence, not Kotlin/Gradle compilation or hardware validation.
 
-- No automated UI test covers the crisis card, the dot, the learning skip, or the migration. `tests/app-test.js` covers the V1.2.0 UI and mocked engines.
-- No test of real provider calls, real phones, or the Pollinations service.
-- No test of reply quality. Whether a model follows the crisis block is not measured.
-- No recall test: `Safety.detect` has not been measured against a labelled set of real messages.
+## Visual preservation — no hidden masks or threshold pass
 
-## V1.8.3 suites
-- `node tests/handoff-test.js`: the page makes no paid call once the native worker owns the reply (mocked fetch).
-- `node tests/v183-test.js`: Browser sheet drives the real browser (native plugin mocked), Ask/Save events, Reader fallback, Termux `ensureOn` and preset auto-connect (WebSocket mocked).
+Fourteen before/after captures cover chat, Settings, Command Centre, Browser, Plugins, chooser and terminal at 412x915 and 1280x900. All captured browser cases have **zero page errors and no horizontal document overflow**. Fixtures block third-party HTTP, use fixed time/randomness, suppress animation/caret transitions, and use identical browser/viewport setup on original and changed code. They do not change production stylesheets. This is only the seven-surface state coverage, not every scroll position or every overlay combination.
 
-## V1.8.2 suites
-- `node tests/scrape-test.js`: scraper router with mocked fetch (keyed providers first and rotating, rejected-key skip, no retry on a paid key, cheap-first rendering, cache, reload bypass, forced provider).
+| Viewport / view | Changed pixels | Max channel delta | Changed bounds (x0,y0,x1,y1) |
+|---|---|---|---|
+| browser-1280x900.png | 0 | 0 | None |
+| browser-412x915.png | 0 | 0 | None |
+| chat-1280x900.png | 0 | 0 | None |
+| chat-412x915.png | 0 | 0 | None |
+| chooser-1280x900.png | 0 | 0 | None |
+| chooser-412x915.png | 0 | 0 | None |
+| command-centre-1280x900.png | 0 | 0 | None |
+| command-centre-412x915.png | 0 | 0 | None |
+| plugins-1280x900.png | 31 | 3 | (282, 767, 319, 840) |
+| plugins-412x915.png | 0 | 0 | None |
+| settings-1280x900.png | 0 | 0 | None |
+| settings-412x915.png | 0 | 0 | None |
+| terminal-1280x900.png | 0 | 0 | None |
+| terminal-412x915.png | 0 | 0 | None |
 
-## V1.8.1 suites
-- `node tests/speaker-test.js`: red Stop speaker, native voice picker, speed/pitch, lively delivery, mic label, left-panel Music Console (native text-to-speech mocked, nothing is heard).
-- `node tests/music-test.js`: Music now lives in the left-panel Music Console, not the composer.
-- `node tests/app-test.js`: Settings is tabbed, so the test clicks the tab each control lives on.
-- `npm test` runs all of the above plus term, safety, voice-native, agent and context.
+Thirteen of the final fourteen screenshot pairs are pixel-identical. The remaining 31 changed pixels are on the dimmed underlying Modes/composer outline in the desktop Plugins capture, with a maximum RGB channel difference of 3. A repeat capture of the **untouched** source reproduced exactly that 31-pixel, maximum-3-channel-delta pattern at the same bounds (baseline-repeat/aa-report.json). That demonstrates rendering/compositing variance in the original application, not evidence of a new layout change. No production CSS or DOM layout was altered to hide it. The strict pixel gate remains nonzero, and raw diff PNGs are delivered.
+
+The current wired-browser test is deliberately **strict** and returns nonzero for any changed pixel, including these tiny differences. It therefore does not earn a false pixel-perfect PASS. Its functional adapter checks pass, including fixed-text status forwarding and a synthetic sensitive-payload sentinel that is not retained in new logs/diagnostics. Zero-page-error capture success must not be confused with a passed strict image gate.
+
+## Complete result ledger
+
+| Test | Result | Evidence |
+|---|---|---|
+| agent-test.js | TIMEOUT | `tests/results/wired/suite/agent-test.js.log` |
+| app-test.js | TIMEOUT | `tests/results/wired/suite/app-test.js.log` |
+| artifact-test.js | PASS | `tests/results/wired/suite/artifact-test.js.log` |
+| cockpit-browser-test.js | FAIL | `tests/results/wired/suite/cockpit-browser-test.js.log` |
+| command-center-browser-test.js | TIMEOUT | `tests/results/wired/suite/command-center-browser-test.js.log` |
+| command-center-test.js | FAIL | `tests/results/wired/suite/command-center-test.js.log` |
+| context-test.js | PASS | `tests/results/wired/suite/context-test.js.log` |
+| download94-test.js | PASS | `tests/results/wired/suite/download94-test.js.log` |
+| handoff-test.js | PASS | `tests/results/wired/suite/handoff-test.js.log` |
+| keyless-browser-test.cjs | PASS | `tests/results/wired/suite/keyless-browser-test.cjs.log` |
+| keyscan-test.js | PASS | `tests/results/wired/suite/keyscan-test.js.log` |
+| knowledge-brain-browser-test.js | TIMEOUT | `tests/results/wired/suite/knowledge-brain-browser-test.js.log` |
+| knowledge-brain-test.js | PASS | `tests/results/wired/suite/knowledge-brain-test.js.log` |
+| lyrics-test.js | PASS | `tests/results/wired/suite/lyrics-test.js.log` |
+| music-test.js | TIMEOUT | `tests/results/wired/suite/music-test.js.log` |
+| panel-browser-test.js | FAIL | `tests/results/wired/suite/panel-browser-test.js.log` |
+| router-test.js | PASS | `tests/results/wired/suite/router-test.js.log` |
+| routing-fallback-test.js | PASS | `tests/results/wired/suite/routing-fallback-test.js.log` |
+| routing94-browser-test.js | FAIL | `tests/results/wired/suite/routing94-browser-test.js.log` |
+| routing94-test.js | PASS | `tests/results/wired/suite/routing94-test.js.log` |
+| safety-test.js | PASS | `tests/results/wired/suite/safety-test.js.log` |
+| scrape-test.js | PASS | `tests/results/wired/suite/scrape-test.js.log` |
+| settings-right-panel-test.js | PASS | `tests/results/wired/suite/settings-right-panel-test.js.log` |
+| speaker-test.js | TIMEOUT | `tests/results/wired/suite/speaker-test.js.log` |
+| streaming-routing-test.js | PASS | `tests/results/wired/suite/streaming-routing-test.js.log` |
+| term-test.js | PASS | `tests/results/wired/suite/term-test.js.log` |
+| tool-followup-routing-test.js | FAIL | `tests/results/wired/suite/tool-followup-routing-test.js.log` |
+| v1105-browser-test.js | TIMEOUT | `tests/results/wired/suite/v1105-browser-test.js.log` |
+| v168-test.js | PASS | `tests/results/wired/suite/v168-test.js.log` |
+| v183-test.js | TIMEOUT | `tests/results/wired/suite/v183-test.js.log` |
+| v1915-test.js | FAIL | `tests/results/wired/suite/v1915-test.js.log` |
+| v1924-test.js | TIMEOUT | `tests/results/wired/suite/v1924-test.js.log` |
+| v1925-test.js | PASS | `tests/results/wired/suite/v1925-test.js.log` |
+| v1927-test.js | PASS | `tests/results/wired/suite/v1927-test.js.log` |
+| v1927b-test.js | PASS | `tests/results/wired/suite/v1927b-test.js.log` |
+| v1928-test.js | PASS | `tests/results/wired/suite/v1928-test.js.log` |
+| v1929-test.js | FAIL | `tests/results/wired/suite/v1929-test.js.log` |
+| v1930-test.js | FAIL | `tests/results/wired/suite/v1930-test.js.log` |
+| v1932-test.js | PASS | `tests/results/wired/suite/v1932-test.js.log` |
+| v1933-test.js | PASS | `tests/results/wired/suite/v1933-test.js.log` |
+| v1940-ui-test.js | FAIL | `tests/results/wired/suite/v1940-ui-test.js.log` |
+| v1941-thought-test.js | FAIL | `tests/results/wired/suite/v1941-thought-test.js.log` |
+| v1942-thought-test.js | FAIL | `tests/results/wired/suite/v1942-thought-test.js.log` |
+| v1945-motion-test.js | FAIL | `tests/results/wired/suite/v1945-motion-test.js.log` |
+| v1950-ui-stability-test.js | FAIL | `tests/results/wired/suite/v1950-ui-stability-test.js.log` |
+| v1951-api-audit-test.js | PASS | `tests/results/wired/suite/v1951-api-audit-test.js.log` |
+| v1955-api-profile-test.js | FAIL | `tests/results/wired/suite/v1955-api-profile-test.js.log` |
+| v1957-newpipe-direct-test.js | FAIL | `tests/results/wired/suite/v1957-newpipe-direct-test.js.log` |
+| v1973-test.js | FAIL | `tests/results/wired/suite/v1973-test.js.log` |
+| v1974-test.js | FAIL | `tests/results/wired/suite/v1974-test.js.log` |
+| v1978-steps-test.js | PASS | `tests/results/wired/suite/v1978-steps-test.js.log` |
+| v198-test.js | TIMEOUT | `tests/results/wired/suite/v198-test.js.log` |
+| v1980-puter-key-test.js | FAIL | `tests/results/wired/suite/v1980-puter-key-test.js.log` |
+| v1987-test.js | FAIL | `tests/results/wired/suite/v1987-test.js.log` |
+| v1988-test.js | FAIL | `tests/results/wired/suite/v1988-test.js.log` |
+| v1989-test.js | FAIL | `tests/results/wired/suite/v1989-test.js.log` |
+| v1991-browser-test.js | FAIL | `tests/results/wired/suite/v1991-browser-test.js.log` |
+| v1991-deliverables-test.js | PASS | `tests/results/wired/suite/v1991-deliverables-test.js.log` |
+| v1992-repo-runner-browser-test.js | TIMEOUT | `tests/results/wired/suite/v1992-repo-runner-browser-test.js.log` |
+| v1992-repo-runner-test.js | PASS | `tests/results/wired/suite/v1992-repo-runner-test.js.log` |
+| v1996-memgroups-test.js | FAIL | `tests/results/wired/suite/v1996-memgroups-test.js.log` |
+| v1999-ui-refinement-test.js | FAIL | `tests/results/wired/suite/v1999-ui-refinement-test.js.log` |
+| voice-cloud-test.js | FAIL | `tests/results/wired/suite/voice-cloud-test.js.log` |
+| voice-native-test.js | SKIP | `tests/results/wired/suite/voice-native-test.js.log` |
+| wired-browser-test.cjs | FAIL | `tests/results/wired/suite/wired-browser-test.cjs.log` |
+| wiring-test.cjs | PASS | `tests/results/wired/suite/wiring-test.cjs.log` |
+| workspace95-browser-test.js | FAIL | `tests/results/wired/suite/workspace95-browser-test.js.log` |
+| workspace95-test.js | FAIL | `tests/results/wired/suite/workspace95-test.js.log` |
+
+## Explicitly not tested / not certified
+
+Live GitHub push or Actions execution, actual keyless endpoint uptime/auth behavior, paid provider calls or generation, Android Kotlin/Gradle build, real Android permissions/workers/notifications/battery management, physical microphone and speech services, real media downloads and installation of external Termux/download bridges. Static code references, patcher fixtures and mocked endpoints cannot replace that evidence. The four incoming-only legacy event contracts and protected removed-service cleanup conflict remain open in NEEDS_APPROVAL.md.

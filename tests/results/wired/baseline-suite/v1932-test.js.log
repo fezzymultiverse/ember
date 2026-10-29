@@ -1,0 +1,14 @@
+PASS preview names each key and marks all as new before anything is saved 
+PASS preview saves nothing 
+PASS first run: ZenRows and Audd.io keys are saved and shown as NEW 
+PASS first run: the label on each row is the provider name 
+PASS first run: a key with no name beside it is offered with a provider picker, never guessed 
+PASS second run: keys already saved are marked already added 
+PASS second run: only the new key is saved, as an extra 
+PASS single-slot provider keeps its first key and says so 
+PASS assign files a loose key under the provider the user picked 
+PASS assign refuses a duplicate 
+PASS the report shows masked keys only and escapes text 
+PASS named list pairs each saved key with its provider name 
+PASS no keys in the text: report says so 
+13 passed, 0 failed

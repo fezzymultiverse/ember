@@ -1,0 +1,25 @@
+PASS EmberLyrics loaded, card and switch exist 
+PASS tidy strips video tags and Topic 
+PASS parseLrc reads times, multi-tags, sorts 
+PASS exact lookup uses /get with cleaned artist, title, album, duration 
+PASS same song is not fetched twice 
+PASS before the first line shows the first 3 
+PASS at 12s the current line is first, max 3 
+PASS a blank gap line is skipped 
+PASS near the end shows what is left (fewer than 3) 
+PASS /get 404 falls back to /search and prefers timed lyrics 
+PASS no result gives state none 
+PASS plain lyrics: first 3 lines, [Verse] header skipped 
+PASS instrumental shows one note line 
+PASS network failure gives state err 
+PASS after an error the next play tries again 
+PASS card shows 3 lines with the current one marked 
+PASS title tooltip holds the same 3 lines 
+PASS card follows the song position 
+PASS no new request while the same song keeps playing 
+PASS music panel paint calls EmberLyrics.paint 
+PASS switch off hides the card and is saved 
+PASS switch off: nothing is sent to lrclib 
+PASS no page errors 
+
+23 passed, 0 failed

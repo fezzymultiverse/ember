@@ -1,0 +1,5 @@
+PASS abortInflight is exported 
+PASS a cancelled reply stops with a clear cancellation error 
+PASS it did not walk through every engine and model after the abort 
+PASS each engine attempt was announced with its name 
+4 passed, 0 failed

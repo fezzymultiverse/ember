@@ -1,0 +1,22 @@
+tool,endpoint,worked,status,notes
+LanguageTool,https://api.languagetool.org/v2/check,YES,200,HTTP response and content checked
+Pollinations,https://image.pollinations.ai/prompt/a%20small%20orange%20circle?width=64&height=64&seed=11016&nologo=true,YES,200,"Anonymous GET returned JPEG; 64 by 64 smoke image, actual model may vary"
+DiceBear,https://api.dicebear.com/9.x/bottts/svg?seed=Ember,YES,200,HTTP response and content checked
+Picsum,https://picsum.photos/32/32,YES,200,HTTP response and content checked
+QRServer,https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=Ember,YES,200,HTTP response and content checked
+Robohash,https://robohash.org/Ember.png?size=32x32,YES,200,HTTP response and content checked
+StreamElements TTS,https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=Hello,NO,403,HTTP Error 403: Forbidden
+JioSaavn (unofficial),https://saavn.dev/api/search/songs?query=hello&limit=1,NO,,<urlopen error [Errno -2] Name or service not known>
+iTunes Search,https://itunes.apple.com/search?term=hello&media=music&limit=1,YES,200,HTTP response and content checked
+LRCLIB,https://lrclib.net/api/search?q=hello,YES,200,HTTP response and content checked
+Piston,https://emkc.org/api/v2/piston/execute,NO,401,HTTP Error 401: Unauthorized
+DummyJSON,https://dummyjson.com/products?limit=1,YES,200,HTTP response and content checked
+Jina Reader,https://r.jina.ai/https://example.com,YES,200,HTTP response and content checked
+Microlink,https://api.microlink.io/?url=https%3A%2F%2Fexample.com,YES,200,HTTP response and content checked
+IPify,https://api.ipify.org?format=json,YES,200,HTTP response and content checked
+Forge,https://aihorde.net/api/v2/status/heartbeat,Heartbeat YES; generation not verified,200,HTTP response and content checked; original adapter unchanged; unavailable in strict router (header/queue conflict)
+PDF (pdfmake),local: vendor/pdfmake-0.2.20.min.js,YES,,Real bundled PDF generated in browser; real offline export also passed
+Word (docx),local: vendor/docx-9.5.1.iife.js,YES,,Real bundled DOCX generated in browser; ZIP signature validated
+Markdown,local: ember_artifacts.js,YES,,Bundled Markdown rendering and artifact generation passed
+Text structuring,local: providers.js,Conditional,,Existing text router callable; full model answers mocked for browser QA; runtime depends on configured providers / Free Mode
+Speech-to-text,local: ember_voice.js,Conditional,,Existing device speech bridge; permission and on-device transcription not exercised

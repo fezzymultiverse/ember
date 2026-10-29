@@ -1,0 +1,695 @@
+[
+  {
+    "test": "agent-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 383,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "app-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 26,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "artifact-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 53,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "cockpit-browser-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 400,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "command-center-browser-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 390,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "command-center-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 36,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "context-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 402,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "download94-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 301,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "handoff-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 39,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "keyless-browser-test.cjs",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 389,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "keyscan-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 72,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "knowledge-brain-browser-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 386,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "knowledge-brain-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 63,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "lyrics-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 28,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "music-test.js",
+    "exit": 2,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 428,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "panel-browser-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 410,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "router-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 42,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "routing-fallback-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 44,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "routing94-browser-test.js",
+    "exit": null,
+    "signal": "SIGKILL",
+    "timedOut": true,
+    "durationMs": 65021,
+    "status": "TIMEOUT",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "routing94-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 131,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "safety-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 37,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "scrape-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 125,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "settings-right-panel-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 32,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "speaker-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 33,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "streaming-routing-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 39,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "term-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 31671,
+    "status": "FAIL",
+    "assertionFailures": [
+      "FAIL harness page.click: Timeout 30000ms exceeded."
+    ],
+    "skips": []
+  },
+  {
+    "test": "tool-followup-routing-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 34,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1105-browser-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 31034,
+    "status": "FAIL",
+    "assertionFailures": [
+      "FAIL page.waitForFunction: Timeout 30000ms exceeded."
+    ],
+    "skips": []
+  },
+  {
+    "test": "v168-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 179,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v183-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 33,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1915-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 58,
+    "status": "FAIL",
+    "assertionFailures": [
+      "FAIL persona shows scraper tools when scraping is on "
+    ],
+    "skips": []
+  },
+  {
+    "test": "v1924-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 31981,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1925-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 1334,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1927-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 1683,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1927b-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 2264,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1928-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 31,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1929-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 28,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1930-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 32,
+    "status": "FAIL",
+    "assertionFailures": [
+      "FAIL menu markup has 4 toggles and 3 do-it-now items undefined",
+      "FAIL sw.js lists ember_plus.js and cache is a 1.9.x build undefined"
+    ],
+    "skips": []
+  },
+  {
+    "test": "v1932-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 50,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1933-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 41,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1940-ui-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 31,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1941-thought-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 32,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1942-thought-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 39,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1945-motion-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 28,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1950-ui-stability-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 1345,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1951-api-audit-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 33,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1955-api-profile-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 28,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1957-newpipe-direct-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 28,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1973-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 45,
+    "status": "FAIL",
+    "assertionFailures": [
+      "FAIL no OpenRouter reference left in www/",
+      "FAIL provider router has no openrouter",
+      "FAIL Settings dropdown has no OpenRouter option"
+    ],
+    "skips": []
+  },
+  {
+    "test": "v1974-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 32,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1978-steps-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 29,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v198-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 29,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1980-puter-key-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 30,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1987-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 81,
+    "status": "FAIL",
+    "assertionFailures": [
+      "FAIL pdf: mintpdf answers with a real PDF ",
+      "FAIL pdf: daily limit on mintpdf falls to pdfrender (JSON base64) ",
+      "FAIL pdf: an HTML error page is rejected, next provider tried ",
+      "FAIL pdf: length mismatch is caught as truncation, both failing gives ok:false ",
+      "FAIL pdf: gzip responses skip the length check ",
+      "FAIL pdf: network down returns ok:false, never throws ",
+      "FAIL pdfFor: declining the one-time prompt switches to This phone and sends nothing ",
+      "FAIL pdfFor: accepting the prompt sends once and remembers it ",
+      "FAIL service worker bumped to 1.9.87 and caches both engine files ",
+      "FAIL package.json is 1.9.87 with a test:v1987 script ",
+      "FAIL endpoints are the verified ones and no stray keys "
+    ],
+    "skips": []
+  },
+  {
+    "test": "v1988-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 35,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1989-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 32,
+    "status": "FAIL",
+    "assertionFailures": [
+      "FAIL service worker caches both files and is V1.9.89 ",
+      "FAIL package.json is 1.9.89 "
+    ],
+    "skips": []
+  },
+  {
+    "test": "v1991-browser-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 1382,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1991-deliverables-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 45,
+    "status": "PASS",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1992-repo-runner-browser-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 31007,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1992-repo-runner-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 1946,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "v1996-memgroups-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 31,
+    "status": "FAIL",
+    "assertionFailures": [
+      "FAIL groups are details.mg with counts",
+      "FAIL unmatched facts fall into Other"
+    ],
+    "skips": []
+  },
+  {
+    "test": "v1999-ui-refinement-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 35,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "voice-cloud-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 29,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "voice-native-test.js",
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 32,
+    "status": "PASS_WITH_SKIP",
+    "assertionFailures": [],
+    "skips": [
+      "SKIP voice-native-test: dictation button removed in V1.9.8"
+    ]
+  },
+  {
+    "test": "workspace95-browser-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 1055,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  },
+  {
+    "test": "workspace95-test.js",
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "durationMs": 37,
+    "status": "FAIL",
+    "assertionFailures": [],
+    "skips": []
+  }
+]

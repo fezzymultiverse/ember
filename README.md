@@ -1,50 +1,48 @@
-# Ember V1.9.92
+# Ember 1.10.17 — release candidate, not an all-green release
 
-Current release: whole-repository brain search and Features > Repo Runner, on top of the existing web routing and bundled document exports. Previous V1.9.91 release notes remain historical.
+Source: the supplied `ember-V1_10_16-keyless-router.zip` (not the V1.10.15 fallback).
 
-## Whole brain, not selected files
+This archive contains the safe, verified wiring work and explicit blockers. It must not be described as fully certified or completely working: the exhaustive inherited test suite is not all green. See `docs/TESTING.md`, `docs/NEEDS_APPROVAL.md`, `docs/WIRING_MAP.md` and `tests/results/wired/suite/summary.json`.
 
-Keep Settings > GitHub > Knowledge Brain Repo set to your FEZZY Super Brain's exact owner/name. The existing default is preserved: `fezzymultiverse/ember-brain`. This release does not guess a different FEZZY repository name. Save your GitHub token there. No file-selection step is required.
+No UI redesign or stylesheet merge was performed. All eight protected backend files are byte-identical to the supplied V1.10.16 files. No account, API key or credential was added. No real GitHub write, paid generation, live keyless endpoint certification or Android build was performed.
 
-`github_grep` searches current tracked text blobs across the entire brain, including vendor folders and nonstandard filename extensions. It bypasses GitHub's code-search index and the optional ranked preview cache. Literal case-insensitive search is the default; the tool also supports case-sensitive matching and optional path scope. Each search pins a tree/blob snapshot; continuation cursors process the remaining files. A NEW search sees later commits. Start over after a cursor expires (30 minutes/device restart). Binary files and protected secret paths are disclosed skips; text blobs above 8 MiB and submodules prevent a full-coverage claim. It is not possible or necessary to put the entire repository into one model prompt. Ember searches, then reads relevant exact paths. File reads remain live, read-first, secret-redacted and paginated. Do not infer absence from an unfinished grep.
+## Run locally
 
-If GitHub truncates its recursive tree response, Ember walks every subtree instead. A failed traversal is an error, not proof that a file is absent. The optional small preview cache is NOT the brain and does not restrict grep scope.
+Use Node 20+ with npm and git. Install the existing dependency graph with `npm ci --legacy-peer-deps`, then `npx playwright install --with-deps chromium` for browser tests. Run `npm run serve` and open the displayed localhost address.
 
-## Features > Repo Runner
+`npm test` discovers every top-level `*-test.js` and `*-test.cjs`, runs all of them without short-circuiting, writes separate logs and returns a nonzero exit on failures, skipped checks or timeouts. It does not hide old failures. `npm run test:wiring` and `npm run test:keyless` run the current structural and keyless regressions separately.
 
-Open Settings > Features. Search GitHub repos, add whole repositories, or paste owner/name. The configured brain is always included. Choose YOUR EXISTING output/build repository separately; adding dependencies never redirects brain reads. The runner does not create/fork an additional GitHub repository.
+## What changed
 
-Set the existing build workflow filename (default `build.yml`), then use **Install / update + sync + build**. Installation writes `scripts/ember-repo-runner.cjs`, `ember-repos.json`, and `.github/workflows/ember-repo-sync.yml` in a single Git tree commit on the output's default branch. Your token is sealed-box encrypted locally using the bundled libsodium library, then stored as the output repo's encrypted `EMBER_REPO_TOKEN` Actions secret. It is not embedded in files, exposed to the model, or put into Git remote URLs. This secret intentionally gives the installed runner access to the selected source/output repositories; use a narrowly scoped, revocable token and trust the people who can edit workflows in your output repo.
+Six deliberately unloaded Settings controllers moved intact to `archive/www/`; their CSS is retained in its original order because removing it could change computed styles. The service-worker cache is `ember-v1.10.17-wired`, built from the exact page asset closure plus explicitly documented lazy/static assets. The legacy tests for Knowledge Brain, runner validation and inline Termux were repaired to test the current contracts rather than resurrect removed UI.
 
-The sync job clones complete CURRENT tracked snapshots (not Git history) into:
+`ember_wiring.js` supplies small event adapters for Free APIs refresh, non-sensitive readiness diagnostics, post-push refresh and fixed-text download errors. It adds no UI, network request or persistent storage.
 
-- `external/fezzy-super-brain/` for the brain;
-- `external/repos/<owner>/<repo>/` for additional sources.
+## Feature entry points
 
-It records upstream SHAs in `ember-repos.lock.json`, pushes normal fast-forward commits, and dispatches your selected build. No source package install scripts are executed. Future additions, changes and deletions are synced within runner-owned paths. Unchanged snapshots create no new commit/build. Existing app files outside managed paths are preserved. Source code is INCLUDED IN THE REPOSITORY before the build; it is NOT automatically wired into application imports or included inside an APK bundle. Make application-specific imports/packaging changes separately if required.
+| Feature | Implementation (under www unless stated) | UI entry point / trigger | Contract / limitation |
+|---|---|---|---|
+| Chat, persona and safety | app.js; persona.js; safety.js | Message box → Send; Settings → Memory and Settings | Routes through existing provider contracts and safety gates. No router/backend replaced. |
+| Provider routing and keys | providers.js; ember_prov_ui.js; ember_prov_next.js | Providers button at chat footer; Settings → Providers | Existing optional credentials are retained. No new key, login or account added. |
+| Keyless router and chooser | ember_keyless.js | Ask for a supported task in chat; + → Plugins → Media & Music | Available alternatives show a chooser; unavailable services can fail; mocked regression is not live availability. |
+| Plugins and abilities | ember_plugins.js; ember_plus.js; ember_keyless.js | + → Web & Scraping / Media & Music | EmberPlus.stateLine reads current abilities; keyless extends it at runtime. |
+| Artifact cards and exports | ember_artifacts.js; ember_deliverables.js | Generated chat artifact → View / Download; ask for PDF / Word / Markdown | Local pdfmake/docx engines; protected repo-runner template is a downloadable artifact, not a browser script. |
+| Live terminal and status | ember_command_center.js; ember_v104.js; ember_wiring.js | Live Terminal bar below chat; Settings → Open Command Centre | Command Centre handles runner events; versioned patch supplies tool/route logs; new adapters use fixed text, never event payloads. |
+| Thought timeline | ember_timeline.js; ember_react.js; ember_steps.js | Active reply progress; saved thought card | Keyless explicitly writes timeline entries and emits agent notes. This is status/progress, not private model reasoning. |
+| Memory / Knowledge Brain | store.js; ember_context.js; ember_github.js; ember_learn.js; ember_find.js | Settings → Memory and Settings; Command Centre → Connect; chat code questions | Read-first gates code answers. IndexedDB caches and configuration are not proof of fresh remote evidence. |
+| GitHub discovery and queued sync | ember_cockpit.js; ember_workspace.js; ember_github.js; ember_repo_runner.js | Settings → Open Command Centre → Connect / Repos / Build | Discovery is read-only; staging and selected queue entries require explicit confirmation. Live push not tested. |
+| Termux terminal | ember_term.js; ember_cockpit.js | Settings → Hacking → Termux | Inline cockpit terminal uses local ttyd WebSocket; tests use a local mock server. Host installation still required. |
+| Browser and Notes | ember_browser.js; ember_create.js; ember_cockpit.js | Globe button → Browser / Documents / Notes | Notes reuse original editor; reader uses enabled scraping providers. External browser/native behavior is platform dependent. |
+| Documents library and graph | ai_docs.js; ember_docs_lib.js; ember_graph.js | Paperclip / Docs control; Browser → Documents | Library dispatches ember-docs-changed; readers refresh on that window event. |
+| Voice and read aloud | ember_voice.js; ember_native.js; app.js | Mic / Talk controls; reply speaker; Settings → Memory and Settings / Permissions | Browser/native services vary. Physical microphone and real Android speech services not tested. |
+| Lyrics and player | ember_lyrics.js; ember_player.js; ember_music_ui.js; ai_music.js | Settings → Music & Tools → Open Music panel; chat lyrics request | Existing music services can be unavailable. Legacy drawer music events have no producers; polling remains authoritative. |
+| Media generation bridge | ember_media.js; ember_mediaplus.js; ember_engines.js | + → Media & Music; Settings → Engine & Media Control | Existing Stability optional-key path retained; no paid generation performed in this release work. |
+| Downloads | ember_downloads.js; ember_getmusic.js; tools/download-bridge.cjs | Chat music/video download request; native YouTube / configured local bridge | Requires existing platform tools. New adapter reports bridge status errors with fixed non-sensitive text. |
+| Scraper and public-source extraction | ai_scraper.js; ai_agent.js; ember_keyless.js | + → Web & Scraping; Settings → Web Scraping; ask to read a public URL | Protected scraper remains untouched; no private-network fetching added. |
+| Device plugins | ember_device.js; ember_native.js; android_patch/ | Settings → Device Tools / Permissions | Custom plugins registered in MainActivity; Android compilation and real device use not performed. |
+| Projects | ember_projects.js; persona.js | Left drawer → Projects | Active project becomes next-turn persona context; diagnostics expose only revision counts, not project text. |
+| Timers and pings | ember_tasks.js; ember_native.js; EmberPingWorker.kt | Chat timer commands; Settings → Permissions | Existing in-app scheduling retained; no background task enabled by this release operation. |
 
-After changing source/build settings, use Install / update again to commit the new manifest. **Sync & push now** refuses unpublished settings rather than silently running an old configuration. Run status reports actual Actions state, not a fabricated completed build. Existing push-triggered build workflows may ALSO run from the runner's PAT commit; disable the explicit dispatch checkbox if your push-triggered build is sufficient and you want to avoid duplicate builds.
+## Release evidence
 
-Optional upstream polling is disabled by default. Enable the automatic-sync checkbox and install/update to allow the scheduled GitHub Actions job to run every ~15 minutes; GitHub scheduling can be delayed. The installed workflow still has a lightweight scheduled check when autoSync is false, but exits without clone/push/build. Remove/disable that workflow in GitHub if you want no scheduled job at all.
-
-**Add runner to output** creates a standalone downloadable `ember-repo-runner.cjs` artifact containing only your configuration. It can be copied alongside generated project output. For the local installer, use Node 20+, git and the GitHub CLI (`gh`) on Linux/macOS/Termux. Set `GH_TOKEN` securely in your local environment (never commit it), then run `node ember-repo-runner.cjs install`. For later updates use `node ember-repo-runner.cjs sync`. The in-app installer does not require local Node/git/gh: it uses GitHub's API and the runner executes on GitHub Actions.
-
-### Permissions and safety
-
-A fine-grained token needs Contents READ access to each private source and Contents, Workflows, Actions and Secrets WRITE access on the output. For a classic PAT, use repo/workflow scopes and an account that can manage Actions secrets on the output. Organization policy and branch protection still apply. The existing build workflow must exist and accept `workflow_dispatch` for explicit build dispatch. Installation requires the output default branch so GitHub can register the new workflow. Keep your build signing secrets configured as before; this patch does not contain a signing key.
-
-Private sources into a public output are blocked. Check licenses before redistributing ANY source snapshot. Binary files are copied as tracked, but Git LFS payloads are not explicitly hydrated by this runner. Symlinks and submodules fail closed with an actionable message instead of pushing a partial snapshot. GitHub size, rate and Actions limits still apply. No force-push, silent conflict resolution, or automatic dependency execution is performed. This is source code, not a prebuilt/signed APK.
-
-### Verification
-
-Run `npm run test:brain` and `npm run test:repo-runner` for deterministic tests; the latter uses real local bare Git repositories with mocked HTTP. Browser tests: `npm run test:brain:browser` and `npm run test:repo-runner:browser`, with Playwright/Chromium available (or PW set to its installed module path). Tests use dummy credentials and never contact or mutate a real GitHub repository. The existing V1.9.91 deliverable tests remain applicable.
-
-The broad legacy `npm test` command has an existing `tests/app-test.js` failure: it clicks a hidden legacy Settings tab after the accordion redesign. The same failure was reproduced on the UNMODIFIED uploaded V1.9.91 archive; the new dedicated browser tests use the visible accordion and pass. No live GitHub push/build, Android SDK build, or signed APK installation was performed here.
-
-Ember is a text-only companion app (web app, APK-ready) that you can talk to about anything. It keeps a small memory on your own device, leads the conversation, and uses your own Groq, Mistral or Gemini keys, or a free third-party service in Free Mode.
-
-Docs live in /docs. Start with /docs/README.md. Android build and permissions: /docs/ANDROID_BUILD.md and /docs/ANDROID_PERMISSIONS.md.
-
-Ember is not a therapist or a crisis line. If you are in danger, call SADAG 0800 567 567, Lifeline SA 0861 322 322, or 112 from a mobile.
-
-Historical changes through V1.9.41 (V1.9.41: added a third Claude-like animated status-line thinking display while preserving both existing thinking styles; V1.9.40: black composer restored, composer tools consolidated under +, neutral white/grey thinking accents and softer orange balance; V1.9.18: wiring audit locked in by tests; V1.9.17: document hard rule + document tools proven wired end to end; V1.9.16: Ember knows its own reasoning, planning and long-document abilities; V1.9.15: strict engine pin with real error text, one Ember voice per engine, automatic document retrieval, long answers on request; V1.9.14: one key finder for every paste box (nothing missed, several keys per provider with failover), Bright Data SERP, Audd.io and EasyVoice keys picked up from pastes; V1.9.13: web search falls through your SerpApi, Firecrawl, ScraperAPI and ScrapingBee keys before DuckDuckGo, new search_and_read tool, Tavily reads pages too, real Octoparse task reading, keys hidden from every error, hardened key extractor, Delete everything now removes scraper and Tavily keys; V1.9.12: web search works with no key through a DuckDuckGo fallback, Tavily stays first; V1.9.11: the mic works again through Gemini, ElevenLabs removed, all 30 Gemini voices; V1.9.10: three-line lyrics preview from LRCLIB; V1.9.9: Ember Voice, a real voice through Gemini or ElevenLabs with the phone voice as fallback; V1.9.8: Providers chip with live dots, Ember name centred, Termux command line and auto-fold, one 📎 for Documents, honest engine identity, no restart after exit; V1.8.3: real in-app browser, Termux connects by itself when you run a command, no double billing on background replies; V1.8.2: scraping keys take turns and go first, the free reader is only the fallback; see docs/CHANGELOG.md). License: TBD (see docs/LICENSE_NOTES.md).
+`docs/FILE_RECEIPTS.json` accounts for every original archive member; original documentation content is preserved under `docs/history/baseline-v1.10.16/`. `FILE_INTEGRITY_1_10_17.json` contains SHA-256 values for delivered files (excluding itself). Protected hashes are in `tests/wired-protected-hashes.json`. Screenshots and raw diffs live under `tests/results/wired/`; test summaries report limitations rather than claiming untested services work.

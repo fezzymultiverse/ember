@@ -1,0 +1,331 @@
+{
+  "version": "1.10.16",
+  "sourceArchive": "ember-V1_10_15-chat-bar-fix.zip",
+  "serviceWorkerCache": "ember-v1.10.16-keyless",
+  "protectedFiles": [
+    {
+      "file": "www/providers.js",
+      "sha256": "dd8020f6cf4aaba10e340683bfb9dd3be9d8a29ed7706cbde2505fd392b98976",
+      "unchanged": true
+    },
+    {
+      "file": "www/ai.js",
+      "sha256": "2581c05640814306372d3a0fd4a03591b5fa25a4f8cbe65ba53b22a4138a4415",
+      "unchanged": true
+    },
+    {
+      "file": "www/ember_github.js",
+      "sha256": "598fb47a36c530b553aaf7893b1bbf57e0d2584ea0ebce44377b853c17381ade",
+      "unchanged": true
+    },
+    {
+      "file": "www/ember_repo_runner.js",
+      "sha256": "23e1a8622f3f38636a8f6fcae991245fd7ce55c827f3a09f59cd9ae2b71b34c0",
+      "unchanged": true
+    },
+    {
+      "file": "www/repo-runner-template.cjs",
+      "sha256": "02416c415bf431a29ff9f7d1b9cac5e9ebdf10edcb3acf03c9dfcac5acb1912a",
+      "unchanged": true
+    },
+    {
+      "file": "www/ember_command_center.js",
+      "sha256": "2907522b5bb99d539f2862101b1aa6f25cafeed0c8f410c3384813304162fc5b",
+      "unchanged": true
+    },
+    {
+      "file": "www/ai_scraper.js",
+      "sha256": "8fca7b54e42985d21ad0983c92a67284e04c2dcf3baba28cdc4fd604d2dfba6b",
+      "unchanged": true
+    },
+    {
+      "file": "www/ember_downloads.js",
+      "sha256": "a0518701fc3df3cf79e790bbd917dd2c074a77b94e974b59ad7b2dcab3e67a61",
+      "unchanged": true
+    },
+    {
+      "file": "www/ember_plugins.js",
+      "sha256": "57950031d99163ae80eaa9155bbfffc1f1f73b3672d92ccb2f8f7419fbe592c3",
+      "unchanged": true
+    }
+  ],
+  "changes": [
+    {
+      "file": "package.json",
+      "kind": "modified",
+      "sha256": "89aaaf246183dbaa067bd72429729b9b13f0a3beba04b86a26a717144f34c90b",
+      "bytes": 3507
+    },
+    {
+      "file": "www/ember_keyless.css",
+      "kind": "added",
+      "sha256": "fddcc1538a796b806b5e8c741e48ddce01425d9db56a4e15fbf527d4a238b0a6",
+      "bytes": 4908
+    },
+    {
+      "file": "www/ember_artifacts.js",
+      "kind": "modified",
+      "sha256": "00eb540962cf54ab8419f9ed45a72a080cf0c3ef645f84c1ad354b4270cf6a74",
+      "bytes": 21874
+    },
+    {
+      "file": "www/index.html",
+      "kind": "modified",
+      "sha256": "f6487ec2a6ac7ca7689c6596c26cce423148c68ed87537c0f1b0f2df2f84ba54",
+      "bytes": 84161
+    },
+    {
+      "file": "www/ember_keyless.js",
+      "kind": "added",
+      "sha256": "30db243ea88dda78265ab21f26c0ed61d3f3b5242eb03b7f55749193f857c8ed",
+      "bytes": 41200
+    },
+    {
+      "file": "www/sw.js",
+      "kind": "modified",
+      "sha256": "cb077ae62d1669e4f7c8d229bfec582fb463dee039cad95c5b10e6c3de87305b",
+      "bytes": 3926
+    },
+    {
+      "file": "www/manifest.webmanifest",
+      "kind": "modified",
+      "sha256": "c056a83d18b7def518153e91272aa2fd72b76d16b1e2e8aa02efe6b3f7a05c4d",
+      "bytes": 839
+    },
+    {
+      "file": "www/keyless-health.json",
+      "kind": "added",
+      "sha256": "c055ceccd91f155db83208600cadfdbb19d98705819fa4d06247021adb661e43",
+      "bytes": 5792
+    },
+    {
+      "file": "tests/keyless-protected-hashes.json",
+      "kind": "added",
+      "sha256": "ff0accc1ba7dbac2454480d56d5a93131a8c48bfa95cf71e2551a8eec0cd723a",
+      "bytes": 815
+    },
+    {
+      "file": "tests/keyless-browser-test.cjs",
+      "kind": "added",
+      "sha256": "a4c8790bc090979a6a36282a84ce299a5022c4ba2810aae4c40c7c97acd94ebc",
+      "bytes": 20208
+    },
+    {
+      "file": "tests/results/keyless/chat-artifact-1280.png",
+      "kind": "added",
+      "sha256": "40aeedd85a8ad0e1ae1f8513ba1debeec8264bd23ccf97cd814c960bc55ef024",
+      "bytes": 123833
+    },
+    {
+      "file": "tests/results/keyless/updated-command-center-test.js.log",
+      "kind": "added",
+      "sha256": "b1fdd23addf1997da66655d3366ee67167dc3d04003933217d5934df40aaa836",
+      "bytes": 1659
+    },
+    {
+      "file": "tests/results/keyless/updated-workspace95-test.js.log",
+      "kind": "added",
+      "sha256": "6abda808cb47a9e3f3bc121806ce1399cb109a224e40c93acfbfef649f632022",
+      "bytes": 1107
+    },
+    {
+      "file": "tests/results/keyless/chooser-412.png",
+      "kind": "added",
+      "sha256": "db378b8309ca16b87f08277e5123a0c303fac98c44930926cc056f7cdaf5ada4",
+      "bytes": 76780
+    },
+    {
+      "file": "tests/results/keyless/original-knowledge-brain-test.js.log",
+      "kind": "added",
+      "sha256": "8e702cc4b9abae85d91a8cb7c96f85fa13bc0c7c8695ff05087f10ad622104a1",
+      "bytes": 2406
+    },
+    {
+      "file": "tests/results/keyless/browser-results.json",
+      "kind": "added",
+      "sha256": "4638a6b1846e500ddcbf9cd16eab5758bd6e5cd3a746e7e7129a46b2d8c6490f",
+      "bytes": 6082
+    },
+    {
+      "file": "tests/results/keyless/original-term-test.js.log",
+      "kind": "added",
+      "sha256": "772d9a77e0b4a5725daff6c250ecfb01bcfb95a697c94b5fdd4d9bddb5303595",
+      "bytes": 1284
+    },
+    {
+      "file": "tests/results/keyless/offline-results.json",
+      "kind": "added",
+      "sha256": "cb0a7d03372f59d2038b23888b37a62d41f38636116de8b8ce04969b9a8f6024",
+      "bytes": 224
+    },
+    {
+      "file": "tests/results/keyless/chat-artifact-412.png",
+      "kind": "added",
+      "sha256": "64376059830a88aa1b4c358880527f8b9a0bc9f4ebea7d6a8a53ad68ab81d88e",
+      "bytes": 93188
+    },
+    {
+      "file": "tests/results/keyless/original-app-test.js.log",
+      "kind": "added",
+      "sha256": "2d343652bcaca00a901af5f6909ce727b28e2515fb72031326aafa30abe1d74b",
+      "bytes": 866
+    },
+    {
+      "file": "tests/results/keyless/updated-download94-test.js.log",
+      "kind": "added",
+      "sha256": "1e1c828ad3546eb11982bf8e075a568a6eba1138f0a8c4b97ccc9031fe8730ce",
+      "bytes": 613
+    },
+    {
+      "file": "tests/results/keyless/updated-streaming-routing-test.js.log",
+      "kind": "added",
+      "sha256": "1fe261a2b7b112232500bbd7941ce7290988b83751d6e8569d62d0acb129452a",
+      "bytes": 171
+    },
+    {
+      "file": "tests/results/keyless/plugins-1280.png",
+      "kind": "added",
+      "sha256": "a17722f636e150d2f8916c0ae131ec8aa71a93c5de6627930ad55873ec1baa84",
+      "bytes": 119761
+    },
+    {
+      "file": "tests/results/keyless/original-workspace95-test.js.log",
+      "kind": "added",
+      "sha256": "97964b8fdabeac95e37d949896e6e3e7a64e52fdc9784dd20d6a8f2d0166240e",
+      "bytes": 1113
+    },
+    {
+      "file": "tests/results/keyless/terminal-chain-412.png",
+      "kind": "added",
+      "sha256": "f19186a6ef3cd6d603748b39eae18baaedc9af9a9d1e1fbc2f2c65add6f2d5d9",
+      "bytes": 93099
+    },
+    {
+      "file": "tests/results/keyless/chooser-1280.png",
+      "kind": "added",
+      "sha256": "1a31bdacab283cbc53b0120bbdb9700e6f51d944f3c42097b01c425324dce8c5",
+      "bytes": 117113
+    },
+    {
+      "file": "tests/results/keyless/updated-artifact-test.js.log",
+      "kind": "added",
+      "sha256": "18f75427683b7cc544f247871a12edb55d0da6547bec04cb8d43d76598787002",
+      "bytes": 49
+    },
+    {
+      "file": "tests/results/keyless/updated-keyscan-test.js.log",
+      "kind": "added",
+      "sha256": "355e15aedbc364f2dc6e7bec0ef61e4ad5d06af3c639df5260b3a90a8be03af1",
+      "bytes": 3070
+    },
+    {
+      "file": "tests/results/keyless/updated-safety-test.js.log",
+      "kind": "added",
+      "sha256": "d097da8cd10d2ad6c6b35b04dbf43007e1fc4a99d526c0b575f6235fce213d96",
+      "bytes": 1518
+    },
+    {
+      "file": "tests/results/keyless/original-v1992-repo-runner-test.js.log",
+      "kind": "added",
+      "sha256": "16101eba45d386ea3d028851fc4466bf2117529f381c5b90fabcdf42d0ff0b53",
+      "bytes": 2688
+    },
+    {
+      "file": "tests/results/keyless/legacy-results.json",
+      "kind": "added",
+      "sha256": "e806cf9483d9244bbe28af93fac090ea9834395af549021448b6567e306d1d7f",
+      "bytes": 19097
+    },
+    {
+      "file": "tests/results/keyless/original-command-center-test.js.log",
+      "kind": "added",
+      "sha256": "9a78f7439536752c76d5be9f00e6085c74bd3f45487da86e2d3ea9401d2a0f7c",
+      "bytes": 1663
+    },
+    {
+      "file": "tests/results/keyless/plugins-412.png",
+      "kind": "added",
+      "sha256": "2269e6bc5209f8e4ce5191bf45cf98b289f0ec9b935bf5168e3f584620ec861e",
+      "bytes": 91160
+    },
+    {
+      "file": "tests/results/keyless/updated-v1992-repo-runner-test.js.log",
+      "kind": "added",
+      "sha256": "b7f15f04da48c1ea081225ded803216584371393eb3c3e994066f00d3e3ba15e",
+      "bytes": 2684
+    },
+    {
+      "file": "tests/results/keyless/updated-routing94-test.js.log",
+      "kind": "added",
+      "sha256": "81ef2f6fa245a98a1b42356eb27b34a1045f49f89a2e138a2ab020f378dd1431",
+      "bytes": 1207
+    },
+    {
+      "file": "tests/results/keyless/terminal-chain-1280.png",
+      "kind": "added",
+      "sha256": "574d1295fb5a1a911cdb1d75ed7e8a1e3139ae2752b0cf9a08bd89101b7cc651",
+      "bytes": 123140
+    },
+    {
+      "file": "tests/results/keyless/updated-app-test.js.log",
+      "kind": "added",
+      "sha256": "d5c2b9a2c0211e02f98a6ef2d43e82e2184680e8d8a865401df920d45881537d",
+      "bytes": 862
+    },
+    {
+      "file": "tests/results/keyless/updated-scrape-test.js.log",
+      "kind": "added",
+      "sha256": "61670c02187d25fc6d678db87b076cb53555389e2bd025d0b1a7ae26a98aa28a",
+      "bytes": 4647
+    },
+    {
+      "file": "tests/results/keyless/updated-routing-fallback-test.js.log",
+      "kind": "added",
+      "sha256": "81a467442cd0c0ab092ab977bec312d753f71178b345b367cce2d39db7fa92ce",
+      "bytes": 462
+    },
+    {
+      "file": "tests/results/keyless/updated-knowledge-brain-test.js.log",
+      "kind": "added",
+      "sha256": "cc8ba34b2c0cdb2da3a26f6762b53606437cb9492c940e0f9f3d59451daf4177",
+      "bytes": 2400
+    },
+    {
+      "file": "tests/results/keyless/updated-term-test.js.log",
+      "kind": "added",
+      "sha256": "f60724a5967919f8e082866f0e03de80ca5c7d54f6bb9a74632237bb3bd3d9f8",
+      "bytes": 1282
+    }
+  ],
+  "browserTests": {
+    "tests": 47,
+    "passed": 47,
+    "failed": 0
+  },
+  "offlineTest": {
+    "names": [
+      "ember-v1.10.16-keyless"
+    ],
+    "entries": 148,
+    "keylessJS": true,
+    "keylessCSS": true,
+    "health": true,
+    "external": 0,
+    "offlineRouter": true,
+    "offlinePDF": true,
+    "errors": [],
+    "pass": true
+  },
+  "endpointAudit": "www/keyless-health.json",
+  "legacyTests": "tests/results/keyless/legacy-results.json",
+  "screenshots": [
+    "tests/results/keyless/chat-artifact-1280.png",
+    "tests/results/keyless/chat-artifact-412.png",
+    "tests/results/keyless/chooser-1280.png",
+    "tests/results/keyless/chooser-412.png",
+    "tests/results/keyless/plugins-1280.png",
+    "tests/results/keyless/plugins-412.png",
+    "tests/results/keyless/terminal-chain-1280.png",
+    "tests/results/keyless/terminal-chain-412.png"
+  ]
+}

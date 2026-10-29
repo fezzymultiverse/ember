@@ -1,0 +1,48 @@
+PASS byte hash providers.js
+PASS byte hash ai.js
+PASS byte hash ember_github.js
+PASS byte hash ember_repo_runner.js
+PASS byte hash repo-runner-template.cjs
+PASS byte hash ember_command_center.js
+PASS byte hash ai_scraper.js
+PASS byte hash ember_downloads.js
+PASS byte hash ember_plugins.js
+PASS 412 default switches: 20 tools plus preserved Forge, unofficial OFF
+PASS 412 all toggles persist, terminal events, abilities update immediately
+PASS 412 plugins and inline cockpit include all switches without overflow
+PASS 412 single-tool route runs automatically and timeline matches terminal
+PASS 412 chooser waits indefinitely; accessible radio cards and once choice
+PASS 412 always preference persists and skips chooser
+PASS 412 Auto policy, disabled tools never called, all-failure max 3 attempts
+PASS 412 essay → grammar → structuring → real local PDF; no optional media
+PASS 412 real DOCX zip signature and Markdown artifact export
+PASS 412 grammar OFF is never called in document chain
+PASS 412 public page evidence includes published names and source; no fabricated identity
+PASS 412 configured scraper chosen automatically using public API; no new key storage
+PASS 412 scraping OFF prevents public fetching
+PASS 412 all remaining keyless adapters respond to mocked HTTP
+PASS 412 chooser keyboard cancellation leaves no running task
+PASS 412 10-second timeout aborts fetch and fallback succeeds
+PASS 412 plain chat triggers router, normal Artifact Card, actual Save PDF download
+PASS 412 strict keyless requests omit cookies/auth, have AbortController, never cache
+PASS 412 zero browser page errors and no sideways page overflow
+PASS 1280 default switches: 20 tools plus preserved Forge, unofficial OFF
+PASS 1280 all toggles persist, terminal events, abilities update immediately
+PASS 1280 plugins and inline cockpit include all switches without overflow
+PASS 1280 single-tool route runs automatically and timeline matches terminal
+PASS 1280 chooser waits indefinitely; accessible radio cards and once choice
+PASS 1280 always preference persists and skips chooser
+PASS 1280 Auto policy, disabled tools never called, all-failure max 3 attempts
+PASS 1280 essay → grammar → structuring → real local PDF; no optional media
+PASS 1280 real DOCX zip signature and Markdown artifact export
+PASS 1280 grammar OFF is never called in document chain
+PASS 1280 public page evidence includes published names and source; no fabricated identity
+PASS 1280 configured scraper chosen automatically using public API; no new key storage
+PASS 1280 scraping OFF prevents public fetching
+PASS 1280 all remaining keyless adapters respond to mocked HTTP
+PASS 1280 chooser keyboard cancellation leaves no running task
+PASS 1280 10-second timeout aborts fetch and fallback succeeds
+PASS 1280 plain chat triggers router, normal Artifact Card, actual Save PDF download
+PASS 1280 strict keyless requests omit cookies/auth, have AbortController, never cache
+PASS 1280 zero browser page errors and no sideways page overflow
+{"tests":47,"passed":47,"failed":0}

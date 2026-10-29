@@ -1,0 +1,37 @@
+PASS defaults to Super Repo and migrates old repositories without losing token
+PASS no slot limit, list or mutation API remains
+PASS only one repository is reported
+PASS general programming, identifiers and follow-up questions require read first
+PASS ordinary greetings are not classified as code
+PASS read tool ignores alternate repo and reads live with token
+PASS list tool reads live without prior sync or runner
+PASS repository map is also live and needs no sync
+PASS Runner install stays disabled outside Advanced opt-in
+PASS path search uses fresh authenticated GitHub tree
+PASS code search cannot inject repository qualifiers or leak cross-repo results
+PASS pre-answer read runs live without sync and records genuine provenance
+PASS tokens never appear in prompt or provenance
+PASS runner is off and absent from tool catalog by default
+PASS legacy chat-off and sync-off cannot bypass read first
+PASS long file read discloses truncation and supports continuation
+PASS continuation returns remaining file text
+PASS empty text file handled correctly
+PASS invalid/protected file blocked: ../outside.js
+PASS invalid/protected file blocked: .env
+PASS offline reads fail rather than using cached code
+PASS failed next turn resets previous proof and blocks answer
+PASS 403 fails closed with actionable error
+PASS invalid token/access status fails rather than claiming success
+PASS empty repository cannot satisfy read-first
+PASS truncated tree whose subtrees cannot be read fails closed
+PASS no token blocks code before any network call
+PASS ordinary chat can continue without token
+PASS invalid replacement does not erase saved token
+PASS single setting persists, invalid values rejected and switching invalidates proof
+PASS no alternate repository was ever fetched
+PASS one labelled repository field and no repository slot UI
+PASS Runner belongs to the single cockpit Command Centre workflow
+PASS read-first gate precedes model call and sits inside failure handling
+PASS Last Read chip and proof are saved per assistant answer
+
+35 Knowledge Brain checks passed.

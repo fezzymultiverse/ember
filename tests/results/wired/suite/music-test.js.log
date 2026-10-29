@@ -1,0 +1,4 @@
+PASS page loads without errors 
+PASS EmberPlayer, EmberAudd, EmberMusicAddon exist 
+PASS Music lives in the left-panel Music Console (the composer pill was removed on purpose) 
+PASS widget is hidden when nothing is loaded 

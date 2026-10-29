@@ -1,0 +1,47 @@
+EMBER V1.10.14 — THE COCKPIT UPDATE
+===================================
+
+Apply this archive as the updated source tree. package.json is version 1.10.14.
+It contains no node_modules, build output APK, or real test credentials.
+
+IMPLEMENTED
+Settings: full-screen on mobile and desktop, one scroll container, no category subpages or sliding panels. Engine & Media Control includes inline picture/PDF controls, engine pinning, key detection, provider-list accordion and notepad. Individual providers expand in place. All bundled providers remain listed even without keys; cached live model catalogs and :free labels are exposed. Original key rotation, cooldowns, strict pinning and fallback behavior is retained.
+
+Flat categories: Engine & Media Control; Providers; Features; Memory and Settings (including Voice); Device Tools; Web Scraping; Hacking; Music & Tools; Permissions. Scraping paste/keys/health/test are together, Music/API/system-integration controls are merged, and Termux settings and the actual terminal are inline in Hacking. YouTube/yt-dlp lives in Hacking. Browser now has a direct Notes tab using the existing editor and autosave. Core Memory facts show inline by topic, without child pages.
+
+Command Centre: single GitHub workflow, with three tabs: Brain, Search, Run & Push. The repository Files tab, file-manager UI and its UI event logic are removed. Knowledge reads, document attachments, artifacts and backend file operations are deliberately retained to preserve backend behavior. Thought/context diagnostics remain below the repository cockpit.
+
+Search opens the Live Terminal dropdown containing actual discovery results, pagination and status. Apply exposes a Sync checkbox. Confirm selected adds to a persistent, waiting queue, without changing runner sources or writing to GitHub. Run & Push separately confirms the selected queue, stages it through the existing runner API, then installs/updates and dispatches. Failed operations retain retryable queued work. A dispatched workflow is explicitly not reported as a successful build.
+
+SSH: Run & Push requires a public SSH key already linked to the authenticated GitHub account, verified again before each run. /user is read through the existing adapter; public authentication-key metadata is read without credentials from GitHub's public API. No backend allowlist was widened. No private key is accepted or stored. This is an extra UI prerequisite: the existing runner continues to use the original GitHub-token/Actions authentication. This release does NOT switch the runner to SSH transport.
+
+Chat: top Panel affordance removed. Far-bottom-right footer shows only the verified active API-key count, excluding unchecked/rejected/rate-limited/cooling keys. No aggregate key-count widget in Settings. Pollinations can be selected from the engine list by mapping to the existing Free Mode route; no fake provider or invented hosted model was added.
+
+PRESERVATION
+providers.js and ai.js are byte-for-byte identical to the uploaded archive.
+GitHub backend, Repo Runner backend, runner template, command-centre event adapter, scraper and download backend also hash-identical. app.js changes are confined to UI rendering / event handlers calling existing provider methods. ember_term.js has one UI visibility-condition change for inline placement. No backend routes were changed.
+The retired multilevel Settings controllers and duplicate widget scripts remain as historical source files but are no longer loaded by index.html. Offline cache version advanced to ember-v1.10.14-cockpit.
+
+VERIFICATION
+72 Playwright assertions pass at 412x915, with additional 1280x900 checks. Includes full-screen geometry, smooth scrolling, no horizontal overflow, inline controls, provider accordions, original pinning, Pollinations, notepad, Notes autosave, inline terminal setup, flat memory, all command tabs, keyboard navigation, queue confirmation/cancellation/persistence, SSH gating, private-key rejection, failed-run handling, honest dispatch status and zero page errors.
+102 additional targeted regression assertions pass: fallback 10, streaming 3, routing/security 23, artifacts 22 and key scanning 44.
+Tests use mock GitHub HTTP responses and a stubbed runner dispatch. No live repository push/build or Android native testing was performed.
+
+KNOWN LEGACY TEST FAILURES (also reproduced against the untouched uploaded V1.10.13)
+- npm test stops at term-test.js: hidden #bTermux click in the old harness.
+- v1992-repo-runner-test.js: missing expected exception, line 77.
+- knowledge-brain-test.js: obsolete advanced-tab markup expectation, line 87.
+These are documented, not suppressed or represented as passing. Full suite is NOT green.
+
+RUN LOCALLY
+npm install
+npx playwright install chromium
+npm run serve
+Open http://127.0.0.1:8080
+npm run test:cockpit
+On a fresh Linux test host, browser system dependencies may be needed: npx playwright install --with-deps chromium.
+
+EVIDENCE
+Tests, original/updated legacy logs, verification-summary.json, the browser report and four 412x915 screenshots are in tests/cockpit-results/.
+Backend hashes are in tests/cockpit-protected.json.
+Full changed-file hashes are in COCKPIT_1_10_14_MANIFEST.json.

@@ -1,0 +1,7 @@
+PASS held run stops with code handoff 
+PASS no request at all left the page (nothing billed) 
+PASS failed handoff: the page still answers 
+PASS mid-run handoff: only the call already in flight was made 
+PASS no handoff: normal reply, one chat call 
+PASS util lane ignores a stale stop 
+6 passed, 0 failed

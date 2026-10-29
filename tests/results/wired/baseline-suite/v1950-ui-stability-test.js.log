@@ -1,0 +1,10 @@
+AssertionError [ERR_ASSERTION]: plus width at 320: 40 vs 38
+    at near (/home/user/ember_work/source/tests/v1950-ui-stability-test.js:22:60)
+    at /home/user/ember_work/source/tests/v1950-ui-stability-test.js:81:7 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

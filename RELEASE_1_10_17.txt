@@ -1,0 +1,15 @@
+EMBER V1.10.17 — FULLY WIRED REQUEST: SAFE RELEASE CANDIDATE
+Input: supplied V1.10.16 Keyless Router; no fallback used.
+package.json: 1.10.17
+sw cache: ember-v1.10.17-wired
+All eight protected backend files and all vendor assets preserved byte-for-byte.
+Six unloaded Settings controllers archived with receipts and replacement owners.
+New event adapters store counters/health booleans only; no payload/credential logs.
+Every original archive file is accounted for. Historical documentation is preserved.
+No loaded CSS or versioned-patch merges; no UI redesign.
+Whole-suite npm test reports real failures/timeouts and is NOT all green.
+Current keyless mocked browser test: 47/47 checks pass; three specified legacy tests repaired.
+See docs/TESTING.md for final exact counts and screenshot differences.
+NEEDS APPROVAL: docs/NEEDS_APPROVAL.md.
+Not tested: live GitHub push, Android compilation/device, live keyless endpoints and real local bridges.
+This is not certified as complete merely because the requested ZIP filename contains fully-wired.

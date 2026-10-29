@@ -1,0 +1,6 @@
+PASS skipped engine is a keyed step with the key icon 
+PASS first words step appears once with real timing 
+PASS writing line shows the real word count 
+PASS model reasoning updates its own line with the brain icon 
+PASS turn end settles the writing line with final numbers 
+5 passed, 0 failed

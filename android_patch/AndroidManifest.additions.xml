@@ -11,6 +11,7 @@
 <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 <uses-permission android:name="android.permission.WAKE_LOCK" />
 <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 <!-- V1.6.6 Device panel -->
@@ -46,3 +47,8 @@
         android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
         android:value="Keeps the chat session alive while the user has Keep-alive switched on" />
 </service>
+
+<!-- The manifest root also needs xmlns:tools="http://schemas.android.com/tools".
+     scripts/apply_android_patch.py adds that namespace automatically. -->
+<service android:name="androidx.work.impl.foreground.SystemForegroundService"
+    android:foregroundServiceType="dataSync" tools:node="merge" />
