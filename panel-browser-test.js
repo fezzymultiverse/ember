@@ -53,7 +53,7 @@ const server = http.createServer((q, r) => {
       await page.click('[data-context-action="docs"]'); await page.waitForTimeout(400);
       check(width + ' Files action closes drawer and opens original Documents view', !await page.evaluate(() => window.EmberHub.isOpen()) && await page.locator('#browser').evaluate(e => e.classList.contains('show')) && await page.locator('#brDocs').isVisible());
       await page.evaluate(() => window.EmberBrowser.close()); await page.waitForTimeout(300);
-      await page.click('#bSetTop'); await page.waitForTimeout(300);
+      await page.click('#bActionMenu');await page.click('.erp-group-head >> nth=6');await page.click('[data-name="App settings"]'); await page.waitForTimeout(300);
       check(width + ' existing Settings root remains accessible', await page.locator('[data-view="root"]').isVisible());
       await page.click('#ehubKeysBtn');
       check(width + ' original providers view works', await page.locator('[data-view="keys"]').isVisible());

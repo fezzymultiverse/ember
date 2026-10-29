@@ -1,69 +1,23 @@
-# Data flow · V1.4.0
+# Data flow — 1.10.17
 
-*For reviewers.*
+## Chat and routing
 
-One message, from the keyboard to the screen. `[DEVICE]` marks what stays on the phone. `[NETWORK]` marks what crosses the device boundary.
+The message box in `index.html` calls handlers in `app.js`. Existing safety/persona gates, memory and optional Read-First GitHub prefetch run through `safety.js`, `persona.js`, `ember_context.js` and protected `ember_github.js`. The provider backend `providers.js` remains authoritative for ordinary model calls. Tool dispatch lives in `ai_agent.js`/`app.js`; the keyless adapter in `ember_keyless.js` intercepts supported intents and calls existing artifact/document interfaces rather than replacing the backend.
 
-```
-[DEVICE]  person types a message
-   |
-[DEVICE]  app.js send()
-   |        conv.msgs.push({r:'u', t, ts})
-   |        Safety.mark( Safety.detect(t).level )   // regex, no network
-   |        title = first 38 chars (new chat only)
-   |        Store.put(conv)                          // IndexedDB 'convs'
-   |        renderLog()  -> crisis card + dot if level >= 2
-   v
-[DEVICE]  app.js reply()  -> laneFor()  ('fast' | 'deep')
-   v
-[DEVICE]  Persona.respond()
-   |        Safety.detect(last user msg)  -> level
-   |        level >= 2: lane = 'deep', directive = null, no echo rewrite
-   |        condense()  -- may call util lane for a rolling summary --+
-   |        messages = last 5 / 15 / 50 (+ up to a few unsummarised)  |
-   |        buildSystem()  ->  Safety.wrapSystem(sys, level)          |
-   v                                                                   |
-[DEVICE]  Prov.run(lane, {system, messages, temp, max})              |
-   |                                                                   |
-   |   Free Mode ON  : Pollinations first, then keys                   |
-   |   Free Mode OFF: keys first, Pollinations last                    |
-   v                                                                   |
-[NETWORK] ONE of:                                                      |
-   |   Groq     POST api.groq.com/openai/v1/chat/completions          |
-   |   Mistral  POST api.mistral.ai/v1/chat/completions               |
-   |   Gemini   POST generativelanguage.googleapis.com/v1beta/         |
-   |              models/<model>:generateContent                       |
-   |   Pollinations  POST text.pollinations.ai/openai                  |
-   |              (fallback: GET text.pollinations.ai/<short text>)    |
-   |   payload: system prompt + recent messages + temperature + cap   |
-   |   credential: the person's own key (Pollinations: none)           |
-   v                                                                   |
-[DEVICE]  reply text                                                   |
-   |        conv.msgs.push({r:'a', t, ts, eng})                        |
-   |        Store.put(conv)                                            |
-   |        renderLog()  (card stays while level >= 2)                 |
-   v                                                                   |
-[DEVICE]  app.js after()                                               |
-            skip if: private chat, memory off, level >= 2 now,         |
-                     or a level >= 2 message in the last 14            |
-            else (message 2, then every 6th): Persona.learn()          |
-               [NETWORK] util lane: last 14 messages -> a key engine   |
-               [DEVICE]  merge into mem, Store.setKV('mem')            |
-                                                                       |
-[NETWORK] <- the rolling-summary call above: older messages -> a key engine
-```
+`ember-keyless` line reporting writes the same bounded safe status into `ember-terminal`, `EmberTimeline.step`/`.note` and `ember-agent-note`. `ember_command_center.js` listens to terminal, runner, download and routing events using its `on()` helper. `ember_v104.js` logs existing tools and routes. Existing timeline listeners handle tries, switches and notes. New wiring does not replay these streams or duplicate their artifact creation.
 
-## What crosses the boundary
+## Results and artifacts
 
-| Item | Leaves the device? | Where |
-|---|---|---|
-| The person's message and recent chat | Yes, on every reply | The answering engine |
-| The system prompt, including About text, Core Memory, Persona text, summary, safety wording | Yes, on every reply (in Pollinations' GET fallback, only a short fixed prompt and the last four messages) | The answering engine |
-| API keys | Yes, as the credential, to their own provider only | Groq, Mistral or Gemini |
-| Safety level | **No** | Stays in JS memory |
-| Crisis card | **No** | Drawn locally |
-| Core Memory, settings, chat history on disk | **No** | Local storage only |
-| Pasted notes | **No** (candidate keys may be tested at Mistral) | Parsed locally |
-| Backup file | Only if the person shares it | The person's own action |
+Keyless results use artifact-card markup from `ember_artifacts.js`; local PDF/DOCX conversion uses `ember_deliverables.js` and lazy vendor loaders. Generated result blobs remain session-scoped; saving a PDF is an explicit action. GitHub exports use the existing artifact contract. Do not treat progress counters, endpoint-health booleans or cached repository blobs as a new answer artifact.
 
-The app does not send analytics, error reports or telemetry.
+## New event adapters
+
+`ember-apis-change` → Plugins menu summary refresh; `ember-keyless-health` → only a validated tool-id/boolean readiness snapshot; `ember-brain-pushed` → existing `ember-git-state` refresh and fixed timeline status; `ember-download-status` → fixed terminal and timeline failure status; document `ember-project-changed` → content-free revision count.
+
+No new adapter persists or logs event.detail, arbitrary error strings, args, endpoint URLs, project content, commit identifiers or credentials. Synthetic sentinel tests prove that the new observer does not retain the supplied payload. This is not a blanket security certification of inherited backend logging paths.
+
+## Native and local boundaries
+
+Android events `ember-bg-reply`, `ember-bg-ready` and `ember-media-cmd` are produced by Kotlin WebView bridges and consumed by `app.js`. They are not missing web dispatchers. Termux uses local ttyd WebSocket, and the download bridge is an optional Node host service. Native permission prompts and actual endpoint uptime are outside the mocked browser evidence.
+
+The full event registry records literal static sites and helper call sites. Computed names/arrays and external emitters are listed separately rather than invented. Four legacy inbound-only events currently have no bundled producer; see WIRING_MAP and NEEDS_APPROVAL.

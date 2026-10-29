@@ -1,41 +1,54 @@
-> Feature notes carried over from the root README up to V1.4.0. The root README is now a short pointer; start with [docs/README.md](README.md).
+# Features and real entry points
 
-# Ember V1.3.0 - a companion to talk to about anything
+The following is the current implementation catalogue, not a guarantee that external services are online. Every row identifies code and a UI/chat entry point. Historical feature claims are retained as history only, never current promises.
 
-Standalone web app (PWA). Text only. Plain HTML/JS in `www/`, no build step, no dependencies. APK-ready with Capacitor.
+| Feature | Implementation (under www unless stated) | UI entry point / trigger | Contract / limitation |
+|---|---|---|---|
+| Chat, persona and safety | app.js; persona.js; safety.js | Message box → Send; Settings → Memory and Settings | Routes through existing provider contracts and safety gates. No router/backend replaced. |
+| Provider routing and keys | providers.js; ember_prov_ui.js; ember_prov_next.js | Providers button at chat footer; Settings → Providers | Existing optional credentials are retained. No new key, login or account added. |
+| Keyless router and chooser | ember_keyless.js | Ask for a supported task in chat; + → Plugins → Media & Music | Available alternatives show a chooser; unavailable services can fail; mocked regression is not live availability. |
+| Plugins and abilities | ember_plugins.js; ember_plus.js; ember_keyless.js | + → Web & Scraping / Media & Music | EmberPlus.stateLine reads current abilities; keyless extends it at runtime. |
+| Artifact cards and exports | ember_artifacts.js; ember_deliverables.js | Generated chat artifact → View / Download; ask for PDF / Word / Markdown | Local pdfmake/docx engines; protected repo-runner template is a downloadable artifact, not a browser script. |
+| Live terminal and status | ember_command_center.js; ember_v104.js; ember_wiring.js | Live Terminal bar below chat; Settings → Open Command Centre | Command Centre handles runner events; versioned patch supplies tool/route logs; new adapters use fixed text, never event payloads. |
+| Thought timeline | ember_timeline.js; ember_react.js; ember_steps.js | Active reply progress; saved thought card | Keyless explicitly writes timeline entries and emits agent notes. This is status/progress, not private model reasoning. |
+| Memory / Knowledge Brain | store.js; ember_context.js; ember_github.js; ember_learn.js; ember_find.js | Settings → Memory and Settings; Command Centre → Connect; chat code questions | Read-first gates code answers. IndexedDB caches and configuration are not proof of fresh remote evidence. |
+| GitHub discovery and queued sync | ember_cockpit.js; ember_workspace.js; ember_github.js; ember_repo_runner.js | Settings → Open Command Centre → Connect / Repos / Build | Discovery is read-only; staging and selected queue entries require explicit confirmation. Live push not tested. |
+| Termux terminal | ember_term.js; ember_cockpit.js | Settings → Hacking → Termux | Inline cockpit terminal uses local ttyd WebSocket; tests use a local mock server. Host installation still required. |
+| Browser and Notes | ember_browser.js; ember_create.js; ember_cockpit.js | Globe button → Browser / Documents / Notes | Notes reuse original editor; reader uses enabled scraping providers. External browser/native behavior is platform dependent. |
+| Documents library and graph | ai_docs.js; ember_docs_lib.js; ember_graph.js | Paperclip / Docs control; Browser → Documents | Library dispatches ember-docs-changed; readers refresh on that window event. |
+| Voice and read aloud | ember_voice.js; ember_native.js; app.js | Mic / Talk controls; reply speaker; Settings → Memory and Settings / Permissions | Browser/native services vary. Physical microphone and real Android speech services not tested. |
+| Lyrics and player | ember_lyrics.js; ember_player.js; ember_music_ui.js; ai_music.js | Settings → Music & Tools → Open Music panel; chat lyrics request | Existing music services can be unavailable. Legacy drawer music events have no producers; polling remains authoritative. |
+| Media generation bridge | ember_media.js; ember_mediaplus.js; ember_engines.js | + → Media & Music; Settings → Engine & Media Control | Existing Stability optional-key path retained; no paid generation performed in this release work. |
+| Downloads | ember_downloads.js; ember_getmusic.js; tools/download-bridge.cjs | Chat music/video download request; native YouTube / configured local bridge | Requires existing platform tools. New adapter reports bridge status errors with fixed non-sensitive text. |
+| Scraper and public-source extraction | ai_scraper.js; ai_agent.js; ember_keyless.js | + → Web & Scraping; Settings → Web Scraping; ask to read a public URL | Protected scraper remains untouched; no private-network fetching added. |
+| Device plugins | ember_device.js; ember_native.js; android_patch/ | Settings → Device Tools / Permissions | Custom plugins registered in MainActivity; Android compilation and real device use not performed. |
+| Projects | ember_projects.js; persona.js | Left drawer → Projects | Active project becomes next-turn persona context; diagnostics expose only revision counts, not project text. |
+| Timers and pings | ember_tasks.js; ember_native.js; EmberPingWorker.kt | Chat timer commands; Settings → Permissions | Existing in-app scheduling retained; no background task enabled by this release operation. |
 
-## What it does
-- **One mind, three engines.** Groq answers fast, Gemini takes the slow "deep" turns, Mistral is the backup. One shared character, one shared memory. If a key is rate-limited the next key, then the next engine, takes over without you noticing. Models are read from each provider's live model list, so nothing breaks when a model name is retired.
-- **Keys from your notes.** Settings > Keys: paste a messy notes dump. It pulls out Groq keys (`gsk_...`), Gemini keys (`AIza...`) and Mistral keys (no prefix, so it takes 32-character strings next to the word "Mistral", and tests unlabeled ones against Mistral). Every key gets a health check: key valid, model found, one real test message, response time. Notes are never saved. More than one key per engine is fine.
-- **Free Mode (V1.2.0).** No key needed. Chats go to Pollinations.ai (free, third-party, no uptime promise, rate-limited without a key, 15 s timeout). Settings > Free Mode: ON by default while there are no keys. ON = Pollinations first, keys after. OFF = keys first. It is always the last resort, so a chat is never blocked by missing or rested keys. Background jobs (memory, titles, summaries) never use it, so Free Mode chats are not learned from. The orange badge at the top of the chat shows when it is on.
-- **Voice & pacing (V1.2.0).** Settings: warmth, directness, humour, pacing (short check-ins or longer talks), and a box for how you like to be spoken to. These only change style. A locked baseline (calm, non-judgmental, never clinical or dismissive) and the safety rules always apply.
-- **Never echoes you.** The character prompt forbids reflecting you back, and the app checks every reply: if it opens with "it sounds like...", repeats your own words, or opens like a recent reply, it is rewritten once before you see it.
-- **Takes the lead.** Every reply adds something and ends with at most one specific question. **Spark** starts a conversation itself, using your open threads and its own curiosities.
-- **No judging, no debating.** It wonders instead of arguing. It knows who you are (Settings > About you) and is told never to mention, suggest or point at what you do to feel better.
-- **Chill / Sharp / Deep** modes. In Sharp it automatically takes a deep pass every 4th reply or when you write a long message. **Go deeper** forces one.
-- **Memory you control.** It learns interests, projects, running jokes and open threads. It does not record coping habits, health details, secrets or keys. Everything is listed in Settings > Memory & Context as Core Memory, and each line can be edited or deleted. **Private** chats (🔒) are never learned from.
-- **Memory & Context settings (V1.2.0).** Context window (Short 5 / Normal 15 / Long 50 messages), Auto-summarize old chats (older messages become a short summary instead of raw text), Persistent Memory master switch (OFF = it stops learning and stops using Core Memory; saved lines stay on the phone, paused), Core Memory manager (Edit / delete), and a System prompt / Persona box sent at the start of every chat.
-- **The core never changes.** The purpose (a conversational companion he comes back to and relies on) and the HARD RULES are fixed in `persona.js` > `buildSystem`. The Persona box and every setting sit under them, and a FINAL CHECK line closes the prompt. Settings change how Ember remembers and sounds, not what it is.
-- **Chat history.** Every chat saved on the phone, searchable by words inside the messages, renameable, deletable. Backup and restore as a JSON file (keys only if you tick the switch).
+## Keyless definitions
 
-## Run it
-**On the phone with Termux (test it first):**
-```
-cd www && python3 -m http.server 8080
-```
-Open `http://localhost:8080` in Chrome, menu > Add to Home screen. It installs like an app.
+All rows below belong to `www/ember_keyless.js`, exposed via chat task-family matching and + → Plugins → Media & Music. Forge is an existing preserved route, not a newly guaranteed keyless service. Speech-to-text is a device capability. JioSaavn is unofficial and OFF by default. Availability must be rechecked on the target device.
 
-**On the web (GitLab Pages):** push this folder to a new GitLab project. `.gitlab-ci.yml` copies `www/` to Pages in a few seconds. Open the Pages URL in Chrome > Add to Home screen.
-
-**As an APK later:** `npm install`, `npx cap add android`, `npx cap sync android`, build in Android Studio or any CI. `CapacitorHttp` is enabled so API calls skip browser CORS rules inside the APK. Do this only after you have used the web version and like it.
-
-## Tests
-`node tests/app-test.js` runs headless Chromium against mocked Groq, Mistral and Gemini: key extraction, health, failover, no-echo rewrite, memory, history, search, private chats, backup/restore, and the Memory & Context settings (window size, summaries, memory switch, edit/delete, persona + core order).
-
-## NOT TESTED
-- Real Groq, Mistral and Gemini calls (no internet to them from the build machine) and any real phone.
-- Whether `api.mistral.ai` allows calls straight from a browser page (CORS). If Mistral shows "network error or blocked by the browser" on the web version, it will work in the APK, where CapacitorHttp bypasses CORS.
-- Free-tier rate limits. The router backs off on 429 and moves on.
-- The crisis line number in the prompt (South Africa SADAG 0800 567 567) is from memory. Check it.
-- Pollinations Free Mode against the live service (the test suite mocks it; the 15 s timeout was checked with a route that never answers).
-- Reply quality. Prompt wording is the main dial; tune it in `www/persona.js` > `buildSystem`.
+| Tool id | Implementation label | Task family | Group |
+|---|---|---|---|
+| `pdf` | PDF · pdfmake | pdf | Documents |
+| `word` | Word · docx | word | Documents |
+| `markdown` | Markdown | markdown | Documents |
+| `grammar` | LanguageTool | grammar | Documents |
+| `pollinations` | Pollinations | image | Images |
+| `dicebear` | DiceBear | avatar,image | Images |
+| `picsum` | Picsum | placeholder,image | Images |
+| `qr` | QRServer | qr | Images |
+| `robohash` | Robohash | avatar,image | Images |
+| `tts` | StreamElements TTS | speech | Audio |
+| `jiosaavn` | JioSaavn · unofficial | music | Audio |
+| `itunes` | iTunes Search | music | Audio |
+| `lyrics` | LRCLIB | lyrics | Audio |
+| `piston` | Piston | code | Code & Data |
+| `dummyjson` | DummyJSON | mock | Code & Data |
+| `jina` | Jina Reader | scrape | Code & Data |
+| `microlink` | Microlink | metadata | Code & Data |
+| `ipify` | IPify | ip | Code & Data |
+| `stt` | Speech-to-text | listen | Local |
+| `structure` | Text structuring | structure | Local |
+| `forge` | Forge · existing route | image | Images |

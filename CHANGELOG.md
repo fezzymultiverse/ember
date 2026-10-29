@@ -9,3 +9,15 @@ Not a completely verified release: inherited suite failures remain, a literal re
 ## Previous releases
 
 See docs/history/INDEX.md. Per-version changelogs are historical source evidence, not competing current changelogs.
+
+## 1.10.18 Part 1 - one Settings
+- Removed the header gear (bSetTop); Settings opens only from the right panel (Settings & connections).
+- "App settings" now opens the top of the Settings sheet; "Memory & persona" opens its own section (renamed from "Memory and Settings").
+- Tests updated to open Settings through the panel.
+
+## 1.10.18 Part 2 - panel drill-down, one scroller
+- Right panel opens on the main menu: the seven category rows only. Tapping a category opens its tools as their own screen (no inline expanding); tap the header arrow or press Back/Escape to return. Reopening the panel always starts on the main menu.
+- Searching still lists matching tools straight away; clearing the box returns to the main menu.
+- Command Centre no longer sits in a capped box with its own scrollbar; when expanded it takes over the panel body and is the only scroll area.
+- Compact spacing on phones so every screen fits without scrolling, including short screens with browser toolbars showing (360x605).
+- Assets re-versioned (?v=1.10.18-p1) and service-worker cache renamed ember-v1.10.18-panel-p1.
