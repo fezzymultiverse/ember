@@ -99,3 +99,23 @@ html body #settings #repoWorkspace .btn{box-sizing:border-box;width:auto;max-wid
 #eccGitHub .btnrow>.btn{flex:1 1 140px}
 #eccGitHub .ecc-actions button{width:100%}
 @media(max-width:480px){#eccGitHub .btnrow>.btn{flex-basis:100%}}
+
+/* Repository discovery stays inside its own bounded console; result selection and role actions are managed by ember_repo_runner.js. */
+#repoWorkspace #rrResults.rr-console{display:block;min-width:0;overflow:hidden;border:1px solid #2c3a4e;border-radius:12px;background:#0a111a;color:#d5e2f2;font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}
+#repoWorkspace .rr-console-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 11px;background:#121e2b;border-bottom:1px solid #29384b;color:#8fc7ff;font-size:10px;letter-spacing:.08em}
+#repoWorkspace .rr-console-head span{color:#77ddb5;font-size:9px}
+#repoWorkspace .rr-console-scroll{display:flex;flex-direction:column;max-height:220px;overflow:auto;padding:5px;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#344860 #0a111a}
+#repoWorkspace .rr-console-row{display:flex;align-items:center;gap:8px;min-width:0;width:100%;padding:8px 7px;border:0;border-radius:6px;background:transparent;color:#bdcbe0;text-align:left;font:inherit;cursor:pointer}
+#repoWorkspace .rr-console-row:hover,#repoWorkspace .rr-console-row.is-selected{background:#192a3b;color:#fff}
+#repoWorkspace .rr-console-index{color:#6e829b;font-size:10px}
+#repoWorkspace .rr-console-name{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#d7e6f6}
+#repoWorkspace .rr-console-tag{flex:none;padding:2px 5px;border:1px solid #35465b;border-radius:4px;color:#8ca2bc;font-size:8px;letter-spacing:.06em}
+#repoWorkspace .rr-console-caret{flex:none;color:#ffad68;font-size:16px}
+#repoWorkspace .rr-console-detail{padding:11px;border-top:1px solid #27384b;background:linear-gradient(140deg,#101b28,#0d1621);overflow-wrap:anywhere}
+#repoWorkspace .rr-console-detail>b{display:block;color:#eaf3ff;font:650 13px/1.5 system-ui,sans-serif}
+#repoWorkspace .rr-console-detail p{margin:6px 0;color:#a2b4ca;font:12px/1.5 system-ui,sans-serif}
+#repoWorkspace .rr-console-detail small{color:#7890a9;font:10px/1.5 system-ui,sans-serif}
+#repoWorkspace .rr-console-kicker{margin-bottom:3px;color:#78dcb5;font-size:9px;letter-spacing:.09em}
+#repoWorkspace .rr-console-detail .rr-card-actions{margin-top:10px}
+#repoWorkspace .rr-console-empty{padding:12px;color:#8da0b8;font:11px/1.6 system-ui,sans-serif}
+@media(max-width:480px){#repoWorkspace .rr-console-scroll{max-height:190px}#repoWorkspace .rr-console-detail .rr-card-actions>.btn{flex-basis:100%}}
