@@ -84,7 +84,7 @@ function setup(extra = {}) {
   check('no alternate repository was ever fetched', () => assert(!t.calls.some(x => /\/repos\/other\//.test(x.url))));
   const ui = W('ember_github_ui.js'), app = W('app.js'), index = W('index.html');
   check('one labelled repository field and no repository slot UI', () => { assert(ui.includes('for="ghBrainRepo">Knowledge Brain Repo')); assert(!/addSlot|slotCard|MAX_SLOTS|Slot \d|Pin \(keep connected\)/.test(ui)); });
-  check('Runner has its own Settings Advanced section', () => { assert(index.includes('data-tab="advanced" id="ghRunnerCard"')); assert(W('ember_acc.js').includes("id: 'advanced'")); });
+  check('Runner belongs to the single cockpit Command Centre workflow', () => { assert(index.includes('id="ghRunnerCard"')); const cockpit=W('ember_cockpit.js'); assert(cockpit.includes("$('ghRunnerCard').hidden = true")); assert(cockpit.includes('setupCommandCentre(R,G,closeSettings)')); assert(!index.includes('src="ember_acc.js')); });
   check('read-first gate precedes model call and sits inside failure handling', () => { const start = app.indexOf('const rr = await GHr.prefetch'); assert(start < app.indexOf('const call = Persona.respond')); assert(app.indexOf('GHr.assertReadFirst();', start) < app.indexOf('const call = Persona.respond')); });
   check('Last Read chip and proof are saved per assistant answer', () => { assert(app.includes('Last Read · ')); assert(app.includes('ghRead: GHr.lastRead()')); assert(app.includes('conv.ghReadTurns[turnId] = rr')); assert(app.includes("c.msgs.push({ r: 'a', t: text, ghRead")); });
   console.log('\n' + passed + ' Knowledge Brain checks passed.');

@@ -1,0 +1,14 @@
+PASS every application source parses
+PASS every web script is direct, lazily loaded or the service worker
+PASS every statically named emitted application event has a listener
+PASS no public object API has two owning root definitions
+PASS service worker exact asset closure and requested cache name
+PASS protected backends match original supplied V1.10.16 hashes
+PASS all retired files have destinations, reasons and replacements
+PASS retired Settings controllers cannot be reloaded by page or cache
+PASS no removed-service SDK or auth integration in the active web app
+PASS Android registration covers every supplied custom plugin
+PASS manifest additions agree with patcher permission names
+PASS safety and persona still loaded before app and keyless adapters
+
+12 wiring checks passed. Dynamic event names and browser-only behavior are covered separately and explicitly listed in WIRING_MAP.

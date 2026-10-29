@@ -1,0 +1,44 @@
+GENSPARK ULTRA: EMBER V1.10.17 "FULLY WIRED"
+=============================================
+Input: the V1.10.16 zip (Keyless Router). If that is not finished yet, run this on ember-V1_10_15-chat-bar-fix.zip and say so.
+Goal: go through EVERY file, connect all logic, documents and information so nothing is orphaned, duplicated or contradicting, and Ember works as one system. Do NOT redesign the UI: I am doing the UI myself next. Keep today's look, layout and behaviour exactly.
+
+HARD RULES
+- NO PUTER anywhere. No API keys, logins or accounts added. Never log a credential.
+- No file is silently dropped. Every file ends in exactly one state: WIRED, MERGED (into X, with reason), or RETIRED (moved to /archive with a reason and what replaced it). Nothing is just deleted.
+- Behaviour must not change unless I approve it. Every merge must pass before/after tests. If a merge cannot be proven safe, leave the files separate and flag it.
+- Backend files (providers.js, ai.js, ember_github.js, ember_repo_runner.js, repo-runner-template.cjs, ember_command_center.js, ai_scraper.js, ember_downloads.js) are PROTECTED. Wire to them, never edit them, unless a defect forces it. If it does, stop, list the exact change and why in a section called NEEDS APPROVAL, and ship the rest without it.
+- Full files, no truncation, no placeholders, no "rest unchanged".
+
+PHASE 1: INVENTORY (no code changes yet)
+Produce docs/WIRING_MAP.md covering all ~80 JS files, ~24 CSS files, vendor libs, android_patch/*.kt, scripts, tools, tests and docs. For each file: purpose, whether index.html or sw.js loads it, what it exports on window, events it dispatches and listens to, localStorage keys it reads/writes, files it depends on, load-order requirement, and status (WIRED / ORPHAN / DUPLICATE / HISTORICAL).
+Known not loaded by index.html right now: ember_acc.js, ember_cc_widget.js, ember_hub.js, ember_menu.js, ember_v108.js, ember_v96_ui.js. Check each one: is it truly dead, loaded some other way, or holding unique logic?
+Also build three registries as tables in the same doc:
+ 1. EVENT BUS: every CustomEvent name, who dispatches, who listens. Flag events dispatched but never heard, and listened for but never dispatched.
+ 2. STORAGE KEYS: every localStorage/IndexedDB key, owner file, readers, whether it can hold a secret.
+ 3. WINDOW API: every window.Ember* / window.Prov / window.* object, owner, callers, and any name defined twice.
+
+PHASE 2: WIRE
+- Fix every broken link found in Phase 1: missing listeners, dead buttons, handlers bound to elements that no longer exist, features reachable in code but not from the UI or chat, features in docs but not in code, features in code but not in docs.
+- Retired Settings controllers (ember_acc, ember_menu, ember_hub, ember_cc_widget, the old multilevel Settings) were removed in 1.10.14 on purpose: the cockpit is one flat scroll. Do NOT reload them as UI. If any holds logic or data the cockpit lost, PORT that logic into the cockpit or the right module, then archive the old file.
+- The Keyless Router, Plugins sheet, artifacts, terminal, thought timeline (EmberTimeline), abilities line (EmberPlus.stateLine), persona.js, safety.js, memory/knowledge, voice, lyrics/music, downloads, scraper, GitHub Command Centre, Termux panel, browser, notes and device plugins must all be reachable and consistent: a task in chat can route to the right tool, the route shows in the terminal AND the thought timeline, and results land as artifacts.
+- Android: confirm every android_patch plugin (EmberAiPlugin, EmberDevicePlugin, EmberMediaPlugin, EmberNotifyPlugin, EmberWebPlugin, EmberYoutubePlugin, workers, keep-alive service, receivers) is registered in MainActivity/AndroidManifest additions and matched by a JS caller and by docs/ANDROID_PERMISSIONS.md. List any mismatch.
+- Load order: make index.html script/link order explicit and documented; sw.js FILES list must match exactly what is loaded; bump cache name.
+
+PHASE 3: MERGE (only where it clearly helps)
+- Candidates: the stacked versioned patch files (ember_v79, v80, v81, v82, v83, v89, v96, v104, v108, v110 .js/.css) that override each other. Fold each into its owning module/stylesheet in a clean order, remove dead rules and duplicate functions, keep computed styles and behaviour identical. Prove it with 412x915 and 1280x900 screenshot diffs before and after for chat, Settings, Command Centre, Browser, Plugins sheet, chooser and terminal. Any pixel change must be explained.
+- Do not merge protected backend files. Do not merge vendor libs.
+
+PHASE 4: DOCUMENTS
+- Rewrite so they match the real code: README.md, docs/ARCHITECTURE.md, docs/FEATURES.md, docs/DATA_FLOW.md, docs/MEMORY.md, docs/ANDROID_PERMISSIONS.md, docs/TESTING.md, HANDOVER.md, TODO.md, WORK_IN_PROGRESS.txt.
+- Move old per-version release notes, plans and fix reports into docs/history/ with an index file. Keep one CHANGELOG. Add RELEASE_1_10_17.txt.
+- Every feature listed anywhere must point to its file and its UI entry point or chat trigger.
+
+PHASE 5: TESTS AND INTEGRITY
+- Repair the 3 known legacy failures properly (term-test.js hidden #bTermux click, v1992-repo-runner-test.js missing expected exception at line 77, knowledge-brain-test.js obsolete advanced-tab markup at line 87). Fix the test or the code, whichever is actually wrong, and say which.
+- Make npm test run the whole suite and report real pass/fail. Add a wiring test that fails if: a script in /www is neither loaded nor archived, an event has no listener, a window API is defined twice, or sw.js and index.html disagree.
+- Regenerate FILE_INTEGRITY json and the protected-hash manifest. Playwright at 412x915 plus 1280x900 with mocked HTTP, zero page errors.
+- State plainly what was NOT tested (live GitHub push, Android device, live keyless endpoints).
+
+DELIVER
+package.json 1.10.17, sw cache ember-v1.10.17-wired, docs/WIRING_MAP.md, NEEDS APPROVAL list (if any), before/after screenshots, test logs, and the full zip: ember-V1_10_17-fully-wired.zip

@@ -74,7 +74,8 @@ async function integration() {
     check('removed source only deletes its runner-owned snapshot', result.changed && !fs.existsSync(path.join(verify, 'external/repos/owner/addon')) && fs.readFileSync(path.join(verify, 'README.md'), 'utf8') === 'output original');
     process.env.EMBER_EVENT = 'schedule'; result = await runner.sync(c); delete process.env.EMBER_EVENT;
     check('scheduled sync is opt-in', result.skipped);
-    assert.throws(() => runner.validate({ ...c, target: 'owner/brain' })); passed++; console.log('PASS source/output identity collision rejected');
+    assert.doesNotThrow(() => runner.validate({ ...c, target: c.brain })); passed++; console.log('PASS brain may be its own output, matching protected runner self-copy exclusion');
+    assert.throws(() => runner.validate({ ...c, target: 'owner/addon' }), /Output repo cannot also be a source/); passed++; console.log('PASS non-brain source/output identity collision rejected');
     fs.symlinkSync('../README.md', path.join(work.brain, 'bad-link')); git(work.brain, 'add', 'bad-link'); git(work.brain, 'commit', '-m', 'symlink'); git(work.brain, 'push', 'origin', 'main');
     await assert.rejects(() => runner.sync(c), /Symlink/); passed++; console.log('PASS symlink source fails closed without pushing partial data');
   } finally { process.env.PATH = oldPath; if (oldToken === undefined) delete process.env.GH_TOKEN; else process.env.GH_TOKEN = oldToken; global.fetch = oldFetch; fs.rmSync(tmp, { recursive: true, force: true }); }

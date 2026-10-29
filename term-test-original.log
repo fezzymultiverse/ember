@@ -1,0 +1,65 @@
+PASS text + CRLF 
+PASS clear + home 
+PASS cursor position 
+PASS SGR colour 
+PASS 256 + truecolour 
+PASS scroll feeds scrollback 
+PASS erase line 
+PASS alt screen 
+PASS alt restore 
+PASS cursor report 
+PASS autowrap 
+PASS resize 
+PASS OSC title 
+PASS delete chars 
+PASS line drawing 
+PASS scroll region 
+PASS getText 
+PASS redact gsk key 
+PASS redact password 
+PASS redact long token 
+PASS keeps normal 
+PASS danger rm -rf / 
+PASS safe cmds 
+PASS splitReply 
+PASS genBase 
+PASS command 
+FAIL harness page.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('#bTermux')
+    - locator resolved to <button id="bTermux" role="menuitem" class="action-item" aria-label="Open the Termux tab">…</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is not visible
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is not visible
+    - retrying click action
+      - waiting 100ms
+    56 × waiting for element to be visible, enabled and stable
+       - element is not visible
+     - retrying click action
+       - waiting 500ms
+
+    at /home/user/cockpit/baseline/tests/term-test.js:73:12 {
+  log: [
+    "  - waiting for locator('#bTermux')",
+    '    - locator resolved to <button id="bTermux" role="menuitem" class="action-item" aria-label="Open the Termux tab">…</button>',
+    '  - attempting click action',
+    '    2 × waiting for element to be visible, enabled and stable',
+    '      - element is not visible',
+    '    - retrying click action',
+    '    - waiting 20ms',
+    '    2 × waiting for element to be visible, enabled and stable',
+    '      - element is not visible',
+    '    - retrying click action',
+    '      - waiting 100ms',
+    '    56 × waiting for element to be visible, enabled and stable',
+    '       - element is not visible',
+    '     - retrying click action',
+    '       - waiting 500ms'
+  ],
+  name: 'TimeoutError'
+}
+26 passed, 1 failed

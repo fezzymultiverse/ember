@@ -1,5 +1,5 @@
 // Ember V1.5.1 test: headless Chromium against MOCKED Groq / Mistral / Gemini. Run: node tests/app-test.js
-const { chromium } = require(process.env.PW || '/home/claude/.npm-global/lib/node_modules/playwright');
+const { chromium } = require(process.env.PW || 'playwright');
 const http = require('http'), fs = require('fs'), path = require('path');
 const ROOT = process.env.WWW || path.join(__dirname, '..', 'www'), SHOTS = process.env.SHOTS || path.join(__dirname, 'shots');
 fs.mkdirSync(SHOTS, { recursive: true });

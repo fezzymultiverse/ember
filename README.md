@@ -1,48 +1,43 @@
-# Ember 1.10.17 — release candidate, not an all-green release
+# Ember docs · V1.4.0
 
-Source: the supplied `ember-V1_10_16-keyless-router.zip` (not the V1.10.15 fallback).
+*For reviewers and anyone new to the repo.*
 
-This archive contains the safe, verified wiring work and explicit blockers. It must not be described as fully certified or completely working: the exhaustive inherited test suite is not all green. See `docs/TESTING.md`, `docs/NEEDS_APPROVAL.md`, `docs/WIRING_MAP.md` and `tests/results/wired/suite/summary.json`.
+Ember is a text-only companion app (PWA, APK-ready through Capacitor). It is plain HTML and JavaScript in `www/`, with no build step and no server. The person talks to it about anything. It keeps a small local memory, leads the conversation, and calls Groq, Mistral or Gemini with the user's own keys, or Pollinations.ai in Free Mode.
 
-No UI redesign or stylesheet merge was performed. All eight protected backend files are byte-identical to the supplied V1.10.16 files. No account, API key or credential was added. No real GitHub write, paid generation, live keyless endpoint certification or Android build was performed.
+V1.3.0 is the safety release. It adds `www/safety.js`, an offline distress and self-harm check that runs before every reply, plus a local crisis card and a memory-format migration. The fun features drafted for it are deferred to V1.4.0 (see [CHANGELOG.md](CHANGELOG.md)).
 
-## Run locally
+## What Ember is NOT
 
-Use Node 20+ with npm and git. Install the existing dependency graph with `npm ci --legacy-peer-deps`, then `npx playwright install --with-deps chromium` for browser tests. Run `npm run serve` and open the displayed localhost address.
+- **Not a therapist.** It gives no diagnosis, treatment or clinical advice.
+- **Not a crisis line.** It cannot call anyone, alert anyone, or know whether a person is safe. See [CRISIS_PROTOCOL.md](CRISIS_PROTOCOL.md).
+- **Not a medical device.** No clinical validation has been done. See [LIMITATIONS.md](LIMITATIONS.md).
 
-`npm test` discovers every top-level `*-test.js` and `*-test.cjs`, runs all of them without short-circuiting, writes separate logs and returns a nonzero exit on failures, skipped checks or timeouts. It does not hide old failures. `npm run test:wiring` and `npm run test:keyless` run the current structural and keyless regressions separately.
+If you are in danger in South Africa: SADAG suicide crisis line 0800 567 567, Lifeline South Africa 0861 322 322, or 112 from a mobile.
 
-## What changed
+## Start here (reviewer order)
 
-Six deliberately unloaded Settings controllers moved intact to `archive/www/`; their CSS is retained in its original order because removing it could change computed styles. The service-worker cache is `ember-v1.10.17-wired`, built from the exact page asset closure plus explicitly documented lazy/static assets. The legacy tests for Knowledge Brain, runner validation and inline Termux were repaired to test the current contracts rather than resurrect removed UI.
+1. [LIMITATIONS.md](LIMITATIONS.md): what the app does not do. Read this first.
+2. [ARCHITECTURE.md](ARCHITECTURE.md): files, request flow, invariants.
+3. [SAFETY.md](SAFETY.md) and [CRISIS_PROTOCOL.md](CRISIS_PROTOCOL.md): the safety layer and what the person sees.
+4. [DATA_FLOW.md](DATA_FLOW.md) and [PRIVACY.md](PRIVACY.md): what is stored, what leaves the phone.
+5. [THREAT_MODEL.md](THREAT_MODEL.md): risks, mitigations, what is left over.
+6. [REVIEW_CHECKLIST.md](REVIEW_CHECKLIST.md): the pass/fail list for this version.
 
-`ember_wiring.js` supplies small event adapters for Free APIs refresh, non-sensitive readiness diagnostics, post-push refresh and fixed-text download errors. It adds no UI, network request or persistent storage.
+## Index
 
-## Feature entry points
-
-| Feature | Implementation (under www unless stated) | UI entry point / trigger | Contract / limitation |
-|---|---|---|---|
-| Chat, persona and safety | app.js; persona.js; safety.js | Message box → Send; Settings → Memory and Settings | Routes through existing provider contracts and safety gates. No router/backend replaced. |
-| Provider routing and keys | providers.js; ember_prov_ui.js; ember_prov_next.js | Providers button at chat footer; Settings → Providers | Existing optional credentials are retained. No new key, login or account added. |
-| Keyless router and chooser | ember_keyless.js | Ask for a supported task in chat; + → Plugins → Media & Music | Available alternatives show a chooser; unavailable services can fail; mocked regression is not live availability. |
-| Plugins and abilities | ember_plugins.js; ember_plus.js; ember_keyless.js | + → Web & Scraping / Media & Music | EmberPlus.stateLine reads current abilities; keyless extends it at runtime. |
-| Artifact cards and exports | ember_artifacts.js; ember_deliverables.js | Generated chat artifact → View / Download; ask for PDF / Word / Markdown | Local pdfmake/docx engines; protected repo-runner template is a downloadable artifact, not a browser script. |
-| Live terminal and status | ember_command_center.js; ember_v104.js; ember_wiring.js | Live Terminal bar below chat; Settings → Open Command Centre | Command Centre handles runner events; versioned patch supplies tool/route logs; new adapters use fixed text, never event payloads. |
-| Thought timeline | ember_timeline.js; ember_react.js; ember_steps.js | Active reply progress; saved thought card | Keyless explicitly writes timeline entries and emits agent notes. This is status/progress, not private model reasoning. |
-| Memory / Knowledge Brain | store.js; ember_context.js; ember_github.js; ember_learn.js; ember_find.js | Settings → Memory and Settings; Command Centre → Connect; chat code questions | Read-first gates code answers. IndexedDB caches and configuration are not proof of fresh remote evidence. |
-| GitHub discovery and queued sync | ember_cockpit.js; ember_workspace.js; ember_github.js; ember_repo_runner.js | Settings → Open Command Centre → Connect / Repos / Build | Discovery is read-only; staging and selected queue entries require explicit confirmation. Live push not tested. |
-| Termux terminal | ember_term.js; ember_cockpit.js | Settings → Hacking → Termux | Inline cockpit terminal uses local ttyd WebSocket; tests use a local mock server. Host installation still required. |
-| Browser and Notes | ember_browser.js; ember_create.js; ember_cockpit.js | Globe button → Browser / Documents / Notes | Notes reuse original editor; reader uses enabled scraping providers. External browser/native behavior is platform dependent. |
-| Documents library and graph | ai_docs.js; ember_docs_lib.js; ember_graph.js | Paperclip / Docs control; Browser → Documents | Library dispatches ember-docs-changed; readers refresh on that window event. |
-| Voice and read aloud | ember_voice.js; ember_native.js; app.js | Mic / Talk controls; reply speaker; Settings → Memory and Settings / Permissions | Browser/native services vary. Physical microphone and real Android speech services not tested. |
-| Lyrics and player | ember_lyrics.js; ember_player.js; ember_music_ui.js; ai_music.js | Settings → Music & Tools → Open Music panel; chat lyrics request | Existing music services can be unavailable. Legacy drawer music events have no producers; polling remains authoritative. |
-| Media generation bridge | ember_media.js; ember_mediaplus.js; ember_engines.js | + → Media & Music; Settings → Engine & Media Control | Existing Stability optional-key path retained; no paid generation performed in this release work. |
-| Downloads | ember_downloads.js; ember_getmusic.js; tools/download-bridge.cjs | Chat music/video download request; native YouTube / configured local bridge | Requires existing platform tools. New adapter reports bridge status errors with fixed non-sensitive text. |
-| Scraper and public-source extraction | ai_scraper.js; ai_agent.js; ember_keyless.js | + → Web & Scraping; Settings → Web Scraping; ask to read a public URL | Protected scraper remains untouched; no private-network fetching added. |
-| Device plugins | ember_device.js; ember_native.js; android_patch/ | Settings → Device Tools / Permissions | Custom plugins registered in MainActivity; Android compilation and real device use not performed. |
-| Projects | ember_projects.js; persona.js | Left drawer → Projects | Active project becomes next-turn persona context; diagnostics expose only revision counts, not project text. |
-| Timers and pings | ember_tasks.js; ember_native.js; EmberPingWorker.kt | Chat timer commands; Settings → Permissions | Existing in-app scheduling retained; no background task enabled by this release operation. |
-
-## Release evidence
-
-`docs/FILE_RECEIPTS.json` accounts for every original archive member; original documentation content is preserved under `docs/history/baseline-v1.10.16/`. `FILE_INTEGRITY_1_10_17.json` contains SHA-256 values for delivered files (excluding itself). Protected hashes are in `tests/wired-protected-hashes.json`. Screenshots and raw diffs live under `tests/results/wired/`; test summaries report limitations rather than claiming untested services work.
+| Doc | Audience | What it covers |
+|---|---|---|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | reviewer, contributor | File map, request flow, lanes, state, invariants |
+| [SAFETY.md](SAFETY.md) | reviewer, contributor | `Safety.detect` levels, idiom guard, prompt wrapping, the transient flag |
+| [CRISIS_PROTOCOL.md](CRISIS_PROTOCOL.md) | maintainer | What happens at level 2 and 3, the numbers shown, triage |
+| [PRIVACY.md](PRIVACY.md) | user, reviewer | Every stored key, everything that leaves the device |
+| [THREAT_MODEL.md](THREAT_MODEL.md) | reviewer | Threat, mitigation, residual risk |
+| [DATA_FLOW.md](DATA_FLOW.md) | reviewer | One message round-trip, with the device boundary marked |
+| [MEMORY.md](MEMORY.md) | contributor, reviewer | The `mem` shape, what is learned and refused, migration |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | contributor | Running locally, style, the PR invariants |
+| [CHANGELOG.md](CHANGELOG.md) | everyone | V1.3.0 and V1.2.0 |
+| [TESTING.md](TESTING.md) | contributor, reviewer | Commands, the detect table, manual checks, coverage gaps |
+| [LIMITATIONS.md](LIMITATIONS.md) | everyone | Known gaps, stated plainly |
+| [LICENSE_NOTES.md](LICENSE_NOTES.md) | maintainer | License status and third-party services |
+| [REVIEW_CHECKLIST.md](REVIEW_CHECKLIST.md) | reviewer | Checkbox list for V1.3.0 |
+| [FEATURES.md](FEATURES.md) | user | The feature notes from the old root README |

@@ -12,7 +12,7 @@ const TOGGLES = [
   { id: 'image', icon: '🎨', label: 'Create image', hint: 'Next message becomes a picture: Pollinations, Forge, then Stability if you saved a key', chip: 'Create image', once: true },
   { id: 'audio_gen', icon: '🎵', label: 'Create audio', hint: 'Next message becomes music or sound, made by Stability AI', chip: 'Create audio', once: true },
   { id: 'video_gen', icon: '🎬', label: 'Create video', hint: 'Next message becomes a video: Stability images + music, composed on this phone', chip: 'Create video', once: true },
-  { id: 'stab', icon: '⚡', label: 'Stability bridge', hint: 'ON: just ask in chat for an image, audio or video and Ember makes it with Stability / Puter. OFF: only the Create buttons do', chip: 'Stability bridge' },
+  { id: 'stab', icon: '⚡', label: 'Stability bridge', hint: 'ON: just ask in chat for an image, audio or video and Ember makes it with Stability. OFF: only the Create buttons do', chip: 'Stability bridge' },
   { id: 'pdf', icon: '📄', label: 'Create PDF', hint: 'Next message becomes a full PDF artifact (Save PDF builds the file)', chip: 'Create PDF', once: true },
   { id: 'device', icon: '📱', label: 'Device Access', hint: 'Let Ember read local files & Termux', chip: 'Device Access' },
   { id: 'web', icon: '🌐', label: 'Web Search', hint: 'Force live scraping/DuckDuckGo', chip: 'Web Search' },

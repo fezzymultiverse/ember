@@ -1,0 +1,69 @@
+PASS ember_engines.js loads in a sandbox 
+PASS intent: image <- draw a husky in neon Cape Town 
+PASS intent: image <- generate an image of a dragon 
+PASS intent: image <- make me a picture of Bojack on a beach 
+PASS intent: image <- Can you create a poster for my gig 
+PASS intent: image <- please paint a sunset over Table Mountain 
+PASS intent: image <- imagine a futuristic taxi poster 
+PASS intent: image <- Draw me a lab and husky hanging out 
+PASS intent: none <- draw a conclusion from this data 
+PASS intent: none <- make an image upload component in react 
+PASS intent: none <- create a PDF report on sleep 
+PASS intent: none <- imagine you are a pirate 
+PASS intent: none <- what is an image? 
+PASS intent: none <- write a poem about the sea 
+PASS intent: none <- draw attention to the issue 
+PASS intent: none <- make a picture frame in html 
+PASS intent: none <- generate an image caption for this photo 
+PASS intent: none <- draw a diagram of the router 
+PASS intent: none <- create a script that resizes pictures 
+PASS intent: none <- how do I make a poster in canva 
+PASS intent ignores very long messages 
+PASS intent off when plain-English routing is switched off 
+PASS forge: ok result 
+PASS forge: svg artifact carries the picture as a data URI 
+PASS forge: details artifact is html with no embedded image 
+PASS forge: submit hit aihorde.net generate/async with the anonymous key 
+PASS forge: request is sfw, base64 (r2 off), 512 px, multiples of 64 
+PASS forge: neon style picked from the words 
+PASS forge: polled check then fetched status 
+PASS forge: queue position shown in the timeline row fg4 
+PASS forge: activity log records success 
+PASS forge: 503 gives a plain error, no throw 
+PASS forge: 429 says wait a minute 
+PASS forge: censored picture is reported, not shown 
+PASS forge: empty generations is an error 
+PASS forge: faulted job is an error 
+PASS forge: impossible job is an error and is cancelled 
+PASS forge: size refusal retries once at 512 x 512 
+PASS forge: four dead polls in a row gives up cleanly 
+PASS forge: empty prompt asks for a description 
+PASS router auto: Pollinations first, Forge untouched when it works 
+PASS router auto: falls back to Forge when Pollinations fails 
+PASS router pollinations-only: failure returns its error, Forge never called 
+PASS router forge-only: Pollinations never called 
+PASS router auto: both failing says so and names Forge 
+PASS router: empty prompt does not wake Forge 
+PASS router: missing image module is a clear error 
+FAIL pdf: mintpdf answers with a real PDF 
+FAIL pdf: daily limit on mintpdf falls to pdfrender (JSON base64) 
+FAIL pdf: an HTML error page is rejected, next provider tried 
+FAIL pdf: length mismatch is caught as truncation, both failing gives ok:false 
+FAIL pdf: gzip responses skip the length check 
+FAIL pdf: network down returns ok:false, never throws 
+PASS pdf: isPdf wants header and EOF 
+PASS pdfFor: This phone mode never touches the network 
+FAIL pdfFor: declining the one-time prompt switches to This phone and sends nothing 
+FAIL pdfFor: accepting the prompt sends once and remembers it 
+PASS pdfFor: both cloud engines failing returns ok:false so the phone writer runs 
+PASS pdf: template has A4 page, brand rule, no external resources 
+PASS app.js routes plain-English picture requests through EmberEngines.intent 
+PASS app.js imageRoute runs the engine router, falling back to EmberCreate.route 
+PASS artifacts exportPdf asks the engines first and keeps the local writer as fallback 
+PASS index.html loads engines css and js, js after ember_create.js 
+FAIL service worker bumped to 1.9.87 and caches both engine files 
+FAIL package.json is 1.9.87 with a test:v1987 script 
+PASS Pollinations image route is untouched (still image.pollinations.ai, flux) 
+FAIL endpoints are the verified ones and no stray keys 
+PASS README untouched marker: no README edit by this build 
+57 passed, 11 failed

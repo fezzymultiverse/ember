@@ -1,0 +1,29 @@
+{
+  "results": [
+    {
+      "name": "unloaded web script",
+      "rejected": true,
+      "exit": 1,
+      "expectedFailure": "every web script"
+    },
+    {
+      "name": "emitted event without consumer",
+      "rejected": true,
+      "exit": 1,
+      "expectedFailure": "emitted application event"
+    },
+    {
+      "name": "duplicate public root API",
+      "rejected": true,
+      "exit": 1,
+      "expectedFailure": "no public object API"
+    },
+    {
+      "name": "precache/page mismatch",
+      "rejected": true,
+      "exit": 1,
+      "expectedFailure": "service worker exact asset closure"
+    }
+  ],
+  "restoredBaselinePass": true
+}

@@ -1,0 +1,46 @@
+PASS 0 "I am dying laughing" 
+PASS 0 "I could kill for a coffee" 
+PASS 0 "dead tired today" 
+PASS 0 "killing time at the mall" 
+PASS 0 "I have a plan for the weekend" 
+PASS 0 "I have a knife set for cooking" 
+PASS 0 "my phone is dying" 
+PASS 0 "bored to death" 
+PASS 0 "tonight is the night, the party starts at 9" 
+PASS 0 "the project is a mess but fine" 
+PASS 0 "I want to end things at the gym early" 
+PASS 0 "ready to go" 
+PASS 0 "at the end of the day it works" 
+PASS 0 "my fridge is empty" 
+PASS 1 "I feel hopeless" 
+PASS 1 "everything is falling apart" 
+PASS 1 "I am so overwhelmed" 
+PASS 1 "I hate myself" 
+PASS 1 "I am done with everything" 
+PASS 1 "having a panic attack" 
+PASS 2 "I want to die" 
+PASS 2 "i wanna die" 
+PASS 2 "I’m thinking about killing myself" 
+PASS 2 "nobody would miss me" 
+PASS 2 "I don’t want to be here anymore" 
+PASS 2 "wish I was dead" 
+PASS 2 "I want to end my life" 
+PASS 2 "dying laughing but honestly I want to die" 
+PASS 2 "I am suicidal" 
+PASS 2 "I want to kill myself" 
+PASS 2 "I don’t want to live" 
+PASS 3 "I want to die and I have a plan" 
+PASS 3 "I want to kill myself tonight" 
+PASS 3 "I have pills and I want to die" 
+PASS 3 "this is my last message" 
+PASS 3 "goodbye forever" 
+PASS 0 "" 
+PASS wrap level 0 unchanged
+PASS wrap level 1 presence, no hotline
+PASS wrap level 2 presence + ideation, no hotline
+PASS wrap level 3 crisis block with 112 and SADAG
+PASS killSwitch only 3+
+PASS crisis card has tel links, no scripts
+PASS mark/lastLevel
+
+44 passed, 0 failed

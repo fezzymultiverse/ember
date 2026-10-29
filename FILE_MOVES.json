@@ -1,0 +1,257 @@
+{
+  "www/ember_acc.js": {
+    "destination": "archive/www/ember_acc.js",
+    "reason": "Controller intentionally not loaded since 1.10.14; obsolete nested Settings UI must not be restored. Existing cockpit owns its surviving entry points. Cosmetic-only legacy additions are deliberately not reintroduced.",
+    "replacement": "www/ember_cockpit.js"
+  },
+  "www/ember_cc_widget.js": {
+    "destination": "archive/www/ember_cc_widget.js",
+    "reason": "Controller intentionally not loaded since 1.10.14; obsolete nested Settings UI must not be restored. Existing cockpit owns its surviving entry points. Cosmetic-only legacy additions are deliberately not reintroduced.",
+    "replacement": "www/ember_cockpit.js"
+  },
+  "www/ember_hub.js": {
+    "destination": "archive/www/ember_hub.js",
+    "reason": "Controller intentionally not loaded since 1.10.14; obsolete nested Settings UI must not be restored. Existing cockpit owns its surviving entry points. Cosmetic-only legacy additions are deliberately not reintroduced.",
+    "replacement": "www/ember_cockpit.js"
+  },
+  "www/ember_menu.js": {
+    "destination": "archive/www/ember_menu.js",
+    "reason": "Controller intentionally not loaded since 1.10.14; obsolete nested Settings UI must not be restored. Existing cockpit owns its surviving entry points. Cosmetic-only legacy additions are deliberately not reintroduced.",
+    "replacement": "www/ember_cockpit.js"
+  },
+  "www/ember_v108.js": {
+    "destination": "archive/www/ember_v108.js",
+    "reason": "Controller intentionally not loaded since 1.10.14; obsolete nested Settings UI must not be restored. Existing cockpit owns its surviving entry points. Cosmetic-only legacy additions are deliberately not reintroduced.",
+    "replacement": "www/ember_cockpit.js"
+  },
+  "www/ember_v96_ui.js": {
+    "destination": "archive/www/ember_v96_ui.js",
+    "reason": "Controller intentionally not loaded since 1.10.14; obsolete nested Settings UI must not be restored. Existing cockpit owns its surviving entry points. Cosmetic-only legacy additions are deliberately not reintroduced.",
+    "replacement": "www/ember_cockpit.js"
+  },
+  "RELEASE_1_10_16.txt": {
+    "destination": "docs/history/RELEASE_1_10_16.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "COCKPIT_1_10_14_MANIFEST.json": {
+    "destination": "docs/history/COCKPIT_1_10_14_MANIFEST.json",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "COMMAND_CENTER_RELEASE_NOTES.txt": {
+    "destination": "docs/history/COMMAND_CENTER_RELEASE_NOTES.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "RELEASE_1_9_101.txt": {
+    "destination": "docs/history/RELEASE_1_9_101.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "RELEASE_1_10_4.txt": {
+    "destination": "docs/history/RELEASE_1_10_4.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "ENDPOINT_AUDIT_1_10_16.csv": {
+    "destination": "docs/history/ENDPOINT_AUDIT_1_10_16.csv",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "MUSIC_STACK_V1_9_60.md": {
+    "destination": "docs/history/MUSIC_STACK_V1_9_60.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "PROVIDER_ICON_SOURCES.md": {
+    "destination": "docs/history/PROVIDER_ICON_SOURCES.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "THINKING_OPEN_V1_9_58.md": {
+    "destination": "docs/history/THINKING_OPEN_V1_9_58.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "RELEASE_1_10_6.txt": {
+    "destination": "docs/history/RELEASE_1_10_6.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "RELEASE_1_9_99_UI_REFINEMENT.txt": {
+    "destination": "docs/history/RELEASE_1_9_99_UI_REFINEMENT.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "RELEASE_NOTES_V1_9_91.txt": {
+    "destination": "docs/history/RELEASE_NOTES_V1_9_91.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "CHANGELOG_V1_9_50.md": {
+    "destination": "docs/history/CHANGELOG_V1_9_50.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "KNOWLEDGE_GRAPH_V1_9_54.md": {
+    "destination": "docs/history/KNOWLEDGE_GRAPH_V1_9_54.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "RELEASE_1_9_95.txt": {
+    "destination": "docs/history/RELEASE_1_9_95.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "NEWPIPE_DIRECT_V1_9_57.md": {
+    "destination": "docs/history/NEWPIPE_DIRECT_V1_9_57.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "RELEASE_1_10_13.txt": {
+    "destination": "docs/history/RELEASE_1_10_13.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "API_AUDIT_SOURCES.md": {
+    "destination": "docs/history/API_AUDIT_SOURCES.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "UI_FIX_VERIFICATION.md": {
+    "destination": "docs/history/UI_FIX_VERIFICATION.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "API_PROFILE_V1_9_55.md": {
+    "destination": "docs/history/API_PROFILE_V1_9_55.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "RELEASE_1_10_9.txt": {
+    "destination": "docs/history/RELEASE_1_10_9.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "UI_1_9_56_NOTES.md": {
+    "destination": "docs/history/UI_1_9_56_NOTES.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "AIFREEFOREVER_PLAN_V1_9_80.md": {
+    "destination": "docs/history/AIFREEFOREVER_PLAN_V1_9_80.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "FILE_INTEGRITY_1_9_95.json": {
+    "destination": "docs/history/FILE_INTEGRITY_1_9_95.json",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "DOWNLOAD_THINKING_V1_9_53.md": {
+    "destination": "docs/history/DOWNLOAD_THINKING_V1_9_53.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "RELEASE_1_10_7.txt": {
+    "destination": "docs/history/RELEASE_1_10_7.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "RELEASE_1_9_97.txt": {
+    "destination": "docs/history/RELEASE_1_9_97.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "RELEASE_1_10_8.txt": {
+    "destination": "docs/history/RELEASE_1_10_8.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "RELEASE_1_10_15.txt": {
+    "destination": "docs/history/RELEASE_1_10_15.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "THINKING_DUTIES_V1_9_59.md": {
+    "destination": "docs/history/THINKING_DUTIES_V1_9_59.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "RELEASE_1_9_102.txt": {
+    "destination": "docs/history/RELEASE_1_9_102.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "UI_1_9_52_NOTES.md": {
+    "destination": "docs/history/UI_1_9_52_NOTES.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "ROUTING_MEDIA_HANDOFF_1_9_94.txt": {
+    "destination": "docs/history/ROUTING_MEDIA_HANDOFF_1_9_94.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "PRE_PUSH_ROUTING_PATCH_REPORT.md": {
+    "destination": "docs/history/PRE_PUSH_ROUTING_PATCH_REPORT.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "CHANGELOG_V1_9_48.md": {
+    "destination": "docs/history/CHANGELOG_V1_9_48.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "RELEASE_1_10_11.txt": {
+    "destination": "docs/history/RELEASE_1_10_11.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "PRE_PUSH_THINKING_DROPDOWN_FIX.md": {
+    "destination": "docs/history/PRE_PUSH_THINKING_DROPDOWN_FIX.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "RELEASE_1_10_10.txt": {
+    "destination": "docs/history/RELEASE_1_10_10.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "UI_FIX_VERIFICATION_V1_9_97.md": {
+    "destination": "docs/history/UI_FIX_VERIFICATION_V1_9_97.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "RELEASE_1_10_14.txt": {
+    "destination": "docs/history/RELEASE_1_10_14.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "KEYLESS_1_10_16_MANIFEST.json": {
+    "destination": "docs/history/KEYLESS_1_10_16_MANIFEST.json",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "API_AUDIT_REPORT.md": {
+    "destination": "docs/history/API_AUDIT_REPORT.md",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "RELEASE_1_10_5.txt": {
+    "destination": "docs/history/RELEASE_1_10_5.txt",
+    "reason": "Superseded historical release evidence retained verbatim; current release documentation is authoritative.",
+    "replacement": "CHANGELOG.md"
+  },
+  "docs/CHANGELOG.md": {
+    "destination": "docs/history/docs-CHANGELOG.md",
+    "reason": "Historical document retained verbatim; one current CHANGELOG.",
+    "replacement": "CHANGELOG.md"
+  },
+  "docs/V1_9_0_PLAN.md": {
+    "destination": "docs/history/docs-V1_9_0_PLAN.md",
+    "reason": "Historical document retained verbatim; one current CHANGELOG.",
+    "replacement": "CHANGELOG.md"
+  }
+}
