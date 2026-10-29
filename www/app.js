@@ -646,12 +646,12 @@ document.querySelectorAll('#modes button').forEach(b => b.onclick = () => { S.mo
 // Termux Mode toggle button
 const bTx = $('bTermux');
 if (bTx) {
-  bTx.onclick = () => openSettings('hacking');
+  bTx.onclick = () => openBlackSettings('hacking');
 }
 
 $('log').addEventListener('click', e => {
   const a = e.target.closest('[data-act]'); if (!a) return;
-  if (a.dataset.act == 'keys') openSettings();
+  if (a.dataset.act == 'keys') openBlackSettings('engine');
   else if (a.dataset.act == 'retry') { if (conv && conv.msgs.length) reply({ directive: conv.msgs[conv.msgs.length - 1].r == 'a' ? SPARK : undefined }); }
   else if (a.dataset.act == 'say') speakMsg(+a.dataset.i);
   else if (a.dataset.act == 'copy') { const m = conv && conv.msgs[+a.dataset.i]; copyTxt(m && m.t, a); }
@@ -1314,6 +1314,8 @@ function showStab(name) {
 $('stabs') && $('stabs').addEventListener('click', e => { const b = e.target.closest('.stab'); if (b) showStab(b.dataset.st); });
 // V1.10.11: card headers no longer fold or open anything here. ember_menu.js owns the whole Settings menu (rows open pages to the right).
 function openSettings(tab) { drawer(false); renderSet(); renderPerms(); showStab(typeof tab == 'string' ? tab : 'none'); $('settings').classList.add('show'); setUI('Settings'); }
+// V1.10.18-p6: one Settings. Anything that used to open the bare sheet goes through the black cockpit Settings.
+function openBlackSettings(tab) { const k = window.EmberCockpit; if (k && typeof k.open === 'function') k.open(tab); else openSettings(tab); }
 function closeSettings() { $('settings').classList.remove('show'); S.name = $('sName').value.trim(); S.about = $('sAbout').value; S.pname = $('sPname').value.trim() || 'Ember'; S.interests = $('sInt').value.trim() || DEF.interests; S.persona = $('sPersona').value.trim().slice(0, 2000); S.talk = $('sTalk').value.trim().slice(0, 300); saveS(); renderLog(); setUI('Chat'); }
 $('bSet').onclick = openSettings; $('bSx').onclick = closeSettings; $('bGoKeys').onclick = openSettings;
 function accent(c) {
