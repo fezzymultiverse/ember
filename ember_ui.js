@@ -34,7 +34,7 @@ function mountNames() { // V1.9.96: the "Provider names" card is gone. Any copy 
 // ---- key box: the provider follows the key you paste ----
 function guess(k) {
   k = String(k || '').trim();
-  if (/^gsk_/.test(k)) return 'groq'; if (/^(AIza|AQ\.)/.test(k)) return 'gemini'; if (/^sk-ant-/.test(k)) return 'anthropic'; if (/^eyJ[\w-]{8,}\.[\w-]{8,}\.[\w-]{8,}$/.test(k)) return 'puter';
+  if (/^gsk_/.test(k)) return 'groq'; if (/^(AIza|AQ\.)/.test(k)) return 'gemini'; if (/^sk-ant-/.test(k)) return 'anthropic';
   return '';
 }
 if ($('kIn')) $('kIn').addEventListener('input', () => { const g = guess($('kIn').value), sel = $('kProv'); if (g && sel && sel.value != g) { sel.value = g; toast('Looks like a ' + window.Prov.label(g) + ' key'); } });

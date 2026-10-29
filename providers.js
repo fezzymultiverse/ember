@@ -13,16 +13,13 @@ const CFG = {
   gemini: { name: 'Gemini', base: 'https://generativelanguage.googleapis.com/v1beta', kind: 'gem', color: '#ffffff' },
   cohere: { name: 'Cohere', base: 'https://api.cohere.com', kind: 'cohere', color: '#d9d9d9' },
   // V1.9.72: Claude (Anthropic Messages API). PAID, so it is never in the automatic order: it answers only while it is pinned (Providers chip).
-  anthropic: { name: 'Claude', base: 'https://api.anthropic.com/v1', kind: 'claude', color: '#d97757' },
-  // V1.9.78: Puter (puter.js). No API key: he signs in once with Connect Puter. Last in the automatic order, and only while connected.
-  // V1.9.80: Puter through its OpenAI-compatible endpoint. The Puter auth token is the key (no sign-in window, no puter.js).
-  puter: { name: 'Puter', base: 'https://api.puter.com/puterai/openai/v1', kind: 'oai', color: '#4f7cff' }
+  anthropic: { name: 'Claude', base: 'https://api.anthropic.com/v1', kind: 'claude', color: '#d97757' }
 };
 const IDS = Object.keys(CFG);
 // Automatic profile for this installation. Mistral stays active because it is working for him.
 const ACTIVE_IDS = IDS.filter(id => CFG[id].kind !== 'media');
 // fast = quick everyday replies. deep = slow, careful turns. util = background jobs (memory, titles).
-const ORDER = { fast: ['groq', 'cohere', 'gemini', 'mistral', 'puter'], deep: ['gemini', 'cohere', 'mistral', 'groq', 'puter'], util: ['groq', 'cohere', 'gemini', 'mistral'] };
+const ORDER = { fast: ['groq', 'cohere', 'gemini', 'mistral'], deep: ['gemini', 'cohere', 'mistral', 'groq'], util: ['groq', 'cohere', 'gemini', 'mistral'] };
 
 // V1.5.6: pasted keys often carry invisible junk (zero-width chars, quotes, "Bearer ", "key=", a trailing comma). Any of it makes
 // the provider answer 401/403 even though the key itself is fine, so every key is cleaned before it is stored or sent.
@@ -35,6 +32,12 @@ function clean(k) {
 }
 function load() {
   const k = LS.get('ember_keys', {}), o = {};
+  // V1.11.0: Puter is gone. Any Puter token saved by an older build is erased here, once, so no credential for a removed service stays on the phone.
+  if (k && Object.prototype.hasOwnProperty.call(k, 'puter')) { delete k.puter; LS.set('ember_keys', k); }
+  if (LS.get('ember_puter_on', null) !== null) LS.del('ember_puter_on');
+  if (LS.get('ember_pin', null) === 'puter') LS.del('ember_pin');
+  const pm = LS.get('ember_pin_model', null); if (pm && pm.id === 'puter') LS.del('ember_pin_model');
+  const lg = LS.get('ember_last_good', null); if (lg === 'puter') LS.del('ember_last_good');
   IDS.forEach(id => { o[id] = (Array.isArray(k[id]) ? k[id] : []).filter(e => e && typeof e.key === 'string' && e.key).map(e => { e.key = clean(e.key); return e; }).filter(e => e.key); });
   return o;
 }
@@ -200,57 +203,11 @@ async function streamClaude(url, body, key, o, timeout) {
   return out;
 }
 
-// ---------- V1.9.78: Puter (puter.js) ----------
-// puter.js is loaded on demand. Nothing is requested from Puter until he taps Connect Puter and signs in.
-let puterLoad = null;
-function puterReady() {
-  if (window.puter && window.puter.ai) return Promise.resolve(window.puter);
-  if (puterLoad) return puterLoad;
-  puterLoad = new Promise((res, rej) => {
-    const fail = m => { puterLoad = null; rej(Object.assign(new Error(m), { status: 0 })); };
-    try {
-      const s = document.createElement('script'); s.src = 'https://js.puter.com/v2/';
-      s.onload = () => (window.puter && window.puter.ai ? res(window.puter) : fail('Puter loaded but its AI module is missing.'));
-      s.onerror = () => fail('Puter could not load (offline or blocked).');
-      document.head.appendChild(s); setTimeout(() => { if (!(window.puter && window.puter.ai)) fail('Puter timed out while loading.'); }, 15000);
-    } catch (e) { fail('Puter could not start: ' + e.message); }
-  });
-  return puterLoad;
-}
-async function puterConnect() { const P = await puterReady(); await P.auth.signIn(); LS.set('ember_puter_on', true); keys = load(); return true; }
-function puterOff() { LS.set('ember_puter_on', false); keys = load(); }
-async function callPuter(model, o) {
-  const P = await puterReady();
-  let signed = false; try { signed = !!(P.auth && await P.auth.isSignedIn()); } catch (e) { signed = false; }
-  if (!signed) throw Object.assign(new Error('Puter is not signed in. Open Settings > Keys and tap Connect Puter.'), { status: 0 }); // no status: counts as transient, the router moves on
-  const msgs = [{ role: 'system', content: o.system || '' }].concat(o.messages);
-  const opt = model && model != 'default' ? { model } : {};
-  const work = (async () => {
-    if (typeof o.onToken == 'function' && !o.json) {
-      opt.stream = true; const it = await P.ai.chat(msgs, opt); let t = '';
-      for await (const part of it) {
-        if (routeCancelled) throw Object.assign(new Error('Stopped by user.'), { code: 'cancelled' });
-        const d = part && typeof part.text == 'string' ? part.text : ''; if (d) { t += d; try { o.onToken(d, t); } catch (_) { /* UI callback */ } }
-      }
-      return t;
-    }
-    const r = await P.ai.chat(msgs, opt), c = r && r.message && r.message.content;
-    return typeof c == 'string' ? c : Array.isArray(c) ? c.map(x => (x && x.text) || '').join('') : (r && r.toString ? String(r) : '');
-  })();
-  let timer; const lim = new Promise((_, rej) => { timer = setTimeout(() => rej(Object.assign(new Error('Puter timed out'), { status: 408 })), 45000); });
-  try { return await Promise.race([work, lim]); } finally { clearTimeout(timer); }
-}
-
 // ---------- models ----------
 async function listModels(id, key) {
   const c = CFG[id];
   if (c.kind === 'media') { await jfetch(c.base + '/v1/user/account', { headers: { Authorization: 'Bearer ' + key } }, 15000); return []; }
   if (c.kind == 'oai') {
-    if (id == 'puter') { // V1.9.80: if the models list is unavailable the key is still tried on known Puter models
-      try { const j = await jfetch(c.base + '/models', { headers: { Authorization: 'Bearer ' + key } }, 15000); const l = (j.data || []).map(m => m.id).filter(Boolean); if (l.length) return l; }
-      catch (er) { if (er.status == 401 || er.status == 403) throw er; }
-      return PUTER_FALLBACK.slice();
-    }
     const j = await jfetch(c.base + '/models', { headers: { Authorization: 'Bearer ' + key } }, 15000);
     return (j.data || []).map(m => m.id).filter(Boolean);
   }
@@ -266,7 +223,6 @@ async function listModels(id, key) {
   return (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => String(m.name).replace(/^models\//, ''));
 }
 const ver = m => { const x = /(\d+(?:\.\d+)?)/.exec(m); return x ? parseFloat(x[1]) : 0; };
-const PUTER_FALLBACK = ['gpt-5.4-nano', 'gpt-5-nano', 'gpt-4o-mini', 'claude-haiku-5-5', 'openai/gpt-5-nano', 'openai/gpt-5-mini', 'openai/gpt-4o-mini']; // V1.9.89: Puter's docs also show provider-prefixed ids
 function rank(id, list, lane) {
   if (id === 'stability') return [];
   if (id === 'openrouter' || id === 'plugsky') return list.filter(m => !/embed|rerank|whisper|tts|audio|video|flux|stable-diffusion|imagen|veo|sora|moderation/i.test(m)).sort((a,b) => Number(/:free$|^plugsky-(micro|lite)$/.test(b)) - Number(/:free$|^plugsky-(micro|lite)$/.test(a)));
@@ -288,13 +244,6 @@ function rank(id, list, lane) {
   if (id == 'cohere') {
     const ok = list.filter(m => !/embed|rerank|vision|audio|translate|nightly/i.test(m));
     const pref = deep ? [/command-a-0/, /command-r-plus/, /command-a/, /command-r/] : [/command-r7b/, /command-r-08/, /command-a-0/, /command-r/, /command/];
-    const out = []; pref.forEach(p => ok.filter(m => p.test(m)).forEach(m => { if (!out.includes(m)) out.push(m); }));
-    ok.forEach(m => { if (!out.includes(m)) out.push(m); });
-    return out;
-  }
-  if (id == 'puter') { // V1.9.80: small and quick first (chat models only); the list Puter returns is long
-    const ok = list.filter(m => !/embed|image|tts|whisper|audio|video|moderation|dall|imagen|veo|sora|transcri|rerank|realtime/i.test(m));
-    const pref = deep ? [/gpt-5(?![\w.-]*(nano|mini))/, /claude.*sonnet/, /gemini.*pro/, /deepseek/, /gpt-5/] : [/gpt-5\.\d+-nano/, /gpt-5-nano/, /gpt-5-mini/, /gpt-4o-mini/, /haiku/, /flash/, /nano|mini/];
     const out = []; pref.forEach(p => ok.filter(m => p.test(m)).forEach(m => { if (!out.includes(m)) out.push(m); }));
     ok.forEach(m => { if (!out.includes(m)) out.push(m); });
     return out;
@@ -412,12 +361,9 @@ async function streamOAI(url, key, body, o, timeout) {
 async function call(id, key, model, o) {
   const c = CFG[id], t0 = performance.now();
   let text = '';
-  if (c.kind == 'puter') {
-    text = await callPuter(model, o);
-  } else if (c.kind == 'oai') {
+  if (c.kind == 'oai') {
     const body = { model, messages: [{ role: 'system', content: o.system }].concat(o.messages), temperature: o.temp == null ? 0.8 : o.temp, max_tokens: o.max || 400 };
     if (o.json) body.response_format = { type: 'json_object' };
-    if (id == 'puter') delete body.temperature; // V1.9.80: newer models behind Puter only accept their own default temperature
     const decl = (!o.json && o.tools && o.tools.length) ? toolDecls(o.tools, false) : [];
     if (decl.length) { body.tools = decl.map(f => ({ type: 'function', function: f })); body.tool_choice = 'auto'; }
     let j;
@@ -629,7 +575,7 @@ function factsBlock(id, model, failed) {
   else L.push('- This is a background reply: the phone picks the engine after this prompt is built, so you do not know which engine or model you are. Do not name one.');
   const noKey = IDS.filter(x => !keys[x].length).map(x => CFG[x].name);
   if (noKey.length) L.push('- NO key is saved for: ' + noKey.join(', ') + '. You cannot be any of those engines, and you must never say you are one of them.');
-  L.push('- Automatic AI route in this build: Groq → Cohere → Gemini → Mistral → Puter (last in line; it runs on his Puter auth token, saved like any other key in Settings > Keys, no sign-in window). Ember stays on the engine that last answered and only moves on when it fails. Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
+  L.push('- Automatic AI route in this build: Groq → Cohere → Gemini → Mistral. Ember stays on the engine that last answered and only moves on when it fails. Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
   if (pinnedEngine) {
     const miss = id && id != pinnedEngine, why = (failed || []).find(f => f.id == pinnedEngine);
     L.push('- Pinned engine in Settings: ' + CFG[pinnedEngine].name + (pinnedModel && pinnedModel.id == pinnedEngine ? ' (model ' + pinnedModel.model + ')' : '') + ' [' + STATE_TXT[st[pinnedEngine]] + ']' + (miss ? '. It could not answer this message' + (why ? ' (' + String(why.why || '').slice(0, 120) + ')' : '') + ', so ' + (id == 'pollinations' ? 'Free Mode' : CFG[id].name) + ' answered instead. Tell him that plainly if he asks.' : '.'));
@@ -812,5 +758,5 @@ function detail(id) {
 }
 async function pingAll() { await Promise.all(IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); }
 function status() { const o = {}; IDS.forEach(id => { o[id] = stateOf(id); }); return o; }
-window.Prov = { stats, setEnabled, record, rotation, peek, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), puterConnect, puterOff, puterOn: () => (keys.puter || []).length > 0, toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
+window.Prov = { stats, setEnabled, record, rotation, peek, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
 })();

@@ -2,6 +2,8 @@
 <html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <title>Ember</title>
+<style id="emberBoot">html:not(.ember-ready){background:#000}html:not(.ember-ready) body{visibility:hidden}</style>
+<script>(function(){var d=document,r=function(){d.documentElement.classList.add("ember-ready")};window.addEventListener("load",function(){requestAnimationFrame(function(){requestAnimationFrame(r)})});setTimeout(r,2000);})();</script>
 <meta name="theme-color" content="#000000">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="ember-icon.svg" type="image/svg+xml">
@@ -197,15 +199,9 @@
 <div id="kList"></div>
 <div class="btnrow"><button class="btn g" id="bCheckAll">Check all</button></div>
 <div class="ct" style="margin-top:14px">Add one by hand</div>
-<div class="btnrow"><select id="kProv"><option value="groq">Groq</option><option value="mistral">Mistral</option><option value="gemini">Gemini</option><option value="cohere">Cohere (Prototype)</option><option value="anthropic">Claude (paid · pin to use)</option><option value="puter">Puter (auth token)</option><option value="openrouter">OpenRouter</option><option value="plugsky">Plugsky AI</option><option value="stability">Stability AI · media only</option></select><input type="password" id="kIn" placeholder="Paste a key" autocomplete="off" spellcheck="false"><button class="btn" id="bKAdd" style="width:auto;padding:0 16px">Add</button></div>
+<div class="btnrow"><select id="kProv"><option value="groq">Groq</option><option value="mistral">Mistral</option><option value="gemini">Gemini</option><option value="cohere">Cohere (Prototype)</option><option value="anthropic">Claude (paid · pin to use)</option><option value="openrouter">OpenRouter</option><option value="plugsky">Plugsky AI</option><option value="stability">Stability AI · media only</option></select><input type="password" id="kIn" placeholder="Paste a key" autocomplete="off" spellcheck="false"><button class="btn" id="bKAdd" style="width:auto;padding:0 16px">Add</button></div>
 <p class="hint">More than one key per engine is fine. When one is rate-limited, the next one takes over, then the next engine.</p></div>
 
-<div class="card" data-tab="keys" id="puterCard"><div class="ct">Puter</div>
-<p class="hint" id="puterSt"></p>
-<label class="lb" for="puterTok">Puter auth token</label>
-<input type="password" id="puterTok" placeholder="Paste your Puter token here" autocomplete="off" autocapitalize="off" spellcheck="false">
-<div class="btnrow" style="margin-top:8px"><button class="btn" id="puterSave">Save token</button><button class="btn g" id="puterCheck">Check</button><button class="btn g danger" id="puterRm">Remove</button></div>
-<p class="hint">Token only. No email, no sign-in window, nothing opens in a browser. Ember calls Puter's own endpoint (api.puter.com) with this token.</p></div>
 
 <div class="card" data-tab="keys"><div class="ct">GitHub</div><p class="hint">GitHub now has its own tab: token, Knowledge Brain Repo, files and activity.</p><button class="btn g" data-gh-open="home">Open GitHub settings</button></div>
 
@@ -538,7 +534,7 @@
 <script src="ember_deliverables.js"></script><script src="ember_command_center.js"></script>
 <script src="app.js"></script><script src="ember_native.js"></script><script src="ai.js"></script><script src="ember_music_ui.js"></script><script src="ember_getmusic.js"></script><script src="ember_react_ui.js"></script><script src="ember_think_inline.js"></script><script src="ember_device.js"></script>
 <script src="ember_docs_lib.js"></script>
-<script src="ember_graph.js"></script><script src="ember_github.js"></script><script src="ember_github_ui.js"></script><script src="ember_repo_runner.js"></script><script src="ember_puter.js"></script><script src="ember_learn.js"></script>
+<script src="ember_graph.js"></script><script src="ember_github.js"></script><script src="ember_github_ui.js"></script><script src="ember_repo_runner.js"></script><script src="ember_learn.js"></script>
 <script src="ember_find.js"></script><script src="ember_tasks.js"></script><script src="ember_keys.js"></script>
 <script src="ember_browser.js"></script>
 <script src="ember_term.js"></script>
@@ -650,5 +646,5 @@
 })();
 </script>
 <script src="ember_v79.js"></script><script src="ember_v80.js"></script><script src="ember_v83.js"></script><script src="ember_acc.js"></script><script src="ember_v89.js"></script>
-<script src="ember_features.js"></script><script src="ember_workspace.js"></script><script src="ember_action_menu.js"></script><script src="ember_v96_ui.js?v=1.10.2"></script><script src="ember_prov_next.js?v=1.10.3"></script><script src="ember_icons.js?v=1.10.11"></script><script src="ember_hub.js?v=1.10.11"></script><script src="ember_gitflow.js?v=1.9.102"></script><script src="ember_v104.js?v=1.10.4"></script><script src="ember_mediaplus.js?v=1.10.5"></script><script src="ember_brainpush.js?v=1.10.5"></script><script src="ember_cc_widget.js?v=1.10.5"></script><script src="ember_v108.js?v=1.10.9"></script><script src="ember_v110.js?v=1.10.10"></script><script src="ember_menu.js?v=1.10.11"></script>
+<script src="ember_features.js"></script><script src="ember_workspace.js"></script><script src="ember_action_menu.js"></script><script src="ember_v96_ui.js?v=1.10.2"></script><script src="ember_prov_next.js?v=1.10.3"></script><script src="ember_icons.js?v=1.10.11"></script><script src="ember_hub.js?v=1.10.11"></script><script src="ember_gitflow.js?v=1.9.102"></script><script src="ember_v104.js?v=1.10.4"></script><script src="ember_mediaplus.js?v=1.10.5"></script><script src="ember_brainpush.js?v=1.10.5"></script><script src="ember_cc_widget.js?v=1.10.5"></script><script src="ember_v108.js?v=1.10.9"></script><script src="ember_v110.js?v=1.10.10"></script><script src="ember_menu.js?v=1.10.11"></script><script src="ember_back.js?v=1.10.11"></script>
 </body></html>

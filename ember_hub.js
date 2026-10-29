@@ -9,7 +9,7 @@
 
   const SECTIONS = [
     { id: 'general', ico: 'sliders', title: 'General, Persona & Memory', desc: 'Free Mode, your name, voice and pacing, memory, look, backup' },
-    { id: 'keys', ico: 'key', title: 'Engine Keys & Providers', desc: 'Which engine answers, API keys, Puter token, engine names' },
+    { id: 'keys', ico: 'key', title: 'Engine Keys & Providers', desc: 'Which engine answers, API keys, engine names' },
     { id: 'github', ico: 'branch', title: 'GitHub', desc: 'Knowledge Brain Repo, token, live files and activity' },
     { id: 'features', ico: 'spark', title: 'Features', desc: 'AI routing, media artifacts, downloads and Repo Runner' },
     { id: 'advanced', ico: 'gear', title: 'Advanced', desc: 'Optional GitHub Actions Runner for builds and tests' },

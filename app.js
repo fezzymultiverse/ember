@@ -571,12 +571,12 @@ async function send() {
     if (MP) { mk = MP.take(); if (!mk && MP.bridgeOn()) { const k = MP.detect(t); if (k) mk = { kind: k, provider: 'stability' }; else if (plusImage) mk = { kind: 'image', provider: 'stability' }; } }
     if (mk && await mediaRoute(t, mk, plusImage)) return;
   }
-  const mediaKindOnly = /\b(video|animation|audio|music|sound|speech|spoken)\b/i.test(t);
-  if (!plusImage && window.EmberMedia?.cfg().enabled && /\b(create|generate|make|draw|render|produce)\b/i.test(t) && /\b(image|picture|artwork|illustration|video|animation|audio|music|sound|speech)\b/i.test(t) && (mediaKindOnly || !(window.EmberEngines && window.EmberEngines.intent && window.EmberEngines.intent(t) == 'image'))) {
-    const kind=/\b(video|animation)\b/i.test(t)?'video':/\b(speech|spoken)\b/i.test(t)?'speech':/\b(audio|music|sound)\b/i.test(t)?'audio':'image';
-    const provider=/stability/i.test(t)?'stability':/puter/i.test(t)?'puter':(kind==='video'||kind==='speech'?'puter':'stability');
+  const mediaKindOnly = /\b(video|animation|audio|music|sound)\b/i.test(t);
+  if (!plusImage && window.EmberMedia?.cfg().enabled && /\b(create|generate|make|draw|render|produce)\b/i.test(t) && /\b(image|picture|artwork|illustration|video|animation|audio|music|sound)\b/i.test(t) && (mediaKindOnly || !(window.EmberEngines && window.EmberEngines.intent && window.EmberEngines.intent(t) == 'image'))) {
+    const kind=/\b(video|animation)\b/i.test(t)?'video':/\b(audio|music|sound)\b/i.test(t)?'audio':'image';
+    const provider='stability';
     await window.EmberAgentAddon.dispatch('media_prepare',{provider,kind,prompt:t});
-    conv.msgs.push({r:'a',t:provider==='stability'&&kind==='video'?'Stability hosted video is retired. Choose Puter video in AI Features if you want to use that platform.':'I prepared your '+kind+' request in AI Features. Review the platform and press Generate to authorize it; nothing has been submitted yet.',ts:Date.now()}); await persist();renderLog();return;
+    conv.msgs.push({r:'a',t:'I prepared your '+kind+' request in AI Features. Review the platform and press Generate to authorize it; nothing has been submitted yet.',ts:Date.now()}); await persist();renderLog();return;
   }
   if (plusImage || (window.EmberEngines && window.EmberEngines.intent && window.EmberEngines.intent(t) == 'image')) { await imageRoute(t); return; } // V1.9.84: + > Create image. V1.9.87: plain-English picture requests route here too
   if (await directNewPipe(t)) return;
@@ -588,7 +588,7 @@ async function mediaRoute(t, mk, plusImage) {
   const MP = window.EmberMediaPlus, TLn = window.EmberTimeline;
   busy = true; lastErr = null; $('bSend').disabled = true; typing(true);
   const turnId = conv.id + ':' + conv.msgs.length; curTurn = turnId;
-  try { if (TLn && TLn.step) TLn.step('🎨', 'Making ' + mk.kind + ' with ' + (mk.kind === 'video' || mk.kind === 'speech' ? 'Puter' : 'Stability AI'), 'im-media'); } catch (_) { /* timeline optional */ }
+  try { if (TLn && TLn.step) TLn.step('🎨', 'Making ' + mk.kind + ' with ' + 'Stability AI', 'im-media'); } catch (_) { /* timeline optional */ }
   let r; try { r = await MP.make(mk.kind, mk.provider, t); } catch (e) { r = { ok: false, kind: mk.kind, error: (e && e.message) || 'The media job failed.' }; }
   if (curTurn !== turnId) return true;
   if (!r.ok && mk.kind === 'image' && r.noKey && plusImage) { busy = false; $('bSend').disabled = false; typing(false); curTurn = null; return false; } // no Stability key: the picture router (Pollinations, Forge) answers instead
@@ -952,7 +952,7 @@ $('kList').addEventListener('click', e => { if (e.target.closest('[data-key-back
 window.emberKeysReset = () => { if (keyDetailId !== null) { keyDetailId = null; renderKeys(); } };
 
 // ---------- V1.6.1: Get Key buttons ----------
-const KEY_LINKS = { openrouter:'https://openrouter.ai/settings/keys', plugsky:'https://plugsky.com/dashboard', stability:'https://platform.stability.ai/dashboard/api-keys', groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', anthropic: 'https://console.anthropic.com/settings/keys', puter: 'https://puter.com/dashboard#account' };
+const KEY_LINKS = { openrouter:'https://openrouter.ai/settings/keys', plugsky:'https://plugsky.com/dashboard', stability:'https://platform.stability.ai/dashboard/api-keys', groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', anthropic: 'https://console.anthropic.com/settings/keys' };
 const SCRAPE_LINKS = { firecrawl: 'https://www.firecrawl.dev/app/api-keys', browserless: 'https://www.browserless.io/', scraperapi: 'https://www.scraperapi.com/', scraperbee: 'https://app.scrapingbee.com/account/manage', zenrows: 'https://app.zenrows.com/builder', tavily: 'https://app.tavily.com/home', serpapi: 'https://serpapi.com/manage-api-key', brightdata: 'https://brightdata.com/cp', sting: '', octoparse: 'https://www.octoparse.com/' };
 function paintGetKeyRow(el, links) { if (!el) return; el.innerHTML = Object.keys(links).filter(k => links[k]).map(k => '<button class="btn g" data-link="' + esc(links[k]) + '" style="width:auto;padding:7px 12px;font-size:12px">' + (Prov.CFG[k] ? Prov.CFG[k].name : (window.EmberScraper && window.EmberScraper.LABEL[k]) || k) + ' ↗</button>').join(''); }
 document.addEventListener('click', e => { const b = e.target.closest('[data-link]'); if (b) window.open(b.dataset.link, '_blank', 'noopener'); });

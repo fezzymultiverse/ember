@@ -57,6 +57,8 @@
     requestAnimationFrame(() => { renderPending = false; if (!destroyed && !$('eccTerminalBody').hidden) renderLines(); });
   }
   const TAGS = ['TOOL', 'ROUTE', 'CREATE', 'WEB', 'GIT', 'DL', 'THINK', 'TURN'];
+  // V1.10.11: the drawer may only auto-open once the person has touched or typed something. Load-time log lines used to pop it open and shove the layout.
+  let armed = false; const arm = () => { armed = true; }; document.addEventListener('pointerdown', arm, { once: true, capture: true }); document.addEventListener('keydown', arm, { once: true, capture: true });
   function write(data) {
     if (destroyed || !data || typeof data !== 'object') return;
     const kind = ['stdout','stderr','status','merged'].includes(data.stream) ? data.stream : 'status';
@@ -68,7 +70,7 @@
     if (state.lines.length > MAX_LINES) state.lines.splice(0, state.lines.length - MAX_LINES);
     $('eccTerminalCount').textContent = state.lines.length + ' lines';
     const tk = $('eccTerminalTicker'); if (tk) tk.textContent = (tag ? tag + ' · ' : '') + text.split(/\r?\n|\r/)[0].slice(0, 70);
-    if (tag && tag !== 'TURN' && $('eccTerminalAuto') && $('eccTerminalAuto').checked && $('eccTerminalBody').hidden) drawer(true);
+    if (armed && tag && tag !== 'TURN' && $('eccTerminalAuto') && $('eccTerminalAuto').checked && $('eccTerminalBody').hidden) drawer(true);
     scheduleLines();
   }
   function activity(key, active) {

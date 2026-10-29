@@ -11,7 +11,7 @@ const KEY = 'ember_plus';
 const TOGGLES = [
   { id: 'image', icon: '🎨', label: 'Create image', hint: 'Next message becomes a picture: Pollinations, Forge, then Stability if you saved a key', chip: 'Create image', once: true },
   { id: 'audio_gen', icon: '🎵', label: 'Create audio', hint: 'Next message becomes music or sound, made by Stability AI', chip: 'Create audio', once: true },
-  { id: 'video_gen', icon: '🎬', label: 'Create video', hint: 'Next message becomes a video, made by Puter (Stability video is retired)', chip: 'Create video', once: true },
+  { id: 'video_gen', icon: '🎬', label: 'Create video', hint: 'Next message becomes a video: Stability images + music, composed on this phone', chip: 'Create video', once: true },
   { id: 'stab', icon: '⚡', label: 'Stability bridge', hint: 'ON: just ask in chat for an image, audio or video and Ember makes it with Stability / Puter. OFF: only the Create buttons do', chip: 'Stability bridge' },
   { id: 'pdf', icon: '📄', label: 'Create PDF', hint: 'Next message becomes a full PDF artifact (Save PDF builds the file)', chip: 'Create PDF', once: true },
   { id: 'device', icon: '📱', label: 'Device Access', hint: 'Let Ember read local files & Termux', chip: 'Device Access' },
@@ -27,7 +27,7 @@ const ONCE = [
 const LINES = {
   image: '',
   audio_gen: '', video_gen: '',
-  stab: 'STABILITY BRIDGE is ON: when he asks for an image, music/sound/audio, a video or speech, call media_generate (kind image|audio|video|speech, prompt). It really makes the file with Stability AI (image, audio) or Puter (video, speech) and saves it; tell him where to find it (Settings > Command Centre > Media). If it fails, say the exact error. Do not claim anything was made unless the tool said ok.',
+  stab: 'STABILITY BRIDGE is ON: when he asks for an image, music/sound/audio, or a video, call media_generate (kind image|audio|video, prompt). It really makes the file with Stability AI (image, audio; video is several Stability images plus audio composed on the phone) and saves it; tell him where to find it (Settings > Command Centre > Media). If it fails, say the exact error. Do not claim anything was made unless the tool said ok.',
   pdf: 'PDF MODE is ON for this message: write the whole answer as ONE complete document inside <artifact type="pdf" title="Short-Title.pdf"> ... </artifact> in Markdown: a title, a short summary, numbered sections with real detail, tables where they help, and a closing list of next steps. No filler, no truncation. Before the artifact write one short sentence only.',
   device: 'DEVICE ACCESS is ON for this chat: he allowed you to use his saved Documents tools (list, search, read) and the Termux panel when it helps. Use them instead of saying you cannot reach his files. You still cannot see anything outside those tools.',
   web: 'WEB SEARCH is FORCED ON for this chat: before answering anything that could be current or factual, call web_search (or search_and_read) first, then answer from the results and name the source. If the search fails, say so; do not answer from memory as if it had worked.',
