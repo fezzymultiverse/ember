@@ -1434,7 +1434,12 @@ $('bWipe').onclick = async () => {
   await restoreSession();
   // If no session was restored, render the empty state
   if (!conv) renderLog();
-  try { if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {}); } catch (e) {}
+  try {
+    const host = location.hostname;
+    const local = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0';
+    if ('serviceWorker' in navigator && local) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
+    else if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
+  } catch (e) {}
   window.__ember = { ready: true, parseCalls, stripTags };
 })();
 window.addEventListener('error', e => { try { console.error('Ember error:', e.message); } catch (x) {} });
