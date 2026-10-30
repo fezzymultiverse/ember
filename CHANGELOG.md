@@ -30,8 +30,3 @@ See docs/history/INDEX.md. Per-version changelogs are historical source evidence
 ## 1.10.18 Part 5 - Settings re-slotted
 - Device Tools is its own Settings row. General row is "Memory and Settings" (Voice lives there; the panel item is renamed to match). yt-dlp stays in Termux & Hacking; System integrations stay in Music.
 - Termux Mode and Ember Termux are one block: mode switch on top, terminal directly under it.
-
-## 1.10.18 Part 6 - one Settings (black)
-- Termux button and the chat "Open Keys" chip no longer open the old bare Settings sheet; they open the black Settings (Termux & Hacking row, Engine Keys row).
-- app.js: new openBlackSettings() routes to EmberCockpit.open(), falling back to the original sheet only if the cockpit is not loaded.
-- Assets re-versioned (app.js?v=1.10.18-p6) and service-worker cache renamed ember-v1.10.18-panel-p6.
