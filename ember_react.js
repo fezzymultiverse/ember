@@ -129,7 +129,7 @@ async function react(a) {
   if (docMode && !tools.some(t => t.name === 'search_in_document')) return { error: 'Document tools are off or there are no documents yet. Add a text file in the Documents tab, or switch Document Reading on in Settings.' };
   const max = Math.max(1, Math.min(MAX_HARD, parseInt(a.max_steps, 10) || MAX_DEFAULT)), cfg = cfgGet();
   R = { id: Date.now().toString(36), goal, mode: docMode ? 'document' : 'general', status: 'running', max, approve: cfg.approve || a.review === true, observe: cfg.observe, entries: [], waiting: null, stopped: false, startedAt: Date.now(), graph: [] };
-  const t0 = Date.now(), msgs = [{ role: 'user', content: 'Begin. GOAL: ' + goal }], seenOk = [], seenBad = {}, toolFails = {}, ledger = [];
+  const t0 = Date.now(), msgs = [{ role: 'user', content: 'Begin. GOAL: ' + goal }], seenOk = [], seenBad = {}, toolFails = {}, ledger = [], vbucket = [];
   const ctx = { n: 0, raw: '', p: null, en: null, formatErrs: 0, failStreak: 0, forced: false, noted: false };
   let answer = '', why = '';
   steerNote = '';
@@ -223,7 +223,7 @@ const sysNow = () => system0 + (ledger.length ? '\n\nEVIDENCE SO FAR (kept for y
         let res, bad = '';
         try { res = await withTimeout(Promise.resolve(H.run(en.tool, en.args)), STEP_MS, 'The tool'); bad = failedOf(res); } catch (e) { bad = str(e && e.message || 'The tool crashed.', 300); }
         if (bad) { en.status = 'failed'; ev = 'failed'; obs = 'Error: ' + bad; seenBad[key] = clipS(bad, 160); toolFails[en.tool] = (toolFails[en.tool] || 0) + 1; }
-        else { en.status = 'done'; toolFails[en.tool] = 0; seenOk.push(key); if (seenOk.length > 12) seenOk.shift(); obs = clipS(asText(res), OBS_CLIP); addLedger(en.tool, en.args, res); }
+        else { en.status = 'done'; toolFails[en.tool] = 0; seenOk.push(key); if (seenOk.length > 12) seenOk.shift(); if (res && res._verbatim && window.EmberVerbatim) res = window.EmberVerbatim.take(res, goal, vbucket); /* V1.10.18-p12: full text is printed by the app, not clipped into the observation */ obs = clipS(asText(res), OBS_CLIP); addLedger(en.tool, en.args, res); }
       }
       ctx.failStreak = ev === 'ok' ? 0 : ctx.failStreak + 1;
       en.observation = obs;
@@ -254,6 +254,7 @@ const sysNow = () => system0 + (ledger.length ? '\n\nEVIDENCE SO FAR (kept for y
     ok: !!answer, status: R.status, goal, steps: steps.length,
     trace: steps.map(x => ({ n: x.n, thought: clipS(x.thought, 160), tool: x.tool || undefined, result: x.status, edited: x.edited || x.obsEdited || undefined }))
   };
+  if (vbucket.length) out._verbatim = vbucket.map(x => Object.assign({}, x, { when: 'always' }));
   if (answer) out.answer = answer;
   else { out.note = R.stopped ? 'He stopped the run before it reached an answer.' : 'It did not reach an answer (' + (why || 'no reason recorded') + ').'; const lastObs = [...steps].reverse().find(x => x.status === 'done'); if (lastObs) out.last_result = clipS(lastObs.observation, 600); }
   return out;

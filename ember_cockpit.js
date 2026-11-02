@@ -16,15 +16,15 @@
     const root = D.createElement('div'); root.id = 'cockpitSettings';
     const sections = {};
     const groups = [
-      ['engine','Engine & Media Control','Pictures, PDFs, engine selection, key detection and notepad'],
-      ['providers','Providers','Engine keys, live model catalogs, rotation and fallback'],
-      ['features','Features','Free Mode and optional capabilities'],
-      ['general','Memory and Settings','Personal details, persona, memory, appearance and Voice'],
-      ['device','Device Tools','Device information and local diagnostics'],
-      ['scraping','Web Scraping','Paste keys, reader, provider health and tests in one panel'],
-      ['hacking','Hacking','Termux and YouTube / yt-dlp'],
-      ['music','Music & Tools','Player, song identification, documents, agent APIs and system integration'],
-      ['permissions','Permissions','Microphone, notifications, storage and background permissions']
+      ['features','Free Mode','Chat with no key needed, and the optional AI capabilities'],
+      ['engine','Engine keys & media engines','Which engine answers, API keys, Puter token, picture and PDF engines, vision'],
+      ['providers','Routing & providers','Provider routing, live model catalogs, key rotation and fallback, media artifacts'],
+      ['general','Memory & persona','Your name, persona, tone, read aloud and voice, memory, look, backup'],
+      ['device','Device tools','Wi-Fi, storage and RAM, battery, local diagnostics and document reading'],
+      ['scraping','Web scraping & search','Scraper keys, the free reader, web search, health checks and tests'],
+      ['hacking','Termux & terminal','Termux mode, pen-test persona and the built-in terminal'],
+      ['music','Music & downloads','Player, song identification, music control, YouTube and yt-dlp downloads'],
+      ['permissions','Permissions & background','Notifications, mic, battery, keep-alive, pings and background replies']
     ];
     root.innerHTML = '<div class="cockpit-intro"><span class="cockpit-kicker">V1.10.15 / COCKPIT</span><p>One screen. Every control.</p><button type="button" class="btn g" id="cockpitCommand">Open Command Centre →</button></div>';
     groups.forEach(([id,title,desc]) => {
@@ -33,18 +33,16 @@
       sections[id] = s; root.append(s);
     });
     sb.prepend(root);
-    // 1.10.18 Part 3: Settings is ONE right-hand panel. Nine rows; tap a row to slot in its sub menu.
+    // 1.10.18 Part 7: Settings is ONE panel. Eight rows, one job each; tap a row to open its sub menu.
     const ROWS = [
-      {id:'general', title:'Memory and Settings', desc:'Free Mode, your name, voice and pacing, system prompt, memory, look, usage, backup', sections:['general']},
-      {id:'keys', title:'Engine Keys & Providers', desc:'Which engine answers, API keys, Puter token, engine names', sections:['engine']},
-      {id:'github', title:'GitHub \u00b7 Brain & Repo Runner', desc:'One token \u00b7 live Brain \u00b7 repo search \u00b7 Ember output \u00b7 run status', workspace:'connect'},
-      {id:'features', title:'Features \u00b7 Repositories & AI', desc:'Shared repository workspace, routing, media and downloads', sections:['features','providers']},
-      {id:'advanced', title:'Advanced', desc:'Optional GitHub Actions Runner for builds and tests', workspace:'build'},
-      {id:'scraping', title:'Web Scraping', desc:'Scraper keys, the free reader, health checks and tests', sections:['scraping']},
-      {id:'hacking', title:'Termux & Hacking', desc:'Termux mode, pen-test persona, the built-in terminal and YouTube / yt-dlp', sections:['hacking']},
-      {id:'device', title:'Device Tools', desc:'Wi-Fi, storage and RAM, uptime, battery and local diagnostics', sections:['device']},
-      {id:'music', title:'Music', desc:'Player, song identification, music control, documents, system integrations', sections:['music']},
-      {id:'permissions', title:'Permissions, Voice & Background', desc:'Notifications, mic, battery, keep-alive, read aloud', sections:['permissions']}
+      {id:'general', title:'Memory & persona', desc:'Your name, persona, tone, read aloud and voice, memory, look, backup', sections:['general']},
+      {id:'keys', title:'Engines, keys & routing', desc:'Free Mode, which engine answers, API keys, provider routing and media engines', sections:['features','engine','providers']},
+      {id:'github', title:'GitHub & Command Centre', desc:'Token, Brain, repo search, run and push, routing and status', workspace:'connect'},
+      {id:'scraping', title:'Web scraping & search', desc:'Scraper keys, the free reader, web search, health checks and tests', sections:['scraping']},
+      {id:'hacking', title:'Termux & terminal', desc:'Termux mode, pen-test persona and the built-in terminal', sections:['hacking']},
+      {id:'device', title:'Device tools', desc:'Wi-Fi, storage and RAM, battery, diagnostics and document reading', sections:['device']},
+      {id:'music', title:'Music & downloads', desc:'Player, song identification, music control, YouTube and yt-dlp downloads', sections:['music']},
+      {id:'permissions', title:'Permissions & background', desc:'Notifications, mic, battery, keep-alive, pings and background replies', sections:['permissions']}
     ];
     const menu = D.createElement('div'); menu.id = 'cockpitMenu';
     menu.innerHTML = ROWS.map(r => '<button type="button" class="cmenu-row" data-crow="' + r.id + '"><span class="cmenu-t"><b>' + esc(r.title) + '</b><small>' + esc(r.desc) + '</small></span><span class="cmenu-c" aria-hidden="true">\u2304</span></button>').join('');
@@ -56,9 +54,10 @@
       let dest = tab;
       if (tab === 'keys') dest = 'engine';
       else if (tab === 'features') dest = 'providers';
-      else if (/^Free Mode/i.test(t)) { dest = 'features'; c.querySelector('.ct').textContent = 'Free Mode · Features'; }
+      else if (/^Free Mode/i.test(t)) { dest = 'features'; }
       else if (c.id === 'devToolsCard') dest = 'device';
-      else if (/^Voice$/i.test(t)) dest = 'general';
+      else if (/^Voice$/i.test(t)) { dest = 'general'; c.querySelector('.ct').textContent = 'Read aloud & voice engine'; }
+      else if (/^Voice & pacing/i.test(t)) { c.querySelector('.ct').textContent = 'Tone & pacing'; }
       else if (/^System integrations/i.test(t)) dest = 'music';
       c.classList.remove('collapsed','mnu-open'); c.removeAttribute('hidden'); (sections[dest] || sections.general).append(c);
     });
@@ -123,9 +122,9 @@
       const start = Array.from(content.children).find(x => x.tagName === 'H3' && /playlist downloads/i.test(x.textContent));
       if (start) {
         const dl = D.createElement('div'); dl.id = 'cockpitYouTube'; dl.className = 'card';
-        dl.innerHTML = '<div class="ct">YouTube / yt-dlp</div>';
+        dl.innerHTML = '<div class="ct">YouTube & yt-dlp downloads</div>';
         let n = start; while (n) { const next = n.nextSibling; dl.append(n); n = next; }
-        sections.hacking.append(dl);
+        sections.music.append(dl);
       }
       const yt = $('swYoutube')?.closest('.cr');
       if (yt && $('cockpitYouTube')) { const hint = yt.nextElementSibling; $('cockpitYouTube').append(yt); if (hint?.classList.contains('hint')) $('cockpitYouTube').append(hint); }
@@ -134,6 +133,27 @@
       guide.textContent = 'All bundled providers remain available in Engine & Media Control. Load a pinned engine’s live models to see your account’s catalog; OpenRouter :free models are labelled free. Multiple keys rotate, with key/model cooldowns and provider fallback unchanged. Claude is paid and pin-only; Stability is media-only. Free tiers and availability are determined by each provider, not guaranteed by Ember.';
       routing.querySelector(':scope > .ct').after(guide);
     }
+    // 1.10.18 Part 7: every control lives in the row that matches its job. Nodes are moved, never cloned.
+    (() => {
+      const lift = id => { const head = $(id)?.closest('.cr'); if (!head) return []; const out = [head]; let n = head.nextElementSibling; while (n && !n.classList.contains('cr')) { out.push(n); n = n.nextElementSibling; } return out; };
+      const card = (host, title, nodes) => { const nodesOk = nodes.filter(Boolean); if (!nodesOk.length) return null; const c = D.createElement('div'); c.className = 'card'; c.innerHTML = '<div class="ct">' + title + '</div>'; nodesOk.forEach(n => c.append(n)); host.append(c); return c; };
+      const emptied = id => $(id)?.closest('.card, .cockpit-control-group');
+      const agentHost = emptied('swAgent');
+      // Web search (Tavily) is search, not music: it joins Web scraping & search.
+      const web = lift('swAgent'); if (web.length && $('cockpitScrapingPanel')) { const g = D.createElement('div'); g.className = 'cockpit-control-group'; g.innerHTML = '<div class="cockpit-subtitle" role="heading" aria-level="3">Web search</div>'; web.forEach(n => g.append(n)); $('cockpitScrapingPanel').append(g); }
+      // Vision reads images through the media engines: Engines, keys & routing.
+      card(sections.engine, 'Vision', lift('swVision'));
+      // Document reading is a device/vault tool, not a music setting.
+      card(sections.device, 'Document reading', lift('swDocs'));
+      // Background pings and background replies are permissions-side behaviour.
+      card(sections.permissions, 'Background & pings', lift('swPing').concat(lift('swBgReply')));
+      // The Agent card is now empty except its status line: park the status with YouTube, drop the shell.
+      if (agentHost && !agentHost.querySelector('.cr')) { const st = $('agentStatus'); if (st && $('cockpitYouTube')) $('cockpitYouTube').append(st); agentHost.remove(); }
+      // Titles that described the old mixed bundles.
+      const rename = (id, text) => { const h = $(id)?.closest('.card, .cockpit-control-group')?.querySelector(':scope > .cockpit-subtitle, :scope > .ct'); if (h) h.textContent = text; };
+      rename('swMusic', 'Music control');
+      rename('swLyr', 'Lyrics & music widget');
+    })();
     // Scraping health/test are adjacent controls, not another nested menu.
     sections.scraping.querySelector('.wtabs')?.remove();
     sections.scraping.querySelectorAll('.wpane').forEach(p => { p.classList.remove('hidden'); p.classList.add('cockpit-scrape-pane'); });
@@ -198,6 +218,15 @@
     W.EmberHub = {open:()=>openSettings(),close:closeSettings,isOpen:()=>settings.classList.contains('show'),section:id=>openSettings(id),openWorkspace:()=>W.EmberCommandCenter.open()};
     W.EmberMenu = {sync:()=>{},reveal:el=>openSettings(null,el),openCard:el=>openSettings(null,el),back:closeSettings};
     $('cockpitCommand').onclick = () => { closeSettings(); W.EmberWorkspace.open('connect'); };
+    // 1.10.18 Part 9: the old bare sheet can never be the Settings on screen. Whatever opens #settings, if the black
+    // cockpit state is missing it is routed into the black Settings; if the sheet closes behind our back, the lock is released.
+    let guarding = false;
+    new MutationObserver(() => {
+      if (guarding) return;
+      const shown = settings.classList.contains('show'), black = D.body.classList.contains('cockpit-settings-open');
+      if (shown && !black) { guarding = true; try { openSettings(); } finally { guarding = false; } }
+      else if (!shown && black) { D.body.classList.remove('cockpit-settings-open'); $('app').inert = false; }
+    }).observe(settings, {attributes:true, attributeFilter:['class']});
     // All old settings shortcuts resolve to this single flat scroll, not hidden cards.
     D.addEventListener('click', e => {
       const b = e.target.closest('#bSetTop,#bGoKeys,#bKeys,#bKeysMenu,#bEngineKeys,#bAiFeatures,#efOpenSettings');
@@ -229,7 +258,7 @@
       bar.append(badge);
       function countKeys() {
         let active = 0, saved = 0;
-        W.Prov.IDS.forEach(id => W.Prov.entries(id).forEach(e => { saved++; if (e.st?.ok && !e.st.limited && !W.Prov.isCool(e.key)) active++; }));
+        (W.Prov.ACTIVE_IDS || W.Prov.IDS).forEach(id => W.Prov.entries(id).forEach(e => { saved++; if (e.st?.ok && !e.st.limited && !W.Prov.isCool(e.key)) active++; }));
         const text = active + ' active API key' + (active === 1 ? '' : 's');
         if (badge.textContent !== text) badge.textContent = text;
         badge.title = active + ' verified usable · ' + saved + ' saved. Unchecked, rejected, rate-limited and cooling keys are not counted.';
@@ -418,7 +447,7 @@
     function paint() {
       const P = W.Prov; if (!P) return;
       let active = 0, saved = 0, free = 0, cached = 0, rest = 0; const rows = [];
-      P.IDS.forEach(id => {
+      P.ACTIVE_IDS.forEach(id => {
         const c = P.CFG[id], list = P.entries(id) || [], live = list.filter(e => e.st?.ok && !e.st.limited && !P.isCool(e.key)).length, cool = list.filter(e => P.isCool(e.key)).length;
         const d = P.detail(id) || {}, models = (P.cachedModels && P.cachedModels(id)) || [], fm = models.filter(m => /:free$|^plugsky-(micro|lite)$/.test(m)).length;
         active += live; saved += list.length; rest += cool; free += fm; cached += models.length ? 1 : 0;
@@ -430,7 +459,7 @@
       $('eccxTable').innerHTML = '<div class="eccx-row eccx-hd" role="row"><span role="columnheader">Provider</span><span role="columnheader">Type</span><span role="columnheader">Free models</span><span role="columnheader">Key rotation</span><span role="columnheader">Status</span></div><div class="eccx-row" role="row"><b role="cell">Free Mode</b><span role="cell">Keyless</span><span role="cell">no key needed</span><span role="cell">—</span><span role="cell" class="eccx-st" data-st="working">always on</span></div>' + rows.join('');
       const q = W.EmberCockpitQueue ? W.EmberCockpitQueue.snapshot().length : 0, tok = (() => { try { return G.on(); } catch (_) { return false; } })();
       const tile = (k, v, sub) => '<div class="eccx-tile"><small>' + k + '</small><strong>' + esc(v) + '</strong><span>' + esc(sub) + '</span></div>';
-      $('eccxTiles').innerHTML = tile('Providers', P.ACTIVE_IDS.length + ' chat · ' + (P.IDS.length - P.ACTIVE_IDS.length) + ' media', 'plus keyless Free Mode')
+      $('eccxTiles').innerHTML = tile('Providers', P.ACTIVE_IDS.length + ' AI engines', 'Cohere only · keyless tools are separate')
         + tile('Active keys', active + ' / ' + saved, rest ? rest + ' resting after a rate limit' : 'rotate automatically when one rests')
         + tile('Free models', cached ? String(free) : '—', cached ? 'from loaded catalogs' : 'load a catalog to count them')
         + tile('GitHub', tok ? 'Token saved' : 'No token', q + ' repo' + (q === 1 ? '' : 's') + ' in the sync queue');

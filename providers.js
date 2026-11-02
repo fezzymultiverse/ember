@@ -1,4 +1,5 @@
-// Ember provider router - Groq, Mistral, Gemini, Cohere and Claude behind one door.
+// Ember provider router - V1.10.19: COHERE ONLY, 24/7. Every chat lane (fast, deep, util) goes to Cohere and nothing else.
+// The other engines stay defined (their keys are never deleted) but can no longer be routed to or pinned. No Free Mode (Pollinations) chat fallback.
 // Pulls keys out of pasted notes, health-checks every key, picks models from each provider's live model list (no hard-coded names that go stale),
 // and fails over key to key and engine to engine so the chat keeps going when one is rate-limited.
 'use strict';
@@ -17,9 +18,10 @@ const CFG = {
 };
 const IDS = Object.keys(CFG);
 // Automatic profile for this installation. Mistral stays active because it is working for him.
-const ACTIVE_IDS = IDS.filter(id => CFG[id].kind !== 'media');
+const LOCK = 'cohere'; // V1.10.19: the only chat engine
+const ACTIVE_IDS = [LOCK];
 // fast = quick everyday replies. deep = slow, careful turns. util = background jobs (memory, titles).
-const ORDER = { fast: ['groq', 'cohere', 'gemini', 'mistral'], deep: ['gemini', 'cohere', 'mistral', 'groq'], util: ['groq', 'cohere', 'gemini', 'mistral'] };
+const ORDER = { fast: [LOCK], deep: [LOCK], util: [LOCK] };
 
 // V1.5.6: pasted keys often carry invisible junk (zero-width chars, quotes, "Bearer ", "key=", a trailing comma). Any of it makes
 // the provider answer 401/403 even though the key itself is fine, so every key is cleaned before it is stored or sent.
@@ -44,21 +46,18 @@ function load() {
 let keys = load();
 let freePref = null; // null = auto (Free Mode on only while the user has no keys); true/false = the user's own choice
 // V1.6.1: engine pin. null/'auto' = router decides (Groq first in fast/util since it's near-instant). Any CFG id = try that engine's keys first, every lane.
-let pinnedEngine = LS.get('ember_pin', null); if (pinnedEngine && !CFG[pinnedEngine]) pinnedEngine = null;
-function setPinned(id) { pinnedEngine = (id && CFG[id] && CFG[id].kind !== 'media') ? id : null; LS.set('ember_pin', pinnedEngine); }
+let pinnedEngine = LOCK; LS.set('ember_pin', LOCK); // V1.10.19: always pinned to Cohere
+function setPinned(id) { pinnedEngine = LOCK; LS.set('ember_pin', LOCK); } // any request to pin another engine keeps Cohere
 // V1.6.8: model pin. {id, model} or null. Strict: when set, that engine only ever uses that exact model (no silent swap to another one).
 let pinnedModel = LS.get('ember_pin_model', null);
-if (pinnedModel && !(pinnedModel.id && pinnedModel.model && CFG[pinnedModel.id])) pinnedModel = null;
-function setPinnedModel(id, model) { pinnedModel = (id && CFG[id] && model) ? { id, model: String(model) } : null; LS.set('ember_pin_model', pinnedModel); }
+if (pinnedModel && !(pinnedModel.id === LOCK && pinnedModel.model)) pinnedModel = null;
+function setPinnedModel(id, model) { pinnedModel = (id === LOCK && model) ? { id, model: String(model) } : null; LS.set('ember_pin_model', pinnedModel); }
 // V1.9.15: strict pin. With an engine pinned, a failure is shown plainly (real reason) instead of silently answering from another engine.
 // That silent swap, always landing on Groq first in the default order, is what kept pushing him back to Groq. Background jobs (util) still fail over.
-let strictPin = LS.get('ember_pin_strict', true) !== false;
-function setStrict(v) { strictPin = !!v; LS.set('ember_pin_strict', strictPin); }
+let strictPin = true; LS.set('ember_pin_strict', true); // V1.10.19: strict, a Cohere failure is shown plainly
+function setStrict(v) { strictPin = true; LS.set('ember_pin_strict', true); }
 const onlyPinned = lane => !!(strictPin && pinnedEngine && lane != 'util');
-function orderFor(lane) { const enabled = LS.get('ember_route_enabled', {}); const base = (ORDER[lane] || ORDER.fast).concat(['openrouter', 'plugsky'].filter(id => enabled[id] === true)).filter(id => CFG[id].kind !== 'media'); if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
-    const lg = lane == 'fast' ? LS.get('ember_last_good', null) : null;
-    if (lg && base.includes(lg) && keys[lg] && keys[lg].some(e => !e.bad)) return [lg].concat(base.filter(x => x != lg));
-    return base; } return [pinnedEngine].concat(base.filter(id => id != pinnedEngine)); }
+function orderFor(lane) { return [LOCK]; } // V1.10.19: one engine, every lane
 const save = () => { LS.set('ember_keys', keys); emitStats(); };
 const cool = new Map(); // credential-wide failures only; model failures are independent
 const modelCool = new Map(), cursors = new Map();
@@ -87,7 +86,7 @@ function stats() {
     for (const e of keys[id]) for (const [k,until] of modelCool) { const [pid,key,model] = JSON.parse(k); if (pid === id && key === e.key && until > Date.now()) p.cooldowns.push({ key:mask(key), model, retry:Math.ceil((until-Date.now())/1000) }); }
   }); return out;
 }
-function setEnabled(id, on) { if (!CFG[id] || CFG[id].kind === 'media') return; const cfg=LS.get('ember_route_enabled',{}); cfg[id]=!!on; LS.set('ember_route_enabled',cfg); emitStats(); }
+function setEnabled(id, on) { if (id !== LOCK) return; const cfg=LS.get('ember_route_enabled',{}); cfg[id]=!!on; LS.set('ember_route_enabled',cfg); emitStats(); }
 function authFailure(er) { return Number(er.status) === 401 || (Number(er.status) === 403 && /invalid.{0,15}(key|token)|revoked|authentication_error|unauthenticated/i.test(er.message || '')); }
 
 const activeControllers = new Set(), activeReaders = new Set(); let routeCancelled = false;
@@ -175,7 +174,7 @@ async function streamClaude(url, body, key, o, timeout) {
   const r = await net(url, { method: 'POST', headers: Object.assign({ Accept: 'text/event-stream' }, claudeHeaders(key)), body: JSON.stringify(body) }, timeout || 60000);
   if (!r.ok) {
     let raw = ''; try { raw = await r.text(); } catch (_) {}
-    let msg = ''; try { const p = JSON.parse(raw); msg = (p.error && (p.error.message || p.error)) || p.message || ''; } catch (_) {}
+    let msg = '', parsed = null; try { parsed = JSON.parse(raw); msg = (parsed.error && (parsed.error.message || parsed.error)) || parsed.message || ''; } catch (_) {}
     const h = r.headers && r.headers.get && r.headers.get('retry-after'); const retryAfter = Math.max(0, Math.min(900, Number(h) || 0));
     throw Object.assign(new Error(String(msg || raw || ('HTTP ' + r.status)).slice(0, 200)), { status: r.status, retryAfter, metadata: parsed && parsed.error && parsed.error.metadata });
   }
@@ -405,7 +404,18 @@ async function call(id, key, model, o) {
     const decl = (!o.json && o.tools && o.tools.length) ? toolDecls(o.tools, false) : [];
     if (decl.length) body.tools = decl.map(f => ({ type: 'function', function: f }));
     let j;
-    try { j = await jfetch(c.base + '/v2/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, 40000); }
+    const send = () => jfetch(c.base + '/v2/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, 40000);
+    try {
+      try { j = await send(); }
+      catch (e1) { // V1.10.19: Cohere trial keys are rate limited per minute. Wait once (max 20 s, a little jitter) and retry the same key before the router gives up on it.
+        if (e1.status != 429 && e1.status != 503 && e1.status != 502) throw e1;
+        if (routeCancelled) throw e1;
+        const wait = Math.min(20, Math.max(2, Number(e1.retryAfter) || (e1.status == 429 ? 6 : 2))) * 1000 + Math.floor(Math.random() * 600);
+        await new Promise(r => setTimeout(r, wait));
+        if (routeCancelled) throw Object.assign(new Error('Stopped by user.'), { status: 0, code: 'cancelled' });
+        j = await send();
+      }
+    }
     catch (er) { if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
     text = j.message && Array.isArray(j.message.content) ? j.message.content.map(p => p.text || '').join('') : '';
     const tc = decl.length && j.message && Array.isArray(j.message.tool_calls) && j.message.tool_calls[0], tf = tc && tc.function;
@@ -435,7 +445,7 @@ async function call(id, key, model, o) {
 
 // ---------- key bookkeeping ----------
 const entries = id => keys[id];
-const hasKeys = () => ACTIVE_IDS.some(id => keys[id].length > 0);
+const hasKeys = () => keys[LOCK].length > 0;
 async function health(id, e) {
   const t0 = performance.now(), st = { at: Date.now(), ok: false, limited: false, ms: 0, model: '', code: 0, msg: '' };
   try {
@@ -455,10 +465,11 @@ async function health(id, e) {
   if (isCool(e.key)) st.limited = true;
   save(); return st;
 }
-async function healthAll() { for (const id of IDS) for (const e of keys[id]) await health(id, e); }
+async function healthAll() { for (const id of ACTIVE_IDS) for (const e of keys[id]) await health(id, e); } // AI engines only: Stability is a content-creation engine, checked from + > Media & Music
 async function addKey(id, key) {
   key = clean(key);
   if (!key || !keys[id]) return { ok: false, why: 'empty' };
+  if (id !== LOCK && CFG[id].kind !== 'media') return { ok: false, why: 'Ember is set to Cohere only. Add a Cohere key.' };
   if (keys[id].some(e => e.key === key)) return { ok: false, why: 'already added' };
   const e = { key, st: null }; keys[id].push(e); save(); await health(id, e); return { ok: true, e };
 }
@@ -540,8 +551,8 @@ async function callPollinations(prompt, o) {
   return { text, provider: 'pollinations', model: 'openai', ms: Math.round(used()) };
 }
 const flat = o => String(o.system || '') + '\n\n' + o.messages.map(m => (m.role == 'assistant' ? 'Ember' : 'Him') + ': ' + m.content).join('\n') + '\n\nEmber:';
-const freeOn = () => freePref == null ? !hasKeys() : freePref;
-const setFree = v => { freePref = v == null ? null : !!v; };
+const freeOn = () => false; // V1.10.19: no Free Mode (Pollinations) for chat, Cohere only
+const setFree = v => { freePref = false; };
 const label = id => CFG[id] ? CFG[id].name : id == 'pollinations' ? 'Free' : id;
 
 // ---------- V1.6.8: one source of truth for "who answers" ----------
@@ -558,6 +569,7 @@ function pinNote() {
 // usually behave; NOT yet checked against live replies from each engine.
 function engineVoice(id) {
   const base = 'Same Ember voice and same length habits as on every other engine.';
+  if (id == 'cohere') return 'ENGINE NOTE: Cohere models tend to lean on lists and headings and to over-explain. Keep it conversational, plain and in the Ember voice; give real substance without padding. ' + base;
   if (id == 'groq') return 'ENGINE NOTE: this engine tends to clip its answers and sound generic. Do not be terse: give real substance, a concrete command or example, and a callback to something earlier. When he asks for depth, an explanation, code or a long answer, write it out long and complete. ' + base;
   if (id == 'gemini') return 'ENGINE NOTE: this engine tends toward polished assistant prose (headings, bullets, "Certainly!", "Great question"). Do not. No headings, no bullet lists unless a command list needs one, no pleasantries, plain street-smart words. ' + base;
   if (id == 'mistral') return 'ENGINE NOTE: this engine tends toward formal phrasing. Keep it casual and dry. ' + base;
@@ -575,7 +587,7 @@ function factsBlock(id, model, failed) {
   else L.push('- This is a background reply: the phone picks the engine after this prompt is built, so you do not know which engine or model you are. Do not name one.');
   const noKey = IDS.filter(x => !keys[x].length).map(x => CFG[x].name);
   if (noKey.length) L.push('- NO key is saved for: ' + noKey.join(', ') + '. You cannot be any of those engines, and you must never say you are one of them.');
-  L.push('- Automatic AI route in this build: Groq → Cohere → Gemini → Mistral. Ember stays on the engine that last answered and only moves on when it fails. Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
+  L.push('- AI route in this build: Cohere ONLY, on every message. No other engine (Groq, Gemini, Mistral, Claude, OpenRouter, Plugsky, Free Mode) can answer, so never say you are or might switch to one. Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
   if (pinnedEngine) {
     const miss = id && id != pinnedEngine, why = (failed || []).find(f => f.id == pinnedEngine);
     L.push('- Pinned engine in Settings: ' + CFG[pinnedEngine].name + (pinnedModel && pinnedModel.id == pinnedEngine ? ' (model ' + pinnedModel.model + ')' : '') + ' [' + STATE_TXT[st[pinnedEngine]] + ']' + (miss ? '. It could not answer this message' + (why ? ' (' + String(why.why || '').slice(0, 120) + ')' : '') + ', so ' + (id == 'pollinations' ? 'Free Mode' : CFG[id].name) + ' answered instead. Tell him that plainly if he asks.' : '.'));
@@ -675,10 +687,10 @@ async function runInner(lane, o, tok) {
   if (onlyPinned(lane)) { // V1.9.15: say what really happened instead of answering from someone else
     const nm = CFG[pinnedEngine].name, w = failed.filter(f => f.id == pinnedEngine).slice(-1)[0];
     const why = w ? String(w.why || 'failed').slice(0, 170) + (w.status ? ' (' + w.status + ')' : '') : (keys[pinnedEngine].length ? 'every ' + nm + ' key is resting or rejected' : 'no ' + nm + ' key is saved');
-    throw Object.assign(new Error(nm + ' is pinned and did not answer: ' + why + '. Not switching engines because it is pinned. Fix it in Settings > Keys, or set the engine to Auto.'), { code: 'fail' });
+    throw Object.assign(new Error(nm + ' did not answer: ' + why + '. Cohere is the only engine in this build, so there is nothing to switch to. ' + (keys[pinnedEngine].length ? 'Ember retries on your next message.' : 'Add a Cohere key in Settings > Keys.')), { code: 'fail' });
   }
-  if (!hasKeys() && pl) throw Object.assign(new Error(FREE_BUSY), { code: 'fail' });
-  if (!hasKeys()) throw Object.assign(new Error('Add an API key in Settings first.'), { code: 'nokeys' });
+  if (!hasKeys() && pl) throw Object.assign(new Error('Add a Cohere API key in Settings > Keys. Ember runs on Cohere only.'), { code: 'nokeys' });
+  if (!hasKeys()) throw Object.assign(new Error('Add a Cohere API key in Settings > Keys. Ember runs on Cohere only.'), { code: 'nokeys' });
   throw Object.assign(new Error('No engine answered. ' + (errs.slice(-2).join(' | ') || 'All keys are resting or rejected. Open Settings > Keys and tap Check all.')), { code: 'fail' });
 }
 // V1.5.9: remember the chat request that is in flight so app.js can hand it to the native background task if the app is backgrounded.
@@ -756,7 +768,7 @@ function detail(id) {
   const withMsg = l.find(e => e.st && e.st.msg);
   return { keys: l.length, model: (best && best.st.model) || '', lat: (best && best.st.lat) || 0, retry: left > 0 ? left : 0, msg: withMsg ? withMsg.st.msg : '' };
 }
-async function pingAll() { await Promise.all(IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); }
+async function pingAll() { await Promise.all(ACTIVE_IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); } // AI engines only (Stability: Prov.ping('stability') from its own card)
 function status() { const o = {}; IDS.forEach(id => { o[id] = stateOf(id); }); return o; }
 window.Prov = { stats, setEnabled, record, rotation, peek, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
 })();

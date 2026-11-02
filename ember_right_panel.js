@@ -57,9 +57,8 @@
       'Web search': () => { W.EmberPlus.flip('web', true); $('inp').focus(); },
       'Open browser': () => invoke(W.EmberBrowser, 'open'),
       'Scrape a page': () => settings('scraping', 'tUrl'),
-      'Music player': () => invoke(W.EmberMusicUI, 'open'),
-      'Find media': () => { invoke(W.EmberMusicUI, 'open'); $('dzQ')?.focus(); },
-      'Downloads': () => settings('hacking', 'cockpitYouTube'),
+      'Music player & search': () => { invoke(W.EmberMusicUI, 'open'); $('dzQ')?.focus(); },
+      'Downloads': () => settings('music', 'cockpitYouTube'),
       'Projects': () => { click('bHist'); D.querySelector('.dtab[data-d="projects"]')?.click(); W.EmberProjects.render(); },
       'Tasks': () => showTasks(),
       'Files & deliverables': () => invoke(W.EmberBrowser, 'open', 'docs'),
@@ -67,7 +66,7 @@
       'Terminal': () => settings('hacking', 'cockpitTermuxPanel'),
       'GitHub & integrations': () => invoke(W.EmberWorkspace, 'open', 'connect'),
       'AI providers & API keys': () => settings('engine'),
-      'Permissions & privacy': () => settings('permissions'),
+      'Permissions & background': () => settings('permissions'),
       'App settings': () => W.EmberCockpit.open()
     };
     async function showTasks() {
@@ -94,11 +93,16 @@
       if (h) {
         const g = h.closest('.erp-group');
         if (panel.classList.contains('erp-searching')) { const value = !g.classList.contains('open'); setGroup(g, value); return; }
+        if (h.dataset.direct) { // 1.10.18 Part 8: this category IS the black Settings: one tap, no second menu in front of it.
+          close(false);
+          try { await actions[h.dataset.direct](); } catch (error) { const t = $('toast'); t.textContent = error.message; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 4000); }
+          return;
+        }
         setSub(g.classList.contains('open') ? null : g); return;
       }
       if (e.target.closest('#erpCcToggle')) { const value = !$('erpCc').classList.contains('expanded'); if (value) setSub(null); setCc(value); refresh(); return; }
       const cc = e.target.closest('[data-cc]');
-      if (cc) { close(false); if (cc.dataset.cc === 'routing') settings('providers'); else { W.EmberWorkspace.open('build'); if (cc.dataset.cc === 'activity') { if ($('eccTerminalBody').hidden) click('eccTerminalToggle'); W.EmberCommandCenter.close(); } } return; }
+      if (cc) { close(false); if (cc.dataset.cc === 'routing' || cc.dataset.cc === 'status') { W.EmberCommandCenter.open(); W.EmberCockpit.dash(cc.dataset.cc === 'routing' ? 'routing' : 'overview'); } else { W.EmberWorkspace.open('build'); if (cc.dataset.cc === 'activity') { if ($('eccTerminalBody').hidden) click('eccTerminalToggle'); W.EmberCommandCenter.close(); } } return; }
       const item = e.target.closest('[data-name]'); if (!item) return;
       const fn = actions[item.dataset.name]; close(false);
       try { if (!fn) throw new Error('This tool is not wired.'); if (item.dataset.name === 'Tasks') W.EmberTasks.setIntent('list timers'); await fn(); }

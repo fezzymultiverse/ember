@@ -41,3 +41,14 @@
 #emberHub .ecx-btns .ehub-btn{height:48px;width:100%}
 @media (min-width:600px){#emberHub .ecx-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.epl{left:50%;right:auto;width:560px;transform:translate(-50%,100%)}.epl.show{transform:translate(-50%,0)}}
 @media (prefers-reduced-motion:reduce){.epl,.epl-sw,.epl-sw::after{transition:none}}
+
+/* p11: Stability AI card (Media & Music) + keyless panel sits below the switches */
+.epl-row.epl-static{cursor:default}.epl-row.epl-static:active{background:transparent}
+.epl-keyrow{gap:8px}
+.epl-in{flex:1 1 auto;min-width:0;height:40px;border-radius:10px;border:1px solid var(--epl-line);background:#0b111b;color:var(--epl-tx);padding:0 12px;font-family:inherit;font-size:14px}
+.epl-in:focus{outline:2px solid var(--epl-blue);outline-offset:0}
+.epl-mini{flex:0 0 auto;min-width:40px;height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--epl-line);background:transparent;color:var(--epl-tx);font-family:inherit;font-size:14px;font-weight:600}
+.epl-mini.hot{background:var(--epl-blue);border-color:var(--epl-blue);color:#fff}
+.epl-btns2{grid-template-columns:1fr 1fr}
+.epl-btn[disabled]{opacity:.45}
+#eplBody>.ekl-panel{margin-top:18px}

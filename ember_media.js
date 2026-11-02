@@ -8,6 +8,7 @@
  function db(){ if(!dbPromise) dbPromise=new Promise((resolve,reject)=>{const r=indexedDB.open('ember_media_artifacts',1);r.onupgradeneeded=()=>r.result.createObjectStore('artifacts',{keyPath:'id'});r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});return dbPromise; }
  async function store(a){const d=await db();await new Promise((resolve,reject)=>{const t=d.transaction('artifacts','readwrite');t.objectStore('artifacts').put(a);t.oncomplete=resolve;t.onerror=()=>reject(t.error);});return a;}
  async function list(){const d=await db();return new Promise((resolve,reject)=>{const r=d.transaction('artifacts').objectStore('artifacts').getAll();r.onsuccess=()=>resolve(r.result.sort((a,b)=>b.at-a.at));r.onerror=()=>reject(r.error);});}
+ async function getArtifact(id){const d=await db();return new Promise((resolve,reject)=>{const r=d.transaction('artifacts').objectStore('artifacts').get(id);r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error);});}
  async function remove(id){const d=await db();await new Promise((resolve,reject)=>{const t=d.transaction('artifacts','readwrite');t.objectStore('artifacts').delete(id);t.oncomplete=resolve;t.onerror=()=>reject(t.error);});notify();}
  function notify(){W.dispatchEvent(new CustomEvent('ember-media-update'));}
  function retryTime(r){const h=r.headers.get('retry-after');const n=Number(h);return h ? (Number.isFinite(n)?n:Math.max(1,(Date.parse(h)-Date.now())/1000)) : 60;}
@@ -98,5 +99,5 @@
  }
  function cancel(id){const j=jobs.get(id);if(j){j.cancelled=true;j.controller?.abort();j.state='cancelled';notify();}}
  async function download(a){const url=URL.createObjectURL(a.blob),el=document.createElement('a');el.href=url;el.download=a.name;document.body.append(el);el.click();el.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
- W.EmberMedia={cfg,supported,generate,list,remove,download,cancel,jobs:()=>[...jobs.values()]};
+ W.EmberMedia={cfg,supported,generate,list,get:getArtifact,remove,download,cancel,jobs:()=>[...jobs.values()]};
 })();

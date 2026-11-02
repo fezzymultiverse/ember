@@ -128,7 +128,7 @@ async function renderNet(d) {
 // add-ons, chat counts) is gone from here. Only a live check stays: who answered last and how fast, and whether anything can answer right now.
 async function renderAi() {
   const S = lsGet('ember_set', {}) || {}, P = window.Prov; let h = '';
-  const ids = (P && P.IDS) || [], st = P && P.status ? P.status() : {};
+  const ids = (P && (P.ACTIVE_IDS || P.IDS)) || [], st = P && P.status ? P.status() : {};
   const ready = ids.filter(id => st[id] == 'ok').length, lim = ids.filter(id => st[id] == 'limited').length;
   const free = P && P.freeOn ? P.freeOn() : !!S.freeMode;
   let last = null;

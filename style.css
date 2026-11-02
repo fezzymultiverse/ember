@@ -1871,3 +1871,10 @@ html body .msg.a p,html body .msg.a ul,html body .msg.a ol,html body .msg.a pre{
 .pdleg span{display:inline-flex;align-items:center;gap:5px;font-size:10px}
 .pdnote{font-size:11px;line-height:1.45;margin:7px 8px 3px;color:var(--m)}
 @media(max-width:380px){.provdrop{left:4px;right:4px;padding:5px}.pdrow{grid-template-columns:10px minmax(0,1fr) 76px;column-gap:7px;padding:9px 6px}.pdright{min-width:76px;max-width:76px}.pdbrand{width:24px;height:24px;flex-basis:24px}.pdrow .pdn{font-size:13px}}
+
+/* Ember 1.10.18-p9+: pictures render inline in the chat bubble */
+.artifact-inline{margin:8px 0 2px;padding:0;border:1px solid #2a2a30;border-radius:16px;background:#0b0b0d;overflow:hidden;max-width:min(100%,520px)}
+.artifact-inline-open{display:block;width:100%;margin:0;padding:0;border:0;background:#111;cursor:zoom-in;line-height:0}
+.artifact-inline-img{display:block;width:100%;height:auto;min-height:64px;max-height:70dvh;object-fit:contain;background:#111}
+.artifact-inline figcaption{display:flex;flex-wrap:wrap;gap:6px;padding:8px}
+.artifact-inline .artifact-action{flex:1 1 auto}

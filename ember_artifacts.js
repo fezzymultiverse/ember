@@ -20,7 +20,7 @@
       const attrs = m[1] || '', get = name => { const a = new RegExp("(?:^|\\s)" + name + "\\s*=\\s*([\"'])([\\s\\S]*?)\\1", 'i').exec(attrs); return a ? a[2] : ''; };
       const type = normType(get('type'));
       const language = get('language') || (type === 'html' ? 'html' : isMd(type) ? 'markdown' : type);
-      const fallback = ({markdown:'notes.md',html:'index.html',code:'script.' + (language === 'python' ? 'py' : language === 'bash' ? 'sh' : language === 'javascript' ? 'js' : 'txt'),json:'data.json',csv:'data.csv',pdf:'document.pdf',document:'document.md',svg:'image.svg'})[type] || 'artifact.txt';
+      const fallback = ({markdown:'notes.md',html:'index.html',code:'script.' + (language === 'python' ? 'py' : language === 'bash' ? 'sh' : language === 'javascript' ? 'js' : 'txt'),json:'data.json',csv:'data.csv',pdf:'document.pdf',document:'document.md',svg:'image.svg',image:'image.png'})[type] || 'artifact.txt';
       let title = safeName(get('title'), fallback);
       if (type === 'pdf') title = baseName(title) + '.pdf';
       else if (type === 'svg') title = baseName(title) + '.svg';
@@ -67,8 +67,8 @@
     web:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.9 5.6 3.9 9s-1.3 6.4-3.9 9c-2.6-2.6-3.9-5.6-3.9-9S9.4 5.6 12 3z"/></svg>',
     data:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M10 4.5v15"/></svg>'
   };
-  const iconFor = a => a.type === 'html' ? I.web : a.type === 'svg' ? I.img : a.type === 'code' ? I.code : a.type === 'json' || a.type === 'csv' ? I.data : I.doc;
-  const kindLabel = a => ({ pdf:'PDF', document:'DOCUMENT', markdown:'MARKDOWN', svg:'SVG IMAGE', html:'HTML', code:'CODE', json:'JSON', csv:'CSV' })[a.type] || a.type.toUpperCase();
+  const iconFor = a => a.type === 'html' ? I.web : a.type === 'svg' || a.type === 'image' ? I.img : a.type === 'code' ? I.code : a.type === 'json' || a.type === 'csv' ? I.data : I.doc;
+  const kindLabel = a => ({ pdf:'PDF', document:'DOCUMENT', markdown:'MARKDOWN', svg:'SVG IMAGE', image:'IMAGE', html:'HTML', code:'CODE', json:'JSON', csv:'CSV' })[a.type] || a.type.toUpperCase();
 
   function shelf(messages) {
     const found=[];(messages||[]).forEach((m,mi)=>{if(!m||m.r!=='a'||typeof m.t!=='string')return;parse(m.t).items.forEach((a,ai)=>found.push({a,mi,ai}));});
@@ -92,7 +92,54 @@
     const p = parse(text);
     if (!p.items.length) return null;
     const intro = p.text ? '<div class="artifact-intro">'+esc(p.text).replace(/\n/g,'<br>')+'</div>' : '';
-    return { text:p.text || 'Artifact ready.', html:intro+'<div class="artifact-list">'+p.items.map((a,i)=>card(a,i,mi)).join('')+'</div>' };
+    return { text:p.text || 'Artifact ready.', html:intro+'<div class="artifact-list">'+p.items.map((a,i)=>inlineOk(a)?inline(a,i,mi):card(a,i,mi)).join('')+'</div>' };
+  }
+  // ---- pictures drop straight into the chat bubble (no card, no panel to hunt for) ----
+  // type="svg": the SVG itself. type="image": content is an https/data URL, or media:<id> for a picture saved on this phone (Stability).
+  const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+  const mediaCache = new Map();
+  const imgRef = c => { c = String(c || '').trim(); return /^media:[\w-]+$/.test(c) ? { media: c.slice(6) } : /^(https:\/\/|data:image\/)/i.test(c) ? { url: c } : null; };
+  const inlineOk = a => (a.type === 'svg' && !!cleanSvg(a.content)) || (a.type === 'image' && !!imgRef(a.content));
+  function inline(a, i, mi) {
+    const at = (k, label, cls) => '<button class="artifact-action' + (cls ? ' ' + cls : '') + '" data-artifact-' + k + '="' + i + '" data-message-index="' + mi + '">' + label + '</button>';
+    let img, acts;
+    if (a.type === 'svg') { img = '<img class="artifact-inline-img" alt="' + esc(a.title) + '" src="' + svgUrl(cleanSvg(a.content)) + '">'; acts = at('png', 'Save PNG') + at('download', 'SVG', 'secondary'); }
+    else {
+      const r = imgRef(a.content);
+      img = r.media ? '<img class="artifact-inline-img" alt="' + esc(a.title) + '" data-ember-media="' + esc(r.media) + '" src="' + (mediaCache.get(r.media) || BLANK) + '">'
+                    : '<img class="artifact-inline-img" alt="' + esc(a.title) + '" referrerpolicy="no-referrer" loading="lazy" src="' + esc(r.url) + '">';
+      acts = at('download', 'Save image');
+    }
+    return '<figure class="artifact-inline"><button type="button" class="artifact-inline-open" data-artifact-view="' + i + '" data-message-index="' + mi + '" aria-label="Open ' + esc(a.title) + ' full size">' + img + '</button><figcaption>' + acts + '</figcaption></figure>';
+  }
+  async function mediaUrl(id) {
+    if (mediaCache.has(id)) return mediaCache.get(id);
+    const M = window.EmberMedia; if (!M || !M.get) return null;
+    const rec = await M.get(id); if (!rec || !rec.blob) return null;
+    const u = URL.createObjectURL(rec.blob); mediaCache.set(id, u); return u;
+  }
+  function hydrate(root) {
+    (root || document).querySelectorAll('img[data-ember-media]').forEach(async im => {
+      if (im.dataset.embBusy || im.getAttribute('src') !== BLANK) return; im.dataset.embBusy = '1';
+      let u = null; try { u = await mediaUrl(im.dataset.emberMedia); } catch (_) { /* storage blocked */ }
+      if (u) im.src = u; else im.alt = 'This picture is no longer stored on this device';
+    });
+  }
+  async function imageBlob(a) {
+    const r = imgRef(a.content); if (!r) return null;
+    if (r.media) { const rec = window.EmberMedia && window.EmberMedia.get ? await window.EmberMedia.get(r.media) : null; return rec && rec.blob || null; }
+    const res = await fetch(r.url, { referrerPolicy: 'no-referrer' }); if (!res.ok) throw new Error('HTTP ' + res.status); return res.blob();
+  }
+  async function saveImage(a) {
+    try {
+      const b = await imageBlob(a); if (!b || !b.size) throw new Error('empty');
+      const ext = ((b.type || 'image/png').split('/')[1] || 'png').replace('jpeg', 'jpg').replace(/\+.*/, '');
+      await saveBlob(b, baseName(a.title).replace(/[^\w.-]+/g, '_') + '.' + ext);
+    } catch (_) {
+      const r = imgRef(a.content);
+      if (r && r.url && !/^data:/i.test(r.url)) { try { window.open(r.url, '_blank'); T('Could not save in-app. Opened the picture; press and hold to save.'); } catch (_e) { T('Could not save the image'); } }
+      else T('Could not save the image');
+    }
   }
   function copyContent(text) {
     try { if(navigator.clipboard&&navigator.clipboard.writeText)return navigator.clipboard.writeText(text).then(()=>true,()=>false); } catch(_) {}
@@ -170,6 +217,7 @@
   }
   function download(a) {
     if (a.type === 'pdf') { exportPdf(a); return; }
+    if (a.type === 'image') { saveImage(a); return; }
     const ext = a.title.split('.').pop().toLowerCase();
     const mime = ext === 'html' || ext === 'htm' ? 'text/html' : ext === 'md' ? 'text/markdown' : ext === 'json' ? 'application/json' : ext === 'csv' ? 'text/csv' : ext === 'svg' ? 'image/svg+xml' : ext === 'py' ? 'text/x-python' : ext === 'js' ? 'text/javascript' : 'text/plain';
     let name = a.title, data = a.content;
@@ -198,11 +246,12 @@
     const fb = (k, label, cls) => '<button type="button" class="artifact-action' + (cls ? ' ' + cls : '') + '" data-vact="' + k + '">' + label + '</button>';
     if (html) { body = '<iframe class="artifact-frame" title="Preview of '+esc(a.title)+'" sandbox="allow-scripts allow-downloads" referrerpolicy="no-referrer"></iframe>'; sub = 'Sandboxed preview'; foot = fb('pdf', 'Print / PDF') + fb('download', 'Download', 'secondary'); }
     else if (svg) { const s = cleanSvg(a.content); body = s ? '<div class="artifact-svg" id="artSvg"><img alt="' + esc(a.title) + '" src="' + svgUrl(s) + '"></div>' : '<pre class="artifact-text">' + esc(a.content) + '</pre>'; sub = s ? 'SVG image' : 'Not a valid SVG - showing source'; foot = fb('png', 'Save PNG') + fb('download', 'Save SVG', 'secondary') + fb('bg', 'Background', 'secondary') + fb('copy', 'Copy code', 'secondary'); }
+    else if (a.type === 'image') { const r = imgRef(a.content); body = r ? '<div class="artifact-svg" id="artSvg">' + (r.media ? '<img alt="' + esc(a.title) + '" data-ember-media="' + esc(r.media) + '" src="' + (mediaCache.get(r.media) || BLANK) + '">' : '<img alt="' + esc(a.title) + '" referrerpolicy="no-referrer" src="' + esc(r.url) + '">') + '</div>' : '<pre class="artifact-text">' + esc(a.content) + '</pre>'; sub = 'Picture'; foot = fb('download', 'Save image') + fb('bg', 'Background', 'secondary'); }
     else if (paper) { body = '<div class="artifact-paper-wrap"><div class="artifact-paper">' + markdownHtml(mdOf(a)) + '</div></div>'; sub = a.type === 'pdf' ? 'PDF preview - Save PDF builds the real file' : 'Document preview'; foot = fb('pdf', 'Save PDF') + (a.type === 'document' ? fb('doc', 'Word .docx', 'secondary') : '') + fb('copy', 'Copy', 'secondary') + (a.type === 'document' ? fb('download', 'Markdown', 'secondary') : ''); }
     else if (isMd(a.type)) { body = '<div class="artifact-dark">' + markdownHtml(a.content) + '</div>'; sub = 'Markdown'; foot = fb('pdf', 'Save PDF') + fb('download', 'Download .md', 'secondary') + fb('copy', 'Copy', 'secondary'); }
     else { body = '<pre class="artifact-text'+(a.type==='code'?' artifact-code':'')+'">'+(a.type==='code'?highlightCode(a.content):esc(a.content))+'</pre>'; sub = 'Artifact preview'; foot = fb('copy', 'Copy') + fb('download', 'Download', 'secondary'); }
     overlay.innerHTML='<div class="artifact-viewer" role="dialog" aria-modal="true" aria-label="'+esc(a.title)+'"><header class="artifact-viewer-head"><div><b>'+esc(a.title)+'</b><small>'+sub+'</small></div><button type="button" class="artifact-close" aria-label="Close preview">×</button></header><div class="artifact-viewer-body'+(html?' is-html':'')+'">'+body+'</div>'+(foot?'<footer class="artifact-viewer-foot">'+foot+'</footer>':'')+'</div>';
-    document.body.appendChild(overlay);
+    document.body.appendChild(overlay); hydrate(overlay);
     overlay.querySelector('.artifact-close').onclick=close;
     overlay.addEventListener('click',e=>{
       if(e.target===overlay){close();return;}
@@ -228,5 +277,6 @@
     if(v) view(a); else if(pdf) (a.type==='html'?printArtifact(a):exportPdf(a)); else if(dc) exportWord(a); else if(pn) svgPng(a); else if(cp) copyContent(a.content).then(ok=>T(ok?'Code copied':'Could not copy code')); else if(tx) copyContent(a.content).then(async ok=>{if(!ok){T('Could not copy code');return;}const N=window.EmberNative;if(N&&N.openTermux){await N.openTermux();T('Code copied. Paste it in Termux; it has not been run.');}else T('Code copied; Termux is unavailable in this view.');}); else download(a);
   });
   document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
-  window.EmberArtifacts={parse,render,shelf,markdownHtml,highlightCode,cleanSvg,exportPdf,exportWord,svgPng,wordDoc,view,download,copyContent};
+  (() => { const log = document.getElementById('log'); if (!log) return; let raf = 0; new MutationObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => hydrate(log)); }).observe(log, { childList: true, subtree: true }); hydrate(log); })();
+  window.EmberArtifacts={hydrate,parse,render,shelf,markdownHtml,highlightCode,cleanSvg,exportPdf,exportWord,svgPng,wordDoc,view,download,copyContent};
 })();

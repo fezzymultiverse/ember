@@ -17,7 +17,8 @@ const TOGGLES = [
   { id: 'device', icon: '📱', label: 'Device Access', hint: 'Let Ember read local files & Termux', chip: 'Device Access' },
   { id: 'web', icon: '🌐', label: 'Web Search', hint: 'Force live scraping/DuckDuckGo', chip: 'Web Search' },
   { id: 'reason', icon: '🧠', label: 'Reasoning', hint: 'Use chain-of-thought / slower model', chip: 'Reasoning' },
-  { id: 'code', icon: '📝', label: 'Code Mode', hint: 'Format output for programming', chip: 'Code Mode' }
+  { id: 'code', icon: '📝', label: 'Code Mode', hint: 'Format output for programming', chip: 'Code Mode' },
+  { id: 'musicbrain', icon: '🎧', label: 'Music Brain', hint: 'Real lyrics + music facts from open sources (no key). Never guessed. Default ON', chip: 'Music Brain', dflt: true }
 ];
 const ONCE = [
   { id: 'upload', icon: '📎', label: 'Upload File', hint: 'Attach an image, text, or audio file' },
@@ -27,15 +28,15 @@ const ONCE = [
 const LINES = {
   image: '',
   audio_gen: '', video_gen: '',
-  stab: 'STABILITY BRIDGE is ON: when he asks for an image, music/sound/audio, or a video, call media_generate (kind image|audio|video, prompt). It really makes the file with Stability AI (image, audio; video is several Stability images plus audio composed on the phone) and saves it; tell him where to find it (Settings > Command Centre > Media). If it fails, say the exact error. Do not claim anything was made unless the tool said ok.',
+  stab: 'STABILITY BRIDGE is ON: when he asks for an image, music/sound/audio, or a video, call media_generate (kind image|audio|video, prompt). It really makes the file with Stability AI (image, audio; video is several Stability images plus audio composed on the phone) and saves it. A finished IMAGE is shown inline in this chat automatically: do not tell him to look in any panel, tab or Command Centre, and do not paste links; just say it is above. Audio and video are in the AI button in the top bar. If it fails, say the exact error. Do not claim anything was made unless the tool said ok.',
   pdf: 'PDF MODE is ON for this message: write the whole answer as ONE complete document inside <artifact type="pdf" title="Short-Title.pdf"> ... </artifact> in Markdown: a title, a short summary, numbered sections with real detail, tables where they help, and a closing list of next steps. No filler, no truncation. Before the artifact write one short sentence only.',
   device: 'DEVICE ACCESS is ON for this chat: he allowed you to use his saved Documents tools (list, search, read) and the Termux panel when it helps. Use them instead of saying you cannot reach his files. You still cannot see anything outside those tools.',
   web: 'WEB SEARCH is FORCED ON for this chat: before answering anything that could be current or factual, call web_search (or search_and_read) first, then answer from the results and name the source. If the search fails, say so; do not answer from memory as if it had worked.',
   reason: 'REASONING is ON for this chat: work the problem step by step, check your own answer once before you give it, and say plainly where you are unsure.',
   code: 'CODE MODE is ON for this chat: answer in working code first, in fenced blocks with the language named, complete and runnable (no stubs), then at most a few lines of explanation. Bash for Termux unless he says otherwise.'
 };
-let on = {}; try { const r = JSON.parse(localStorage.getItem(KEY) || '{}'); TOGGLES.forEach(t => { if (r[t.id] && !t.once) on[t.id] = true; }); } catch (e) { on = {}; }
-const save = () => { try { const o = {}; TOGGLES.forEach(t => { if (on[t.id] && !t.once) o[t.id] = true; }); localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) { /* storage blocked */ } };
+let on = {}; try { const r = JSON.parse(localStorage.getItem(KEY) || '{}'); TOGGLES.forEach(t => { if (t.once) return; if (r[t.id] === true || (t.dflt && r[t.id] !== false)) on[t.id] = true; }); } catch (e) { on = {}; for (const t of TOGGLES) if (t.dflt) on[t.id] = true; }
+const save = () => { try { const o = {}; TOGGLES.forEach(t => { if (t.once) return; if (on[t.id]) o[t.id] = true; else if (t.dflt) o[t.id] = false; }); localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) { /* storage blocked */ } };
 const toast = m => { const t = $('toast'); if (!t) return; t.textContent = m; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2400); };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const getSet = () => { try { return JSON.parse(localStorage.getItem('ember_set') || '{}') || {}; } catch (e) { return {}; } };
@@ -44,7 +45,7 @@ const getSet = () => { try { return JSON.parse(localStorage.getItem('ember_set')
 const menu = $('plusMenu'), chips = $('plusChips'), btn = $('bPlus');
 // Think group, in this order. These click the buttons that already exist (hidden under the box), so nothing about how they work changes.
 const THINK = [
-  { id: 'bReact', icon: '🧠', label: 'Reasoning', hint: 'Open a step-by-step run you can steer' },
+  { id: 'bReact', icon: '🧠', label: 'Guided reasoning run', hint: 'Open a step-by-step run you can steer' },
   { id: 'bDeep', icon: '💡', label: 'Go deeper', hint: 'Expand on the last reply' },
   { id: 'bLearn', icon: '📚', label: 'Learn', hint: 'Teach Ember from links and saved documents' },
   { id: 'bSpark', icon: '✨', label: 'Spark', hint: 'Ember starts something, no topic needed' }
@@ -104,6 +105,7 @@ function flip(id, v) {
   if (def.once && on[id]) TOGGLES.forEach(x => { if (x.once && x.id != id) on[x.id] = false; });
   save(); paint();
   if (def.once) { toast(on[id] ? def.icon + ' Describe it and send' : def.label + ' off'); if (on[id]) { const i = $('inp'); if (i) { try { i.focus(); } catch (e) { /* no focus */ } } } return on[id]; }
+  if (id == 'musicbrain') { toast(on[id] ? '🎧 Music Brain on: real lyrics + facts, no guessing' : '🎧 Music Brain off'); return on[id]; }
   if (id == 'stab') { if (on[id] && window.EmberMediaPlus) window.EmberMediaPlus.enable(); toast(on[id] ? '⚡ Stability bridge on: ask for images, audio or video in chat' : 'Stability bridge off'); return on[id]; }
   toast((on[id] ? '✔ ' : '✖ ') + def.label + (on[id] ? ' on' : ' off')); return on[id];
 }
@@ -198,7 +200,7 @@ async function fire(id) {
 window.EmberPlus = {
   isOn: id => !!on[id],
   lane: () => !!on.reason,
-  stateLine: () => [TOGGLES.filter(t => on[t.id] && LINES[t.id]).map(t => LINES[t.id]).join(' '), window.EmberPlugins ? window.EmberPlugins.abilities() : ''].filter(Boolean).join(' '),
+  stateLine: () => [TOGGLES.filter(t => on[t.id] && LINES[t.id]).map(t => LINES[t.id]).join(' '), window.EmberMusicBrain ? window.EmberMusicBrain.rules() : '', window.EmberPlugins ? window.EmberPlugins.abilities() : ''].filter(Boolean).join(' '),
   consume: id => { if (!on[id]) return false; on[id] = false; save(); paint(); return true; },
   flip, _fire: fire, _set: (id, v) => { on[id] = !!v; save(); paint(); }
 };

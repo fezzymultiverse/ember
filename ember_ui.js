@@ -21,11 +21,11 @@ function syncLabels() {
   const sel = $('kProv');
   if (sel) Array.from(sel.options).forEach(op => { if (P.CFG[op.value]) op.textContent = P.CFG[op.value].name + (P.CFG[op.value].status == 'prototype' ? ' (Prototype)' : ''); });
   document.querySelectorAll('.pingname').forEach(n => { n.textContent = P.label('groq'); });
-  const pn = $('provNames'); if (pn) pn.textContent = P.IDS.map(id => P.CFG[id].name).join(', ');
+  const pn = $('provNames'); if (pn) pn.textContent = (P.ACTIVE_IDS || P.IDS).map(id => P.CFG[id].name).join(', ');
 }
 function paintNames() {
   const P = window.Prov, host = $('provNameBox'); if (!P || !host) return;
-  host.innerHTML = P.IDS.map(id => '<div class="pnrow"><span class="pn-name">' + esc(DEFAULTS[id] || id) + '</span></div>').join('');
+  host.innerHTML = (P.ACTIVE_IDS || P.IDS).map(id => '<div class="pnrow"><span class="pn-name">' + esc(DEFAULTS[id] || id) + '</span></div>').join('');
 }
 function mountNames() { // V1.9.96: the "Provider names" card is gone. Any copy left in the page is removed; nothing is added.
   const box = $('provNameBox'), card = box && box.closest ? box.closest('.card') : null; if (card) card.remove();

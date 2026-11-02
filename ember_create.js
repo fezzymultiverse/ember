@@ -199,8 +199,9 @@ async function route(prompt, hk) {
   const title = ('Image - ' + ask.replace(/[^\w\s-]/g, '').trim().slice(0, 38).trim().replace(/\s+/g, ' ') + '.html').replace(/"/g, '');
   const html = imageArtifact({ title, ask, full, style: style == 'None' ? 'As written' : style, size, w, h, seed, url, steps, secs: ((Date.now() - t0) / 1000).toFixed(1) });
   const hist = lsGet(HK, []); hist.unshift({ p: ask, seed, s: size, ts: Date.now() }); hist.length = Math.min(hist.length, 30); lsSet(HK, hist);
-  const intro = 'Done. Open the artifact for the picture and how I made it. Say what to change and I will draw another.';
-  return { ok: true, url, text: intro + '\n<artifact type="html" title="' + title + '">\n' + html + '\n</artifact>' };
+  const intro = 'Done. The picture is above the details card. Say what to change and I will draw another.';
+  const pic = 'Image - ' + title.replace(/^Image - /, '').replace(/\.html$/, '') + '.png';
+  return { ok: true, url, text: intro + '\n<artifact type="image" title="' + pic + '">' + url + '</artifact>\n<artifact type="html" title="' + title.replace(/\.html$/, ' (details).html') + '">\n' + html + '\n</artifact>' };
 }
 
 window.EmberCreate = { open: openTab, route };

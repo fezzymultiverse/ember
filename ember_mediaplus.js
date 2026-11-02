@@ -52,8 +52,9 @@
       return { ok: false, error: msg, noKey: /No available Stability|key/i.test(msg) };
     }
   }
+  const imageBlock = r => 'Done. Stability AI drew it in ' + r.secs + 's.\n<artifact type="image" title="' + String(r.name).replace(/"/g, '') + '">media:' + r.id + '</artifact>';
   const text = r => r.ok
-    ? ({ audio: '🎵 Audio', video: '🎬 Video', image: '🎨 Image'}[r.kind] || 'Media') + ' ready: **' + r.name + '** (Stability AI, ' + r.secs + 's). Open **Settings > Command Centre > Media** to play, preview or download it.'
+    ? (r.kind === 'image' && r.id ? imageBlock(r) : ({ audio: '🎵 Audio', video: '🎬 Video', image: '🎨 Image'}[r.kind] || 'Media') + ' ready: **' + r.name + '** (Stability AI, ' + r.secs + 's). Open the **AI** button in the top bar to play, preview or download it.')
     : 'The ' + (r.kind || 'media') + ' was not made: ' + r.error;
-  W.EmberMediaPlus = { make, take, detect, text, bridgeOn, enable };
+  W.EmberMediaPlus = { make, take, detect, text, imageBlock, bridgeOn, enable };
 })();
