@@ -558,6 +558,7 @@ function pinNote() {
 // usually behave; NOT yet checked against live replies from each engine.
 function engineVoice(id) {
   const base = 'Same Ember voice and same length habits as on every other engine.';
+  if (id == 'cohere') return 'ENGINE NOTE: Cohere models tend to lean on lists and headings and to over-explain. Keep it conversational, plain and in the Ember voice; give real substance without padding. ' + base;
   if (id == 'groq') return 'ENGINE NOTE: this engine tends to clip its answers and sound generic. Do not be terse: give real substance, a concrete command or example, and a callback to something earlier. When he asks for depth, an explanation, code or a long answer, write it out long and complete. ' + base;
   if (id == 'gemini') return 'ENGINE NOTE: this engine tends toward polished assistant prose (headings, bullets, "Certainly!", "Great question"). Do not. No headings, no bullet lists unless a command list needs one, no pleasantries, plain street-smart words. ' + base;
   if (id == 'mistral') return 'ENGINE NOTE: this engine tends toward formal phrasing. Keep it casual and dry. ' + base;

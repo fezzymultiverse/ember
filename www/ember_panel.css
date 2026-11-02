@@ -39,3 +39,6 @@ html body #app > #log,html body #app > footer.comp{
   html body #app > header .who .ember-title-grid{padding-left:3px!important;padding-right:3px!important}
 }
 @media(prefers-reduced-motion:reduce){html body #emberHub,html body #emberCommandCenter{transition:none}}
+
+/* V1.10.20: the blue right-hand panel is removed; black Settings is the only panel. */
+html body #emberRightPanel,html body #erpBackdrop{display:none!important}

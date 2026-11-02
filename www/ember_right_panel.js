@@ -31,6 +31,11 @@
       $('erpActivityLog').textContent = W.EmberTasks.count() + ' active timers · ' + summary.lineCount + ' recent log lines\n' + ($('eccTerminalStatus')?.textContent || 'Idle') + '\nNetwork connectivity is not a provider health check.';
     }
     function open() {
+      // 1.10.20: the blue panel is gone. This button opens the black Settings (and closes it again if it is already open).
+      if ($('settings').classList.contains('show')) return W.EmberCockpit.close();
+      if ($('emberCommandCenter').classList.contains('ecc-open')) W.EmberCommandCenter.close();
+      $('headerActionsMenu').classList.add('hidden');
+      return W.EmberCockpit.open();
       if (!panel.hidden) return close();
       lastFocus = D.activeElement;
       if ($('settings').classList.contains('show')) W.EmberCockpit.close();
