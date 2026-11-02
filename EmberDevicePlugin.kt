@@ -44,6 +44,36 @@ class EmberDevicePlugin : Plugin() {
         call.resolve(r)
     }
 
+    // V1.10.21: save a file into Downloads/Ember. The WebView ignores blob downloads and has no Web Share, so artifacts never reached the phone.
+    @PluginMethod
+    fun saveFile(call: PluginCall) {
+        val name = (call.getString("name") ?: "ember-file").replace(Regex("[\\\\/:*?\"<>|]"), "_")
+        val mime = call.getString("mime") ?: "application/octet-stream"
+        val b64 = call.getString("data")
+        if (b64.isNullOrEmpty()) { call.reject("No data to save"); return }
+        try {
+            val bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val v = android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, name)
+                    put(android.provider.MediaStore.MediaColumns.MIME_TYPE, mime)
+                    put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Ember")
+                }
+                val uri = context.contentResolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, v)
+                    ?: throw Exception("Downloads is not available")
+                context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
+                    ?: throw Exception("Could not open the file for writing")
+            } else {
+                val dir = java.io.File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Ember")
+                dir.mkdirs()
+                java.io.File(dir, name).writeBytes(bytes)
+            }
+            val r = JSObject()
+            r.put("path", "Downloads/Ember/" + name)
+            call.resolve(r)
+        } catch (e: Exception) { call.reject(e.message ?: "Save failed") }
+    }
+
     // V1.6.7: one-tap "Open Termux" for the EMBER TERMUX panel. Launches the app's normal launcher activity; reads nothing from it.
     @PluginMethod
     fun openApp(call: PluginCall) {

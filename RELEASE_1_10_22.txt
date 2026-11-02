@@ -1,0 +1,12 @@
+EMBER V1.10.22
+CREATE     Several Create modes (image, audio, video, PDF) can be switched on together. The Plugins sheet and the + menu stay open
+           after each tap, and the next message runs every armed mode one after another on the same prompt.
+STABILITY  Restored: Create audio, Create video, Stability bridge, the Stability key box and the AI-features media card.
+           Stability's own API still needs a key for audio/video; images fall back to the keyless tools without one.
+AUDD       Audd.io token card restored.
+BOOT       Animated boot scene (grow, then shrink away); tap to skip.
+ROUTING    Groq, Mistral, Gemini, Cohere last; only engines with a live key are tried; Cohere is never remembered as "last good".
+MENU       Settings > AI: "Engines & media menu" with a toggle per chat engine and per keyless media tool.
+SAVE       Artifact Save/Download writes to Downloads/Ember via the new EmberDevice.saveFile native method.
+           REQUIRES an APK rebuild: copy EmberDevicePlugin.kt into android/app/src/main/java/com/fezzy/ember/ and rebuild.
+GITHUB     Apply and Apply as Brain show a toast and scroll to the pending list.
