@@ -4,8 +4,10 @@
   const W = window, loads = {};
   function load(src) {
     if (!loads[src]) loads[src] = new Promise((resolve, reject) => {
-      const s = document.createElement('script'); s.src = src; s.onload = resolve;
-      s.onerror = () => { delete loads[src]; s.remove(); reject(new Error('Bundled engine could not load: ' + src)); };
+      const s = document.createElement('script'); s.src = src;
+      const fail = () => { clearTimeout(timer); delete loads[src]; s.remove(); reject(new Error('Bundled engine could not load: ' + src)); };
+      const timer = setTimeout(fail, 15000);
+      s.onload = () => { clearTimeout(timer); resolve(); }; s.onerror = fail;
       document.head.appendChild(s);
     });
     return loads[src];
@@ -89,34 +91,106 @@
     if (code !== null) out.push({ kind: 'code', text: code.join('\n') });
     return out;
   }
-  function pdfDefinition(md, title) {
-    return { info: { title: safeTitle(title), author: 'Ember' }, pageSize: 'A4', pageMargins: [45, 52, 45, 50], defaultStyle: { font: 'Roboto', fontSize: 10.5, lineHeight: 1.25 },
-      footer: (page, total) => ({ text: 'Ember · ' + page + ' / ' + total, alignment: 'center', fontSize: 8, color: '#777777', margin: [0, 16, 0, 0] }),
-      content: blocks(md).reduce((out, b) => {
-        if (b.kind === 'bullet' || b.kind === 'ordered') {
-          const key = b.kind === 'ordered' ? 'ol' : 'ul', last = out[out.length - 1];
-          if (last && last[key]) last[key].push(inline(b.text));
-          else out.push({ [key]: [inline(b.text)], margin: [8, 0, 0, 6] });
-        } else out.push(b);
-        return out;
-      }, []).map(b => {
-        if (b.ul || b.ol) return b;
-        if (b.kind === 'table') return { table: { headerRows: 1, widths: b.rows[0].map(() => '*'), body: b.rows.map((r, i) => r.map(t => ({ text: inline(t), bold: i === 0, fillColor: i === 0 ? '#fff0e3' : null }))) }, layout: 'lightHorizontalLines', margin: [0, 6, 0, 10] };
-        const t = { text: inline(b.text), margin: [0, 0, 0, 7] };
-        if (b.kind === 'heading') Object.assign(t, { fontSize: b.level === 1 ? 24 : b.level === 2 ? 16 : 12, bold: true, color: b.level === 1 ? '#b3420b' : '#161616', margin: [0, 12, 0, 7] });
-        if (b.kind === 'bullet' || b.kind === 'ordered') return { [b.kind === 'ordered' ? 'ol' : 'ul']: [inline(b.text)], margin: [8, 0, 0, 4] };
-        if (b.kind === 'code') Object.assign(t, { text: b.text, fontSize: 9, background: '#f3f3f3', preserveLeadingSpaces: true });
-        return t;
-      }) };
-  }
-  async function pdf(md, title) {
-    await load('vendor/pdfmake-0.2.20.min.js'); await load('vendor/pdfmake-0.2.20-fonts.js');
-    if (!W.pdfMake) throw new Error('PDF provider unavailable');
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('PDF rendering took too long')), 45000);
-      try { W.pdfMake.createPdf(pdfDefinition(md, title)).getBlob(blob => { clearTimeout(timer); resolve(blob); }); }
-      catch (e) { clearTimeout(timer); reject(e); }
+  // Local publication defaults: readable type, safe margins, embedded fonts, repeatable tables.
+  // Inspired by local-tool PDF workflows, not a remote Claude service or hidden configuration.
+  const PDF_SETTINGS = Object.freeze({ pageSize: 'A4', pageOrientation: 'portrait',
+    pageMargins: Object.freeze([48, 64, 48, 58]), fontSize: 10.5, lineHeight: 1.3,
+    maxCharacters: 2000000, timeoutMs: 45000 });
+  function pdfDefinition(md, title, options) {
+    options = options || {};
+    md = String(md == null ? '' : md);
+    if (md.length > PDF_SETTINGS.maxCharacters) throw new Error('PDF text exceeds the 2,000,000 character safety limit');
+    const name = safeTitle(title), landscape = options.pageOrientation === 'landscape';
+    const parsed = W.EmberPDF && W.EmberPDF._parse ? W.EmberPDF._parse(md) : null;
+    const source = parsed || blocks(md).map(b => ({ k: b.kind === 'heading' ? 'h' : b.kind === 'table' ? 'table' : b.kind === 'code' ? 'code' : b.kind === 'bullet' || b.kind === 'ordered' ? 'li' : 'p', n: b.level, t: b.text, rows: b.rows, lines: b.kind === 'code' ? b.text.split('\n') : undefined, ord: b.kind === 'ordered' ? 1 : null, lvl: 0, box: null }));
+    const content = [];
+    // Retain Unicode and formatting; never execute or fetch HTML, links or image URLs.
+    const rich = (text, bold, italics) => {
+      if (!W.EmberPDF || !W.EmberPDF._runs || /[^\u0000-\u00ff\u2010-\u203f]/.test(String(text))) return inline(String(text));
+      return W.EmberPDF._runs(String(text), !!bold, !!italics).map(r => ({ text: r.t.replace(/[\x80-\x9f]/g, c => ({'\x80':'€','\x85':'…','\x91':'‘','\x92':'’','\x93':'“','\x94':'”','\x95':'•','\x96':'–','\x97':'—','\x99':'™'}[c] || ' ')), ...(/b/.test(r.f) ? { bold: true } : {}), ...(/i/.test(r.f) ? { italics: true } : {}), ...(r.code ? { background: '#f0f2f5', fontSize: 9.4 } : {}), ...(r.link ? { link: r.link, color: '#a64217', decoration: 'underline' } : {}) }));
+    };
+    let heading = 0;
+    source.forEach(b => {
+      if (b.k === 'h') {
+        const level = Math.max(1, Math.min(6, b.n || 1));
+        content.push({ text: rich(b.t, true), style: 'h' + level, headlineLevel: level, id: 'ember-section-' + (++heading), tocItem: options.toc === true && level <= 3, tocStyle: 'tocEntry' });
+      } else if (b.k === 'table') {
+        const width = Math.max(1, ...b.rows.map(r => r.length));
+        if (width > 24) throw new Error('Tables support up to 24 columns; split this table or use landscape');
+        // pdfmake can silently drop a cell taller than a page. Break oversized body
+        // cells into conservative continuation rows before handing them to the layout engine.
+        const paper = options.pageSize === 'LETTER' ? [612, 792] : [595.28, 841.89];
+        const usable = (landscape ? paper[1] : paper[0]) - 96;
+        const cellSize = width > 6 ? 8 : 9.3;
+        const rowLimit = Math.max(14, Math.floor(Math.max(1, usable / width - 14) / (cellSize * .7)) * 14);
+        const chunks = value => {
+          let text = String(value || ''); const parts = [];
+          while (text.length > rowLimit) {
+            let end = text.lastIndexOf(' ', rowLimit);
+            if (end < rowLimit / 2) end = rowLimit;
+            // Never cut a UTF-16 surrogate pair in half.
+            if (end > 0 && /[\uD800-\uDBFF]/.test(text[end - 1])) end--;
+            parts.push(text.slice(0, end)); text = text.slice(end).replace(/^ +/, '');
+          }
+          parts.push(text); return parts;
+        };
+        const body = [];
+        b.rows.forEach((r, ri) => {
+          const cells = Array.from({length: width}, (_, ci) => chunks(r[ci] || ''));
+          if (ri === 0 && cells.some(c => c.length > 1)) throw new Error('Table header is too large; shorten it or use landscape');
+          const count = Math.max(...cells.map(c => c.length));
+          for (let part = 0; part < count; part++) body.push(cells.map(c => ({text: rich(c[part] || ''), bold: ri === 0, color: ri === 0 ? '#793317' : '#242a33', margin: [0, 3, 0, 3], fontSize: cellSize})));
+        });
+        content.push({ table: { headerRows: 1, dontBreakRows: false, keepWithHeaderRows: 1,
+          widths: Array(width).fill('*'), body },
+          layout: { hLineWidth: i => i === 1 ? 1 : .45, vLineWidth: () => 0, hLineColor: () => '#dfe3e8',
+            fillColor: i => i === 0 ? '#fff0e5' : i % 2 === 0 ? '#f7f8fa' : null,
+            paddingLeft: () => 7, paddingRight: () => 7, paddingTop: () => 4, paddingBottom: () => 4 }, margin: [0, 6, 0, 14] });
+      } else if (b.k === 'li') {
+        const depth = Math.min(3, b.lvl || 0), marker = b.box !== null && b.box !== undefined ? (b.box ? '[x]' : '[ ]') : b.ord != null ? String(b.ord) + '.' : '•';
+        content.push({ columns: [{ width: 23, text: marker, color: '#a64217' }, { width: '*', text: rich(b.t) }], columnGap: 0, margin: [depth * 16 + 2, 0, 0, 5] });
+      } else if (b.k === 'code') {
+        content.push({ stack: (b.lines || ['']).map(line => ({ text: String(line).replace(/\t/g, '    ') || ' ', fontSize: 9, preserveLeadingSpaces: true, margin: [8, 1, 8, 1] })), fillColor: '#f1f3f6', margin: [0, 6, 0, 12] });
+      } else if (b.k === 'quote') {
+        content.push({ table: { widths: [3, '*'], body: [[{text: '', fillColor: '#d56a2e', border: [false,false,false,false]}, {text: rich(b.t, false, true), color: '#5c6470', margin: [8, 5, 0, 5], border: [false,false,false,false]}]] }, layout: 'noBorders', margin: [0, 4, 0, 12] });
+      } else if (b.k === 'hr') {
+        content.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 150, y2: 0, lineWidth: .7, lineColor: '#d8dee6' }], margin: [0, 8, 0, 12] });
+      } else if (/^<!--\s*pagebreak\s*-->$/i.test((b.t || '').trim())) {
+        content.push({ text: '', pageBreak: 'after' });
+      } else content.push({ text: rich(b.t || ''), margin: [0, 0, 0, 9] });
     });
+    if (!content.length) content.push({ text: ' ', margin: 0 });
+    if (options.toc === true && heading) content.unshift({ toc: { title: {text: 'Contents', style: 'h1'} }, pageBreak: 'after' });
+    return { info: { title: name, author: 'Ember', creator: 'Ember · Local PDF', subject: 'Created locally without a PDF API' },
+      pageSize: options.pageSize === 'LETTER' ? 'LETTER' : PDF_SETTINGS.pageSize,
+      pageOrientation: landscape ? 'landscape' : 'portrait', pageMargins: PDF_SETTINGS.pageMargins.slice(),
+      compress: true, defaultStyle: { font: 'Roboto', fontSize: PDF_SETTINGS.fontSize, lineHeight: PDF_SETTINGS.lineHeight, color: '#242a33' },
+      styles: { h1: {fontSize: 25, bold: true, color: '#a64217', margin: [0, 12, 0, 12]}, h2: {fontSize: 16, bold: true, color: '#19222e', margin: [0, 16, 0, 8]},
+        h3: {fontSize: 12.5, bold: true, margin: [0, 12, 0, 7]}, h4: {fontSize: 11.5, bold: true, margin: [0, 10, 0, 6]}, h5: {fontSize: 11, bold: true, margin: [0, 9, 0, 5]}, h6: {fontSize: 10.5, bold: true, margin: [0, 8, 0, 5]}, tocEntry: {fontSize: 10.5, margin: [0, 4, 0, 4]} },
+      header: page => ({ columns: [{text: 'EMBER / DOCUMENTS', bold: true, color: '#a64217', characterSpacing: 1.4}, {text: page > 1 ? name : 'LOCAL EXPORT', alignment: 'right', color: '#76808c'}], fontSize: 7.5, margin: [48, 27, 48, 0] }),
+      footer: (page, total) => ({ columns: [{text: name, color: '#76808c'}, {text: page + ' / ' + total, alignment: 'right', color: '#76808c'}], fontSize: 8, margin: [48, 18, 48, 0] }),
+      pageBreakBefore: (node, following) => !!node.headlineLevel && following.length === 0,
+      content };
+  }
+  async function validatePdf(blob) {
+    if (!(blob instanceof Blob) || blob.size < 100) throw new Error('Local renderer returned an empty PDF');
+    const header = new Uint8Array(await blob.slice(0, 5).arrayBuffer());
+    const tail = await blob.slice(-2048).text();
+    if (String.fromCharCode(...header) !== '%PDF-' || !tail.includes('%%EOF')) throw new Error('Local renderer returned an incomplete PDF');
+    return blob;
+  }
+  async function pdf(md, title, options) {
+    // Build first so invalid inputs fail before loading heavy bundles.
+    const definition = pdfDefinition(md, title, options);
+    await load('vendor/pdfmake-0.2.20.min.js'); await load('vendor/pdfmake-0.2.20-fonts.js');
+    if (!W.pdfMake) throw new Error('Bundled PDF renderer unavailable');
+    const blob = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('PDF rendering took too long')), PDF_SETTINGS.timeoutMs);
+      try {
+        W.pdfMake.createPdf(definition).getBlob(value => { clearTimeout(timer); resolve(value); });
+      } catch (e) { clearTimeout(timer); reject(e); }
+    });
+    return validatePdf(blob);
   }
   async function word(md, title) {
     await load('vendor/docx-9.5.1.iife.js'); const D = W.docx;
@@ -129,7 +203,7 @@
     const doc = new D.Document({ creator: 'Ember', title: safeTitle(title), numbering: { config: [{ reference: 'ember-numbered', levels: [{ level: 0, format: D.LevelFormat.DECIMAL, text: '%1.', alignment: D.AlignmentType.START }] }] }, sections: [{ children }] });
     return D.Packer.toBlob(doc);
   }
-  W.EmberDeliverables = { intent, answerHasCode, normalize, urls, prepare, blocks, inline, pdfDefinition, pdf, word, providers: () => [
+  W.EmberDeliverables = { intent, answerHasCode, normalize, urls, prepare, blocks, inline, PDF_SETTINGS, pdfDefinition, validatePdf, pdf, word, providers: () => [
     { id: 'pdfmake', formats: ['pdf'], account: false, network: false, license: 'MIT' },
     { id: 'docx', formats: ['docx'], account: false, network: false, license: 'MIT' },
     { id: 'ember', formats: ['markdown', 'html', 'csv', 'json', 'svg', 'code'], account: false, network: false }

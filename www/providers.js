@@ -19,7 +19,7 @@ const IDS = Object.keys(CFG);
 // Automatic profile for this installation. Mistral stays active because it is working for him.
 const ACTIVE_IDS = IDS.filter(id => CFG[id].kind !== 'media');
 // fast = quick everyday replies. deep = slow, careful turns. util = background jobs (memory, titles).
-const ORDER = { fast: ['groq', 'cohere', 'gemini', 'mistral'], deep: ['gemini', 'cohere', 'mistral', 'groq'], util: ['groq', 'cohere', 'gemini', 'mistral'] };
+const ORDER = { fast: ['groq', 'mistral', 'gemini', 'cohere'], deep: ['mistral', 'groq', 'gemini', 'cohere'], util: ['groq', 'mistral', 'gemini', 'cohere'] }; // V1.10.21: Groq and Mistral first, Cohere only as the last resort
 
 // V1.5.6: pasted keys often carry invisible junk (zero-width chars, quotes, "Bearer ", "key=", a trailing comma). Any of it makes
 // the provider answer 401/403 even though the key itself is fine, so every key is cleaned before it is stored or sent.
@@ -37,7 +37,7 @@ function load() {
   if (LS.get('ember_puter_on', null) !== null) LS.del('ember_puter_on');
   if (LS.get('ember_pin', null) === 'puter') LS.del('ember_pin');
   const pm = LS.get('ember_pin_model', null); if (pm && pm.id === 'puter') LS.del('ember_pin_model');
-  const lg = LS.get('ember_last_good', null); if (lg === 'puter') LS.del('ember_last_good');
+  const lg = LS.get('ember_last_good', null); if (lg === 'puter' || lg === 'cohere') LS.del('ember_last_good');
   IDS.forEach(id => { o[id] = (Array.isArray(k[id]) ? k[id] : []).filter(e => e && typeof e.key === 'string' && e.key).map(e => { e.key = clean(e.key); return e; }).filter(e => e.key); });
   return o;
 }
@@ -55,7 +55,7 @@ function setPinnedModel(id, model) { pinnedModel = (id && CFG[id] && model) ? { 
 let strictPin = LS.get('ember_pin_strict', true) !== false;
 function setStrict(v) { strictPin = !!v; LS.set('ember_pin_strict', strictPin); }
 const onlyPinned = lane => !!(strictPin && pinnedEngine && lane != 'util');
-function orderFor(lane) { const enabled = LS.get('ember_route_enabled', {}); const base = (ORDER[lane] || ORDER.fast).concat(['openrouter', 'plugsky'].filter(id => enabled[id] === true)).filter(id => CFG[id].kind !== 'media'); if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
+function orderFor(lane) { const enabled = LS.get('ember_route_enabled', {}); let base = (ORDER[lane] || ORDER.fast).concat(['openrouter', 'plugsky'].filter(id => enabled[id] === true)).filter(id => CFG[id].kind !== 'media' && enabled[id] !== false); const liveIds = base.filter(id => keys[id] && keys[id].some(e => !e.bad)); if (liveIds.length) base = liveIds; /* V1.10.21: only engines that hold a live key; per-provider OFF switch */ if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
     const lg = lane == 'fast' ? LS.get('ember_last_good', null) : null;
     if (lg && base.includes(lg) && keys[lg] && keys[lg].some(e => !e.bad)) return [lg].concat(base.filter(x => x != lg));
     return base; } return [pinnedEngine].concat(base.filter(id => id != pinnedEngine)); }
@@ -87,7 +87,7 @@ function stats() {
     for (const e of keys[id]) for (const [k,until] of modelCool) { const [pid,key,model] = JSON.parse(k); if (pid === id && key === e.key && until > Date.now()) p.cooldowns.push({ key:mask(key), model, retry:Math.ceil((until-Date.now())/1000) }); }
   }); return out;
 }
-function setEnabled(id, on) { if (!CFG[id] || CFG[id].kind === 'media') return; const cfg=LS.get('ember_route_enabled',{}); cfg[id]=!!on; LS.set('ember_route_enabled',cfg); emitStats(); }
+function setEnabled(id, on) { if (!CFG[id] || CFG[id].kind === 'media' || id === 'anthropic') return; const cfg=LS.get('ember_route_enabled',{}); cfg[id]=!!on; LS.set('ember_route_enabled',cfg); emitStats(); }
 function authFailure(er) { return Number(er.status) === 401 || (Number(er.status) === 403 && /invalid.{0,15}(key|token)|revoked|authentication_error|unauthenticated/i.test(er.message || '')); }
 
 const activeControllers = new Set(), activeReaders = new Set(); let routeCancelled = false;
@@ -576,7 +576,7 @@ function factsBlock(id, model, failed) {
   else L.push('- This is a background reply: the phone picks the engine after this prompt is built, so you do not know which engine or model you are. Do not name one.');
   const noKey = IDS.filter(x => !keys[x].length).map(x => CFG[x].name);
   if (noKey.length) L.push('- NO key is saved for: ' + noKey.join(', ') + '. You cannot be any of those engines, and you must never say you are one of them.');
-  L.push('- Automatic AI route in this build: Groq → Cohere → Gemini → Mistral. Ember stays on the engine that last answered and only moves on when it fails. Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
+  L.push('- Automatic AI route in this build: ' + orderFor('fast').map(x => CFG[x].name).join(' → ') + '. Ember stays on the engine that last answered and only moves on when it fails. Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
   if (pinnedEngine) {
     const miss = id && id != pinnedEngine, why = (failed || []).find(f => f.id == pinnedEngine);
     L.push('- Pinned engine in Settings: ' + CFG[pinnedEngine].name + (pinnedModel && pinnedModel.id == pinnedEngine ? ' (model ' + pinnedModel.model + ')' : '') + ' [' + STATE_TXT[st[pinnedEngine]] + ']' + (miss ? '. It could not answer this message' + (why ? ' (' + String(why.why || '').slice(0, 120) + ')' : '') + ', so ' + (id == 'pollinations' ? 'Free Mode' : CFG[id].name) + ' answered instead. Tell him that plainly if he asks.' : '.'));
@@ -614,7 +614,7 @@ async function runInner(lane, o, tok) {
   const halted = () => { if (tok && tok.stop) throw HANDOFF(); if (routeCancelled || (tok && tok.abort)) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' }); };
   const trying = (name, model) => { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-try', { detail: { name, model } })); } catch (e) { /* no listener */ } } }; // V1.8.3: once the native worker took the request, the page makes no further paid calls
   // when an engine failed and a different one answered, tell the UI (ai.js shows a toast). Background jobs stay silent.
-  const done = r => { if (!pinnedEngine && lane == 'fast' && r.provider && CFG[r.provider] && r.provider != 'anthropic') LS.set('ember_last_good', r.provider); if (pinnedEngine && r.provider != pinnedEngine) { const p0 = failed.find(x => x.id == pinnedEngine); r.pinMiss = { want: pinnedEngine, why: p0 ? (p0.why || '') : 'no usable key' }; } const f = failed.find(x => x.id != r.provider); if (f && pl && !(pinnedEngine && r.provider == pinnedEngine)) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
+  const done = r => { if (!pinnedEngine && lane == 'fast' && r.provider && CFG[r.provider] && r.provider != 'anthropic' && r.provider != 'cohere') LS.set('ember_last_good', r.provider); if (pinnedEngine && r.provider != pinnedEngine) { const p0 = failed.find(x => x.id == pinnedEngine); r.pinMiss = { want: pinnedEngine, why: p0 ? (p0.why || '') : 'no usable key' }; } const f = failed.find(x => x.id != r.provider); if (f && pl && !(pinnedEngine && r.provider == pinnedEngine)) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
   let tried = false, routeStop = null;
   halted();
   if (o.routeProvider && !CFG[o.routeProvider]) throw Object.assign(new Error('The original engine cannot continue this tool result. No other engine was called for this follow-up.'), { code: 'fail' });

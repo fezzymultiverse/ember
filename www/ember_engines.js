@@ -2,7 +2,7 @@
 //   IMAGE  Pollinations stays the default. "Forge" (AI Horde, anonymous key 0000000000) is the second engine: it takes over when Pollinations fails (Auto) or runs alone (Forge only).
 //   PDF    Bundled pdfmake and docx provide private, no-account exports; basic EmberPDF is the fallback.
 //   Plain-English routing: "draw a husky in neon Cape Town" goes to the image route without opening the + menu. PDFs already arrive as artifacts from the chat; saving them goes through here.
-// Nothing leaves the phone until a picture is asked for or a PDF is saved. Cloud PDF asks once before the first send (the text of the document leaves the phone).
+// Image routes are unchanged. PDF exports run locally and never upload document content.
 'use strict';
 (() => {
   const $ = id => document.getElementById(id);
@@ -15,8 +15,8 @@
 
   // ---------- settings + activity log ----------
   const DEF = { image: 'auto', pdf: 'local', nl: true, pdfConsent: false, log: [] };
-  const IMAGE_MODES = ['auto', 'pollinations', 'forge'], PDF_MODES = ['auto', 'cloud', 'local'];
-  const cfg = () => { const c = Object.assign({}, DEF, lsGet(KEY, {})); if (!IMAGE_MODES.includes(c.image)) c.image = 'auto'; if (!PDF_MODES.includes(c.pdf)) c.pdf = 'auto'; if (!Array.isArray(c.log)) c.log = []; return c; };
+  const IMAGE_MODES = ['auto', 'pollinations', 'forge'], PDF_MODES = ['local'];
+  const cfg = () => { const c = Object.assign({}, DEF, lsGet(KEY, {})); if (!IMAGE_MODES.includes(c.image)) c.image = 'auto'; c.pdf = 'local'; c.pdfConsent = false; if (!Array.isArray(c.log)) c.log = []; return c; };
   const put = c => lsSet(KEY, c);
   function note(engine, ok, detail, ms) {
     const c = cfg(); c.log.unshift({ t: Date.now(), e: engine, ok: !!ok, d: String(detail || '').slice(0, 120), ms: ms || 0 }); c.log.length = Math.min(c.log.length, 14); put(c);
@@ -189,9 +189,7 @@
     catch (e) { note('forge', false, 'heartbeat: ' + why(e), Date.now() - t0); return { ok: false, why: why(e) }; }
   }
 
-  // ---------- Cloud PDF ----------
-  // No verified anonymous hosted PDF provider is configured. Private bundled providers are used instead.
-  const PDF_PROVIDERS = [];
+  // ---------- Local PDF validation ----------
   const isPdf = u8 => {
     if (!u8 || u8.length < 400) return false;
     const head = String.fromCharCode.apply(null, Array.prototype.slice.call(u8, 0, 5));
@@ -205,7 +203,7 @@
     if (/json/.test(ct)) {
       const j = await res.json(), b64 = j && (j.pdf_base64 || j.pdf || j.data);
       if (b64) { const u = b64Bytes(b64); if (isPdf(u)) return u; throw new Error('bad PDF in JSON'); }
-      if (j && j.url) { const r2 = await net(j.url, {}, 25000); if (!r2.ok) throw new Error('link HTTP ' + r2.status); const u = new Uint8Array(await r2.arrayBuffer()); if (isPdf(u)) return u; throw new Error('bad PDF from link'); }
+      if (j && j.url) throw new Error('Remote PDF URLs are disabled; use the local renderer');
       throw new Error((j && (j.error || j.message)) ? String(j.error || j.message).slice(0, 90) : 'unexpected JSON');
     }
     const buf = await res.arrayBuffer(), u = new Uint8Array(buf), len = Number(h('content-length')) || 0;
@@ -223,30 +221,16 @@
     const A = window.EmberArtifacts; if (!A || !A.markdownHtml) return null;
     return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc(title) + '</title><style>' + PDF_CSS + '</style></head><body>' + A.markdownHtml(md) + '</body></html>';
   }
-  async function cloudPdf(html, title, onTry) {
-    const errs = [];
-    for (const p of PDF_PROVIDERS) {
-      const t0 = Date.now();
-      try {
-        if (onTry) { try { onTry(p); } catch (e) { /* view only */ } }
-        const r = await net(p.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/pdf, application/json' }, body: JSON.stringify(p.body(html)) }, 30000);
-        if (r.status === 429) throw new Error('daily limit reached');
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        const u8 = await readPdf(r);
-        note('pdf:' + p.id, true, Math.round(u8.length / 1024) + ' KB · ' + ((Date.now() - t0) / 1000).toFixed(1) + 's', Date.now() - t0);
-        return { ok: true, blob: new Blob([u8], { type: 'application/pdf' }), engine: p.name };
-      } catch (e) { errs.push(p.name + ': ' + why(e)); note('pdf:' + p.id, false, why(e), Date.now() - t0); }
-    }
-    return { ok: false, why: errs.join(' · ') };
-  }
-  // Called by ember_artifacts.js exportPdf(). ok:false means "build it on this phone".
-  async function cloudPdfFor(md, title) {
-    return { ok: false, why: 'Cloud PDF disabled: no verified hosted provider. Ember uses bundled offline engines.' };
-  }
-
+  // Compatibility shims for older callers: no fetch, provider or document upload.
+  async function cloudPdf() { return { ok: false, why: 'Remote PDF generation has been removed. Use EmberDeliverables.pdf.' }; }
+  async function cloudPdfFor() { return cloudPdf(); }
   async function pdfCheck() {
-    const html = '<!doctype html><html><head><meta charset="utf-8"><style>body{font:12pt Helvetica,sans-serif;padding:20pt}h1{color:#ff6a00}</style></head><body><h1>Ember engine check</h1><p>If you can read this, the cloud PDF engine works. ' + new Date().toISOString() + '</p>' + '<p>' + 'The quick brown fox jumps over the lazy dog. '.repeat(12) + '</p></body></html>';
-    const r = await cloudPdf(html, 'check'); return r.ok ? { ok: true, engine: r.engine } : { ok: false, why: r.why };
+    try {
+      const D = window.EmberDeliverables;
+      if (!D) throw new Error('Local PDF renderer unavailable');
+      const blob = await D.pdf('# Local PDF check\n\nThis document was rendered on this device.', 'Local PDF check');
+      return { ok: true, engine: 'Bundled offline pdfmake', bytes: blob.size };
+    } catch (e) { return { ok: false, why: why(e) }; }
   }
 
   // ---------- Media engines sheet ----------
@@ -272,7 +256,7 @@
       eng('Pollinations', 'flux · fast', 'image.pollinations.ai, about one picture per 15 s anonymous', 'pollinations') + eng('Forge', 'AI Horde · queue', 'aihorde.net anonymous key, drawn on volunteer GPUs', 'forge') + eng('Stability AI', 'Stable Image Core · your key', 'api.stability.ai, billed by Stability, only runs when you pick it', 'stability') +
       '<div class="eg-row"><button type="button" class="btn g" id="egTestF">Check Forge</button></div></div>' +
       '<div class="eg-card"><div class="eg-h">📄 PDFs</div>' + seg('pdf', c.pdf, [['local', 'Private / no account']]) +
-      '<p class="hint">Ember PDF uses bundled pdfmake with embedded Roboto fonts. Ember Documents exports genuine DOCX through the bundled docx engine. Both are free software, run on this device and need no provider account. Font coverage is not universal. Basic PDF is the fallback.</p>' +
+      '<p class="hint">Ember PDF uses bundled pdfmake with embedded Roboto fonts. Ember Documents exports genuine DOCX through the bundled docx engine. Both are free software, run on this device and need no provider account. A4 layout, embedded fonts, repeating table headers and validated PDF output. Font coverage is not universal. Basic PDF is the fallback.</p>' +
       '<div class="eg-eng"><i class="eg-dot ok" aria-hidden="true"></i><div><b>Ember PDF &amp; Documents <em>offline · no signup</em></b><small>pdfmake 0.2.20 + docx 9.5.1 (MIT). Documents stay on your device during export.</small></div></div></div>' +
       '<div class="eg-card"><div class="eg-h">💬 Plain English</div><button type="button" class="eg-sw' + (c.nl ? ' on' : '') + '" id="egNl" role="switch" aria-checked="' + c.nl + '"><span>Route requests like “draw a husky in neon” to the picture engines</span><i></i></button><p class="hint">Off means pictures only start from + > Create image.</p></div>' +
       '<div class="eg-card"><div class="eg-h">🧾 Recent activity</div>' + (c.log.length ? '<ul class="eg-log">' + c.log.slice(0, 8).map(l => '<li class="' + (l.ok ? 'ok' : 'bad') + '"><b>' + esc(l.e.replace('pdf:', 'pdf · ')) + '</b><span>' + esc(l.d) + '</span><small>' + ago(l.t) + '</small></li>').join('') + '</ul>' : '<p class="hint">Nothing yet. Ask for a picture or save a PDF.</p>') + '</div>' +
@@ -285,11 +269,11 @@
     const pk = e.target.closest('[data-pick]');
     if (pk && window.EmberKeyless && EmberKeyless.setPreference) { EmberKeyless.setPreference('image', pk.dataset.pick); paint(); toast(pk.dataset.pick === 'ask' ? 'Pictures: ask each time' : 'Pictures: always ' + (pk.dataset.pick === 'stability' ? 'Stability' : 'Pollinations')); return; }
     const s = e.target.closest('[data-seg]');
-    if (s) { const c = cfg(); c[s.dataset.seg] = s.dataset.v; if (s.dataset.seg === 'pdf' && s.dataset.v === 'cloud') c.pdfConsent = true; if (s.dataset.seg === 'pdf' && s.dataset.v === 'auto') c.pdfConsent = false; put(c); paint(); return; }
+    if (s) { const c = cfg(); c[s.dataset.seg] = s.dataset.v; if (s.dataset.seg === 'pdf') { c.pdf = 'local'; c.pdfConsent = false; } put(c); paint(); return; }
     if (e.target.closest('#egNl')) { const c = cfg(); c.nl = !c.nl; put(c); paint(); toast(c.nl ? 'Plain-English picture routing on' : 'Plain-English picture routing off'); return; }
     const f = e.target.closest('#egTestF'), p = e.target.closest('#egTestP');
     if (f) { f.disabled = true; f.textContent = 'Checking…'; const r = await forgeCheck(); toast(r.ok ? 'Forge is up (' + r.ms + ' ms)' : 'Forge did not answer: ' + r.why); paint(); }
-    if (p) { p.disabled = true; p.textContent = 'Rendering…'; const r = await pdfCheck(); toast(r.ok ? 'Cloud PDF works (' + r.engine + ')' : 'Cloud PDF failed: ' + String(r.why).slice(0, 80)); paint(); }
+    if (p) { p.disabled = true; p.textContent = 'Rendering…'; const r = await pdfCheck(); toast(r.ok ? 'Local PDF works (' + r.engine + ')' : 'Local PDF failed: ' + String(r.why).slice(0, 80)); paint(); }
   });
 
   window.EmberEngines = { open: () => show(true), close: () => show(false), intent, imageRoute, forgeRoute, forgeImage, forgeCheck, cloudPdf, cloudPdfFor, pdfCheck, pdfHtml, readPdf, isPdf, config: cfg, _note: note };

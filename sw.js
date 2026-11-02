@@ -1,6 +1,7 @@
 // Ember V1.8.3 service worker: app files only. Network first so updates arrive, cache as the offline fallback. API calls are never touched.
 // Generated from index.html plus the documented lazy/static asset closure.
-const V = 'ember-v1.10.18-panel-p1', FILES = [
+const V = 'ember-v1.10.25-local-pdf-boot1', FILES = [
+  "ember_cohere_lock.js",
   "ember_right_panel.js",
   "ember_right_panel.css",
   "ember_output_archive.js",
@@ -52,6 +53,7 @@ const V = 'ember-v1.10.18-panel-p1', FILES = [
   "ember_learn.js",
   "ember_lyric_thoughts.js",
   "ember_lyrics.js",
+  "ember_musicbrain.js",
   "ember_media.js",
   "ember_mediaplus.js",
   "ember_menu.css",

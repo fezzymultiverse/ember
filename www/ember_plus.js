@@ -29,7 +29,7 @@ const LINES = {
   image: '',
   audio_gen: '', video_gen: '',
   stab: 'STABILITY BRIDGE is ON: when he asks for an image, music/sound/audio, or a video, call media_generate (kind image|audio|video, prompt). It really makes the file with Stability AI (image, audio; video is several Stability images plus audio composed on the phone) and saves it. A finished IMAGE is shown inline in this chat automatically: do not tell him to look in any panel, tab or Command Centre, and do not paste links; just say it is above. Audio and video are in the AI button in the top bar. If it fails, say the exact error. Do not claim anything was made unless the tool said ok.',
-  pdf: 'PDF MODE is ON for this message: write the whole answer as ONE complete document inside <artifact type="pdf" title="Short-Title.pdf"> ... </artifact> in Markdown: a title, a short summary, numbered sections with real detail, tables where they help, and a closing list of next steps. No filler, no truncation. Before the artifact write one short sentence only.',
+  pdf: 'PDF MODE is ON for this message: write the whole answer as ONE complete document inside <artifact type="pdf" title="Short-Title.pdf"> ... </artifact> in Markdown: a title, a short summary, numbered sections with real detail, tables where they help, and a closing list of next steps. Where a picture helps (at most 4), put it on its own line as ![short caption](img:a vivid picture description, no brackets or parentheses). The app draws each one free with Pollinations when he saves the PDF, so never say you lack an image key. No filler, no truncation. Before the artifact write one short sentence only.',
   device: 'DEVICE ACCESS is ON for this chat: he allowed you to use his saved Documents tools (list, search, read) and the Termux panel when it helps. Use them instead of saying you cannot reach his files. You still cannot see anything outside those tools.',
   web: 'WEB SEARCH is FORCED ON for this chat: before answering anything that could be current or factual, call web_search (or search_and_read) first, then answer from the results and name the source. If the search fails, say so; do not answer from memory as if it had worked.',
   reason: 'REASONING is ON for this chat: work the problem step by step, check your own answer once before you give it, and say plainly where you are unsure.',
@@ -94,7 +94,7 @@ menu.addEventListener('click', e => {
     else toast('This tool is not available on this screen.');
     return;
   }
-  if (t) { const id = t.dataset.t, def = TOGGLES.find(x => x.id == id); if (flip(id) && def.once) setMenu(false); return; } // toggles keep the menu open so several can be switched at once
+  if (t) { const id = t.dataset.t, def = TOGGLES.find(x => x.id == id); flip(id); return; } // toggles keep the menu open so several can be switched at once
   if (o) { setMenu(false); fire(o.dataset.o); }
 });
 
@@ -102,9 +102,8 @@ menu.addEventListener('click', e => {
 function flip(id, v) {
   const def = TOGGLES.find(x => x.id == id); if (!def) return false;
   on[id] = v == null ? !on[id] : !!v;
-  if (def.once && on[id]) TOGGLES.forEach(x => { if (x.once && x.id != id) on[x.id] = false; });
   save(); paint();
-  if (def.once) { toast(on[id] ? def.icon + ' Describe it and send' : def.label + ' off'); if (on[id]) { const i = $('inp'); if (i) { try { i.focus(); } catch (e) { /* no focus */ } } } return on[id]; }
+  if (def.once) { const n = TOGGLES.filter(x => x.once && on[x.id]).length; toast(on[id] ? def.icon + (n > 1 ? ' ' + n + ' create modes on. Describe it and send' : ' Describe it and send') : def.label + ' off'); if (on[id]) { const i = $('inp'); if (i) { try { i.focus(); } catch (e) { /* no focus */ } } } return on[id]; }
   if (id == 'musicbrain') { toast(on[id] ? '🎧 Music Brain on: real lyrics + facts, no guessing' : '🎧 Music Brain off'); return on[id]; }
   if (id == 'stab') { if (on[id] && window.EmberMediaPlus) window.EmberMediaPlus.enable(); toast(on[id] ? '⚡ Stability bridge on: ask for images, audio or video in chat' : 'Stability bridge off'); return on[id]; }
   toast((on[id] ? '✔ ' : '✖ ') + def.label + (on[id] ? ' on' : ' off')); return on[id];

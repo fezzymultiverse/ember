@@ -400,7 +400,7 @@ async function resolveAddonCalls(text, L, route) {
   if (msgs.length && msgs[0].role == 'assistant') msgs.unshift({ role: 'user', content: '(we are picking the conversation back up)' });
   if (route && route.webEvidence) msgs.push({ role: 'user', content: route.webEvidence });
   const request = [...conv.msgs].reverse().find(m => m.r == 'u');
-  const artifactBudget = request && window.EmberDeliverables && window.EmberDeliverables.intent(request.t) ? 8000 : 450;
+  const artifactBudget = request && window.EmberDeliverables && window.EmberDeliverables.intent(request.t) ? 12000 : 450;
   const rounds = []; // V1.9.19: every tool call made this turn, oldest first — feeds the RECENT ACTIONS block below
   const seenKeys = new Set();
   for (let round = 0; round < 4 && calls.length; round++) {
@@ -598,10 +598,17 @@ async function send() {
   if (conv.auto && conv.title == 'New chat') conv.title = t.length > 38 ? t.slice(0, 38).trim() + '…' : t;
   $('inp').value = ''; grow();
   await persist(); renderLog();
-  const plusImage = !!(window.EmberPlus && window.EmberPlus.consume && window.EmberPlus.consume('image')); // V1.10.4: + > Create image always wins over the AI Features hand-off
+  const plusImageArmed = !!(window.EmberPlus && window.EmberPlus.consume && window.EmberPlus.consume('image')); const docAsk = /\b(artifact|pages?|pdf|document|report|essay|article|guide|proposal|lyrics|story|script)\b/i.test(t) && !/\b(image|images|picture|pictures|photo|illustration|poster|logo|wallpaper|draw|paint)\b/i.test(t); const plusImage = plusImageArmed && !(docAsk && !(window.EmberPlus.isOn && window.EmberPlus.isOn('pdf'))); // V1.10.4: + > Create image always wins over the AI Features hand-off
   { // V1.10.5: + > Create audio / Create video, and the Stability bridge (image, audio, video, speech straight from chat)
     const MP = window.EmberMediaPlus; let mk = null;
-    if (MP) { mk = MP.take(); if (!mk && MP.bridgeOn()) { const k = MP.detect(t); if (k) mk = { kind: k, provider: 'stability' }; else if (plusImage) mk = { kind: 'image', provider: 'stability' }; } }
+    const mks = MP && MP.takeAll ? MP.takeAll() : [], pdfArmed = !!(window.EmberPlus && window.EmberPlus.isOn && window.EmberPlus.isOn('pdf'));
+    if (mks.length + (plusImage ? 1 : 0) + (pdfArmed ? 1 : 0) > 1) { // V1.10.22: several Create modes armed together run one after another on the same prompt
+      for (const m of mks) await mediaRoute(t, m, false);
+      if (plusImage) { let ok = false; if (MP && MP.bridgeOn()) ok = await mediaRoute(t, { kind: 'image', provider: 'stability' }, true); if (!ok) await imageRoute(t); }
+      if (pdfArmed) { try { await reply(); } finally { window.EmberPlus.consume('pdf'); } }
+      return;
+    }
+    if (MP) { mk = mks[0] || null; if (!mk && MP.bridgeOn()) { const k = MP.detect(t); if (k) mk = { kind: k, provider: 'stability' }; else if (plusImage) mk = { kind: 'image', provider: 'stability' }; } }
     if (mk && await mediaRoute(t, mk, plusImage)) return;
   }
   const mediaKindOnly = /\b(video|animation|audio|music|sound)\b/i.test(t);

@@ -356,10 +356,10 @@
     function decorateResults() { $('rrResults').querySelectorAll('[data-rr-add]').forEach(b=>{if(b.textContent!=='Apply')b.textContent='Apply';}); }
     new MutationObserver(decorateResults).observe($('rrResults'),{childList:true,subtree:true});
     const rrStatus=$('rrStatus'); let lastMessage='';
-    new MutationObserver(()=>{const text=rrStatus.textContent;if(text===lastMessage)return;lastMessage=text;const log=$('cockpitSearchLog');log.textContent='['+new Date().toLocaleTimeString()+'] '+text;}).observe(rrStatus,{childList:true,characterData:true,subtree:true});
+    new MutationObserver(()=>{const text=rrStatus.textContent;if(text===lastMessage)return;lastMessage=text;const log=$('cockpitSearchLog');log.textContent='['+new Date().toLocaleTimeString()+'] '+text;if(text&&/applied|added|selected|removed|saved/i.test(text)){try{W.emberToast&&W.emberToast(String(text).slice(0,140));}catch(_){}}}).observe(rrStatus,{childList:true,characterData:true,subtree:true});
     card.addEventListener('click',e=>{
       const apply=e.target.closest('[data-rr-add]');
-      if(apply){e.preventDefault();e.stopImmediatePropagation();const repo=G._clean.cleanRepo(apply.dataset.rrAdd);if(!repo)return;if(!candidates.has(repo.toLowerCase()))candidates.set(repo.toLowerCase(),{repo,selected:false});renderQueue();status('Applied '+repo+'. Tick Sync, then confirm to queue.');return;}
+      if(apply){e.preventDefault();e.stopImmediatePropagation();const repo=G._clean.cleanRepo(apply.dataset.rrAdd);if(!repo)return;if(!candidates.has(repo.toLowerCase()))candidates.set(repo.toLowerCase(),{repo,selected:false});renderQueue();status('Applied '+repo+'. Tick Sync, then confirm to queue.');try{W.emberToast&&W.emberToast('Applied '+repo+'. Tick Sync below, then confirm to queue.');$('cockpitPending').scrollIntoView({block:'center',behavior:'smooth'});}catch(_){}return;}
       const b=e.target.closest('[data-rr]');
       if(b&&['search','owned','prev','next'].includes(b.dataset.rr)){term.open=true;$('cockpitSearchLog').textContent='['+new Date().toLocaleTimeString()+'] Searching GitHub…';}
     },true);

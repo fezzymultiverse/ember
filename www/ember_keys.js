@@ -23,6 +23,7 @@ const WHERE = id => (window.Prov && window.Prov.CFG && window.Prov.CFG[id]) ? 'S
 function inventory() {
   const P = window.Prov, SC = window.EmberScraper, out = [];
   if (P && P.IDS) P.IDS.forEach(id => {
+    if (P.CFG[id] && P.CFG[id].kind === 'media') return; // V1.10.23: media keys live in + > Media & Music
     const a = (P.entries && P.entries(id)) || [];
     out.push({ id, name: P.CFG[id].name, kind: P.CFG[id].kind === 'media' ? 'media artifacts' : 'chat engine', saved: a.length, usable: a.filter(e => e && !(e.st && e.st.ok === false) && !e.bad).length, use: USE[id] || CHAT, where: WHERE(id) });
   });

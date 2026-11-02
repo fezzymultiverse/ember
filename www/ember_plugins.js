@@ -65,9 +65,28 @@
     });
     return h + '</div><div class="epl-btns"><button type="button" class="epl-btn hot" data-sec="scraping">Add keys &amp; run tests</button></div>';
   }
+  const engBusy = {};
+  function enginesGroup() {
+    const K = window.EmberKeyless; if (!K) return '';
+    const E = [['pollinations', '🌸', 'Pollinations', 'Free · flux · fast'], ['forge', '🔥', 'Forge', 'Free · AI Horde · queue 30 s+'], ['stability', '🎨', 'Stability AI', 'Your key · billed by Stability']];
+    let h = '<h4 class="epl-h">Picture engines</h4><div class="epl-grp">';
+    E.forEach(([id, ic, nm, sub]) => {
+      const on = K.enabled(id), ok = K.healthy(id), b = engBusy[id];
+      h += '<div class="epl-row epl-static"><span class="epl-dot ' + (ok ? 'ok' : '') + '"></span><span class="epl-ic">' + ic + '</span><span class="epl-tx"><b>' + nm + '</b><small>' + sub + (id === 'stability' && stabState() === 'none' ? ' · add key above' : '') + '</small></span><button type="button" class="epl-btn" style="height:36px;padding:0 12px" data-eng-test="' + id + '"' + (b ? ' disabled' : '') + '>' + (b ? '…' : 'Test') + '</button><button type="button" role="switch" aria-checked="' + on + '" data-eng-tog="' + id + '" style="border:0;background:none;padding:0"><span class="epl-sw' + (on ? ' on' : '') + '"></span></button></div>';
+    });
+    return h + '</div>';
+  }
+  async function engTest(id) {
+    const K = window.EmberKeyless; if (!K || engBusy[id]) return;
+    if (id === 'stability') return stabCheck(true);
+    engBusy[id] = true; paint(true);
+    try { await K.checkAvailability(id); } catch (e) { /* health shows the result */ }
+    engBusy[id] = false; paint(true);
+    try { const t = $('toast'); if (t) { t.textContent = (id === 'forge' ? 'Forge ' : 'Pollinations ') + (K.healthy(id) ? 'works' : 'did not answer'); t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); } } catch (e) { /* toast optional */ }
+  }
   function mediaView() {
     const p = P(), is = id => !!(p && p.isOn(id)), ok = songOk();
-    return stabilityCard() + '<h4 class="epl-h">Create (next message)</h4><div class="epl-grp">' +
+    return stabilityCard() + enginesGroup() + '<h4 class="epl-h">Create (next message)</h4><div class="epl-grp">' +
       sw('data-flip="image"', '🎨', 'Create image', 'Pollinations, Forge, then Stability if a key is saved', is('image')) +
       sw('data-flip="audio_gen"', '🎵', 'Create audio', 'Music or sound, made by Stability AI', is('audio_gen')) +
       sw('data-flip="video_gen"', '🎬', 'Create video', 'Stability images + music, composed on this phone', is('video_gen')) +
@@ -164,6 +183,8 @@
     const sa = t.closest('[data-stab-add]'); if (sa) return stabAdd();
     const sk = t.closest('[data-stab-check]'); if (sk) return stabCheck(true);
     const sr = t.closest('[data-stab-rm]'); if (sr) { try { window.Prov.removeKey('stability', sr.dataset.stabRm); } catch (e) { /* already gone */ } stabMsg = ''; try { window.dispatchEvent(new Event('ember-names')); } catch (e) { /* best effort */ } return paint(true); }
+    const et = t.closest('[data-eng-test]'); if (et) return engTest(et.dataset.engTest);
+    const eg = t.closest('[data-eng-tog]'); if (eg && window.EmberKeyless) { const K = window.EmberKeyless, id = eg.dataset.engTog; K.toggle(id, !K.enabled(id)); return paint(true); }
     const sc = t.closest('[data-scr]');
     if (sc) {
       const f = sc.dataset.scr, nv = !scrapers()[f]; setScr(f, nv);
@@ -171,7 +192,7 @@
       try { const tt = $('toast'); if (tt) { tt.textContent = (f === 'on' ? 'Web scraping ' : 'Free reader fallback ') + (nv ? 'on' : 'off'); tt.classList.add('show'); clearTimeout(onClick.t); onClick.t = setTimeout(() => tt.classList.remove('show'), 1800); } } catch (e) { /* toast optional */ }
       paintMenu(); try { window.dispatchEvent(new Event('ember-plus-change')); } catch (e) { /* listeners optional */ } return paint(true);
     }
-    const fl = t.closest('[data-flip]'); if (fl) { const p = P(); if (!p || !p.flip) return; const id = fl.dataset.flip, v = p.flip(id); if (v && ['image', 'audio_gen', 'video_gen', 'pdf'].includes(id)) close(); else paint(); return; }
+    const fl = t.closest('[data-flip]'); if (fl) { const p = P(); if (!p || !p.flip) return; const id = fl.dataset.flip, v = p.flip(id); paint(); return; } /* V1.10.22: stay open so several Create modes can be armed */
     const fi = t.closest('[data-fire]'); if (fi) { close(); const p = P(); if (p && p._fire) p._fire(fi.dataset.fire); return; }
     const se = t.closest('[data-sec]'); if (se) section(se.dataset.sec);
   }

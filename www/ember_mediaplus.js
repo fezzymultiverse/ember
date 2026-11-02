@@ -32,6 +32,7 @@
     if (P.consume('video_gen')) return { kind: 'video', provider: 'stability' };
     return null;
   }
+  function takeAll() { const P = W.EmberPlus, out = []; if (!P || !P.consume) return out; if (P.consume('audio_gen')) out.push({ kind: 'audio', provider: 'stability' }); if (P.consume('video_gen')) out.push({ kind: 'video', provider: 'stability' }); return out; }
   async function make(kind, want, prompt) {
     const M = W.EmberMedia; if (!M) return { ok: false, error: 'The media engine did not load.' };
     const provider = providerFor(kind, want);
@@ -56,5 +57,5 @@
   const text = r => r.ok
     ? (r.kind === 'image' && r.id ? imageBlock(r) : ({ audio: '🎵 Audio', video: '🎬 Video', image: '🎨 Image'}[r.kind] || 'Media') + ' ready: **' + r.name + '** (Stability AI, ' + r.secs + 's). Open the **AI** button in the top bar to play, preview or download it.')
     : 'The ' + (r.kind || 'media') + ' was not made: ' + r.error;
-  W.EmberMediaPlus = { make, take, detect, text, imageBlock, bridgeOn, enable };
+  W.EmberMediaPlus = { make, take, takeAll, detect, text, imageBlock, bridgeOn, enable };
 })();

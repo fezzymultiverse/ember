@@ -1,4 +1,4 @@
-// Ember V1.9.87: exportPdf asks EmberEngines (cloud PDF) first. Earlier: artifacts: markdown, document, pdf (real PDF files via ember_pdf.js), svg (preview + PNG), html, code, json, csv.
+// Ember local exports: PDF generation never calls a hosted provider. Earlier: artifacts: markdown, document, pdf (real PDF files via ember_pdf.js), svg (preview + PNG), html, code, json, csv.
 // HTML previews run in a sandboxed iframe; SVG previews render through <img> so scripts can never run.
 'use strict';
 (() => {
@@ -175,8 +175,6 @@
   async function exportPdf(a) {
     const D = window.EmberDeliverables;
     if (D) { try { await saveBlob(await D.pdf(mdOf(a), baseName(a.title)), baseName(a.title) + '.pdf'); return; } catch (e) { T('Rich PDF unavailable; using the basic offline writer (Latin-only fonts)'); } }
-    const E = window.EmberEngines; // V1.9.87: cloud PDF first when allowed, this phone's writer is the fallback
-    if (E && E.cloudPdfFor) { try { const c = await E.cloudPdfFor(mdOf(a), baseName(a.title)); if (c && c.ok) { await saveBlob(c.blob, baseName(a.title) + '.pdf'); return; } } catch (e) { /* fall through to the local writer */ } }
     const P = window.EmberPDF; if (!P) { printArtifact(a); return; }
     let r; try { r = P.fromMarkdown(mdOf(a), { title: baseName(a.title) }); } catch (e) { T('PDF failed: ' + (e && e.message || e)); return; }
     await saveBlob(P.toBlob(r.bytes), baseName(a.title) + '.pdf');
