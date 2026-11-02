@@ -97,7 +97,7 @@ async function lyrics(artist, song) {
   const t = await http('http://api.chartlyrics.com/apiv1.asmx/SearchLyricDirect?' + new URLSearchParams({ artist, song }), {}, 25000);
   const x = new DOMParser().parseFromString(t, 'text/xml'); const g = n => { const e = x.getElementsByTagName(n)[0]; return e ? String(e.textContent || '').trim() : ''; };
   const text = g('Lyric'); if (!text) throw new Error('ChartLyrics has no lyrics for that artist and song.');
-  return { artist: g('LyricArtist') || artist, song: g('LyricSong') || song, source: g('LyricUrl') || 'chartlyrics.com', lyrics: text.slice(0, 4000), truncated: text.length > 4000 };
+  return { artist: g('LyricArtist') || artist, song: g('LyricSong') || song, source: g('LyricUrl') || 'chartlyrics.com', lyrics: text.slice(0, 60000), truncated: text.length > 60000 };
 }
 
 // ---------- agent tools ----------
@@ -107,16 +107,16 @@ const TOOL_DEFS = [
   { id: 'unsplash', name: 'search_photos', description: 'Searches Unsplash for free photos. Returns links, photographer names and pages. Always credit the photographer and Unsplash.', parameters: { query: 'string', count: 'number?' } },
   { id: 'whoisjson', name: 'get_whois', description: 'Looks up domain registration (whois) data for a domain he names, through WhoisJSON.', parameters: { domain: 'string' } },
   { id: 'wordsapi', name: 'get_word_info', description: 'Looks up one English word: definitions, part of speech, synonyms, antonyms, examples (WordsAPI).', parameters: { word: 'string' } },
-  { id: null, name: 'get_lyrics', description: 'Fetches song lyrics from ChartLyrics for an artist and song he names. Do not paste the whole lyric back: quote a few lines at most, summarise the rest and say where it came from. Not verified live, so report any failure exactly.', parameters: { artist: 'string', song: 'string' } }
+  { id: null, name: 'get_lyrics', description: 'Fetches song lyrics from ChartLyrics for an artist and song he names. The app prints the full text itself, so never retype it; write one or two sentences and say where it came from. Never write lyrics from memory. Report any failure exactly.', parameters: { artist: 'string', song: 'string' } }
 ];
-const tools = () => !enabled() ? [] : TOOL_DEFS.filter(t => !t.id || hasKey(t.id)).map(t => ({ name: t.name, description: t.description, parameters: t.parameters }));
+const tools = () => !enabled() ? [] : TOOL_DEFS.filter(t => (!t.id || hasKey(t.id)) && !(t.name === 'get_lyrics' && W.EmberMusicBrain && W.EmberMusicBrain.isOn())).map(t => ({ name: t.name, description: t.description, parameters: t.parameters }));
 const handlers = {
   get_public_ip: () => ip(),
   check_grammar: a => grammar(a.text, a.language),
   search_photos: a => photos(a.query, a.count),
   get_whois: a => whois(a.domain),
   get_word_info: a => word(a.word),
-  get_lyrics: a => lyrics(a.artist, a.song)
+  get_lyrics: async a => { const r = await lyrics(a.artist, a.song); return Object.assign({}, r, { delivered_in_full_by_app: true, _verbatim: { title: 'Lyrics - ' + String(r.artist + ' - ' + r.song).replace(/[\\/:*?"<>|]/g, '').slice(0, 90) + '.md', type: 'markdown', text: '# ' + r.song + '\n**' + r.artist + '**\n\n*Source: ' + r.source + '*\n\n---\n\n' + r.lyrics.replace(/\n/g, '  \n'), when: 'always', short: true } }); }
 };
 const promptLine = () => 'FREE API TOOLS ON: ' + tools().map(t => t.name).join(', ') + '. They call small public services; say which one answered and report any failure exactly. Never invent results. Missing keys are added by him in + > Free APIs.';
 

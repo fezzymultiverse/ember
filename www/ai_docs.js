@@ -67,10 +67,14 @@ async function read_document(fileId) {
       const result = await window.EmberDocs.readDocument({ fileId });
       // Truncate to ~8000 chars to stay inside the context window
       if (result && result.content && result.content.length > 8000) {
-        const total = result.content.length;
-        result.content = result.content.slice(0, 8000) + '\n[...truncated for length]';
+        const total = result.content.length, full = result.content;
+        result.content = full.slice(0, 8000) + '\n[...truncated for length]';
         result.truncated = true; result.total_chars = total; result.returned_chars = 8000;
-        result.hint = 'Only the first 8000 of ' + total + ' characters are shown. Use get_document_outline, search_in_document and read_document_chunk for the rest.';
+        result.hint = 'Only the first 8000 of ' + total + ' characters are shown to YOU. Use get_document_outline, search_in_document and read_document_chunk for the rest. If he asked for the whole document, the app prints all ' + total + ' characters itself.';
+        // V1.10.18-p12: the app can print the complete text for him (only when he asked for the whole thing); the model never has to retype it
+        result._verbatim = { title: String(result.name || result.fileName || 'Document').replace(/[\\/:*?"<>|]/g, '').slice(0, 80) + ' (full text).md', type: 'markdown', text: full, when: 'ask' };
+      } else if (result && result.content && !result._verbatim) {
+        result._verbatim = { title: String(result.name || 'Document').replace(/[\\/:*?"<>|]/g, '').slice(0, 80) + ' (full text).md', type: 'markdown', text: result.content, when: 'ask' };
       }
       return result;
     }

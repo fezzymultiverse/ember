@@ -24,7 +24,8 @@
     ['ipify','IPify','Code & Data',['ip'],'Your public connection IP','fast'],
     ['stt','Speech-to-text','Local',['listen'],'Existing device microphone integration','device'],
     ['structure','Text structuring','Local',['structure'],'Existing AI text router','variable'],
-    ['forge','Forge · existing route','Images',['image'],'Community GPU image route','queue']
+    ['forge','Forge · AI Horde','Images',['image'],'Community GPU pictures, anonymous key; queue 30 s to a few minutes','queue'],
+    ['stability','Stability AI · Stable Image Core','Images',['image'],'Your Stability key; billed by Stability','fast']
   ].map(([id,name,group,tasks,best,speed]) => ({id,name,group,tasks,best,speed}));
   const byId = id => defs.find(d => d.id === id);
   const readState = () => { try { const s = JSON.parse(localStorage.getItem(STORE) || '{}'); return {on:s.on || {}, preferences:s.preferences || {}}; } catch (_) { return {on:{},preferences:{}}; } };
@@ -60,9 +61,10 @@
     if (id === 'structure') return !!W.Prov?.run && (!!W.Prov.hasKeys?.() || !!W.Prov.freeOn?.());
     if (id === 'pdf' || id === 'word') return !!W.EmberDeliverables?.[id === 'pdf' ? 'pdf' : 'word'];
     if (id === 'markdown') return !!W.EmberArtifacts?.markdownHtml;
+    if (id === 'stability') return !!W.EmberMedia && !!W.EmberMediaPlus && !!W.Prov?.keys && (W.Prov.keys().stability || []).some(e => e && !e.bad);
     return true;
   }
-  const healthy = id => health[id]?.ok === true && localReady(id);
+  const healthy = id => id === 'stability' ? localReady(id) : health[id]?.ok === true && localReady(id);
   function setHealth(id, ok, note) {
     if (!byId(id)) return;
     health[id] = {ok:!!ok, at:Date.now(), note:clean(note || (ok ? 'Worked' : 'Unavailable')).slice(0,160)};
@@ -86,9 +88,9 @@
       (j.results || []).forEach(row => { health[row.id] = {ok:!!row.worked,at:Date.parse(j.checkedAt)||Date.now(),note:row.notes || ''}; });
     } catch (_) { defs.forEach(d=>{health[d.id]={ok:false,at:0,note:'Not checked; use Check availability'};}); }
     ['pdf','word','markdown','structure','stt'].forEach(id=>{health[id]={ok:localReady(id),at:Date.now(),note:id==='stt'?'Device speech support; permission required':id==='structure'?'Uses existing AI router; provider availability varies':'Bundled local engine'};});
-    // The legacy Forge adapter uses an anonymous API header and its own long-running queue.
-    // Preserve it unchanged; do not advertise it as compliant with this router's strict policy.
-    health.forge = {ok:false,at:Date.now(),note:'Legacy adapter uses an API header and long queue; excluded from strict 10-second keyless routing'};
+    // p12: Forge is back. It is the AI Horde with its public anonymous key, so it is a real keyless image engine. It is queue based
+    // (30 s to a few minutes), so it runs through its own adapter (EmberEngines.forgeRoute) with its own long wait, not the 10 s limit.
+    health.forge = {ok:!!W.EmberEngines?.forgeRoute,at:Date.now(),note:W.EmberEngines?.forgeRoute?'AI Horde, anonymous key. Queue: 30 s to a few minutes':'Forge engine did not load'};
     repaint(); emit('ember-plus-change');
   })();
   async function network(url, opt = {}, kind = 'json', parentSignal) {
@@ -148,7 +150,7 @@
     return null;
   }
   function candidates(task) {
-    const order={image:['pollinations','forge','picsum','dicebear','robohash'],avatar:['dicebear','robohash'],placeholder:['picsum'],speech:['tts'],scrape:['jina'],metadata:['microlink'],music:['itunes','jiosaavn']};
+    const order={image:['pollinations','forge','stability','picsum','dicebear','robohash'],avatar:['dicebear','robohash'],placeholder:['picsum'],speech:['tts'],scrape:['jina'],metadata:['microlink'],music:['itunes','jiosaavn']};
     const ids=order[task]||defs.filter(d=>d.tasks.includes(task)).map(d=>d.id);
     return ids.filter(id=>enabled(id)&&healthy(id)).map(byId);
   }
@@ -244,13 +246,17 @@
     else{W.EmberArtifacts.markdownHtml(text);blob=new Blob([text],{type:'text/markdown;charset=utf-8'});}
     const a={type,title,content:text};remember(a,blob);return {text:artifact(type,title,text),title,blob};
   }
+  async function stabilityResult(p,signal) {
+    const MP=W.EmberMediaPlus;if(!MP)throw new Error('Stability engine did not load');
+    if(signal?.aborted)throw new Error('Cancelled');
+    const prompt=String(p||'').replace(/^\s*(please\s+)?(can you\s+)?(make|create|draw|generate|imagine|paint|design)\s+(me\s+)?(an?\s+|the\s+)?(image|picture|pic|photo|drawing|illustration)?\s*(of|showing|with|:)?\s*/i,'').trim()||String(p||'').trim();
+    const r=await MP.make('image','stability',prompt);
+    if(!r.ok)throw new Error(r.error||'Stability did not return a picture');
+    return {text:'Done. Stability AI drew it.\n'+artifact('image',r.name,'media:'+r.id),title:r.name};
+  }
   async function imageResult(id,p,signal) {
     let url,mime;
     const q=encodeURIComponent(p),seed=Math.floor(Math.random()*1000000);
-    if(id==='forge'){
-      // Kept behind a failed health gate until the existing adapter can honour the strict network contract.
-      throw new Error('Legacy Forge is unavailable in strict keyless mode');
-    }
     if(id==='pollinations')url='https://image.pollinations.ai/prompt/'+q+'?width=1024&height=1024&seed='+seed+'&nologo=true';
     if(id==='dicebear')url='https://api.dicebear.com/9.x/bottts/svg?seed='+q;
     if(id==='picsum')url='https://picsum.photos/768/768?random='+seed;
@@ -292,7 +298,16 @@
   async function execute(d,p,opt,signal) {
     const id=d.id;
     if(['pdf','word','markdown'].includes(id))return documentResult(id,p,opt,signal);
-    if(['pollinations','dicebear','picsum','robohash','qr','forge'].includes(id))return imageResult(id,p,signal);
+    if(id==='stability')return stabilityResult(p,signal);
+    if(id==='forge'){
+      const E=W.EmberEngines;if(!E?.forgeRoute)throw new Error('Forge engine did not load');
+      if(signal?.aborted)throw new Error('Cancelled');
+      const r=await E.forgeRoute(p,{step:(ic,text,key)=>{line('[Forge] '+text);try{W.EmberTimeline?.step?.(ic,clean(text),key);}catch(_){}}});
+      if(signal?.aborted)throw new Error('Cancelled');
+      if(!r||!r.ok)throw new Error(r?.error||'Forge did not return a picture');
+      return{text:r.text,title:'Forge picture'};
+    }
+    if(['pollinations','dicebear','picsum','robohash','qr'].includes(id))return imageResult(id,p,signal);
     if(id==='grammar'){const content=await grammar(bodyText(p,opt),signal);return{text:artifact('markdown','Ember - grammar.md',content),title:'Ember - grammar.md'};}
     if(id==='structure'){const content=await structure(bodyText(p,opt),signal);return{text:artifact('markdown','Ember - structured.md',content),title:'Ember - structured.md'};}
     if(id==='jina'){
@@ -349,6 +364,7 @@
       let failure;
       for(let i=0;i<order.length;i++){
         const d=order[i];if(ctl.signal.aborted)throw new Error('Cancelled');
+        if(i>0&&d.id==='stability')continue; // paid engine: only runs when picked, never as a silent fallback
         if(d.id!=='configured_web'&&(!enabled(d.id)||!healthy(d.id)))continue;
         if(i){line('[FALLBACK] '+d.name);emit('ember-try',{name:d.name,model:'keyless'});emit('ember-switch',{from:order[i-1].name,to:d.name,status:failure?.status||0});}
         line('['+d.name+'] Running...');
@@ -372,10 +388,10 @@
     finally{active=null;closeActivity();}
   }
   function rowsHtml() {
-    return '<div class="ekl-heading"><div><span class="ekl-eyebrow">V1.10.16 / LIVE CAPABILITIES</span><h3>Keyless tools</h3></div><button type="button" data-kl-check>Check availability</button></div><p class="ekl-sub">20 independent switches. Failed tools stay visible but are skipped. No new accounts or credentials. Public web providers use their existing settings.</p>'+['Documents','Images','Audio','Code & Data','Local'].map(g=>'<h4>'+g+'</h4><div class="ekl-group">'+defs.filter(d=>d.group===g).map(d=>{
+    return '<div class="ekl-heading"><div><span class="ekl-eyebrow">V1.10.16 / LIVE CAPABILITIES</span><h3>Keyless tools</h3></div><button type="button" data-kl-check>Check availability</button></div><p class="ekl-sub">22 independent switches. Failed tools stay visible but are skipped. No new accounts or credentials. Public web providers use their existing settings.</p>'+['Documents','Images','Audio','Code & Data','Local'].map(g=>'<h4>'+g+'</h4><div class="ekl-group">'+defs.filter(d=>d.group===g).map(d=>{
       const h=health[d.id],ok=healthy(d.id),status=ok?'Healthy':h?'Unavailable':'Checking',time=h?.at?new Date(h.at).toLocaleTimeString(): 'Not checked';
       return '<button type="button" class="ekl-toggle" data-kl-toggle="'+d.id+'" role="switch" aria-checked="'+enabled(d.id)+'" aria-label="'+esc(d.name)+'" title="'+esc(h?.note||'Not checked')+'"><span class="ekl-dot '+(ok?'good':'bad')+'" aria-hidden="true"></span><span class="ekl-label"><b>'+esc(d.name)+'</b><small>'+esc(status+' · '+time)+'</small></span><span class="ekl-switch '+(enabled(d.id)?'on':'')+'" aria-hidden="true"></span></button>';
-    }).join('')+'</div>').join('')+'<p class="ekl-sub">Forge is the preserved legacy route, shown separately from the 20 tools; its header/queue contract is not compatible with strict keyless routing. Speech support and AI-provider availability depend on this device. Build checks are not a guarantee of current phone connectivity.</p>';
+    }).join('')+'</div>').join('')+'<p class="ekl-sub">Forge (AI Horde) is a normal Images engine again: free community GPUs, no account, a queue of 30 seconds to a few minutes. Speech support and AI-provider availability depend on this device. Build checks are not a guarantee of current phone connectivity.</p>';
   }
   function repaint() {
     D.querySelectorAll('[data-kl-panel]').forEach(panel=>{
@@ -386,11 +402,11 @@
   }
   function mount() {
     const targets=[D.getElementById('eplBody'),D.getElementById('cockpit_engine') || D.getElementById('egBody')];
-    targets.filter(Boolean).forEach(target=>{if(!target.querySelector('[data-kl-panel]')){const section=D.createElement('section');section.className='ekl-panel';section.dataset.klPanel='';section.innerHTML=rowsHtml();if(target.id==='eplBody')target.prepend(section);else target.appendChild(section);}});
+    targets.filter(Boolean).forEach(target=>{if(!target.querySelector('[data-kl-panel]')){const section=D.createElement('section');section.className='ekl-panel';section.dataset.klPanel='';section.innerHTML=rowsHtml();target.appendChild(section); /* p11: below the Plugins switches, never above them */}});
   }
   async function checkAvailability() {
     await ready;line('[ROUTE] Checking public endpoints (no credentials)');
-    const probes={grammar:()=>network('https://api.languagetool.org/v2/check',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'text=Hello&language=en-US'}),pollinations:()=>network('https://image.pollinations.ai/prompt/health',{method:'HEAD'},'blob'),dicebear:()=>network('https://api.dicebear.com/9.x/bottts/svg?seed=Ember',{},'blob'),picsum:()=>network('https://picsum.photos/32/32',{},'blob'),qr:()=>network('https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=Ember',{},'blob'),robohash:()=>network('https://robohash.org/Ember.png?size=32x32',{},'blob'),tts:()=>network('https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=Hello',{},'blob'),jiosaavn:()=>network('https://saavn.dev/api/search/songs?query=hello&limit=1'),itunes:()=>network('https://itunes.apple.com/search?term=hello&media=music&limit=1'),lyrics:()=>network('https://lrclib.net/api/search?q=hello'),piston:()=>network('https://emkc.org/api/v2/piston/execute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({language:'python',version:'*',files:[{content:'print(1)'}]})}),dummyjson:()=>network('https://dummyjson.com/products?limit=1'),jina:()=>network('https://r.jina.ai/https://example.com',{},'text'),microlink:()=>network('https://api.microlink.io/?url=https%3A%2F%2Fexample.com'),ipify:()=>network('https://api.ipify.org?format=json')};
+    const probes={forge:()=>W.EmberEngines?.forgeCheck?W.EmberEngines.forgeCheck().then(r=>{if(!r||!r.ok)throw new Error('Forge down');}):Promise.reject(new Error('Forge not loaded')),grammar:()=>network('https://api.languagetool.org/v2/check',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'text=Hello&language=en-US'}),pollinations:()=>network('https://image.pollinations.ai/prompt/health',{method:'HEAD'},'blob'),dicebear:()=>network('https://api.dicebear.com/9.x/bottts/svg?seed=Ember',{},'blob'),picsum:()=>network('https://picsum.photos/32/32',{},'blob'),qr:()=>network('https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=Ember',{},'blob'),robohash:()=>network('https://robohash.org/Ember.png?size=32x32',{},'blob'),tts:()=>network('https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=Hello',{},'blob'),jiosaavn:()=>network('https://saavn.dev/api/search/songs?query=hello&limit=1'),itunes:()=>network('https://itunes.apple.com/search?term=hello&media=music&limit=1'),lyrics:()=>network('https://lrclib.net/api/search?q=hello'),piston:()=>network('https://emkc.org/api/v2/piston/execute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({language:'python',version:'*',files:[{content:'print(1)'}]})}),dummyjson:()=>network('https://dummyjson.com/products?limit=1'),jina:()=>network('https://r.jina.ai/https://example.com',{},'text'),microlink:()=>network('https://api.microlink.io/?url=https%3A%2F%2Fexample.com'),ipify:()=>network('https://api.ipify.org?format=json')};
     const queue=Object.entries(probes).filter(([id])=>enabled(id));
     async function worker(){while(queue.length){const [id,fn]=queue.shift();try{const r=await fn();if(r instanceof Blob&&id!=='pollinations'&&!r.size)throw new Error('Empty response');setHealth(id,true,'Phone endpoint check passed');}catch(_){setHealth(id,false,'Phone endpoint check failed');}line('['+byId(id).name+'] '+(healthy(id)?'healthy':'Unavailable'));}}
     await Promise.all([worker(),worker(),worker()]);['pdf','word','markdown','structure','stt'].forEach(id=>setHealth(id,localReady(id),'Local capability check'));emit('ember-plus-change');
@@ -455,6 +471,6 @@
   }
   W.addEventListener('ember-stop-request',()=>{active?.abort();chooserCancel?.();});
   W.addEventListener('storage',e=>{if(e.key===STORE){state=readState();repaint();emit('ember-plus-change');}});
-  W.EmberKeyless={ready,route,classify,candidates,enabled,healthy,toggle,abilities,checkAvailability,publicUrl,tools:()=>defs.map(d=>({...d,on:enabled(d.id),health:health[d.id]})),clearPreference:task=>{delete state.preferences[task];persist();},cancel:()=>{active?.abort();chooserCancel?.();}};
+  W.EmberKeyless={ready,route,classify,candidates,enabled,healthy,toggle,abilities,checkAvailability,publicUrl,tools:()=>defs.map(d=>({...d,on:enabled(d.id),health:health[d.id]})),clearPreference:task=>{delete state.preferences[task];persist();},getPreference:task=>state.preferences[task]||'ask',setPreference:(task,v)=>{if(!v||v==='ask')delete state.preferences[task];else state.preferences[task]=v;persist();},cancel:()=>{active?.abort();chooserCancel?.();}};
   mount();
 })();

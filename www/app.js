@@ -285,6 +285,7 @@ function toolCatalog() {
   if (A.EmberKeys) sets.push(A.EmberKeys.TOOLS);
   if (A.EmberGraph) sets.push(A.EmberGraph.TOOLS);
   if (A.EmberLearn) sets.push(A.EmberLearn.TOOLS);
+  if (A.EmberMusicBrain && A.EmberMusicBrain.isOn()) sets.push(A.EmberMusicBrain.TOOLS); // V1.10.18-p12: Music Brain (keyless lyrics + facts)
   if (A.EmberGithub) sets.push(A.EmberGithub.toolsFor());
   if (docsOn && A.EmberDocsAddon) sets.push(A.EmberDocsAddon.TOOLS);
   if (A.EmberAgentAddon) sets.push(A.EmberAgentAddon.toolsFor(S));
@@ -319,6 +320,7 @@ async function runToolRaw(tool, args) {
     if (A.EmberKeys && namesOf(A.EmberKeys).includes(tool)) return await A.EmberKeys.dispatch(tool, args);
     if (A.EmberGraph && namesOf(A.EmberGraph).includes(tool)) return await A.EmberGraph.dispatch(tool, args);
     if (A.EmberLearn && namesOf(A.EmberLearn).includes(tool)) return await A.EmberLearn.dispatch(tool, args);
+    if (A.EmberMusicBrain && A.EmberMusicBrain.isOn() && namesOf(A.EmberMusicBrain).includes(tool)) return await A.EmberMusicBrain.dispatch(tool, args);
     if (A.EmberGithub && A.EmberGithub.toolsFor().some(t => t.name == tool)) return await A.EmberGithub.dispatch(tool, args);
     const docsOn = S.docsAddon || !!(A.EmberPlus && A.EmberPlus.isOn('device')) || !!(A.EmberDocs && A.EmberDocs.count && A.EmberDocs.count() > 0);
     if (docsOn && A.EmberDocsAddon && namesOf(A.EmberDocsAddon).includes(tool)) return await A.EmberDocsAddon.dispatch(tool, args);
@@ -336,6 +338,28 @@ if (window.EmberEngine) window.EmberEngine.setHost({
     return String((r && r.text) || '');
   }
 });
+// V1.10.18-p12: VERBATIM DELIVERY. A tool can hand back the full text of something (lyrics, a whole document) as res._verbatim.
+// The model only ever sees a short reference copy; the APP prints the full text itself, exactly as fetched, so nothing gets cut at the model's
+// token limit and nothing gets made up while retyping. when:'always' = print it; when:'ask' = print it only if he asked for the whole thing.
+const WANTS_FULL = /\b(full|whole|entire|complete|all of|everything|word for word|verbatim|every (?:line|page|word|row)|print|output|dump|paste|display|show me|read (?:it|this|that|the)|give me the|the text)\b/i;
+function takeVerbatim(res, ask, bucket) {
+  if (!res || typeof res != 'object' || !res._verbatim) return res;
+  const list = Array.isArray(res._verbatim) ? res._verbatim : [res._verbatim], copy = Object.assign({}, res); delete copy._verbatim;
+  let n = 0;
+  list.forEach(x => { if (!x || !x.text) return; if (x.when == 'ask' && !WANTS_FULL.test(ask || '')) return; bucket.push(x); n++; });
+  copy.delivered_in_full_by_app = n > 0;
+  if (n) copy.app_note = 'The app prints the COMPLETE text to him itself, exactly as fetched, right after your message. Write one or two sentences only. Do not retype, quote at length, paraphrase or shorten it, and never say you cannot show it.';
+  else delete copy.delivered_in_full_by_app;
+  return copy;
+}
+const vBlock = x => '<artifact type="' + String(x.type || 'markdown').replace(/[^a-z]/gi, '') + '" title="' + String(x.title || 'Ember - full text.md').replace(/["<>\n]/g, ' ').slice(0, 120) + '">\n' + String(x.text).replace(/<\/artifact/gi, '&lt;/artifact') + '\n</artifact>';
+const withVerbatim = (t, bucket) => {
+  if (!bucket.length) return t;
+  let body = String(t || '').trim();
+  if (bucket.some(x => x.short) && body.length > 700) body = body.slice(0, 600).replace(/\s+\S*$/, '') + '…'; // lyrics: the app prints the text, so a long reply here can only be the model retyping it from memory
+  return body + '\n\n' + bucket.map(vBlock).join('\n\n');
+};
+window.EmberVerbatim = { take: takeVerbatim, block: vBlock, wantsFull: t => WANTS_FULL.test(t || '') };
 async function resolveAddonCalls(text, L, route) {
   if (window.EmberMusicAddon && window.EmberMusicAddon.setIntent) {
     // the music tools only run if HIS latest message is about music (ai_music.js checks this), never because the AI wants to
@@ -347,6 +371,13 @@ async function resolveAddonCalls(text, L, route) {
     const us = conv.msgs.filter(m => m.r == 'u'); window.EmberAgentAddon.setIntent(us.length ? us[us.length - 1].t : '', us.length > 1 ? us[us.length - 2].t : '');
   }
   let cur = text, calls = parseCalls(cur);
+  const verbatim = [], lastAsk = (() => { const u = [...conv.msgs].reverse().find(m => m.r == 'u'); return u ? String(u.t || '') : ''; })();
+  // V1.10.18-p12 Music Brain: a lyrics request can never skip the tool (the model would write them from memory and get them wrong).
+  const MB = window.EmberMusicBrain;
+  if (MB && MB.isOn() && MB.looksLikeAsk(lastAsk) && !calls.some(c => /^(music_lyrics|get_lyrics)$/.test(c.tool))) {
+    const pa = MB.parseAsk(lastAsk);
+    if (pa && (pa.title || pa.query)) { calls = [{ tool: 'music_lyrics', args: pa }]; cur = ''; }
+  }
   // V1.9.7: a reply that says it searched / browsed / downloaded when NO tool ran is a lie. Give the model one chance to do it for real, else say so honestly.
   const FAKE = /\b(?:i(?:'ve| have|'ll| will)?\s+(?:just\s+|now\s+)?(?:searched|looked(?: it| that| this)? up|googled|browsed|scraped|fetched|pulled up|went (?:on|to) the (?:web|internet)|visited|downloaded|queued|started (?:the |your )?download|saved (?:it|that|this|the (?:song|track|playlist)))|checked (?:the )?(?:web|internet|site|page|link)|(?:the )?download(?:ing)?(?: has| is| just)? (?:started|underway|queued|complete|done|finished)|(?:it'?s|they'?re) (?:now )?(?:downloading|saved to))/i;
   if (!calls.length) {
@@ -369,7 +400,7 @@ async function resolveAddonCalls(text, L, route) {
   if (msgs.length && msgs[0].role == 'assistant') msgs.unshift({ role: 'user', content: '(we are picking the conversation back up)' });
   if (route && route.webEvidence) msgs.push({ role: 'user', content: route.webEvidence });
   const request = [...conv.msgs].reverse().find(m => m.r == 'u');
-  const artifactBudget = request && window.EmberDeliverables && window.EmberDeliverables.intent(request.t) ? 4096 : 450;
+  const artifactBudget = request && window.EmberDeliverables && window.EmberDeliverables.intent(request.t) ? 8000 : 450;
   const rounds = []; // V1.9.19: every tool call made this turn, oldest first — feeds the RECENT ACTIONS block below
   const seenKeys = new Set();
   for (let round = 0; round < 4 && calls.length; round++) {
@@ -384,6 +415,7 @@ async function resolveAddonCalls(text, L, route) {
       } else {
         seenKeys.add(key);
         res = await runTool(c.tool, args);
+        res = takeVerbatim(res, lastAsk, verbatim);
       }
       try { if (window.EmberKnow) window.EmberKnow.log(conv, c.tool, args, res); } catch (e) { /* logging never blocks a reply */ }
       results.push({ tool: c.tool, result: res });
@@ -392,7 +424,7 @@ async function resolveAddonCalls(text, L, route) {
     }
     rounds.push(thisRound);
     const anyFailed = thisRound.some(h => !h.ok);
-    const ctx = results.map(r => 'Tool: ' + r.tool + '\nResult: ' + JSON.stringify(r.result, null, 2).slice(0, 9000)).join('\n\n');
+    const ctx = results.map(r => 'Tool: ' + r.tool + '\nResult: ' + JSON.stringify(r.result, null, 2).slice(0, 14000)).join('\n\n');
     const last = round == 3;
     if (window.EmberTimeline) window.EmberTimeline.note('Reading the results and writing the answer');
     msgs.push({ role: 'assistant', content: stripTags(cur) || '(checking that for you)' });
@@ -400,15 +432,16 @@ async function resolveAddonCalls(text, L, route) {
       (last ? 'Now answer him in your own voice. ' :
         anyFailed ? 'Something failed — read the error, work out why, and try a genuinely different tool or a different approach before giving up (for example: one scraping provider failed, try another; a file was not found, search a different tab or ask where it is). Reply with ONLY that new tool_call block, or, if there is truly nothing left to try, answer him honestly about what did and did not work. ' :
         'If you still need another tool (for example scrape_url after list_sites), reply with ONLY that tool_call block. Otherwise answer him in your own voice. ') +
+      (verbatim.length ? 'The app is printing the full text of ' + verbatim.map(x => x.title).join(', ') + ' to him itself, exactly as fetched, right after your message: write one or two sentences only and never retype or shorten it. ' : '') +
       'No JSON, no code blocks, no raw data dump — tell him what it means, in your own voice, the way a person would after actually looking at it. Only claim what the result actually says: if it holds an error, ok:false, or nothing, say that plainly in one line and do not pretend it worked. If a result says a bridge or key is missing or empty, say so plainly in one line.]\n\n' + ctx });
     try {
       const sys = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, noTools: last, noAmbient: Safety.lastLevel() >= 3, uiState: uiStateBlock(), actionHistory: historyLines(rounds) }), Safety.lastLevel());
       const synth = await Prov.run(L.lane, Object.assign({ system: sys + (artifactBudget > 450 ? '\nDELIVERABLE OVERRIDE: the user requested a file. Ignore sentence limits; include complete artifact blocks with the requested content, not just a summary. The no-raw-data instruction means do not dump tool logs; it does not prohibit requested JSON/CSV/code artifacts.' : ''), messages: msgs, temp: 0.85, max: artifactBudget, tools: last ? null : toolCatalog() }, route ? { routeProvider: route.provider, routeModel: route.model } : {}));
       cur = String(synth.text || '');
-    } catch (e) { return stripTags(cur) || 'I tried, but the add-on came back empty.'; }
+    } catch (e) { return withVerbatim(stripTags(cur) || 'I tried, but the add-on came back empty.', verbatim); }
     calls = last ? [] : parseCalls(cur);
   }
-  return stripTags(cur) || 'I tried, but the add-on came back empty.';
+  return withVerbatim(stripTags(cur) || (verbatim.length ? 'Here it is.' : 'I tried, but the add-on came back empty.'), verbatim);
 }
 const REPLY_MS = 100000;
 async function reply(o) {
@@ -610,6 +643,12 @@ async function imageRoute(t) {
 function needKeys() { return false; }
 // Fired by MainActivity when he replies from the notification while the app was backgrounded.
 window.addEventListener('ember-names', () => { try { renderTop(); renderKeys(); } catch (e) { /* not ready */ } });
+// A picture made by a tool call (Stability bridge) drops into the chat as its own bubble, so no one has to hunt for a panel.
+window.addEventListener('ember-inline-media', e => {
+  const d = e.detail || {}; if (!d.id || !conv) return;
+  conv.msgs.push({ r: 'a', t: window.EmberMediaPlus && window.EmberMediaPlus.imageBlock ? window.EmberMediaPlus.imageBlock({ id: d.id, name: d.name || 'image.png', secs: d.secs || '' }) : '<artifact type="image" title="' + String(d.name || 'image.png').replace(/"/g, '') + '">media:' + d.id + '</artifact>', ts: Date.now() });
+  persist().then(renderLog);
+});
 window.addEventListener('ember-bg-reply', e => {
   const t = String(e.detail || '').trim(); if (!t || busy) return;
   ensure(); conv.msgs.push({ r: 'u', t, ts: Date.now() });
@@ -929,7 +968,7 @@ function renderKeys() {
   let h = ''; const detail = keyDetailId;
   const kl = $('kList'); if (!kl) return;
   kl.classList.toggle('key-detail-mode', !!detail);
-  Prov.IDS.forEach(id => {
+  Prov.ACTIVE_IDS.forEach(id => { // AI providers only: Stability's key lives in + > Media & Music
     const list = Prov.entries(id);
     let rows = '';
     list.forEach(e => {
@@ -957,7 +996,7 @@ $('kList').addEventListener('toggle', e => {
 window.emberKeysReset = () => { if (keyDetailId !== null) { keyDetailId = null; renderKeys(); } };
 
 // ---------- V1.6.1: Get Key buttons ----------
-const KEY_LINKS = { openrouter:'https://openrouter.ai/settings/keys', plugsky:'https://plugsky.com/dashboard', stability:'https://platform.stability.ai/dashboard/api-keys', groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', anthropic: 'https://console.anthropic.com/settings/keys' };
+const KEY_LINKS = { openrouter:'https://openrouter.ai/settings/keys', plugsky:'https://plugsky.com/dashboard', groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', anthropic: 'https://console.anthropic.com/settings/keys' };
 const SCRAPE_LINKS = { firecrawl: 'https://www.firecrawl.dev/app/api-keys', browserless: 'https://www.browserless.io/', scraperapi: 'https://www.scraperapi.com/', scraperbee: 'https://app.scrapingbee.com/account/manage', zenrows: 'https://app.zenrows.com/builder', tavily: 'https://app.tavily.com/home', serpapi: 'https://serpapi.com/manage-api-key', brightdata: 'https://brightdata.com/cp', sting: '', octoparse: 'https://www.octoparse.com/' };
 function paintGetKeyRow(el, links) { if (!el) return; el.innerHTML = Object.keys(links).filter(k => links[k]).map(k => '<button class="btn g" data-link="' + esc(links[k]) + '" style="width:auto;padding:7px 12px;font-size:12px">' + (Prov.CFG[k] ? Prov.CFG[k].name : (window.EmberScraper && window.EmberScraper.LABEL[k]) || k) + ' ↗</button>').join(''); }
 document.addEventListener('click', e => { const b = e.target.closest('[data-link]'); if (b) window.open(b.dataset.link, '_blank', 'noopener'); });
@@ -1315,9 +1354,9 @@ $('stabs') && $('stabs').addEventListener('click', e => { const b = e.target.clo
 // V1.10.11: card headers no longer fold or open anything here. ember_menu.js owns the whole Settings menu (rows open pages to the right).
 function openSettings(tab) { drawer(false); renderSet(); renderPerms(); showStab(typeof tab == 'string' ? tab : 'none'); $('settings').classList.add('show'); setUI('Settings'); }
 // V1.10.18-p6: one Settings. Anything that used to open the bare sheet goes through the black cockpit Settings.
-function openBlackSettings(tab) { const k = window.EmberCockpit; if (k && typeof k.open === 'function') k.open(tab); else openSettings(tab); }
+function openBlackSettings(tab) { const t = typeof tab === 'string' ? tab : undefined; const k = window.EmberCockpit; if (k && typeof k.open === 'function') k.open(t); else openSettings(t); }
 function closeSettings() { $('settings').classList.remove('show'); S.name = $('sName').value.trim(); S.about = $('sAbout').value; S.pname = $('sPname').value.trim() || 'Ember'; S.interests = $('sInt').value.trim() || DEF.interests; S.persona = $('sPersona').value.trim().slice(0, 2000); S.talk = $('sTalk').value.trim().slice(0, 300); saveS(); renderLog(); setUI('Chat'); }
-$('bSet').onclick = openSettings; $('bSx').onclick = closeSettings; $('bGoKeys').onclick = openSettings;
+$('bSet').onclick = openSettings; $('bSx').onclick = closeSettings; $('bGoKeys').onclick = () => openBlackSettings('engine');
 function accent(c) {
   const r = document.documentElement.style, h = String(c || '#FF6A00').replace('#', ''), n = parseInt(h.length === 3 ? h.replace(/./g, '$&$&') : h, 16) || 0;
   const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;

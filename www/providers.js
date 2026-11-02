@@ -455,7 +455,7 @@ async function health(id, e) {
   if (isCool(e.key)) st.limited = true;
   save(); return st;
 }
-async function healthAll() { for (const id of IDS) for (const e of keys[id]) await health(id, e); }
+async function healthAll() { for (const id of ACTIVE_IDS) for (const e of keys[id]) await health(id, e); } // AI engines only: Stability is a content-creation engine, checked from + > Media & Music
 async function addKey(id, key) {
   key = clean(key);
   if (!key || !keys[id]) return { ok: false, why: 'empty' };
@@ -756,7 +756,7 @@ function detail(id) {
   const withMsg = l.find(e => e.st && e.st.msg);
   return { keys: l.length, model: (best && best.st.model) || '', lat: (best && best.st.lat) || 0, retry: left > 0 ? left : 0, msg: withMsg ? withMsg.st.msg : '' };
 }
-async function pingAll() { await Promise.all(IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); }
+async function pingAll() { await Promise.all(ACTIVE_IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); } // AI engines only (Stability: Prov.ping('stability') from its own card)
 function status() { const o = {}; IDS.forEach(id => { o[id] = stateOf(id); }); return o; }
 window.Prov = { stats, setEnabled, record, rotation, peek, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
 })();

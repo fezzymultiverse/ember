@@ -156,7 +156,7 @@
     const sty = style == 'None' ? 'As written' : style, base = slug(ask, 34);
     const svg = imageSvg(r);
     const html = detailsPage({ title: 'Forge details', ask, full, style: sty, size, w: r.w, h: r.h, seed: r.seed, model: r.model, steps, secs: ((Date.now() - t0) / 1000).toFixed(1) });
-    const intro = 'Done. Open the picture to save it as a PNG. The second card shows how I made it. Say what to change and I will draw another.';
+    const intro = 'Done. Tap the picture to open it full size or save it as a PNG. The card under it shows how I made it. Say what to change and I will draw another.';
     return { ok: true, engine: 'forge', text: intro + '\n<artifact type="svg" title="Forge - ' + base + '.svg">\n' + svg + '\n</artifact>\n<artifact type="html" title="Forge - ' + base + ' (details).html">\n' + html + '\n</artifact>' };
   }
 
@@ -260,11 +260,16 @@
   const eng = (name, tag, line, e, alt) => { const l = lastOf(e) || (alt && lastOf(alt)); return '<div class="eg-eng"><i class="eg-dot ' + dot(e, alt) + '" aria-hidden="true"></i><div><b>' + name + ' <em>' + tag + '</em></b><small>' + line + '</small>' + (l ? '<small class="eg-last">' + (l.ok ? 'Last: worked' : 'Last: failed') + ' · ' + esc(l.d) + ' · ' + ago(l.t) + '</small>' : '<small class="eg-last">Not used yet</small>') + '</div></div>'; };
   function paint() {
     const c = cfg(), b = $('egBody'); if (!b) return;
+    const K = window.EmberKeyless, pref = K && K.getPreference ? K.getPreference('image') : null;
+    const hasStab = !!(window.Prov && Prov.keys && (Prov.keys().stability || []).some(x => x && !x.bad));
+    const picker = K ? '<div class="eg-seg" role="group" aria-label="Picture engine">' + [['ask', 'Ask each time'], ['pollinations', 'Pollinations'], ['stability', 'Stability']].map(o => '<button type="button" class="eg-opt' + (o[0] === (pref === 'auto' ? 'pollinations' : pref) ? ' on' : '') + '" data-pick="' + o[0] + '" aria-pressed="' + (o[0] === (pref === 'auto' ? 'pollinations' : pref)) + '">' + o[1] + '</button>').join('') + '</div>' +
+      '<p class="hint">Ask each time shows every picture engine that is on and healthy, and lets you pick for that picture. Pollinations is free. Stability uses your saved Stability key and is billed by Stability, so it only runs when you pick it, never as a fallback. ' + (hasStab ? '' : 'No Stability key is saved yet (Keys).') + '</p>'
+      : seg('image', c.image, [['auto', 'Auto'], ['pollinations', 'Pollinations'], ['forge', 'Forge only']]) +
+      '<p class="hint">Auto tries Pollinations first and falls back to Forge if it fails. Forge is the AI Horde: free community GPUs, no key, a queue of 30 seconds to a few minutes, 512 px pictures.</p>';
     b.innerHTML =
       '<div class="eg-hero"><span class="eg-brand">S.O.I × BOJACK · 999</span><h2>Keyless engines</h2><p>Ask in plain English. Ember picks the engine, makes the artifact, and you open and save it. Pollinations stays the default for pictures.</p></div>' +
-      '<div class="eg-card"><div class="eg-h">🎨 Pictures</div>' + seg('image', c.image, [['auto', 'Auto'], ['pollinations', 'Pollinations'], ['forge', 'Forge only']]) +
-      '<p class="hint">Auto tries Pollinations first and falls back to Forge if it fails. Forge is the AI Horde: free community GPUs, no key, a queue of 30 seconds to a few minutes, 512 px pictures.</p>' +
-      eng('Pollinations', 'flux · fast', 'image.pollinations.ai, about one picture per 15 s anonymous', 'pollinations') + eng('Forge', 'AI Horde · queue', 'aihorde.net anonymous key, drawn on volunteer GPUs', 'forge') +
+      '<div class="eg-card"><div class="eg-h">🎨 Pictures</div>' + picker +
+      eng('Pollinations', 'flux · fast', 'image.pollinations.ai, about one picture per 15 s anonymous', 'pollinations') + eng('Forge', 'AI Horde · queue', 'aihorde.net anonymous key, drawn on volunteer GPUs', 'forge') + eng('Stability AI', 'Stable Image Core · your key', 'api.stability.ai, billed by Stability, only runs when you pick it', 'stability') +
       '<div class="eg-row"><button type="button" class="btn g" id="egTestF">Check Forge</button></div></div>' +
       '<div class="eg-card"><div class="eg-h">📄 PDFs</div>' + seg('pdf', c.pdf, [['local', 'Private / no account']]) +
       '<p class="hint">Ember PDF uses bundled pdfmake with embedded Roboto fonts. Ember Documents exports genuine DOCX through the bundled docx engine. Both are free software, run on this device and need no provider account. Font coverage is not universal. Basic PDF is the fallback.</p>' +
@@ -277,6 +282,8 @@
   $('egX').onclick = () => show(false);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheet.classList.contains('show')) show(false); });
   sheet.addEventListener('click', async e => {
+    const pk = e.target.closest('[data-pick]');
+    if (pk && window.EmberKeyless && EmberKeyless.setPreference) { EmberKeyless.setPreference('image', pk.dataset.pick); paint(); toast(pk.dataset.pick === 'ask' ? 'Pictures: ask each time' : 'Pictures: always ' + (pk.dataset.pick === 'stability' ? 'Stability' : 'Pollinations')); return; }
     const s = e.target.closest('[data-seg]');
     if (s) { const c = cfg(); c[s.dataset.seg] = s.dataset.v; if (s.dataset.seg === 'pdf' && s.dataset.v === 'cloud') c.pdfConsent = true; if (s.dataset.seg === 'pdf' && s.dataset.v === 'auto') c.pdfConsent = false; put(c); paint(); return; }
     if (e.target.closest('#egNl')) { const c = cfg(); c.nl = !c.nl; put(c); paint(); toast(c.nl ? 'Plain-English picture routing on' : 'Plain-English picture routing off'); return; }
