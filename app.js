@@ -20,11 +20,21 @@ const migrateMem = m => {
 };
 let mem = MEM_DEF();
 let conv = null, busy = false, lastErr = null, backupKeys = false, curTurn = null, handedTurn = '';
+let backgroundTypingTurn = '';
 let streamText = '', cancelRequested = false, activityStatus = '', rejectTurn = null;
 function paintRouteStatus(name, model) { const b = $('engs'); if (!b) return; b.classList.add('working'); const sp = b.querySelector('span'); if (sp) sp.textContent = name ? ('Trying ' + name + (model ? ' · ' + model : '')) : 'Connecting…'; b.title = 'Live routing status: ' + (name || 'connecting') + (model ? ' · ' + model : ''); }
-window.addEventListener('ember-try', e => { streamText = ''; const d = e.detail || {}; paintRouteStatus(d.name, d.model); const p = $('streamPreview'); if (p) p.remove(); });
-window.addEventListener('ember-token', e => { streamText = String(e.detail && e.detail.text || ''); let p = $('streamPreview'); if (!p && streamText) { $('log').insertAdjacentHTML('beforeend', '<div class="msg a stream-preview" id="streamPreview"><div></div><small>Live response</small></div>'); p = $('streamPreview'); } if (p) { const d = p.querySelector('div'); if (d) d.innerHTML = fmt(streamText); down(); } });
-window.addEventListener('ember-switch', () => { streamText = ''; const p = $('streamPreview'); if (p) p.remove(); });
+const writer = window.EmberTypewriter.create({
+  paint: text => {
+    streamText = text;
+    let p = $('streamPreview');
+    if (!p && text) { $('log').insertAdjacentHTML('beforeend', '<div class="msg a stream-preview" id="streamPreview"><div></div><small>Live response</small></div>'); p = $('streamPreview'); }
+    if (p) { const d = p.querySelector('div'); if (d) d.innerHTML = fmt(text); down(); }
+  }
+});
+window.addEventListener('ember-try', e => { writer.reset(); streamText = ''; const d = e.detail || {}; paintRouteStatus(d.name, d.model); const p = $('streamPreview'); if (p) p.remove(); });
+window.addEventListener('ember-token', e => { if (backgroundTypingTurn !== curTurn) writer.push(String(e.detail && e.detail.text || '')); });
+window.addEventListener('ember-switch', () => { writer.reset(); streamText = ''; const p = $('streamPreview'); if (p) p.remove(); });
+window.addEventListener('ember-stop-request', () => writer.reset());
 // V1.9.19: spatial awareness — which sheet/tab he is actually looking at right now, so the AI is not guessing
 let curUI = 'Chat';
 const setUI = name => { curUI = name; };
@@ -142,7 +152,7 @@ function bub(x, last, i) {
   const artifact = x.r == 'a' && window.EmberArtifacts ? window.EmberArtifacts.render(x.t, i) : null;
   const eng = x.eng ? ' · ' + Prov.label(x.eng.p) + (S.showEng && x.eng.m ? ' ' + esc(String(x.eng.m).replace(/^.*\//, '').slice(0, 34)) : '') + (S.showEng && x.eng.ms ? ' ' + x.eng.ms + 'ms' : '') + (x.eng.pm ? ' · ' + Prov.label(x.eng.pm) + ' pin failed' : '') : '';
   const regen = last && x.r == 'a' ? '<button data-act="regen">↻ again</button>' : '';
-  const say = x.r == 'a' ? '<button data-act="say" data-i="' + i + '" aria-label="Read aloud" title="Read aloud"' + (sayIdx === i ? ' class="talking"' : '') + '>' + (sayIdx === i ? '■ Stop' : '🔊') + '</button>' : '';
+  const say = x.r == 'a' ? '<button data-act="say" data-i="' + i + '" aria-label="Read aloud" title="Read aloud"' + (sayIdx === i ? ' class="talking"' : '') + '>' + (sayIdx === i ? 'Stop' : '🔊') + '</button>' : '';
   const cp = '<button data-act="copy" data-i="' + i + '" aria-label="Copy message" title="Copy this message">⧉ Copy</button>';
   const context = x.ctx ? '<span class="context-chip" title="This message includes extra context">'+(/image|photo|vision/i.test(x.ctx)?'Image context':/document|file|attachment/i.test(x.ctx)?'Document context':'Extra context')+'</span>' : '';
   const proof = x.r == 'a' && x.ghRead && x.ghRead.files && x.ghRead.files.length ? x.ghRead : null;
@@ -400,7 +410,20 @@ async function resolveAddonCalls(text, L, route) {
   if (msgs.length && msgs[0].role == 'assistant') msgs.unshift({ role: 'user', content: '(we are picking the conversation back up)' });
   if (route && route.webEvidence) msgs.push({ role: 'user', content: route.webEvidence });
   const request = [...conv.msgs].reverse().find(m => m.r == 'u');
-  const artifactBudget = request && window.EmberDeliverables && window.EmberDeliverables.intent(request.t) ? 8000 : 450;
+  const artifactBudget = request && window.EmberDeliverables && (window.EmberDeliverables.intentCtx ? window.EmberDeliverables.intentCtx(request.t, conv.msgs) : window.EmberDeliverables.intent(request.t)) ? 12000 : 450;
+  // V1.10.43: if a file request ends with no text (the model kept emitting tool calls), ask once more with tools off and the file demanded.
+  const docRetry = async () => {
+    if (artifactBudget <= 450 || verbatim.length || Safety.lastLevel() >= 3) return '';
+    try {
+      if (window.EmberTimeline) window.EmberTimeline.note('The first try came back empty. Writing the file directly');
+      const base = Persona.sentMsgs(conv, S).map(x => ({ role: x.r == 'u' ? 'user' : 'assistant', content: Persona.body(x) }));
+      if (base.length && base[0].role == 'assistant') base.unshift({ role: 'user', content: '(we are picking the conversation back up)' });
+      base.push({ role: 'user', content: '[SYSTEM CHECK, not from him: no tools are available now. Write the complete requested file now as ONE <artifact type="..." title="..."> block, using only what you know and any web evidence already given. Do not reply with a tool_call block, and do not talk about repositories or code.]' });
+      const sysR = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, noTools: true, noAmbient: true, uiState: uiStateBlock() }), Safety.lastLevel());
+      const rr = await Prov.run(L.lane, Object.assign({ system: sysR + '\nDELIVERABLE OVERRIDE: the user requested a file. Ignore sentence limits; include the complete artifact block.', messages: base, temp: 0.6, max: artifactBudget, tools: null }, route ? { routeProvider: route.provider, routeModel: route.model } : {}));
+      return stripTags(String(rr.text || ''));
+    } catch (e) { return ''; }
+  };
   const rounds = []; // V1.9.19: every tool call made this turn, oldest first — feeds the RECENT ACTIONS block below
   const seenKeys = new Set();
   for (let round = 0; round < 4 && calls.length; round++) {
@@ -438,15 +461,15 @@ async function resolveAddonCalls(text, L, route) {
       const sys = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, noTools: last, noAmbient: Safety.lastLevel() >= 3, uiState: uiStateBlock(), actionHistory: historyLines(rounds) }), Safety.lastLevel());
       const synth = await Prov.run(L.lane, Object.assign({ system: sys + (artifactBudget > 450 ? '\nDELIVERABLE OVERRIDE: the user requested a file. Ignore sentence limits; include complete artifact blocks with the requested content, not just a summary. The no-raw-data instruction means do not dump tool logs; it does not prohibit requested JSON/CSV/code artifacts.' : ''), messages: msgs, temp: 0.85, max: artifactBudget, tools: last ? null : toolCatalog() }, route ? { routeProvider: route.provider, routeModel: route.model } : {}));
       cur = String(synth.text || '');
-    } catch (e) { return withVerbatim(stripTags(cur) || 'I tried, but the add-on came back empty.', verbatim); }
+    } catch (e) { return withVerbatim(stripTags(cur) || await docRetry() || 'I tried, but the add-on came back empty.', verbatim); }
     calls = last ? [] : parseCalls(cur);
   }
-  return withVerbatim(stripTags(cur) || (verbatim.length ? 'Here it is.' : 'I tried, but the add-on came back empty.'), verbatim);
+  return withVerbatim(stripTags(cur) || (verbatim.length ? 'Here it is.' : (await docRetry() || 'I tried, but the add-on came back empty.')), verbatim);
 }
 const REPLY_MS = 100000;
 async function reply(o) {
   o = o || {}; if (busy) return;
-  busy = true; cancelRequested = false; streamText = ''; lastErr = null; $('bSend').disabled = true; $('bStop').classList.remove('hidden'); $('bStop').disabled = false; $('bStop').textContent = '■'; $('bSend').classList.add('hidden'); typing(true);
+  busy = true; cancelRequested = false; writer.reset(); streamText = ''; lastErr = null; $('bSend').disabled = true; $('bStop').classList.remove('hidden'); $('bStop').disabled = false; $('bStop').textContent = ''; $('bSend').classList.add('hidden'); typing(true);
   const turnId = conv.id + ':' + conv.msgs.length; curTurn = turnId;
   const cancelledTurn = new Promise((_, reject) => { rejectTurn = reject; }); cancelledTurn.catch(() => {});
   const withinTurn = promise => Promise.race([promise, cancelledTurn]);
@@ -484,24 +507,56 @@ async function reply(o) {
     const lastU = conv.msgs.length ? [...conv.msgs].reverse().find(m => m.r == 'u') : null;
     const web = !o.directive && Safety.lastLevel() < 3 && window.EmberDeliverables ? await withinTurn(window.EmberDeliverables.prepare(latest, { cancelled: () => cancelRequested || curTurn !== turnId, step: TLn && TLn.step ? TLn.step.bind(TLn) : null })) : { results: [], context: '' };
     if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });
-    const call = Persona.respond(conv, { S, mem, webEvidence: web.context, directive: o.directive, lane: L.lane, deep: L.deep, uiState: uiStateBlock(), planHint: !o.directive && lastU ? planHint(lastU.t) : '', shouldCancel: () => cancelRequested || curTurn !== turnId, onToken: (piece, full) => { try { if (window.EmberCommandCenter) window.EmberCommandCenter.inspect(full); } catch (_) {} if (!GHr.hasLiveRead(GHr.lastRead())) return; try { window.dispatchEvent(new CustomEvent('ember-token', { detail: { piece, text: full } })); } catch (_) {} } });
+    const call = Persona.respond(conv, { S, mem, webEvidence: web.context, directive: o.directive, lane: L.lane, deep: L.deep, uiState: uiStateBlock(), planHint: !o.directive && lastU ? planHint(lastU.t) : '', shouldCancel: () => cancelRequested || curTurn !== turnId, onToken: (piece, full) => { try { if (window.EmberCommandCenter) window.EmberCommandCenter.inspect(full); } catch (_) {} try { window.dispatchEvent(new CustomEvent('ember-token', { detail: { piece, text: full } })); } catch (_) {} } });
     // V1.9.33: no reply may hang the screen. After REPLY_MS the page stops trying engines and shows an error with Resend.
-    let dl; const guard = new Promise((_, no) => { dl = setTimeout(() => { try { if (Prov.abortInflight) Prov.abortInflight(); } catch (e) { /* ignore */ } no(Object.assign(new Error('No reply after ' + Math.round(REPLY_MS / 1000) + ' seconds. An engine is stuck or very slow. Tap resend, or pin a different engine in Settings.'), { code: 'timeout' })); }, REPLY_MS); });
+    const bigFile = !!(window.EmberDeliverables && window.EmberDeliverables.intentCtx && window.EmberDeliverables.intentCtx(latest, conv.msgs)), replyMs = bigFile ? REPLY_MS * 2 : REPLY_MS; // V1.10.35: file replies are long
+    let dl; const guard = new Promise((_, no) => { dl = setTimeout(() => { try { if (Prov.abortInflight) Prov.abortInflight(); } catch (e) { /* ignore */ } no(Object.assign(new Error('No reply after ' + Math.round(replyMs / 1000) + ' seconds. An engine is stuck or very slow. Tap resend, or pin a different engine in Settings.'), { code: 'timeout' })); }, replyMs); });
     call.catch(() => {}); // the race below reports it; a late failure after the deadline must not surface as an unhandled rejection
     let r; try { r = await Promise.race([window.EmberNative ? window.EmberNative.holdDuringReply(call) : call, guard, cancelledTurn]); } finally { clearTimeout(dl); }
     if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });
+    if (backgroundTypingTurn === turnId) return; // native delivery owns the visible queue
     if (TLn && r) TLn.note('Got a reply from ' + (r.provider || 'an engine') + (r.model ? ' (' + r.model + ')' : '') + (r.ms ? ' in ' + (r.ms / 1000).toFixed(1) + 's' : ''), 'got');
     let finalText = r.text;
     const bgWon = () => conv.msgs.some(m => m.turn === turnId); // the background task already delivered this turn's reply
+    // V1.10.35: a long file (10 pages) can outrun one reply's token limit. If the artifact was left open, ask the same engine to continue it.
+    if (finalText && !bgWon() && window.EmberDeliverables && window.EmberDeliverables.continueArtifact && window.EmberDeliverables.hasOpenArtifact(finalText) && Safety.lastLevel() < 3) {
+      const pages = window.EmberDeliverables.pageTarget ? window.EmberDeliverables.pageTarget(latest, conv.msgs) : 0;
+      const sys2 = Safety.lastLevel();
+      finalText = await withinTurn(window.EmberDeliverables.continueArtifact(finalText, async o2 => {
+        const base2 = { system: Safety.wrapSystem(o2.system, sys2), messages: o2.messages, temp: 0.5, max: 4096 };
+        let r2; try { r2 = await Prov.run(L.lane, Object.assign(base2, r.provider ? { routeProvider: r.provider, routeModel: r.model } : {})); } catch (_) { r2 = await Prov.run(L.lane, base2); }
+        return r2 && r2.text;
+      }, { request: latest, target: window.EmberDeliverables.pageNote ? window.EmberDeliverables.pageNote(pages) : '', maxParts: 4, cancelled: () => cancelRequested || curTurn !== turnId, note: n => { if (TLn && TLn.note) TLn.note('Continuing the document (part ' + (n + 1) + ')', 'cont' + n); } }));
+    }
     if (bgWon()) finalText = '';
     else if (finalText) finalText = await withinTurn(resolveAddonCalls(finalText, L, { provider: r.provider, model: r.model, webRead: web.results.some(x => x.result && x.result.markdown && !x.result.error), webEvidence: web.context }));
     if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });
     if (finalText && window.EmberDeliverables && Safety.lastLevel() < 3) finalText = window.EmberDeliverables.normalize(finalText, latest);
+    // V1.10.44: a visual request with no layout blocks, or under ~80% of the page target, gets ONE expand-and-add-visuals pass. The first draft is kept if the pass fails.
+    if (finalText && !bgWon() && window.EmberDeliverables && window.EmberDeliverables.visualGap && Safety.lastLevel() < 3 && !window.EmberDeliverables.hasOpenArtifact(finalText)) {
+      const DLv = window.EmberDeliverables, gap = DLv.visualGap(finalText, latest, conv.msgs);
+      if (gap) {
+        try {
+          if (TLn && TLn.note) TLn.note('Checking the layout: adding visuals and detail', 'vpass');
+          const base3 = Persona.sentMsgs(conv, S).map(x => ({ role: x.r == 'u' ? 'user' : 'assistant', content: Persona.body(x) }));
+          if (base3.length && base3[0].role == 'assistant') base3.unshift({ role: 'user', content: '(we are picking the conversation back up)' });
+          base3.push({ role: 'assistant', content: finalText }); base3.push({ role: 'user', content: DLv.visualPassPrompt(gap) });
+          const sysV = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, noTools: true, noAmbient: true, uiState: uiStateBlock() }), Safety.lastLevel());
+          const pgs = DLv.pageTarget ? DLv.pageTarget(latest, conv.msgs) : 0;
+          const o3 = { system: sysV + (web && web.context ? '\n' + web.context : '') + '\nDELIVERABLE OVERRIDE: write the full file as one artifact block.' + (DLv.pageNote ? DLv.pageNote(pgs) : ''), messages: base3, temp: 0.5, max: 8192, tools: null };
+          let r3; try { r3 = await withinTurn(Prov.run(L.lane, Object.assign(o3, r.provider ? { routeProvider: r.provider, routeModel: r.model } : {}))); } catch (_) { r3 = null; }
+          const nt = r3 && r3.text ? DLv.normalize(String(r3.text), latest) : '';
+          if (nt && !DLv.hasOpenArtifact(nt) && window.EmberArtifacts && window.EmberArtifacts.parse(nt).items.length && nt.length >= finalText.length * 0.9) finalText = nt;
+        } catch (e) { /* the first draft stands */ }
+      }
+    }
     GHr.assertReadFirst();
     if (finalText && (GHr.isCodeQuestion(latest, previous) || (window.EmberDeliverables ? window.EmberDeliverables.answerHasCode(finalText) : GHr.isCodeQuestion(finalText, latest)))) { const proof = GHr.lastRead(); if (!GHr.hasLiveRead(proof)) throw new Error('Read-First blocked this code answer: no live file was read from Knowledge Brain Repo. Check Command Centre > GitHub.'); }
     if (finalText && TLn && window.EmberArtifacts) { const made=window.EmberArtifacts.parse(finalText).items; if(made.length) TLn.note('Writing ' + made.map(a=>a.title).join(', ')); }
     try { if (window.EmberCommandCenter && finalText) window.EmberCommandCenter.inspect(finalText); } catch (_) { /* independent view */ }
     if (finalText && !bgWon()) {
+      await withinTurn(writer.finish(finalText, () => cancelRequested || curTurn !== turnId));
+      if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });
       try { window.dispatchEvent(new CustomEvent('ember-turn-end', { detail: { words: (String(streamText || '').trim().match(/\S+/g) || []).length } })); } catch (_) { /* no listener */ }
       const tlSnap = window.EmberTimeline ? window.EmberTimeline.snapshot() : null;
       conv.msgs.push({ r: 'a', t: finalText, ts: Date.now(), turn: turnId, tl: tlSnap || undefined, deep: L.deep || undefined, webRead: web.results.map(x => ({ url: x.url, provider: x.result.provider || null, ok: !x.result.error, cached: !!x.result.cached })), ghRead: GHr.lastRead(), eng: { p: r.provider, m: r.model, ms: r.ms, pm: r.pinMiss ? r.pinMiss.want : undefined } });
@@ -518,7 +573,7 @@ async function reply(o) {
     }
     if (curTurn === turnId && !(e && e.code === 'cancelled')) lastErr = e.message || 'Something broke.';
   }
-  if (curTurn === turnId) { rejectTurn = null; busy = false; streamText = ''; $('bSend').disabled = false; $('bSend').classList.remove('hidden'); $('bStop').classList.add('hidden'); $('bStop').disabled = false; $('engs').classList.remove('working'); typing(false); curTurn = null; }
+  if (curTurn === turnId) { writer.reset(); rejectTurn = null; busy = false; streamText = ''; $('bSend').disabled = false; $('bSend').classList.remove('hidden'); $('bStop').classList.add('hidden'); $('bStop').disabled = false; $('engs').classList.remove('working'); typing(false); curTurn = null; }
   if (talkOn && lastErr) talkOff('Talk mode off: that reply failed');
   renderLog();
   saveSession(); // persist session state after every reply
@@ -598,20 +653,23 @@ async function send() {
   if (conv.auto && conv.title == 'New chat') conv.title = t.length > 38 ? t.slice(0, 38).trim() + '…' : t;
   $('inp').value = ''; grow();
   await persist(); renderLog();
-  const plusImage = !!(window.EmberPlus && window.EmberPlus.consume && window.EmberPlus.consume('image')); // V1.10.4: + > Create image always wins over the AI Features hand-off
+  const plusImageArmed = !!(window.EmberPlus && window.EmberPlus.consume && window.EmberPlus.consume('image')); const docAsk = /\b(artifact|pages?|pdf|document|report|essay|article|guide|proposal|lyrics|story|script)\b/i.test(t) && !/\b(image|images|picture|pictures|photo|illustration|poster|logo|wallpaper|draw|paint)\b/i.test(t); const plusImage = plusImageArmed && !(docAsk && !(window.EmberPlus.isOn && window.EmberPlus.isOn('pdf'))); // V1.10.4: + > Create image always wins over the AI Features hand-off
   { // V1.10.5: + > Create audio / Create video, and the Stability bridge (image, audio, video, speech straight from chat)
     const MP = window.EmberMediaPlus; let mk = null;
-    if (MP) { mk = MP.take(); if (!mk && MP.bridgeOn()) { const k = MP.detect(t); if (k) mk = { kind: k, provider: 'stability' }; else if (plusImage) mk = { kind: 'image', provider: 'stability' }; } }
+    const mks = MP && MP.takeAll ? MP.takeAll() : [], pdfArmed = !!(window.EmberPlus && window.EmberPlus.isOn && window.EmberPlus.isOn('pdf'));
+    if (mks.length + (plusImage ? 1 : 0) + (pdfArmed ? 1 : 0) > 1) { // V1.10.22: several Create modes armed together run one after another on the same prompt
+      for (const m of mks) await mediaRoute(t, m, false);
+      if (plusImage) { let ok = false; if (MP && MP.bridgeOn()) ok = await mediaRoute(t, { kind: 'image', provider: 'stability' }, true); if (!ok) await reply({directive: 'Draw the requested illustration directly as a complete <artifact type="svg" title="Ember-image.svg">SVG content</artifact>. Request: '+t}); }
+      if (pdfArmed) { try { await reply(); } finally { window.EmberPlus.consume('pdf'); } }
+      return;
+    }
+    if (MP) { mk = mks[0] || null; if (!mk && MP.bridgeOn()) { const k = MP.detect(t); if (k) mk = { kind: k, provider: 'stability' }; else if (plusImage) mk = { kind: 'image', provider: 'stability' }; } }
     if (mk && await mediaRoute(t, mk, plusImage)) return;
   }
-  const mediaKindOnly = /\b(video|animation|audio|music|sound)\b/i.test(t);
-  if (!plusImage && window.EmberMedia?.cfg().enabled && /\b(create|generate|make|draw|render|produce)\b/i.test(t) && /\b(image|picture|artwork|illustration|video|animation|audio|music|sound)\b/i.test(t) && (mediaKindOnly || !(window.EmberEngines && window.EmberEngines.intent && window.EmberEngines.intent(t) == 'image'))) {
-    const kind=/\b(video|animation)\b/i.test(t)?'video':/\b(audio|music|sound)\b/i.test(t)?'audio':'image';
-    const provider='stability';
-    await window.EmberAgentAddon.dispatch('media_prepare',{provider,kind,prompt:t});
-    conv.msgs.push({r:'a',t:'I prepared your '+kind+' request in AI Features. Review the platform and press Generate to authorize it; nothing has been submitted yet.',ts:Date.now()}); await persist();renderLog();return;
+  if (/\b(create|generate|make|produce|compose|render)\b/i.test(t) && /\b(video|animation|audio|music|sound|beat|jingle|instrumental)\b/i.test(t) && !/\b(pdf|document|report|explain|how to|lyrics)\b/i.test(t)) {
+    await mediaRoute(t, { kind: /\b(video|animation)\b/i.test(t) ? 'video' : 'audio', provider: 'keyless' }, false); return;
   }
-  if (plusImage || (window.EmberEngines && window.EmberEngines.intent && window.EmberEngines.intent(t) == 'image')) { await imageRoute(t); return; } // V1.9.84: + > Create image. V1.9.87: plain-English picture requests route here too
+  if (plusImage || (window.EmberEngines && window.EmberEngines.intent && window.EmberEngines.intent(t) == 'image')) { await reply({ directive: 'Create an original SVG illustration matching this request: ' + t + '. Return the complete SVG inside <artifact type="svg" title="Ember-image.svg">...</artifact>. No remote photo service, no invented image URLs. SVG is vector illustration, not a photograph.' }); return; } // V1.9.84: + > Create image. V1.9.87: plain-English picture requests route here too
   if (await directNewPipe(t)) return;
   if (window.EmberPlus && window.EmberPlus.isOn && window.EmberPlus.isOn('pdf')) { try { window.dispatchEvent(new CustomEvent('ember-create-log', { detail: { kind: 'pdf', text: 'PDF mode: Ember writes the document, then Save PDF builds the file with the bundled pdfmake engine.' } })); } catch (_) { /* live terminal optional */ } try { await reply(); } finally { window.EmberPlus.consume('pdf'); } return; }
   reply();
@@ -621,7 +679,7 @@ async function mediaRoute(t, mk, plusImage) {
   const MP = window.EmberMediaPlus, TLn = window.EmberTimeline;
   busy = true; lastErr = null; $('bSend').disabled = true; typing(true);
   const turnId = conv.id + ':' + conv.msgs.length; curTurn = turnId;
-  try { if (TLn && TLn.step) TLn.step('🎨', 'Making ' + mk.kind + ' with ' + 'Stability AI', 'im-media'); } catch (_) { /* timeline optional */ }
+  try { if (TLn && TLn.step) TLn.step('🎨', 'Making ' + mk.kind + ' with ' + (mk.kind === 'image' ? 'Stability AI' : 'keyless media API'), 'im-media'); } catch (_) { /* timeline optional */ }
   let r; try { r = await MP.make(mk.kind, mk.provider, t); } catch (e) { r = { ok: false, kind: mk.kind, error: (e && e.message) || 'The media job failed.' }; }
   if (curTurn !== turnId) return true;
   if (!r.ok && mk.kind === 'image' && r.noKey && plusImage) { busy = false; $('bSend').disabled = false; typing(false); curTurn = null; return false; } // no Stability key: the picture router (Pollinations, Forge) answers instead
@@ -732,6 +790,8 @@ $('bNew').onclick = () => {
   try { sessionStorage.removeItem(SS_CONV_KEY); sessionStorage.removeItem(SS_SCROLL_KEY); sessionStorage.removeItem(SS_INPUT_KEY); } catch (e) {}
   renderLog(); drawer(false); $('inp').focus();
 };
+// V1.10.30: the header + starts a fresh chat exactly like "+ New chat" in the menu.
+$('bNewTop').onclick = () => { if (busy) { toast('Wait for the current reply to finish'); return; } $('bNew').onclick(); };
 $('hlist').addEventListener('click', async e => {
   const card = e.target.closest('.hi'); if (!card) return;
   const id = card.dataset.id, act = e.target.dataset.a;
@@ -858,7 +918,7 @@ function setSay(i) {
 function paintSay() {
   document.querySelectorAll('#log [data-act="say"]').forEach(b => {
     const on = +b.dataset.i === sayIdx;
-    b.classList.toggle('talking', on); b.textContent = on ? '■ Stop' : '🔊';
+    b.classList.toggle('talking', on); b.textContent = on ? 'Stop' : '🔊';
     b.setAttribute('aria-label', on ? 'Stop reading' : 'Read aloud'); b.title = on ? 'Stop reading' : 'Read aloud';
   });
 }
@@ -996,7 +1056,7 @@ $('kList').addEventListener('toggle', e => {
 window.emberKeysReset = () => { if (keyDetailId !== null) { keyDetailId = null; renderKeys(); } };
 
 // ---------- V1.6.1: Get Key buttons ----------
-const KEY_LINKS = { cohere: 'https://dashboard.cohere.com/api-keys' }; // V1.10.19: Cohere only
+const KEY_LINKS = { openrouter:'https://openrouter.ai/settings/keys', plugsky:'https://plugsky.com/dashboard', longcat:'https://longcat.chat/platform', groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', anthropic: 'https://console.anthropic.com/settings/keys' };
 const SCRAPE_LINKS = { firecrawl: 'https://www.firecrawl.dev/app/api-keys', browserless: 'https://www.browserless.io/', scraperapi: 'https://www.scraperapi.com/', scraperbee: 'https://app.scrapingbee.com/account/manage', zenrows: 'https://app.zenrows.com/builder', tavily: 'https://app.tavily.com/home', serpapi: 'https://serpapi.com/manage-api-key', brightdata: 'https://brightdata.com/cp', sting: '', octoparse: 'https://www.octoparse.com/' };
 function paintGetKeyRow(el, links) { if (!el) return; el.innerHTML = Object.keys(links).filter(k => links[k]).map(k => '<button class="btn g" data-link="' + esc(links[k]) + '" style="width:auto;padding:7px 12px;font-size:12px">' + (Prov.CFG[k] ? Prov.CFG[k].name : (window.EmberScraper && window.EmberScraper.LABEL[k]) || k) + ' ↗</button>').join(''); }
 document.addEventListener('click', e => { const b = e.target.closest('[data-link]'); if (b) window.open(b.dataset.link, '_blank', 'noopener'); });
@@ -1005,8 +1065,8 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-link
 function paintEngPin() {
   const sel = $('engPin'); if (!sel) return;
   const dotOf = id => ({ ok: '🟢', limited: '🟡', bad: '🔴', none: '⚪', unknown: '⚪' }[Prov.stateOf(id)] || '⚪');
-  sel.innerHTML = (Prov.ACTIVE_IDS || Prov.IDS).map(id => '<option value="' + id + '">' + dotOf(id) + ' ' + Prov.CFG[id].name + '</option>').join('');
-  sel.value = Prov.getPinned() || 'cohere';
+  sel.innerHTML = '<option value="">🔄 Auto (fastest working key)</option><option value="pollinations">Pollinations · free / no key</option>' + (Prov.ACTIVE_IDS || Prov.IDS).map(id => '<option value="' + id + '">' + dotOf(id) + ' ' + Prov.CFG[id].name + '</option>').join('');
+  sel.value = Prov.getPinned() || (Prov.freeOn() && LS.get('ember_cockpit_pollinations', false) ? 'pollinations' : '');
   paintEngModel();
 }
 function paintEngModel(list) {
@@ -1301,10 +1361,17 @@ async function applyBg(r) {
   if (c.msgs.some(m => m.turn === turn)) return;
   const ghRead = c.ghReadTurns && c.ghReadTurns[turn];
   if (window.EmberGithub && ((ghRead && ghRead.required) || (window.EmberDeliverables ? window.EmberDeliverables.answerHasCode(text) : window.EmberGithub.isCodeQuestion(text, ''))) && !window.EmberGithub.hasLiveRead(ghRead)) return;
+  if (isCur && document.visibilityState !== 'hidden' && (!busy || curTurn === turn)) {
+    backgroundTypingTurn = turn; busy = true; cancelRequested = false; curTurn = turn;
+    writer.reset(); $('bSend').disabled = true; $('bSend').classList.add('hidden'); $('bStop').classList.remove('hidden'); $('bStop').disabled = false;
+    const shown = await writer.finish(text, () => cancelRequested || curTurn !== turn);
+    backgroundTypingTurn = '';
+    if (!shown || cancelRequested || curTurn !== turn) { if(curTurn === turn) { writer.reset(); busy=false; streamText=''; $('bSend').disabled=false; $('bSend').classList.remove('hidden'); $('bStop').classList.add('hidden'); typing(false); curTurn=null; renderLog(); } return; }
+  }
   c.msgs.push({ r: 'a', t: text, ghRead, ts: Date.now(), turn, bg: true, eng: { p: r.provider, m: r.model, ms: 0 } });
   c.updated = Date.now(); await Store.put(c);
   if (isCur) {
-    if (curTurn === turn) { busy = false; $('bSend').disabled = false; typing(false); curTurn = null; }
+    if (curTurn === turn) { writer.reset(); busy = false; streamText = ''; $('bSend').disabled = false; $('bSend').classList.remove('hidden'); $('bStop').classList.add('hidden'); typing(false); curTurn = null; }
     renderLog(); saveSession();
   }
 }

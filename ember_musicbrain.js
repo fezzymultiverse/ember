@@ -80,7 +80,7 @@ async function lyrics(a) {
       const r = await fn(artist, title, query);
       if (r && r.instrumental && !r.text) { tried.push(name + ': marked instrumental'); continue; }
       if (r && r.text) {
-        const head = r.text.length > 2500 ? r.text.slice(0, 2500) + '\n[...rest delivered by the app]' : r.text;
+        const head = r.text.slice(0, 300).replace(/\s+\S*$/, '') + ' ...';
         const file = 'Lyrics - ' + str((r.artist || artist) + ' - ' + (r.title || title), 90).replace(/[\\/:*?"<>|]/g, '') + '.md';
         const doc = '# ' + (r.title || title) + '\n**' + (r.artist || artist || 'Unknown artist') + '**' + (r.album ? ' · ' + r.album : '') + '\n\n*Source: ' + r.source + (r.synced ? ' (timed version exists)' : '') + ' · fetched ' + new Date().toISOString().slice(0, 10) + '*\n\n---\n\n' + r.text.replace(/\n/g, '  \n');
         return {

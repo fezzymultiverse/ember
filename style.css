@@ -1878,3 +1878,10 @@ html body .msg.a p,html body .msg.a ul,html body .msg.a ol,html body .msg.a pre{
 .artifact-inline-img{display:block;width:100%;height:auto;min-height:64px;max-height:70dvh;object-fit:contain;background:#111}
 .artifact-inline figcaption{display:flex;flex-wrap:wrap;gap:6px;padding:8px}
 .artifact-inline .artifact-action{flex:1 1 auto}
+
+/* V1.10.39: A4 sheets in the document / PDF preview (210 x 297 mm at 96 dpi, margins like the exported PDF) */
+.a4-holder{margin:0 auto;position:relative}
+.a4-stack{width:794px;transform-origin:top left;position:absolute;left:0;top:0}
+.artifact-paper.a4-page{position:relative;width:794px;max-width:none;min-height:1123px;box-sizing:border-box;padding:64px;margin:0 0 16px;border-radius:2px;font-size:14px;line-height:1.3}
+.artifact-paper.a4-page .artifact-markdown{font-size:14px;line-height:1.3}
+.artifact-paper.a4-page::after{content:attr(data-n);position:absolute;right:64px;bottom:26px;font:11px system-ui,sans-serif;color:#8a8a93}

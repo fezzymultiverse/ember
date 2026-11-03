@@ -147,3 +147,7 @@ html body #settings #repoWorkspace .card{padding:0!important;background:transpar
 @media(prefers-reduced-motion:reduce){
   html body #settings .acc-b.mnu.mnu-fwd>.card.mnu-open,html body #settings .acc-b.mnu.mnu-fwd>#repoWorkspace,html body #settings .acc-b.mnu.mnu-back>.mnu-list{animation:none}
 }
+#efMenu .em-g{margin:14px 0 4px;font:700 12px system-ui;letter-spacing:.12em;text-transform:uppercase;color:#ff9a3c}
+#efMenu .em-sub{display:block;font-size:11px;opacity:.65;margin-top:2px}
+#efMenu .ef-switch-row>span{flex:1;min-width:0}
+#efMenu .em-note{margin-top:12px}

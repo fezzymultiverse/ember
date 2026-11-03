@@ -1,0 +1,7 @@
+Ember 1.10.49
+- Thinking card: web search steps now show what was searched plus every source with its site icon and link, open by default (tap the row or the pill to fold). Saved replies keep the searched text too.
+- Providers: tapping a provider row now SWITCHES to it (pins that engine). Tap the pinned one again to go back to Auto. A provider with no key still opens Keys.
+- The rotating live engine status moved from the header to the bottom of the chat (Provider activity line above Modes). Tap it to open Keys.
+- Thinking line: the yellow connector thread between steps was already present and is unchanged.
+Files changed (all under www/): ember_timeline.js, ember_prov_ui.js, ember_prov_next.js, ember_finish.css, index.html (cache-bust params), sw.js (cache name).
+- Root copies of every top-level www file synced to the www versions (33 updated, 16 added, provider-icons longcat.svg + ATTRIBUTION). Nothing deleted. www/ remains the app's webDir.

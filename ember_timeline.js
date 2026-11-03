@@ -55,7 +55,7 @@
     return (String(name).replace(/[^a-z0-9]/gi, '').charAt(0) || '?').toUpperCase();
   };
   const badIcons = new Set(); // hosts whose icon failed once: straight to the letter chip next time
-  function linksHtml(links) {
+  function linksHtml(links, query) {
     if (!links || !links.length) return '';
     const items = links.map(l => {
       const t = String(l[0] || ''), u = safeUrl(l[1]); if (!u) return '';
@@ -67,7 +67,9 @@
         + '<span class="ek-link-t"><span class="ek-link-n">' + esc(t || h) + '</span><span class="ek-link-h">' + esc(h) + '</span></span></a>';
     }).join('');
     if (!items) return '';
-    return '<details class="ek-src"><summary><span class="ek-src-n">' + links.length + (links.length === 1 ? ' source' : ' sources') + '</span></summary><div class="ek-links">' + items + '</div></details>';
+    const q = query ? '<div class="ek-q"><span class="ek-q-l">Searched</span><span class="ek-q-t">\u201c' + esc(query) + '\u201d</span></div>' : '';
+    // V1.10.49: opens by default so the icon + link of every source is visible straight away; tap the row or the pill to fold it.
+    return '<details class="ek-src" open><summary><span class="ek-src-n">' + links.length + (links.length === 1 ? ' source' : ' sources') + '</span></summary>' + q + '<div class="ek-links">' + items + '</div></details>';
   }
   // One stylesheet, injected once, so this release needs no CSS file or index.html link.
   (function injectCss() {
@@ -87,6 +89,9 @@
         + '.ek-fav-l{background:rgba(255,255,255,.16);color:#fff;font-size:12px;font-weight:800}'
         + '.ek-link-t{display:flex;flex-direction:column;min-width:0;flex:1}'
         + '.ek-link-n{font-size:13.5px;line-height:1.3;font-weight:600;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}'
+        + '.ek-q{display:flex;flex-direction:column;gap:1px;margin:6px 2px 2px;padding:6px 10px;border-left:2px solid #f3cc53;border-radius:2px 8px 8px 2px;background:rgba(243,204,83,.07)}'
+        + '.ek-q-l{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#f3cc53}'
+        + '.ek-q-t{font-size:13px;line-height:1.35;color:#f1ede8;word-break:break-word}'
         + '.ek-link-h{font-size:11.5px;line-height:1.3;color:#a9a39b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}';
       (document.head || document.documentElement).appendChild(st);
     } catch (_) { /* styling is optional */ }
@@ -290,10 +295,11 @@
     addLine(text, false);
   }
 
+  const SEARCH_TOOLS = /^(web_search|search_and_read|youtube_search|search_photos)$/;
   function tool(name, args) {
     if (live) live.toolRan = true;
     const line = live ? addLine(label(name, args), false) : null;
-    if (line) line.tool = name;
+    if (line) { line.tool = name; const qa = args && typeof args === 'object' ? args : {}; const qq = SEARCH_TOOLS.test(name || '') ? String(qa.query || qa.q || qa.text || qa.goal || '').replace(/\s+/g, ' ').trim() : ''; if (qq) line.q = qq.length > 160 ? qq.slice(0, 159) + '\u2026' : qq; }
     if (line) { line.k = 'a'; line.st = 'run'; paint(); pump(); } // V1.9.39: repaint so the RUNNING pill / "Executing Tool…" show while the tool works (they were set after the paint)
     return {
       end(res) { if (line) { line.bad = failed(res); line.st = line.bad ? 'bad' : 'ok'; if (!line.bad) { const lk = linksOf(res); if (lk.length) line.links = lk; } paint(); } }
@@ -325,7 +331,7 @@
   function collapse() { if (!live) return; live.open = false; paint(); }
   function snapshot() {
     if (!live || (!live.toolRan && live.lines.length < 2)) return null;
-    return { ms: Date.now() - live.t0, lines: live.lines.slice(-MAX).map(l => [l.text, l.bad ? 1 : 0, l.k || 't', l.pill || '', l.err || '', l.tool || '', l.key || '', l.ic || '', l.links && l.links.length ? l.links : '']) };
+    return { ms: Date.now() - live.t0, lines: live.lines.slice(-MAX).map(l => [l.text, l.bad ? 1 : 0, l.k || 't', l.pill || '', l.err || '', l.tool || '', l.key || '', l.ic || '', l.links && l.links.length ? l.links : '', l.q || '']) };
   }
 
   // ---------- html ----------
@@ -399,7 +405,7 @@
       : l.st === 'run' ? '<span class="tl-pill tl-pill-run">RUNNING</span>' : '';
     const sig = [l.text, l.st, l.pill, l.err, l.bad ? 1 : 0, l.pct || 0, l.ic || '', l.links ? l.links.length : 0].join('|');
     return '<div class="ek-row' + (act ? ' ek-act' : '') + (l.st === 'run' ? ' ek-run' : '') + (l.bad ? ' ek-bad' : '') + (drop ? ' ek-drop' : '') + '" data-id="' + esc(l.id == null ? '' : l.id) + '"' + (l.key ? ' data-key="' + esc(l.key) + '"' : '') + ' data-sig="' + esc(sig) + '">'
-      + ico + '<div class="ek-txt">' + esc(l.text) + pill + (l.err ? '<div class="tl-err">' + esc(l.err) + '</div>' : '') + (l.st === 'run' && l.pct > 0 ? '<div class="ek-bar"><i style="width:' + Math.min(100, Math.round(l.pct)) + '%"></i></div>' : '') + (l.st !== 'run' ? linksHtml(l.links) : '') + '</div></div>';
+      + ico + '<div class="ek-txt">' + esc(l.text) + pill + (l.err ? '<div class="tl-err">' + esc(l.err) + '</div>' : '') + (l.st === 'run' && l.pct > 0 ? '<div class="ek-bar"><i style="width:' + Math.min(100, Math.round(l.pct)) + '%"></i></div>' : '') + (l.st !== 'run' ? linksHtml(l.links, l.q) : '') + '</div></div>';
   };
   const rowsHtml = (lines, drop) => '<div class="ek-rows">' + (lines || []).map(l => ekRowHtml(l, drop)).join('') + '</div>';
   // Add rows that are new (they drop in), refresh rows whose state changed, never rebuild the rest.
@@ -454,7 +460,7 @@
     if (!tl || !Array.isArray(tl.lines) || !tl.lines.length) return '';
     const secs = tl.ms ? (tl.ms / 1000).toFixed(1) + 's' : '\u2013';
     if (getStyle() === 'claude') {
-      const saved = tl.lines.map(l => ({ id: '', text: l[0], bad: !!l[1], k: l[2] === 'a' ? 'a' : 't', st: l[2] === 'a' ? (l[1] ? 'bad' : 'ok') : '', pill: l[3], err: l[4], tool: l[5], key: l[6] || '', ic: l[7] || '', links: Array.isArray(l[8]) ? l[8] : null }));
+      const saved = tl.lines.map(l => ({ id: '', text: l[0], bad: !!l[1], k: l[2] === 'a' ? 'a' : 't', st: l[2] === 'a' ? (l[1] ? 'bad' : 'ok') : '', pill: l[3], err: l[4], tool: l[5], key: l[6] || '', ic: l[7] || '', links: Array.isArray(l[8]) ? l[8] : null, q: typeof l[9] === 'string' ? l[9] : '' }));
       return '<details class="et-saved et-claude-saved ek-saved"><summary><span class="et-egg et-egg-static" aria-hidden="true"><img class="et-egg-img" src="ember-icon.svg" alt=""></span><span class="ek-done-t">Thought for ' + secs + '</span>' + DOWN + '</summary><div class="et-lines">' + rowsHtml(saved, false) + '</div></details>';
     }
     if (getStyle() === 'dd') {

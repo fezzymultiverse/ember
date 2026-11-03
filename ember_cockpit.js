@@ -6,8 +6,8 @@
   const read = (k, fallback) => { try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch (_) { return fallback; } };
   const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (_) { return false; } };
   function init() {
-    const settings = $('settings'), sb = settings?.querySelector('.sb'), R = W.EmberRepoRunner, G = W.EmberGithub;
-    if (!sb || !R || !G) return;
+    const settings = $('settings'), sb = settings?.querySelector('.sb'), G = W.EmberGithub;
+    if (!sb || !G) return;
     D.body.classList.add('cockpit-ui');
     // A full-screen cockpit is modal even on desktop; never leave the covered chat interactive.
     if (W.EmberPanelLayout) W.EmberPanelLayout.canDock = () => false;
@@ -15,15 +15,16 @@
     const cards = Array.from(settings.querySelectorAll('.card[data-tab]'));
     const root = D.createElement('div'); root.id = 'cockpitSettings';
     const sections = {};
+    let paintMedia = () => {};
     const groups = [
       ['features','Free Mode','Chat with no key needed, and the optional AI capabilities'],
-      ['engine','Engine keys & media engines','Which engine answers, API keys, Puter token, picture and PDF engines, vision'],
-      ['providers','Routing & providers','Provider routing, live model catalogs, key rotation and fallback, media artifacts'],
+      ['engine','AI keys','Which engine answers, every AI API key, and vision'],
+      ['providers','AI providers & routing','Provider routing, live model catalogs, key rotation and fallback'],
       ['general','Memory & persona','Your name, persona, tone, read aloud and voice, memory, look, backup'],
       ['device','Device tools','Wi-Fi, storage and RAM, battery, local diagnostics and document reading'],
-      ['scraping','Web scraping & search','Scraper keys, the free reader, web search, health checks and tests'],
+      ['scraping','Web scraping & search','Every scraper and search key, the free reader, health checks and tests'],
       ['hacking','Termux & terminal','Termux mode, pen-test persona and the built-in terminal'],
-      ['music','Music & downloads','Player, song identification, music control, YouTube and yt-dlp downloads'],
+      ['music','Media','Picture and PDF engines, Stability key, music and video APIs, song ID, player, downloads'],
       ['permissions','Permissions & background','Notifications, mic, battery, keep-alive, pings and background replies']
     ];
     root.innerHTML = '<div class="cockpit-intro"><span class="cockpit-kicker">V1.10.15 / COCKPIT</span><p>One screen. Every control.</p><button type="button" class="btn g" id="cockpitCommand">Open Command Centre →</button></div>';
@@ -36,12 +37,11 @@
     // 1.10.18 Part 7: Settings is ONE panel. Eight rows, one job each; tap a row to open its sub menu.
     const ROWS = [
       {id:'general', title:'Memory & persona', desc:'Your name, persona, tone, read aloud and voice, memory, look, backup', sections:['general']},
-      {id:'keys', title:'Engines, keys & routing', desc:'Free Mode, which engine answers, API keys, provider routing and media engines', sections:['features','engine','providers']},
-      {id:'github', title:'GitHub & Command Centre', desc:'Token, Brain, repo search, run and push, routing and status', workspace:'connect'},
-      {id:'scraping', title:'Web scraping & search', desc:'Scraper keys, the free reader, web search, health checks and tests', sections:['scraping']},
+      {id:'keys', title:'AI keys & providers', desc:'Every AI chat key and provider in one place: Free Mode, which engine answers, routing and fallback', sections:['features','engine','providers']},
+      {id:'scraping', title:'Web scraping & search', desc:'Every scraper and search key, the free reader, health checks and tests', sections:['scraping']},
       {id:'hacking', title:'Termux & terminal', desc:'Termux mode, pen-test persona and the built-in terminal', sections:['hacking']},
       {id:'device', title:'Device tools', desc:'Wi-Fi, storage and RAM, battery, diagnostics and document reading', sections:['device']},
-      {id:'music', title:'Music & downloads', desc:'Player, song identification, music control, YouTube and yt-dlp downloads', sections:['music']},
+      {id:'music', title:'Media', desc:'All media in one: picture and PDF engines, Stability key, music and video APIs, song ID, player, downloads', sections:['music']},
       {id:'permissions', title:'Permissions & background', desc:'Notifications, mic, battery, keep-alive, pings and background replies', sections:['permissions']}
     ];
     const menu = D.createElement('div'); menu.id = 'cockpitMenu';
@@ -106,16 +106,9 @@
       while (keyCard.firstChild) fold.append(keyCard.firstChild);
       keyCard.append(fold);
     }
-    // Actual media controls live inline, including their original delegated handler root.
-    const mediaCard = $('bMediaEng')?.closest('.card'), mediaSheet = $('xengines');
-    if (mediaCard && mediaSheet) {
-      W.EmberEngines.open(); W.EmberEngines.close();
-      mediaSheet.classList.add('cockpit-inline-media'); mediaSheet.querySelector('.sh')?.remove();
-      mediaSheet.removeAttribute('role'); mediaSheet.removeAttribute('aria-modal');
-      mediaCard.append(mediaSheet); $('bMediaEng').remove();
-      W.EmberEngines.open = () => openSettings('engine', mediaCard);
-      W.EmberEngines.close = () => {};
-    }
+    // Automatic output capabilities have a read-only sheet under +, not Settings.
+    const mediaCard = $('bMediaEng')?.closest('.card');
+    if (mediaCard) mediaCard.remove();
     // Downloads retain original on-click handlers; move the entire tail into Hacking.
     const routing = $('efRouting'), content = routing?.querySelector('.ef-content');
     if (content) {
@@ -130,7 +123,7 @@
       if (yt && $('cockpitYouTube')) { const hint = yt.nextElementSibling; $('cockpitYouTube').append(yt); if (hint?.classList.contains('hint')) $('cockpitYouTube').append(hint); }
       routing.querySelector(':scope > .ct').textContent = 'Providers · routing policy';
       const guide = D.createElement('p'); guide.className = 'hint';
-      guide.textContent = 'All bundled providers remain available in Engine & Media Control. Load a pinned engine’s live models to see your account’s catalog; OpenRouter :free models are labelled free. Multiple keys rotate, with key/model cooldowns and provider fallback unchanged. Claude is paid and pin-only; Stability is media-only. Free tiers and availability are determined by each provider, not guaranteed by Ember.';
+      guide.textContent = 'All bundled providers remain available in Engine & Media Control. Load a pinned engine’s live models to see your account’s catalog; OpenRouter :free models are labelled free. Multiple keys rotate, with key/model cooldowns and provider fallback unchanged. Claude is paid and pin-only. Optional media connections live under +, outside Settings. Free tiers and availability are determined by each provider, not guaranteed by Ember.';
       routing.querySelector(':scope > .ct').after(guide);
     }
     // 1.10.18 Part 7: every control lives in the row that matches its job. Nodes are moved, never cloned.
@@ -153,6 +146,45 @@
       const rename = (id, text) => { const h = $(id)?.closest('.card, .cockpit-control-group')?.querySelector(':scope > .cockpit-subtitle, :scope > .ct'); if (h) h.textContent = text; };
       rename('swMusic', 'Music control');
       rename('swLyr', 'Lyrics & music widget');
+    })();
+    // V1.10.37: the Stability key and the keyless music/video endpoints moved here from + > Media & Music, so ALL media settings live on the Media page.
+    (() => {
+      const host = D.createElement('div'); host.id = 'cockpitMediaKeys'; host.className = 'card';
+      sections.music.prepend(host);
+      let busy = false, msg = '';
+      const Pv = () => W.Prov;
+      const stState = () => { try { return Pv().stateOf('stability'); } catch (_) { return 'none'; } };
+      const html = () => {
+        const P = Pv(); let h = '<div class="ct">Media keys &amp; engines</div><p class="hint">Picture and PDF engines that need no key are built in. Add your own Stability AI key for optional images, and connect keyless music or video APIs. Keys stay on this phone.</p>';
+        if (P && P.CFG && P.CFG.stability) {
+          const list = P.entries('stability') || [], st = stState(), n = list.length;
+          const dot = busy ? '' : st === 'ok' ? 'ok' : (st === 'limited' || st === 'unknown') ? 'warn' : '';
+          const line = busy ? 'Checking the key\u2026' : st === 'none' ? 'No key saved' : st === 'ok' ? 'Key authenticated \u00b7 image access depends on your account' : st === 'limited' ? 'Key is valid but resting (rate limited)' : st === 'bad' ? 'Key rejected or unreachable' : 'Key saved \u00b7 not checked yet';
+          h += '<h4 class="epl-h">Stability AI \u00b7 optional image engine</h4><div class="epl-grp"><div class="epl-row epl-static"><span class="epl-dot ' + dot + '"></span><span class="epl-ic">\uD83C\uDFA8</span><span class="epl-tx"><b>Stability AI</b><small>' + esc(msg || line) + (n ? ' \u00b7 ' + n + ' key' + (n === 1 ? '' : 's') : '') + '</small></span></div>';
+          list.forEach(e => { h += '<div class="epl-row epl-static"><span class="epl-ic">\uD83D\uDD11</span><span class="epl-tx"><b>' + esc(P.mask(e.key)) + '</b><small>' + esc(!e.st ? 'not checked yet' : e.st.ok ? (e.st.limited ? 'valid \u00b7 resting' : 'authenticated') : String(e.st.msg || 'rejected').slice(0, 60)) + '</small></span><button type="button" class="epl-mini" data-ms-rm="' + esc(e.key) + '" aria-label="Remove this key">\u2715</button></div>'; });
+          h += '<div class="epl-row epl-static epl-keyrow"><input type="password" id="cmStabKey" class="epl-in" placeholder="Paste a Stability API key (sk-\u2026)" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Stability API key"><button type="button" class="epl-mini hot" data-ms-add>Add</button></div></div>' +
+            '<div class="epl-btns epl-btns2"><button type="button" class="epl-btn" data-ms-check' + (n && !busy ? '' : ' disabled') + '>' + (busy ? 'Checking\u2026' : 'Check key') + '</button><a class="epl-btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none;color:inherit" href="https://platform.stability.ai/dashboard/api-keys" target="_blank" rel="noopener noreferrer">Get a key \u2197</a></div>';
+        }
+        return h + '<div id="cmKeyless">' + (W.EmberKeylessMedia ? W.EmberKeylessMedia.panel() : '') + '</div>';
+      };
+      paintMedia = () => {
+        const a = D.activeElement; if (a && host.contains(a) && /^(INPUT|TEXTAREA)$/.test(a.tagName)) return;
+        const keep = sb.scrollTop, typed = $('cmStabKey') ? $('cmStabKey').value : '';
+        host.innerHTML = html(); if ($('cmStabKey')) $('cmStabKey').value = typed; sb.scrollTop = keep;
+      };
+      const names = () => { try { W.dispatchEvent(new Event('ember-names')); } catch (_) {} };
+      host.addEventListener('click', async e => {
+        const t = e.target, P = Pv(); if (!P) return;
+        if (t.closest('[data-ms-add]')) {
+          const i = $('cmStabKey'), v = i ? i.value.trim() : ''; if (!v) { msg = 'Paste a key first'; return paintMedia(); }
+          busy = true; msg = ''; paintMedia(); let r; try { r = await P.addKey('stability', v); } catch (_) { r = {ok: false, why: 'failed'}; }
+          busy = false; msg = r && r.ok ? '' : r && r.why === 'already added' ? 'That key is already saved' : 'That key could not be saved'; if (r && r.ok && $('cmStabKey')) $('cmStabKey').value = ''; names(); return paintMedia();
+        }
+        if (t.closest('[data-ms-check]')) { if (busy) return; busy = true; msg = ''; paintMedia(); try { await P.ping('stability'); } catch (_) { msg = 'Could not reach Stability'; } busy = false; names(); return paintMedia(); }
+        const rm = t.closest('[data-ms-rm]'); if (rm) { try { P.removeKey('stability', rm.dataset.msRm); } catch (_) {} msg = ''; names(); return paintMedia(); }
+      });
+      ['ember-provider-stats', 'ember-names', 'ember-plus-change'].forEach(n => W.addEventListener(n, () => { if (settings.classList.contains('show')) paintMedia(); }));
+      paintMedia();
     })();
     // Scraping health/test are adjacent controls, not another nested menu.
     sections.scraping.querySelector('.wtabs')?.remove();
@@ -181,7 +213,7 @@
     function showMenu() {
       view = 'menu'; settings.classList.add('cview-menu'); settings.classList.remove('cview-section');
       Object.values(sections).forEach(s => s.classList.remove('cshow')); root.classList.remove('cmulti');
-      setHead(homeName(), 'Settings', false); sb.scrollTop = 0;
+      setHead(homeName(), 'Settings', false); sb.scrollTop = 0; resetSearch();
     }
     function showRow(row, target) {
       if (row.workspace) { closeSettings(); W.EmberWorkspace.open(row.workspace); return; }
@@ -203,6 +235,7 @@
       lastFocus = D.activeElement;
       originalOpen('general');
       D.body.classList.add('cockpit-settings-open'); $('app').inert = true;
+      paintMedia();
       const hit = rowFor(section, target);
       if (hit) showRow(hit.row, hit.target); else showMenu();
       requestAnimationFrame(() => $('bSx').focus({preventScroll:true}));
@@ -291,155 +324,74 @@
       W.EmberBrowser.open = which => { browserOpen(which); pane.classList.add('hidden'); if (which === 'notes') { openNotes('notes'); selectNotesOriginal(); } };
       $('brX').addEventListener('click', () => $('cX').click());
     }
-    setupCommandCentre(R,G,closeSettings);
-    const dash = unifyCommandCentre(G);
-    W.EmberCockpit = {open:openSettings,close:closeSettings,dash,version:'1.10.18'};
-  }
-  function setupCommandCentre(R,G,closeSettings) {
-    const card = $('eccGitHub'), panel = $('emberCommandCenter'), host = panel.querySelector('.ecc-panel-content');
-    host.prepend(card); // repository workflow comes first; diagnostics stay below it
-    const tabs = card.querySelectorAll('[role="tab"]');
-    tabs.forEach(t => { t.setAttribute('aria-controls','repoWorkspace'); });
-    // Only one repo workflow: no alternative install/build panels bypassing the prerequisite.
-    $('ghRunnerCard').hidden = true;
-    const quick = card.querySelector('[data-ecc-action="build"]')?.closest('.rr-section');
-    if (quick) { quick.querySelector('.ecc-actions')?.remove(); quick.querySelector('h3').textContent = 'Run status'; }
-    card.querySelectorAll('#repoRunnerFeature [data-rr="brain-direct"],#repoRunnerFeature [data-rr="add"]').forEach(b => b.remove());
-    const linked = $('rrSources')?.closest('.rr-section');
-    if (linked) {
-      linked.dataset.ghp = 'build';
-      const stage = D.createElement('section'); stage.className = 'rr-section'; stage.dataset.ghp = 'repos';
-      stage.innerHTML = '<h3>Or apply a repository URL</h3>';
-      const label = $('rrSource').previousElementSibling;
-      let n = label; while (n) { const next = n.nextSibling; stage.append(n); n = next; }
-      $('repoRunnerFeature').append(stage);
+    // 1.10.27: Settings search. Finds any control, card or row across every Settings section and jumps to it.
+    const sbox = D.createElement('div'); sbox.id = 'cockpitSearchBox';
+    sbox.innerHTML = '<label><span aria-hidden="true">\u2315</span><input id="cockpitSearch" type="search" placeholder="Search settings" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search settings"><button type="button" id="cockpitSearchClear" aria-label="Clear search" hidden>\u2715</button></label>';
+    const sres = D.createElement('div'); sres.id = 'cockpitSearchResults'; sres.hidden = true; sres.setAttribute('role', 'listbox'); sres.setAttribute('aria-label', 'Settings search results');
+    sb.prepend(sres); sb.prepend(sbox);
+    const sin = $('cockpitSearch'), sclear = $('cockpitSearchClear');
+    const norm = t => String(t || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    let sidx = null, shits = [];
+    function buildIndex() {
+      const out = [];
+      ROWS.forEach(r => out.push({row: r, el: null, title: r.title, where: 'Settings', snip: r.desc, text: norm(r.title + ' ' + r.desc)}));
+      ROWS.forEach(r => (r.sections || []).forEach(id => {
+        const sec = sections[id]; if (!sec) return;
+        sec.querySelectorAll('.cr, .card, .cockpit-control-group, details.cockpit-provider').forEach(el => {
+          const own = el.querySelector(':scope > .ct, :scope > .cockpit-subtitle, :scope > summary');
+          const heading = (own && own.textContent.trim()) || (el.querySelector('.lb, label, b')?.textContent.trim()) || '';
+          const parent = el.parentElement && el.parentElement.closest('.card, .cockpit-control-group');
+          const ph = parent?.querySelector(':scope > .ct, :scope > .cockpit-subtitle')?.textContent.trim() || '';
+          const extra = Array.from(el.querySelectorAll('input,textarea,select,button')).map(x => (x.placeholder || '') + ' ' + (x.getAttribute('aria-label') || '') + ' ' + (x.title || '')).join(' ');
+          const full = (heading + ' ' + el.textContent + ' ' + extra).replace(/\s+/g, ' ').trim(); if (!full) return;
+          const snip = el.textContent.replace(/\s+/g, ' ').trim().slice(0, 120);
+          out.push({row: r, el, title: heading || ph || r.title, where: r.title + (ph && ph !== heading ? ' \u203a ' + ph : ''), snip, text: norm(full).slice(0, 5000)});
+        });
+      }));
+      out.push({widget: true, title: 'GitHub \u00b7 Ember\u2019s Brain', where: 'GitHub', snip: 'Token, load the Brain, search repos, view, add and push, GitHub Terminal', text: 'github git brain repo repository repositories search view add push token terminal ember brain commit'});
+      return out;
     }
-    const intro = card.querySelector('#repoRunnerFeature > p[data-ghp="repos"]');
-    if (intro) intro.textContent = 'Search is read-only. Apply a result, tick Sync and confirm the waiting queue.';
-    const direct = $('rrSource');
-    if (direct) {
-      direct.previousElementSibling.textContent = 'Stage a repository directly';
-      const b = D.createElement('button'); b.type = 'button'; b.className = 'btn g'; b.id = 'cockpitStageDirect'; b.textContent = 'Apply → select to sync';
-      direct.after(b); b.onclick = () => { const repo = G._clean.cleanRepo(direct.value); if (!repo) return status('Use owner/repository or a GitHub repository URL.'); candidates.set(repo.toLowerCase(),{repo}); renderQueue(); $('cockpitPending').scrollIntoView({block:'nearest'}); };
+    function runSearch(q) {
+      const tokens = norm(q).split(' ').filter(Boolean); if (!tokens.length) return [];
+      if (!sidx) sidx = buildIndex();
+      let hit = sidx.filter(x => tokens.every(t => x.text.includes(t)));
+      // Keep the most specific match: drop a block when something inside it matched too.
+      hit = hit.filter(x => !x.el || !hit.some(y => y !== x && y.el && x.el.contains(y.el)));
+      const score = x => (x.widget || !x.el ? 0 : 1) + (tokens.every(t => norm(x.title).includes(t)) ? 0 : 2);
+      return hit.map((x, i) => ({x, i, sc: score(x)})).sort((a, b) => a.sc - b.sc || a.i - b.i).slice(0, 40).map(o => o.x);
     }
-    // Search terminal is a dropdown containing real search result nodes, status and pagination.
-    const discovery = $('rrSearch')?.closest('.rr-section');
-    const term = D.createElement('details'); term.id = 'cockpitRepoTerminal'; term.className = 'cockpit-terminal';
-    term.innerHTML = '<summary>Live Terminal · repository discovery</summary><pre id="cockpitSearchLog" role="log" aria-live="polite">Waiting for repository search. Search is read-only.</pre>';
-    if (discovery) { discovery.append(term); term.append($('rrResults')); term.append(discovery.querySelector('.rr-pagination')); }
-    const queueKey = 'ember_cockpit_queue_v1', savedQueue = read(queueKey,[]);
-    let queue = Array.isArray(savedQueue) ? savedQueue.filter(x => G._clean.cleanRepo(x?.repo)).map(x=>({repo:G._clean.cleanRepo(x.repo),selected:x.selected===true,state:'waiting'})).slice(0,100) : [];
-    const candidates = new Map(); let committing = false;
-    const q = D.createElement('section'); q.id = 'cockpitQueue'; q.className = 'rr-section'; q.dataset.ghp = 'repos build';
-    q.innerHTML = '<h3>Sync queue <span id="cockpitQueueCount">0</span></h3><p class="hint">Apply a result, tick Sync, then confirm. Nothing is added to the runner or sent to GitHub until Run & Push is confirmed.</p><div id="cockpitPending"></div><button type="button" class="btn g" id="cockpitConfirmQueue">Confirm selected → add to Queue</button><div id="cockpitQueueItems"></div><p id="cockpitQueueStatus" class="hint" role="status"></p>';
-    $('repoRunnerFeature').append(q);
-    function status(t) { $('cockpitQueueStatus').textContent = t; }
-    function persist() { if (!store(queueKey,queue)) status('Storage unavailable. Queue stays in this session only.'); }
-    function renderQueue() {
-      $('cockpitQueueCount').textContent = queue.length;
-      $('cockpitPending').innerHTML = Array.from(candidates.values()).map(x=>'<label class="rr-check"><input type="checkbox" data-pending="'+esc(x.repo)+'"'+(x.selected?' checked':'')+'> Sync '+esc(x.repo)+'</label>').join('');
-      $('cockpitQueueItems').innerHTML = queue.map(x=>'<div class="cockpit-queue-row"><label class="rr-check"><input type="checkbox" data-queue="'+esc(x.repo)+'"'+(x.selected?' checked':'')+'> '+esc(x.repo)+'<small>'+esc(x.state || 'waiting')+'</small></label><button type="button" class="btn g" data-remove-queue="'+esc(x.repo)+'" aria-label="Remove '+esc(x.repo)+' from queue">Remove</button></div>').join('') || '<p class="hint">Queue empty. No repository will be synced automatically.</p>';
-      $('cockpitConfirmQueue').disabled = !Array.from(candidates.values()).some(x=>x.selected) || committing;
+    function renderSearch() {
+      const q = sin.value; sclear.hidden = !q;
+      const on = !!norm(q); settings.classList.toggle('csearching', on); sres.hidden = !on;
+      if (!on) { sres.replaceChildren(); shits = []; return; }
+      shits = runSearch(q);
+      sres.innerHTML = shits.length ? shits.map((h, i) => '<button type="button" class="csr" role="option" data-hit="' + i + '"><span class="csr-in">' + esc(h.where) + '</span><b>' + esc(h.title) + '</b><small>' + esc(h.snip) + '</small></button>').join('') : '<p class="csr-none">No setting matches \u201c' + esc(q.trim()) + '\u201d. Try fewer or different words.</p>';
     }
-    q.addEventListener('change',e=>{
-      if(e.target.dataset.pending){const x=candidates.get(e.target.dataset.pending.toLowerCase());if(x)x.selected=e.target.checked; $('cockpitConfirmQueue').disabled=!Array.from(candidates.values()).some(x=>x.selected);}
-      if(e.target.dataset.queue){const x=queue.find(x=>x.repo===e.target.dataset.queue);if(x)x.selected=e.target.checked; persist();}
+    function resetSearch() { sidx = null; if (sin) { sin.value = ''; renderSearch(); } }
+    sin.addEventListener('input', renderSearch);
+    sin.addEventListener('keydown', e => { if (e.key === 'Escape' && sin.value) { e.preventDefault(); e.stopPropagation(); sin.value = ''; renderSearch(); } if (e.key === 'Enter' && shits.length) { e.preventDefault(); sres.querySelector('.csr')?.click(); } });
+    sclear.addEventListener('click', () => { sin.value = ''; renderSearch(); sin.focus(); });
+    sres.addEventListener('click', e => {
+      const b = e.target.closest('[data-hit]'); if (!b) return; const h = shits[Number(b.dataset.hit)]; if (!h) return;
+      sin.value = ''; renderSearch();
+      if (h.widget) { if (W.EmberGitBrain) W.EmberGitBrain.open(); return; }
+      showRow(h.row, h.el || undefined);
+      if (h.el) { h.el.classList.add('csr-hit'); setTimeout(() => h.el.classList.remove('csr-hit'), 2600); }
     });
-    q.addEventListener('click',e=>{const b=e.target.closest('[data-remove-queue]');if(b&&!committing){queue=queue.filter(x=>x.repo!==b.dataset.removeQueue);persist();renderQueue();}});
-    $('cockpitConfirmQueue').onclick=()=>{
-      const selected=Array.from(candidates.values()).filter(x=>x.selected); if(!selected.length)return;
-      if(!W.confirm('Add '+selected.length+' selected repositories to the waiting queue? This does not sync or push.'))return;
-      if(queue.length+selected.filter(x=>!queue.some(y=>y.repo.toLowerCase()===x.repo.toLowerCase())).length>100)return status('Queue limit: 100 repositories.');
-      selected.forEach(x=>{if(!queue.some(y=>y.repo.toLowerCase()===x.repo.toLowerCase()))queue.push({repo:x.repo,selected:true,state:'waiting'});candidates.delete(x.repo.toLowerCase());});
-      persist();renderQueue();status('Queued. Waiting for an explicit Run & Push confirmation.');
-    };
-    function decorateResults() { $('rrResults').querySelectorAll('[data-rr-add]').forEach(b=>{if(b.textContent!=='Apply')b.textContent='Apply';}); }
-    new MutationObserver(decorateResults).observe($('rrResults'),{childList:true,subtree:true});
-    const rrStatus=$('rrStatus'); let lastMessage='';
-    new MutationObserver(()=>{const text=rrStatus.textContent;if(text===lastMessage)return;lastMessage=text;const log=$('cockpitSearchLog');log.textContent='['+new Date().toLocaleTimeString()+'] '+text;}).observe(rrStatus,{childList:true,characterData:true,subtree:true});
-    card.addEventListener('click',e=>{
-      const apply=e.target.closest('[data-rr-add]');
-      if(apply){e.preventDefault();e.stopImmediatePropagation();const repo=G._clean.cleanRepo(apply.dataset.rrAdd);if(!repo)return;if(!candidates.has(repo.toLowerCase()))candidates.set(repo.toLowerCase(),{repo,selected:false});renderQueue();status('Applied '+repo+'. Tick Sync, then confirm to queue.');return;}
-      const b=e.target.closest('[data-rr]');
-      if(b&&['search','owned','prev','next'].includes(b.dataset.rr)){term.open=true;$('cockpitSearchLog').textContent='['+new Date().toLocaleTimeString()+'] Searching GitHub…';}
-    },true);
-    // Public SSH metadata only: never ask for or retain a private key.
-    const ssh=D.createElement('section');ssh.id='cockpitSsh';ssh.className='rr-section';ssh.dataset.ghp='build';
-    ssh.innerHTML='<h3>Linked SSH key · required</h3><p class="hint">Paste a PUBLIC SSH key already linked to your GitHub account. Verification checks the signed-in GitHub account, then reads its public authentication-key list. Never paste a private key. The existing runner still authenticates with your GitHub token; SSH verification is an additional UI prerequisite, not a change to its transport.</p><label class="lb" for="cockpitSshPublic">Public key</label><textarea id="cockpitSshPublic" rows="3" spellcheck="false" autocomplete="off" placeholder="ssh-ed25519 AAAA…"></textarea><button type="button" class="btn g" id="cockpitVerifySsh">Verify linked SSH key</button><p id="cockpitSshStatus" class="hint" role="status">Not verified. Run & Push is locked.</p><a href="https://github.com/settings/ssh/new" target="_blank" rel="noopener noreferrer">Link a public key in GitHub ↗</a>';
-    $('repoRunnerFeature').append(ssh);
-    const publish=Array.from(card.querySelectorAll('.rr-section')).find(x=>/Publish, run and inspect/.test(x.querySelector('h3')?.textContent||''));
-    if(publish)publish.before(ssh);
-    function publicKey(){const s=$('cockpitSshPublic').value.trim();if(/PRIVATE KEY/.test(s))throw new Error('Private keys are not accepted. Clear it and paste only a public SSH key.');const m=/^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp(?:256|384|521)|sk-ssh-ed25519@openssh.com|sk-ecdsa-sha2-nistp256@openssh.com)\s+([A-Za-z0-9+/]+={0,3})(?:\s.*)?$/.exec(s);if(!m)throw new Error('Paste a valid OpenSSH public key, not a fingerprint or private key.');return m[1]+' '+m[2];}
-    async function verifySsh(){
-      if(!G.on())throw new Error('Save your GitHub token on the Brain tab first.');
-      const key=publicKey(); let found=false;
-      const account=await G.managerRequest('/user');
-      if(!account.ok || !/^[a-zA-Z0-9-]+$/.test(account.json?.login || '')) throw new Error(account.error || 'Cannot verify the signed-in GitHub account.');
-      // The existing manager permits /user, not /user/keys. Do not widen its backend allowlist.
-      // Authentication public keys are public metadata; fetch them without a token or credentials.
-      const controller=new AbortController(), timeout=setTimeout(()=>controller.abort(),20000);
-      try {
-        for(let page=1;page<=20;page++){
-          const response=await fetch('https://api.github.com/users/'+encodeURIComponent(account.json.login)+'/keys?per_page=100&page='+page,{credentials:'omit',headers:{Accept:'application/vnd.github+json'},signal:controller.signal});
-          if(!response.ok)throw new Error('Cannot read public SSH keys (HTTP '+response.status+'). No workflow dispatched.');
-          const keys=await response.json(); if(!Array.isArray(keys))throw new Error('Invalid SSH-key response.');
-          if(keys.some(x=>String(x.key||'').trim().split(/\s+/).slice(0,2).join(' ')===key)){found=true;break;}
-          if(keys.length<100)break;
-        }
-      } finally {clearTimeout(timeout);}
-      if(!found)throw new Error('This public SSH key was not found on the authenticated GitHub account.');
-      $('cockpitSshStatus').textContent='Linked public SSH key verified. Rechecked before each run.';return true;
-    }
-    $('cockpitVerifySsh').onclick=async e=>{e.currentTarget.disabled=true;try{await verifySsh();}catch(er){$('cockpitSshStatus').textContent=er.message;}finally{$('cockpitVerifySsh').disabled=false;}};
-    $('cockpitSshPublic').addEventListener('input',()=>{$('cockpitSshStatus').textContent='Key changed. Verify again before running.';});
-    // Replace duplicate publish actions with ONE transactional UI, using unchanged runner methods.
-    publish?.querySelectorAll('[data-rr="install"],[data-rr="sync"]').forEach(b=>b.remove());
-    const run=D.createElement('button');run.type='button';run.id='cockpitRunPush';run.className='btn';run.textContent='Run & Push · review queue';
-    publish?.querySelector('.btnrow').prepend(run);
-    run.onclick=async()=>{
-      if(committing)return;
-      committing=true; run.disabled=true; q.inert=true;const original=R.config();let staged=false, submitted=false;
-      try{
-        const selected=queue.filter(x=>x.selected);
-        if(!selected.length)throw new Error('Tick at least one queued repository to sync.');
-        const target=G._clean.cleanRepo($('rrTarget').value);if(!target)throw new Error('Set your output repository first.');
-        if(!G.on())throw new Error('Save your GitHub token first.');
-        await verifySsh();
-        if(!W.confirm('Run & Push '+selected.length+' queued repositories into '+target+'? This installs/updates 3 managed runner files, provisions the existing encrypted token secret and dispatches GitHub Actions. The Brain is always included. A dispatch is not a completed build.'))return;
-        const queuedNames = new Set(queue.map(x=>x.repo.toLowerCase()));
-        const sources=original.sources.filter(x=>!queuedNames.has(x.repo.toLowerCase())).concat(selected.map(x=>({repo:x.repo})));
-        R.save({target,branch:$('rrBranch').value.trim(),buildWorkflow:$('rrWorkflow').value.trim()||'build.yml',autoBuild:$('rrBuild').checked,autoSync:$('rrAuto').checked,sources});staged=true;
-        selected.forEach(x=>x.state='dispatching');renderQueue();rrStatus.textContent='Installing runner and dispatching the confirmed queue…';
-        const result=await R.install();submitted=!!result.dispatched;
-        if(!result.ok)throw new Error(result.error||'Runner was not dispatched.');
-        selected.forEach(x=>x.state='dispatched · check run status');persist();renderQueue();
-        rrStatus.textContent='Workflow dispatched. Check run status for actual completion. '+(result.url||'');
-        W.EmberCommandCenter.write({source:'Cockpit Queue',stream:'status',text:rrStatus.textContent});
-      }catch(er){
-        if(staged&&!submitted){R.save(original);queue.filter(x=>x.state==='dispatching').forEach(x=>x.state='waiting · review failure');persist();renderQueue();}
-        rrStatus.textContent=er.message+' If installation started, remote files may already exist; inspect run status before retrying.';
-        $('cockpitSshStatus').textContent=er.message; status(er.message);
-      }finally{committing=false;run.disabled=false;q.inert=false;renderQueue();R.paintSources();}
-    };
-    // Gate keyboard/delegated legacy action paths too, should an add-on expose them later.
-    card.addEventListener('click',e=>{const b=e.target.closest('[data-rr="install"],[data-rr="sync"],[data-ecc-action="build"],[data-ecc-action="push"],[data-gh-action="install-runner"]');if(b){e.preventDefault();e.stopImmediatePropagation();status('Use Run & Push to review the queue and verify a linked SSH key.');W.EmberWorkspace.setTab('build');}},true);
-    // Search enter follows original runner search, and opens the terminal dropdown.
-    $('rrSearch')?.addEventListener('keydown',e=>{if(e.key==='Enter')term.open=true;});
-    renderQueue();
-    W.EmberCockpitQueue={snapshot:()=>queue.map(x=>({...x})),pending:()=>Array.from(candidates.values()).map(x=>({...x}))};
+    const dash = unifyCommandCentre(G);
+    W.EmberCockpit = {open:openSettings,close:closeSettings,dash,version:'1.10.27',search:term => { openSettings(); sin.value = String(term || ''); renderSearch(); sin.focus({preventScroll:true}); }};
   }
-
   // 1.10.18 Part 4: ONE Command Centre dashboard. Tabs replace four stacked panels; GitHub (Brain, Search, Run & Push) is one tab.
   function unifyCommandCentre(G) {
-    const panel = $('emberCommandCenter'), host = panel.querySelector('.ecc-panel-content'), gh = $('eccGitHub');
+    const panel = $('emberCommandCenter'), host = panel.querySelector('.ecc-panel-content');
     const routing = host.querySelector('.ef-panel');
     const head = c => (c.querySelector('h2,h3')?.textContent || '').trim();
-    const others = Array.from(host.querySelectorAll(':scope > .ecc-card')).filter(c => c !== gh);
+    const others = Array.from(host.querySelectorAll(':scope > .ecc-card'));
     const thought = others.find(c => /thought/i.test(head(c))), memory = others.find(c => /memory/i.test(head(c)));
     const ov = D.createElement('section'); ov.id = 'eccOverview'; ov.className = 'ecc-card eccx-overview';
-    ov.innerHTML = '<h2>Overview</h2><div id="eccxTiles" class="eccx-tiles"></div><h3 class="eccx-h">Providers, free models and key rotation</h3><div id="eccxTable" class="eccx-table" role="table" aria-label="Providers"></div><p class="hint eccx-note">Free Mode needs no key (Pollinations pictures, Forge community GPUs). Add several keys for one provider and Ember rotates between them: a rate-limited or rejected key rests and the next one answers, then the next provider takes over. OpenRouter :free models and Plugsky micro/lite are labelled free once their live catalog is loaded. Claude is paid and pin-only; Stability is media-only. Free tiers are set by each provider, not guaranteed by Ember.</p><div class="btnrow"><button type="button" class="btn g" id="eccxCheck">Check all keys</button><button type="button" class="btn g" id="eccxOpenKeys">Manage keys in Settings</button></div><p id="eccxStatus" class="hint" role="status"></p>';
-    const panels = {overview: ov, github: gh, routing, thought, memory};
-    const LABEL = {overview:'Overview', github:'GitHub', routing:'Routing & keys', thought:'Inspector', memory:'Memory'};
+    ov.innerHTML = '<h2>Overview</h2><div id="eccxTiles" class="eccx-tiles"></div><h3 class="eccx-h">Providers, free models and key rotation</h3><div id="eccxTable" class="eccx-table" role="table" aria-label="Providers"></div><p class="hint eccx-note">Free Mode needs no key (Pollinations pictures, Forge community GPUs). Add several keys for one provider and Ember rotates between them: a rate-limited or rejected key rests and the next one answers, then the next provider takes over. OpenRouter :free models and Plugsky micro/lite are labelled free once their live catalog is loaded. Claude is paid and pin-only. Optional media connections live under +, outside Settings. Free tiers are set by each provider, not guaranteed by Ember.</p><div class="btnrow"><button type="button" class="btn g" id="eccxCheck">Check all keys</button><button type="button" class="btn g" id="eccxOpenKeys">Manage keys in Settings</button></div><p id="eccxStatus" class="hint" role="status"></p>';
+    const panels = {overview: ov, routing, thought, memory};
+    const LABEL = {overview:'Overview', routing:'Routing & keys', thought:'Inspector', memory:'Memory'};
     const bar = D.createElement('div'); bar.id = 'eccDash'; bar.className = 'eccx-tabs'; bar.setAttribute('role','tablist'); bar.setAttribute('aria-label','Command Centre');
     bar.innerHTML = Object.keys(panels).filter(k => panels[k]).map(k => '<button type="button" role="tab" data-dash="' + k + '" id="eccDash_' + k + '">' + LABEL[k] + '</button>').join('');
     host.prepend(ov); host.prepend(bar);
@@ -451,18 +403,18 @@
         const c = P.CFG[id], list = P.entries(id) || [], live = list.filter(e => e.st?.ok && !e.st.limited && !P.isCool(e.key)).length, cool = list.filter(e => P.isCool(e.key)).length;
         const d = P.detail(id) || {}, models = (P.cachedModels && P.cachedModels(id)) || [], fm = models.filter(m => /:free$|^plugsky-(micro|lite)$/.test(m)).length;
         active += live; saved += list.length; rest += cool; free += fm; cached += models.length ? 1 : 0;
-        const type = id === 'anthropic' ? 'Paid · pin-only' : c.kind === 'media' ? 'Media only' : c.optIn ? 'Opt-in · free models' : 'Chat · free tier by provider';
+        const type = id === 'anthropic' ? 'Paid · pin-only' : c.kind === 'media' ? 'Media only' : c.credits ? 'Opt-in · uses your credits' : c.optIn ? 'Opt-in · free models' : 'Chat · free tier by provider';
         let state = 'no key'; try { state = {ok:'working', limited:'rate-limited', bad:'failing', unknown:'not checked', none:'no key'}[P.stateOf(id)] || P.stateOf(id); } catch (_) { /* cosmetic */ }
         const rot = list.length < 2 ? (list.length ? '1 key · no rotation' : '—') : live + ' of ' + list.length + ' keys live · rotating' + (cool ? ' · ' + cool + ' resting' + (d.retry ? ' (' + d.retry + 's)' : '') : '');
         rows.push('<div class="eccx-row" role="row"><b role="cell">' + esc(c.name) + '</b><span role="cell">' + esc(type) + '</span><span role="cell">' + (models.length ? fm + ' free of ' + models.length : (list.length ? 'load catalog' : '—')) + '</span><span role="cell">' + esc(rot) + '</span><span role="cell" class="eccx-st" data-st="' + esc(state.replace(/\s/g,'-')) + '">' + esc(state) + '</span></div>');
       });
       $('eccxTable').innerHTML = '<div class="eccx-row eccx-hd" role="row"><span role="columnheader">Provider</span><span role="columnheader">Type</span><span role="columnheader">Free models</span><span role="columnheader">Key rotation</span><span role="columnheader">Status</span></div><div class="eccx-row" role="row"><b role="cell">Free Mode</b><span role="cell">Keyless</span><span role="cell">no key needed</span><span role="cell">—</span><span role="cell" class="eccx-st" data-st="working">always on</span></div>' + rows.join('');
-      const q = W.EmberCockpitQueue ? W.EmberCockpitQueue.snapshot().length : 0, tok = (() => { try { return G.on(); } catch (_) { return false; } })();
+      const q = W.EmberGitBrain ? W.EmberGitBrain.queue().length : 0, tok = (() => { try { return G.on(); } catch (_) { return false; } })();
       const tile = (k, v, sub) => '<div class="eccx-tile"><small>' + k + '</small><strong>' + esc(v) + '</strong><span>' + esc(sub) + '</span></div>';
-      $('eccxTiles').innerHTML = tile('Providers', P.ACTIVE_IDS.length + ' AI engines', 'Cohere only · keyless tools are separate')
+      $('eccxTiles').innerHTML = tile('Providers', P.ACTIVE_IDS.length + ' AI engines', 'plus keyless Free Mode')
         + tile('Active keys', active + ' / ' + saved, rest ? rest + ' resting after a rate limit' : 'rotate automatically when one rests')
         + tile('Free models', cached ? String(free) : '—', cached ? 'from loaded catalogs' : 'load a catalog to count them')
-        + tile('GitHub', tok ? 'Token saved' : 'No token', q + ' repo' + (q === 1 ? '' : 's') + ' in the sync queue');
+        + tile('GitHub', tok ? 'Token saved' : 'No token', q + ' repo' + (q === 1 ? '' : 's') + ' waiting to push');
     }
     function setDash(name) {
       if (!panels[name]) name = 'overview'; current = name;
@@ -478,14 +430,6 @@
       try { await W.Prov.pingAll(); $('eccxStatus').textContent = 'Check finished.'; } catch (er) { $('eccxStatus').textContent = 'Check failed: ' + (er.message || er); }
       finally { b.disabled = false; paint(); }
     };
-    // Any shortcut that opens a GitHub step lands on the GitHub tab.
-    const ws = W.EmberWorkspace;
-    if (ws && typeof ws.open === 'function') {
-      const open = ws.open;
-      try { ws.open = function (tab) { const r = open.apply(this, arguments); if (['connect', 'repos', 'build'].includes(tab)) setDash('github'); return r; }; } catch (_) { /* frozen: tabs still work */ }
-    }
-    // Desktop-style repository terminal: open by default, results listed in it, tick Sync, confirm in the queue below.
-    const term = $('cockpitRepoTerminal'); if (term) term.open = true;
     for (const ev of ['ember-provider-stats', 'ember-names', 'ember-route', 'storage']) W.addEventListener(ev, () => { if (current === 'overview' && panel.classList.contains('ecc-open')) paint(); });
     setDash('overview');
     return setDash;

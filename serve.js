@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const root = path.join(__dirname, 'www');
 const port = process.argv[2] || 8080;
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css',
   '.json': 'application/json', '.webmanifest': 'application/manifest+json',
   '.png': 'image/png', '.svg': 'image/svg+xml' };
 

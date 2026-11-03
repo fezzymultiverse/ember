@@ -3,7 +3,7 @@
 // and saves the search itself under ember-brain/searches/. Runs from this phone with the saved GitHub token; nothing is executed.
 'use strict';
 (() => {
-  const W = window, G = W.EmberGithub, R = W.EmberRepoRunner; if (!G || !R || !G.brainRequest) return;
+  const W = window, G = W.EmberGithub; if (!G || !G.brainRequest || !G.managerRequest) return;
   const clean = G._clean.cleanRepo, redact = G._t.redact, MAX_REPOS = 15, README_CAP = 14000, KEY_CAP = 6000, TREE_CAP = 300;
   const say = (text, stream) => { try { if (W.EmberCommandCenter) W.EmberCommandCenter.write({ tag: 'GIT', source: 'Brain', stream: stream || 'status', text: String(text) }); } catch (_) { /* terminal optional */ } };
   const b64d = s => new TextDecoder().decode(Uint8Array.from(atob(String(s || '').replace(/\s/g, '')), c => c.charCodeAt(0)));
@@ -92,10 +92,16 @@
       return { ok: true, brain, branch, commit: commit.sha, url, written: docs.map(d => d.full), failed, files: files.length };
     } finally { busy = false; }
   }
-  async function find(query, n) {
-    const r = await R.search({ query, page: 1 }); if (!r.ok) throw new Error(r.error || 'Search failed.');
-    return (r.repositories || []).slice(0, Math.max(1, Math.min(MAX_REPOS, n || 5)));
+  // Read-only repository search (GitHub /search/repositories). Never installs or runs what it finds.
+  async function search(query, page) {
+    const q = String(query || '').trim().slice(0, 200); if (!q) throw new Error('Search words are required.');
+    const pg = Math.max(1, Math.min(34, Number(page) || 1));
+    const r = await G.managerRequest('/search/repositories?per_page=20&page=' + pg + '&q=' + encodeURIComponent(q));
+    if (!r.ok) throw new Error(r.error || 'Search failed.');
+    const j = r.json || {};
+    return { total: j.total_count || 0, page: pg, more: pg * 20 < Math.min(1000, j.total_count || 0), repositories: (j.items || []).map(x => ({ repo: x.full_name, description: x.description || '', url: x.html_url, stars: x.stargazers_count || 0, lang: x.language || '', private: !!x.private, license: x.license && x.license.spdx_id || '' })) };
   }
+  async function find(query, n) { const r = await search(query, 1); return r.repositories.slice(0, Math.max(1, Math.min(MAX_REPOS, n || 5))); }
 
   // chat tool: only on an explicit ask, same rule as the repo runner tools
   const tool = { name: 'github_brain_write', description: 'Looks up repos on GitHub and WRITES what was found into the Brain repo (dossier per repo + INDEX + the search itself) in one commit, then pushes. Use only when he asks you to add / write / save / push repos to the brain. Give either repos (owner/name list) or query (top results are used, default 5, max 15).', parameters: { query: 'string?', repos: 'array of owner/name?', limit: 'number?' } };
@@ -117,5 +123,5 @@
     } catch (e) { return { ok: false, error: e.message }; }
   };
   G.stateBlock = function (o) { return oldState.apply(this, arguments) + '\nBRAIN WRITE: github_brain_write looks up repos and writes what it found into ' + G.knowledgeRepo() + ' (ember-brain/), then pushes. Only when he asks.'; };
-  W.EmberBrainPush = { write, find, MAX_REPOS, busy: () => busy };
+  W.EmberBrainPush = { write, find, search, dossier, MAX_REPOS, busy: () => busy };
 })();

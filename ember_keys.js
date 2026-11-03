@@ -8,8 +8,8 @@ const lsGet = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 
 const CHAT = 'Chat engine. Used automatically for every reply (the router picks one, or the one he pinned). No tool call needed.';
 const SCRAPE = id => 'Web page fetcher. Used by scrape_url (it takes turns with his other scraper keys; pass via:"' + id + '" to force this one). Only runs when Settings > Scraping is switched on.';
 const USE = {
-  openrouter: CHAT + ' Paid models possible; automatic fallback requires explicit opt-in in AI Features.', plugsky: CHAT + ' Automatic fallback requires opt-in in AI Features.', stability: 'Media generation only, never a chat fallback. Image and audio artifacts in AI Features; hosted Stability video API is retired.',
-  groq: CHAT, mistral: CHAT, gemini: CHAT, cohere: CHAT + ' This is the ONLY chat engine in V1.10.19: every reply goes to Cohere.', anthropic: 'Claude chat engine (paid). Never used automatically: it answers only while he pins Claude in the Providers chip.',
+  openrouter: CHAT + ' Paid models possible; automatic fallback requires explicit opt-in in AI Features.', plugsky: CHAT + ' Automatic fallback requires opt-in in AI Features.', longcat: CHAT + ' Uses his own LongCat daily quota. Automatic fallback requires opt-in in AI Features; otherwise it answers only while pinned.', stability: 'Optional image generation only, never a chat fallback. Key and controls live in + > Media & Music. Audio/video use a separate keyless API connection.',
+  groq: CHAT, mistral: CHAT, gemini: CHAT, cohere: CHAT + ' Prototype.', anthropic: 'Claude chat engine (paid). Never used automatically: it answers only while he pins Claude in the Providers chip.',
   firecrawl: SCRAPE('firecrawl') + ' Also backs up web_search after Tavily.', browserless: SCRAPE('browserless'), scraperapi: SCRAPE('scraperapi'), scraperbee: SCRAPE('scraperbee'), sting: SCRAPE('sting'), zenrows: SCRAPE('zenrows'),
   serpapi: 'Google search results. Backs up web_search after Tavily, and is the last resort inside scrape_url (snippets only, never the page itself).',
   brightdata: 'Bright Data. Google search results through its SERP zone (backs up web_search after SerpApi). With a Web Unlocker zone saved (Settings > Scraping) it also fetches pages inside scrape_url; with only a SERP zone it gives search snippets, never the page itself. Several keys can be saved: extras cover for the first.',
@@ -23,6 +23,7 @@ const WHERE = id => (window.Prov && window.Prov.CFG && window.Prov.CFG[id]) ? 'S
 function inventory() {
   const P = window.Prov, SC = window.EmberScraper, out = [];
   if (P && P.IDS) P.IDS.forEach(id => {
+    if (P.CFG[id] && P.CFG[id].kind === 'media') return; // V1.10.23: media keys live in + > Media & Music
     const a = (P.entries && P.entries(id)) || [];
     out.push({ id, name: P.CFG[id].name, kind: P.CFG[id].kind === 'media' ? 'media artifacts' : 'chat engine', saved: a.length, usable: a.filter(e => e && !(e.st && e.st.ok === false) && !e.bad).length, use: USE[id] || CHAT, where: WHERE(id) });
   });

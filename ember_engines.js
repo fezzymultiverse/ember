@@ -1,6 +1,6 @@
 // Ember V1.9.87 - ember_engines.js: media engine router. Two keyless integrations behind one switchboard.
 //   IMAGE  Pollinations stays the default. "Forge" (AI Horde, anonymous key 0000000000) is the second engine: it takes over when Pollinations fails (Auto) or runs alone (Forge only).
-//   PDF    Bundled pdfmake and docx provide private, no-account exports; basic EmberPDF is the fallback.
+//   PDF    Bundled pdfmake and docx provide private, no-account exports; the print view is the only fallback.
 //   Plain-English routing: "draw a husky in neon Cape Town" goes to the image route without opening the + menu. PDFs already arrive as artifacts from the chat; saving them goes through here.
 // Image routes are unchanged. PDF exports run locally and never upload document content.
 'use strict';
@@ -160,27 +160,9 @@
     return { ok: true, engine: 'forge', text: intro + '\n<artifact type="svg" title="Forge - ' + base + '.svg">\n' + svg + '\n</artifact>\n<artifact type="html" title="Forge - ' + base + ' (details).html">\n' + html + '\n</artifact>' };
   }
 
+  // V1.10.29: built-in only. Pollinations and Forge (third-party image APIs) are removed. Pictures come from Stability with your own key (Plugins > Media & Music).
   async function imageRoute(prompt, hk) {
-    hk = hk || {}; const c = cfg(), EC = window.EmberCreate;
-    const order = c.image == 'forge' ? ['forge'] : c.image == 'pollinations' ? ['pollinations'] : ['pollinations', 'forge'];
-    const step = (ic, text, key) => { try { if (hk.step) hk.step(ic, text, key); } catch (e) { /* view only */ } };
-    let last = '';
-    for (const eng of order) {
-      if (eng === 'pollinations') {
-        if (!EC || !EC.route) { last = 'Image creation did not load. Restart Ember and try again.'; continue; }
-        const t0 = Date.now(); let r; try { r = await EC.route(prompt, hk); } catch (e) { r = { ok: false, error: why(e) }; }
-        if (r && r.ok) { note('pollinations', true, 'drawn in ' + ((Date.now() - t0) / 1000).toFixed(1) + 's', Date.now() - t0); return r; }
-        last = (r && r.error) || 'Pollinations did not answer.';
-        if (/^Describe the picture/.test(last)) return r;
-        note('pollinations', false, last, Date.now() - t0);
-        if (order.length > 1) step('globe', 'Pollinations did not answer. Switching to Forge (slower, queue based)', 'fg0');
-      } else {
-        const r = await forgeRoute(prompt, hk);
-        if (r.ok) return r;
-        last = (order.length > 1 ? 'Pollinations and Forge both failed. Forge said: ' : 'Forge said: ') + r.error;
-      }
-    }
-    return { ok: false, error: last || 'No image engine could draw that.' };
+    return { ok: false, error: 'Built-in only: Ember no longer calls Pollinations or Forge. Add a Stability key in Plugins > Media & Music to make pictures, or ask for an SVG and Ember will draw it itself.' };
   }
 
   async function forgeCheck() {
@@ -189,41 +171,7 @@
     catch (e) { note('forge', false, 'heartbeat: ' + why(e), Date.now() - t0); return { ok: false, why: why(e) }; }
   }
 
-  // ---------- Local PDF validation ----------
-  const isPdf = u8 => {
-    if (!u8 || u8.length < 400) return false;
-    const head = String.fromCharCode.apply(null, Array.prototype.slice.call(u8, 0, 5));
-    const tail = String.fromCharCode.apply(null, Array.prototype.slice.call(u8, Math.max(0, u8.length - 1100)));
-    return head === '%PDF-' && tail.indexOf('%%EOF') >= 0;
-  };
-  const b64Bytes = b => { const bin = atob(String(b).replace(/^data:[^,]*,/, '').replace(/\s+/g, '')), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
-  async function readPdf(res) {
-    const h = res.headers && res.headers.get ? n => res.headers.get(n) || '' : () => '';
-    const ct = h('content-type').toLowerCase();
-    if (/json/.test(ct)) {
-      const j = await res.json(), b64 = j && (j.pdf_base64 || j.pdf || j.data);
-      if (b64) { const u = b64Bytes(b64); if (isPdf(u)) return u; throw new Error('bad PDF in JSON'); }
-      if (j && j.url) throw new Error('Remote PDF URLs are disabled; use the local renderer');
-      throw new Error((j && (j.error || j.message)) ? String(j.error || j.message).slice(0, 90) : 'unexpected JSON');
-    }
-    const buf = await res.arrayBuffer(), u = new Uint8Array(buf), len = Number(h('content-length')) || 0;
-    if (len && !h('content-encoding') && buf.byteLength !== len) throw new Error('PDF came back truncated (' + buf.byteLength + ' of ' + len + ' bytes)');
-    if (!isPdf(u)) throw new Error('reply was not a valid PDF');
-    return u;
-  }
-  const PDF_CSS = '@page{size:A4;margin:18mm 16mm 20mm;@bottom-center{content:counter(page);font:9pt Helvetica,Arial,sans-serif;color:#888}}' +
-    'html{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font:11pt/1.5 Helvetica,Arial,sans-serif;color:#141416;margin:0}' +
-    'h1{font-size:23pt;line-height:1.2;margin:0 0 10pt;padding-bottom:6pt;border-bottom:2.5pt solid #ff6a00}h2{font-size:15pt;margin:18pt 0 6pt;color:#111}h3{font-size:12.5pt;margin:14pt 0 4pt}p{margin:0 0 8pt}' +
-    'ul,ol{margin:0 0 8pt;padding-left:18pt}li{margin:2pt 0}a{color:#c2410c}blockquote{margin:8pt 0;padding:4pt 0 4pt 10pt;border-left:3pt solid #ff6a00;color:#44444a}' +
-    'table{border-collapse:collapse;width:100%;margin:8pt 0;font-size:10pt}th,td{border:.6pt solid #c9c9cf;padding:4pt 6pt;text-align:left;vertical-align:top}th{background:#fff0e3}tr{page-break-inside:avoid}' +
-    'pre,code{font-family:Courier,"Courier New",monospace;font-size:9.5pt;background:#f4f4f6}pre{padding:8pt;border-radius:4pt;white-space:pre-wrap;word-break:break-word;page-break-inside:avoid}code{padding:0 2pt}hr{border:0;border-top:.6pt solid #cfcfd5;margin:12pt 0}';
-  function pdfHtml(md, title) {
-    const A = window.EmberArtifacts; if (!A || !A.markdownHtml) return null;
-    return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc(title) + '</title><style>' + PDF_CSS + '</style></head><body>' + A.markdownHtml(md) + '</body></html>';
-  }
-  // Compatibility shims for older callers: no fetch, provider or document upload.
-  async function cloudPdf() { return { ok: false, why: 'Remote PDF generation has been removed. Use EmberDeliverables.pdf.' }; }
-  async function cloudPdfFor() { return cloudPdf(); }
+  // ---------- Local PDF check ----------
   async function pdfCheck() {
     try {
       const D = window.EmberDeliverables;
@@ -235,8 +183,8 @@
 
   // ---------- Media engines sheet ----------
   const sheet = document.createElement('section'); sheet.id = 'xengines'; sheet.className = 'sheet';
-  sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-label', 'Media engines');
-  sheet.innerHTML = '<div class="sh"><b>Media engines</b><button class="hb" id="egX" aria-label="Close">✕</button></div><div class="sb eg" id="egBody"></div>';
+  sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-label', 'Built-in engines');
+  sheet.innerHTML = '<div class="sh"><b>Built-in engines</b><button class="hb" id="egX" aria-label="Close">✕</button></div><div class="sb eg" id="egBody"></div>';
   const mount = $('app') ? $('app').parentNode : document.body; mount.appendChild(sheet);
   const dot = (e, alt) => { const l = lastOf(e) || (alt && lastOf(alt)); return l ? (l.ok ? 'ok' : 'bad') : 'idle'; };
   const ago = t => { const s = Math.max(1, Math.round((Date.now() - t) / 1000)); return s < 90 ? s + 's ago' : s < 5400 ? Math.round(s / 60) + 'm ago' : Math.round(s / 3600) + 'h ago'; };
@@ -244,23 +192,18 @@
   const eng = (name, tag, line, e, alt) => { const l = lastOf(e) || (alt && lastOf(alt)); return '<div class="eg-eng"><i class="eg-dot ' + dot(e, alt) + '" aria-hidden="true"></i><div><b>' + name + ' <em>' + tag + '</em></b><small>' + line + '</small>' + (l ? '<small class="eg-last">' + (l.ok ? 'Last: worked' : 'Last: failed') + ' · ' + esc(l.d) + ' · ' + ago(l.t) + '</small>' : '<small class="eg-last">Not used yet</small>') + '</div></div>'; };
   function paint() {
     const c = cfg(), b = $('egBody'); if (!b) return;
-    const K = window.EmberKeyless, pref = K && K.getPreference ? K.getPreference('image') : null;
+    if (window.EmberBuiltins) { b.innerHTML = window.EmberBuiltins.html(); return; }
     const hasStab = !!(window.Prov && Prov.keys && (Prov.keys().stability || []).some(x => x && !x.bad));
-    const picker = K ? '<div class="eg-seg" role="group" aria-label="Picture engine">' + [['ask', 'Ask each time'], ['pollinations', 'Pollinations'], ['stability', 'Stability']].map(o => '<button type="button" class="eg-opt' + (o[0] === (pref === 'auto' ? 'pollinations' : pref) ? ' on' : '') + '" data-pick="' + o[0] + '" aria-pressed="' + (o[0] === (pref === 'auto' ? 'pollinations' : pref)) + '">' + o[1] + '</button>').join('') + '</div>' +
-      '<p class="hint">Ask each time shows every picture engine that is on and healthy, and lets you pick for that picture. Pollinations is free. Stability uses your saved Stability key and is billed by Stability, so it only runs when you pick it, never as a fallback. ' + (hasStab ? '' : 'No Stability key is saved yet (Keys).') + '</p>'
-      : seg('image', c.image, [['auto', 'Auto'], ['pollinations', 'Pollinations'], ['forge', 'Forge only']]) +
-      '<p class="hint">Auto tries Pollinations first and falls back to Forge if it fails. Forge is the AI Horde: free community GPUs, no key, a queue of 30 seconds to a few minutes, 512 px pictures.</p>';
     b.innerHTML =
-      '<div class="eg-hero"><span class="eg-brand">S.O.I × BOJACK · 999</span><h2>Keyless engines</h2><p>Ask in plain English. Ember picks the engine, makes the artifact, and you open and save it. Pollinations stays the default for pictures.</p></div>' +
-      '<div class="eg-card"><div class="eg-h">🎨 Pictures</div>' + picker +
-      eng('Pollinations', 'flux · fast', 'image.pollinations.ai, about one picture per 15 s anonymous', 'pollinations') + eng('Forge', 'AI Horde · queue', 'aihorde.net anonymous key, drawn on volunteer GPUs', 'forge') + eng('Stability AI', 'Stable Image Core · your key', 'api.stability.ai, billed by Stability, only runs when you pick it', 'stability') +
-      '<div class="eg-row"><button type="button" class="btn g" id="egTestF">Check Forge</button></div></div>' +
-      '<div class="eg-card"><div class="eg-h">📄 PDFs</div>' + seg('pdf', c.pdf, [['local', 'Private / no account']]) +
-      '<p class="hint">Ember PDF uses bundled pdfmake with embedded Roboto fonts. Ember Documents exports genuine DOCX through the bundled docx engine. Both are free software, run on this device and need no provider account. A4 layout, embedded fonts, repeating table headers and validated PDF output. Font coverage is not universal. Basic PDF is the fallback.</p>' +
+      '<div class="eg-hero"><span class="eg-brand">S.O.I × BOJACK · 999</span><h2>Built-in engines</h2><p>Everything here runs on this device. No third-party keyless APIs.</p></div>' +
+      '<div class="eg-card"><div class="eg-h">📄 PDFs and documents</div>' +
+      '<p class="hint">Ember PDF uses bundled pdfmake with embedded Roboto fonts, and exports genuine DOCX through the bundled docx engine. Both run on this device and need no provider account. Every artifact type has its own PDF button, with covers, stat cards, charts, callouts and steps.</p>' +
       '<div class="eg-eng"><i class="eg-dot ok" aria-hidden="true"></i><div><b>Ember PDF &amp; Documents <em>offline · no signup</em></b><small>pdfmake 0.2.20 + docx 9.5.1 (MIT). Documents stay on your device during export.</small></div></div></div>' +
-      '<div class="eg-card"><div class="eg-h">💬 Plain English</div><button type="button" class="eg-sw' + (c.nl ? ' on' : '') + '" id="egNl" role="switch" aria-checked="' + c.nl + '"><span>Route requests like “draw a husky in neon” to the picture engines</span><i></i></button><p class="hint">Off means pictures only start from + > Create image.</p></div>' +
-      '<div class="eg-card"><div class="eg-h">🧾 Recent activity</div>' + (c.log.length ? '<ul class="eg-log">' + c.log.slice(0, 8).map(l => '<li class="' + (l.ok ? 'ok' : 'bad') + '"><b>' + esc(l.e.replace('pdf:', 'pdf · ')) + '</b><span>' + esc(l.d) + '</span><small>' + ago(l.t) + '</small></li>').join('') + '</ul>' : '<p class="hint">Nothing yet. Ask for a picture or save a PDF.</p>') + '</div>' +
-      '<p class="eg-foot">Keyless first. Pictures leave the phone only when you ask for one. Pollinations audio and its newer endpoints need a key, so they are not used here.</p>';
+      '<div class="eg-card"><div class="eg-h">🎨 Pictures</div>' +
+      '<div class="eg-eng"><i class="eg-dot ' + (hasStab ? 'ok' : 'idle') + '" aria-hidden="true"></i><div><b>Ember SVG <em>built in</em></b><small>Ask for a logo, diagram or icon and Ember draws it as an SVG you can save as PNG or PDF.</small></div></div>' +
+      '<div class="eg-eng"><i class="eg-dot ' + (hasStab ? 'ok' : 'idle') + '" aria-hidden="true"></i><div><b>Stability AI <em>your key</em></b><small>' + (hasStab ? 'Key saved. Runs only when you ask for a picture.' : 'No Stability key saved. Add one in Plugins &gt; Media &amp; Music.') + '</small></div></div></div>' +
+      '<div class="eg-card"><div class="eg-h">🧾 Recent activity</div>' + (c.log.length ? '<ul class="eg-log">' + c.log.slice(0, 8).map(l => '<li class="' + (l.ok ? 'ok' : 'bad') + '"><b>' + esc(l.e.replace('pdf:', 'pdf · ')) + '</b><span>' + esc(l.d) + '</span><small>' + ago(l.t) + '</small></li>').join('') + '</ul>' : '<p class="hint">Nothing yet.</p>') + '</div>' +
+      '<p class="eg-foot">Built-in only. Nothing leaves the phone for PDFs, Word or Markdown.</p>';
   }
   function show(v) { sheet.classList.toggle('show', !!v); if (v) { paint(); const b = $('egBody'); if (b) b.scrollTop = 0; } }
   $('egX').onclick = () => show(false);
@@ -276,5 +219,5 @@
     if (p) { p.disabled = true; p.textContent = 'Rendering…'; const r = await pdfCheck(); toast(r.ok ? 'Local PDF works (' + r.engine + ')' : 'Local PDF failed: ' + String(r.why).slice(0, 80)); paint(); }
   });
 
-  window.EmberEngines = { open: () => show(true), close: () => show(false), intent, imageRoute, forgeRoute, forgeImage, forgeCheck, cloudPdf, cloudPdfFor, pdfCheck, pdfHtml, readPdf, isPdf, config: cfg, _note: note };
+  window.EmberEngines = { open: () => show(true), close: () => show(false), intent, imageRoute, forgeRoute, forgeImage, forgeCheck, pdfCheck, config: cfg, _note: note };
 })();

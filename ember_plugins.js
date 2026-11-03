@@ -31,7 +31,7 @@
     else out.push('Reading pages (scrape_url) is OFF: if he wants a link read, tell him to switch on + > Web & Scraping > Web scraping.');
     const tav = s.list.find(x => x.id === 'tavily');
     out.push('Web search (web_search): ' + (tav && tav.n ? 'Tavily first' : 'no Tavily key') + (s.live.some(x => SEARCHERS.includes(x.id)) ? ', then his scraper search keys' : '') + ', then the built-in search.' + (p && p.isOn('web') ? ' Search is FORCED on for this chat.' : ''));
-    out.push('Media (+ > Media & Music): Create image (Pollinations, Forge, Stability if a key is saved), Create audio and Create video (Stability), Create PDF. Stability bridge is ' + (p && p.isOn('stab') ? 'ON.' : 'OFF.'));
+    out.push('Optional media services live in + > Media & Music: Stability is images only; music and video use a separately configured keyless API. Never claim an unconfigured service works.');
     out.push(songOk() ? 'Song ID works (Audd token saved).' : 'Song ID needs his Audd.io token (Settings > Music).');
     out.push('Music Brain (+ > Music Brain) is ' + (p && p.isOn('musicbrain') ? 'ON: music_lyrics, music_facts, music_search work with no key.' : 'OFF: lyrics and music facts are not looked up; say so if he asks.'));
     out.push('GitHub Brain, repos and GitHub settings live in Settings > Command Centre.');
@@ -65,22 +65,38 @@
     });
     return h + '</div><div class="epl-btns"><button type="button" class="epl-btn hot" data-sec="scraping">Add keys &amp; run tests</button></div>';
   }
+  const engBusy = {};
+  function enginesGroup() {
+    const K = window.EmberKeyless; if (!K) return '';
+    const E = [['stability', '🎨', 'Stability AI', 'Your key · billed by Stability']]; // V1.10.29: built-in only, no keyless picture APIs
+    let h = '<h4 class="epl-h">Picture engines</h4><div class="epl-grp">';
+    E.forEach(([id, ic, nm, sub]) => {
+      const on = K.enabled(id), ok = K.healthy(id), b = engBusy[id];
+      h += '<div class="epl-row epl-static"><span class="epl-dot ' + (ok ? 'ok' : '') + '"></span><span class="epl-ic">' + ic + '</span><span class="epl-tx"><b>' + nm + '</b><small>' + sub + (id === 'stability' && stabState() === 'none' ? ' · add key above' : '') + '</small></span><button type="button" class="epl-btn" style="height:36px;padding:0 12px" data-eng-test="' + id + '"' + (b ? ' disabled' : '') + '>' + (b ? '…' : 'Test') + '</button><button type="button" role="switch" aria-checked="' + on + '" data-eng-tog="' + id + '" style="border:0;background:none;padding:0"><span class="epl-sw' + (on ? ' on' : '') + '"></span></button></div>';
+    });
+    return h + '</div>';
+  }
+  async function engTest(id) {
+    const K = window.EmberKeyless; if (!K || engBusy[id]) return;
+    if (id === 'stability') return stabCheck(true);
+    engBusy[id] = true; paint(true);
+    try { await K.checkAvailability(id); } catch (e) { /* health shows the result */ }
+    engBusy[id] = false; paint(true);
+    try { const t = $('toast'); if (t) { t.textContent = (id === 'forge' ? 'Forge ' : 'Pollinations ') + (K.healthy(id) ? 'works' : 'did not answer'); t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); } } catch (e) { /* toast optional */ }
+  }
   function mediaView() {
     const p = P(), is = id => !!(p && p.isOn(id)), ok = songOk();
-    return stabilityCard() + '<h4 class="epl-h">Create (next message)</h4><div class="epl-grp">' +
-      sw('data-flip="image"', '🎨', 'Create image', 'Pollinations, Forge, then Stability if a key is saved', is('image')) +
-      sw('data-flip="audio_gen"', '🎵', 'Create audio', 'Music or sound, made by Stability AI', is('audio_gen')) +
-      sw('data-flip="video_gen"', '🎬', 'Create video', 'Stability images + music, composed on this phone', is('video_gen')) +
-      sw('data-flip="pdf"', '📄', 'Create PDF', 'A full PDF document as an artifact', is('pdf')) +
-      '</div><h4 class="epl-h">Always on</h4><div class="epl-grp">' +
-      sw('data-flip="stab"', '⚡', 'Stability bridge', 'Ask in plain chat for images, audio or video', is('stab')) +
+    return '<h4 class="epl-h">Media keys &amp; engines</h4><div class="epl-grp">' + go('data-sec="music"', '🔑', 'Stability key &amp; music/video APIs', 'Moved to Settings › Media', '') + '</div><h4 class="epl-h">Optional music &amp; video services</h4><div class="epl-grp">' +
+      sw('data-flip="audio_gen"', '🎵', 'Create audio', 'Use a configured keyless API — not a built-in music model', is('audio_gen')) +
+      sw('data-flip="video_gen"', '🎬', 'Create video', 'Use a configured keyless API — not a built-in video model', is('video_gen')) +
+      sw('data-flip="stab"', '🎨', 'Stability images', 'Optional images using your saved Stability key', is('stab')) +
       '</div><h4 class="epl-h">Music</h4><div class="epl-grp">' +
       sw('data-flip="musicbrain"', '🎧', 'Music Brain', 'Real lyrics + facts from open sources, no key. Never guessed', is('musicbrain')) +
       go('data-fire="audio"', '👂', 'Identify a song', ok ? 'Listens for 10 seconds' : 'Needs your Audd.io token', ok ? 'ok' : 'none') +
       go('data-fire="upload"', '📎', 'Identify from a file', 'Pick an audio file') +
       go('data-sec="music"', '🎧', 'Music settings', 'Player, song ID token, music control') +
-      go('data-sec="keys"', '🎛', 'Media engines', 'Engine choice, status and checks') +
-      '</div>';
+      go('data-builtin-open', '🎛', 'Built-in engines', 'Read-only inventory of Ember’s automatic capabilities') +
+      '</div><h4 class="epl-h">Saved media</h4><div id="efMediaJobs"></div><div id="efArtifacts"></div>';
   }
 
 
@@ -94,8 +110,8 @@
     const Pv = window.Prov; if (!Pv || !Pv.CFG || !Pv.CFG.stability) return '';
     const list = (Pv.entries('stability') || []), st = stabState(), n = list.length;
     const dot = stabBusy ? '' : st === 'ok' ? 'ok' : (st === 'limited' || st === 'unknown') ? 'warn' : '';
-    const line = stabBusy ? 'Checking the key…' : st === 'none' ? 'No key saved' : st === 'ok' ? 'Key works · image and audio ready' : st === 'limited' ? 'Key is valid but resting (rate limited)' : st === 'bad' ? 'Key rejected or unreachable' : 'Key saved · not checked yet';
-    let h = '<h4 class="epl-h">Stability AI · image &amp; audio engine</h4><div class="epl-grp" id="eplStab">' +
+    const line = stabBusy ? 'Checking the key…' : st === 'none' ? 'No key saved' : st === 'ok' ? 'Key authenticated · image access depends on your account' : st === 'limited' ? 'Key is valid but resting (rate limited)' : st === 'bad' ? 'Key rejected or unreachable' : 'Key saved · not checked yet';
+    let h = '<h4 class="epl-h">Stability AI · optional image engine</h4><div class="epl-grp" id="eplStab">' +
       '<div class="epl-row epl-static">' + (dot || stabBusy ? '<span class="epl-dot ' + dot + '"></span>' : '<span class="epl-dot"></span>') + '<span class="epl-ic">🎨</span><span class="epl-tx"><b>Stability AI</b><small>' + esc(stabMsg || line) + (n ? ' · ' + n + ' key' + (n === 1 ? '' : 's') : '') + '</small></span></div>';
     list.forEach(e => {
       const bad = e.st && e.st.ok === false;
@@ -124,8 +140,8 @@
   function build() {
     back = D.createElement('div'); back.className = 'epl-back'; back.hidden = true;
     sheet = D.createElement('section'); sheet.id = 'emberPlugins'; sheet.className = 'epl'; sheet.hidden = true;
-    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true'); sheet.setAttribute('aria-label', 'Plugins');
-    sheet.innerHTML = '<div class="epl-grab"></div><div class="epl-head"><b>Plugins</b><button type="button" class="epl-x" data-x aria-label="Close">✕</button></div>' +
+    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true'); sheet.setAttribute('aria-label', 'Connections');
+    sheet.innerHTML = '<div class="epl-grab"></div><div class="epl-head"><b>Connections</b><button type="button" class="epl-x" data-x aria-label="Close">✕</button></div>' +
       '<div class="epl-tabs" role="tablist"><button type="button" role="tab" data-tab="web">Web &amp; Scraping</button><button type="button" role="tab" data-tab="media">Media &amp; Music</button></div>' +
       '<div class="epl-body" id="eplBody"><div id="eplView"></div></div>';
     D.body.append(back, sheet);
@@ -144,6 +160,7 @@
     view.innerHTML = tab === 'web' ? webView() : mediaView();
     const inp = $('eplStabKey'); if (inp) { inp.value = typed; if (hadFocus) try { inp.focus({ preventScroll: true }); } catch (e) { /* no focus */ } }
     body.scrollTop = keep;
+    if (tab === 'media') window.EmberFeatures?.paintArtifacts?.();
     if (tab === 'media' && !stabAuto && !stabBusy && stabState() === 'unknown') { stabAuto = true; setTimeout(() => stabCheck(false), 0); } // one status check, not one per paint
   }
   function open(t) {
@@ -164,6 +181,8 @@
     const sa = t.closest('[data-stab-add]'); if (sa) return stabAdd();
     const sk = t.closest('[data-stab-check]'); if (sk) return stabCheck(true);
     const sr = t.closest('[data-stab-rm]'); if (sr) { try { window.Prov.removeKey('stability', sr.dataset.stabRm); } catch (e) { /* already gone */ } stabMsg = ''; try { window.dispatchEvent(new Event('ember-names')); } catch (e) { /* best effort */ } return paint(true); }
+    const et = t.closest('[data-eng-test]'); if (et) return engTest(et.dataset.engTest);
+    const eg = t.closest('[data-eng-tog]'); if (eg && window.EmberKeyless) { const K = window.EmberKeyless, id = eg.dataset.engTog; K.toggle(id, !K.enabled(id)); return paint(true); }
     const sc = t.closest('[data-scr]');
     if (sc) {
       const f = sc.dataset.scr, nv = !scrapers()[f]; setScr(f, nv);
@@ -171,7 +190,7 @@
       try { const tt = $('toast'); if (tt) { tt.textContent = (f === 'on' ? 'Web scraping ' : 'Free reader fallback ') + (nv ? 'on' : 'off'); tt.classList.add('show'); clearTimeout(onClick.t); onClick.t = setTimeout(() => tt.classList.remove('show'), 1800); } } catch (e) { /* toast optional */ }
       paintMenu(); try { window.dispatchEvent(new Event('ember-plus-change')); } catch (e) { /* listeners optional */ } return paint(true);
     }
-    const fl = t.closest('[data-flip]'); if (fl) { const p = P(); if (!p || !p.flip) return; const id = fl.dataset.flip, v = p.flip(id); if (v && ['image', 'audio_gen', 'video_gen', 'pdf'].includes(id)) close(); else paint(); return; }
+    const fl = t.closest('[data-flip]'); if (fl) { const p = P(); if (!p || !p.flip) return; const id = fl.dataset.flip, v = p.flip(id); paint(); return; } /* V1.10.22: stay open so several Create modes can be armed */
     const fi = t.closest('[data-fire]'); if (fi) { close(); const p = P(); if (p && p._fire) p._fire(fi.dataset.fire); return; }
     const se = t.closest('[data-sec]'); if (se) section(se.dataset.sec);
   }

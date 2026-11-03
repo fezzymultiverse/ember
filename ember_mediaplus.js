@@ -15,23 +15,23 @@
       W.dispatchEvent(new CustomEvent('ember-media-update'));
     } catch (_) { /* storage blocked: generate() will say media is off */ }
   }
-  const providerFor = () => 'stability';
+  const providerFor = kind => kind === 'image' ? 'stability' : 'keyless';
   // Plain-English request in chat (only used while the Stability bridge is ON).
   function detect(t) {
     const s = String(t || '');
     if (!/\b(create|generate|make|produce|render|compose|draw|paint|animate|record)\b/i.test(s)) return null;
-    if (/\b(video|animation|animate|clip)\b/i.test(s)) return 'video';
-    if (/\b(audio|music|sound|song|beat|jingle|soundscape|instrumental)\b/i.test(s)) return 'audio';
+    // Stability's optional bridge is image-only. Audio/video route through the keyless adapter.
     if (/\b(image|picture|illustration|artwork|photo|logo|poster|wallpaper)\b/i.test(s)) return 'image';
     return null;
   }
   // Which one-shot did he pick in the + menu? (consumes it)
   function take() {
     const P = W.EmberPlus; if (!P || !P.consume) return null;
-    if (P.consume('audio_gen')) return { kind: 'audio', provider: 'stability' };
-    if (P.consume('video_gen')) return { kind: 'video', provider: 'stability' };
+    if (P.consume('audio_gen')) return { kind: 'audio', provider: 'keyless' };
+    if (P.consume('video_gen')) return { kind: 'video', provider: 'keyless' };
     return null;
   }
+  function takeAll() { const P = W.EmberPlus, out = []; if (!P || !P.consume) return out; if (P.consume('audio_gen')) out.push({ kind: 'audio', provider: 'keyless' }); if (P.consume('video_gen')) out.push({ kind: 'video', provider: 'keyless' }); return out; }
   async function make(kind, want, prompt) {
     const M = W.EmberMedia; if (!M) return { ok: false, error: 'The media engine did not load.' };
     const provider = providerFor(kind, want);
@@ -39,7 +39,7 @@
     if (!M.supported[provider] || !M.supported[provider].includes(kind)) return { ok: false, kind, error: 'Ember cannot make ' + kind + '.' };
     enable();
     const p = String(prompt || '').trim().slice(0, 10000); if (!p) return { ok: false, error: 'Describe what to make first.' };
-    say('Start ' + kind + ' on Stability AI' + (kind === 'image' ? ' / Stable Image Core' : kind === 'audio' ? ' / Stable Audio 2.5' : ' / 4 images + audio, composed on this phone'));
+    say('Start ' + kind + ' on ' + provider);
     const t0 = Date.now();
     try {
       const r = await M.generate({ provider, kind, prompt: p, duration: 20, aspect: '1:1', confirmed: true });
@@ -54,7 +54,7 @@
   }
   const imageBlock = r => 'Done. Stability AI drew it in ' + r.secs + 's.\n<artifact type="image" title="' + String(r.name).replace(/"/g, '') + '">media:' + r.id + '</artifact>';
   const text = r => r.ok
-    ? (r.kind === 'image' && r.id ? imageBlock(r) : ({ audio: '🎵 Audio', video: '🎬 Video', image: '🎨 Image'}[r.kind] || 'Media') + ' ready: **' + r.name + '** (Stability AI, ' + r.secs + 's). Open the **AI** button in the top bar to play, preview or download it.')
+    ? (r.kind === 'image' && r.id ? imageBlock(r) : ({ audio: '🎵 Audio', video: '🎬 Video', image: '🎨 Image'}[r.kind] || 'Media') + ' ready: **' + r.name + '** (' + r.provider + ', ' + r.secs + 's). Open **+ → Media & Music → Saved media** to play, preview or save it.')
     : 'The ' + (r.kind || 'media') + ' was not made: ' + r.error;
-  W.EmberMediaPlus = { make, take, detect, text, imageBlock, bridgeOn, enable };
+  W.EmberMediaPlus = { make, take, takeAll, detect, text, imageBlock, bridgeOn, enable };
 })();

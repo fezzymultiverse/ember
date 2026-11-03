@@ -3,12 +3,13 @@
 (() => {
  const W=window, get=(k,d)=>{try{return JSON.parse(localStorage.getItem(k)||'null')??d;}catch(_){return d;}};
  const cfg=()=>get('ember_media_cfg',{enabled:false});
- const supported={stability:['image','audio','video']};
+ const supported={stability:['image'],keyless:['audio','video']};
  const jobs=new Map(); let dbPromise;
  function db(){ if(!dbPromise) dbPromise=new Promise((resolve,reject)=>{const r=indexedDB.open('ember_media_artifacts',1);r.onupgradeneeded=()=>r.result.createObjectStore('artifacts',{keyPath:'id'});r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});return dbPromise; }
- async function store(a){const d=await db();await new Promise((resolve,reject)=>{const t=d.transaction('artifacts','readwrite');t.objectStore('artifacts').put(a);t.oncomplete=resolve;t.onerror=()=>reject(t.error);});return a;}
- async function list(){const d=await db();return new Promise((resolve,reject)=>{const r=d.transaction('artifacts').objectStore('artifacts').getAll();r.onsuccess=()=>resolve(r.result.sort((a,b)=>b.at-a.at));r.onerror=()=>reject(r.error);});}
- async function getArtifact(id){const d=await db();return new Promise((resolve,reject)=>{const r=d.transaction('artifacts').objectStore('artifacts').get(id);r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error);});}
+ const rebuild=r=>{if(r&&r.buf){r.blob=new Blob([r.buf],{type:r.mime||'application/octet-stream'});}return r;};
+ async function store(a){const d=await db();const rec=Object.assign({},a);if(a.blob&&a.blob.arrayBuffer){rec.buf=await a.blob.arrayBuffer();rec.mime=a.blob.type;delete rec.blob;}await new Promise((resolve,reject)=>{const t=d.transaction('artifacts','readwrite');t.objectStore('artifacts').put(rec);t.oncomplete=resolve;t.onerror=()=>reject(t.error);});return a;}
+ async function list(){const d=await db();return new Promise((resolve,reject)=>{const r=d.transaction('artifacts').objectStore('artifacts').getAll();r.onsuccess=()=>resolve(r.result.map(rebuild).sort((a,b)=>b.at-a.at));r.onerror=()=>reject(r.error);});}
+ async function getArtifact(id){const d=await db();return new Promise((resolve,reject)=>{const r=d.transaction('artifacts').objectStore('artifacts').get(id);r.onsuccess=()=>resolve(rebuild(r.result)||null);r.onerror=()=>reject(r.error);});}
  async function remove(id){const d=await db();await new Promise((resolve,reject)=>{const t=d.transaction('artifacts','readwrite');t.objectStore('artifacts').delete(id);t.oncomplete=resolve;t.onerror=()=>reject(t.error);});notify();}
  function notify(){W.dispatchEvent(new CustomEvent('ember-media-update'));}
  function retryTime(r){const h=r.headers.get('retry-after');const n=Number(h);return h ? (Number.isFinite(n)?n:Math.max(1,(Date.parse(h)-Date.now())/1000)) : 60;}
@@ -91,13 +92,13 @@
    if(!supported[provider]?.includes(kind))throw new Error('Unsupported provider / media feature.');
    if(!prompt || prompt.length>10000)throw new Error('Prompt must contain 1–10,000 characters.');
    const id='media-'+crypto.randomUUID(),job={id,state:'running',provider,kind,at:Date.now()};jobs.set(id,job);notify();
-   try{const result=kind==='video'?await video(prompt,request,job):await stability(kind,prompt,request,job);if(job.cancelled)throw new Error('Job cancelled; provider billing may apply.');const ext=result.blob.type.includes('png')?'png':result.blob.type.includes('jpeg')?'jpg':kind==='video'?'webm':'mp3';
+   try{const result=provider==='keyless'?await W.EmberKeylessMedia.generate(kind,prompt,request,job):await stability(kind,prompt,request,job);if(job.cancelled)throw new Error('Job cancelled; provider billing may apply.');const ext=result.blob.type.includes('png')?'png':result.blob.type.includes('jpeg')?'jpg':result.blob.type.includes('mp4')?'mp4':result.blob.type.includes('wav')?'wav':result.blob.type.includes('ogg')?'ogg':kind==='video'?'webm':'mp3';
      const a={id,provider,kind,model:result.model,prompt,blob:result.blob,name:'Ember-'+kind+'-'+new Date().toISOString().replace(/[:.]/g,'-')+'.'+ext,at:Date.now()};
      try{await store(a);job.state='done';job.artifactId=id;}catch(e){job.state='unsaved';job.artifact=a;throw new Error('Generated result could not be stored. Use the recovery download before closing Ember.');}
      notify();return{id,provider,kind,name:a.name};
    }catch(er){if(job.state!=='unsaved')job.state=job.cancelled?'cancelled':'failed';job.error=String(er.message||er).slice(0,240);notify();throw er;}
  }
  function cancel(id){const j=jobs.get(id);if(j){j.cancelled=true;j.controller?.abort();j.state='cancelled';notify();}}
- async function download(a){const url=URL.createObjectURL(a.blob),el=document.createElement('a');el.href=url;el.download=a.name;document.body.append(el);el.click();el.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
+ async function download(a){if(W.EmberArtifacts?.saveBlob)return W.EmberArtifacts.saveBlob(a.blob,a.name);const url=URL.createObjectURL(a.blob),el=document.createElement('a');el.href=url;el.download=a.name;document.body.append(el);el.click();el.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
  W.EmberMedia={cfg,supported,generate,list,get:getArtifact,remove,download,cancel,jobs:()=>[...jobs.values()]};
 })();
