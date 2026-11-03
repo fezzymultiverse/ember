@@ -1,0 +1,15 @@
+evalmachine.<anonymous>:290
+  (() => { const log = document.getElementById('log'); if (!log) return; let raf = 0; new MutationObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => hydrate(log)); }).observe(log, { childList: true, subtree: true }); hydrate(log); })();
+                                ^
+
+TypeError: document.getElementById is not a function
+    at evalmachine.<anonymous>:290:33
+    at evalmachine.<anonymous>:290:261
+    at evalmachine.<anonymous>:292:3
+    at Script.runInContext (node:vm:149:12)
+    at Script.runInNewContext (node:vm:154:17)
+    at Object.runInNewContext (node:vm:310:38)
+    at boot (/home/user/ember/original/ember-main/tests/v1991-deliverables-test.js:8:6)
+    at /home/user/ember/original/ember-main/tests/v1991-deliverables-test.js:14:28
+    at Object.<anonymous> (/home/user/ember/original/ember-main/tests/v1991-deliverables-test.js:60:3)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)

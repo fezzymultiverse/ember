@@ -750,6 +750,12 @@ async function prefetch(msg, prev) {
   setIntent(msg, prev || '');
   try {
     if (!String(msg || '').trim()) return lastRead();
+    // V1.10.43: a document / PDF request is not a repo question. Without this, "pdf" matched puppeteer/examples/pdf.js, the READ-FIRST block
+    // told the model to answer from repo files, and the model spent its tool rounds on GitHub instead of writing the file. Code questions are unchanged.
+    if (!RF.required) {
+      const DL = window.EmberDeliverables, docTurn = m => { try { return !!(DL && m && DL.intent(m)); } catch (_) { return false; } };
+      if (docTurn(msg) || (String(msg).trim().length <= 40 && docTurn(prev))) { RF.block = ''; RF.error = ''; return lastRead(); }
+    }
     if (!on()) { RF.error = 'No GitHub token saved.'; return lastRead(); }
     // Also read before ordinary turns when connected: unclassified code questions cannot skip retrieval.
     const terms = rfTerms(msg); RF.terms = [...terms.keys()].slice(0, 8);

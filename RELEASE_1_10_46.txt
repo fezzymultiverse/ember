@@ -1,0 +1,29 @@
+EMBER V1.10.46 - GEMINI FREE-KEY DETECTION + GEMMA (additive; includes 1.10.43, 1.10.44, 1.10.45; apply over 1.10.42)
+FREE KEYS   www/providers.js: a Gemini key now knows whether it is free. Google has no "which plan am I on" call, so it is learned two ways:
+            (1) when a Gemini key is added, ONE tiny request (maxOutputTokens 8, prompt "hi") goes to the top Pro model, not awaited, so adding a key is no slower:
+                429 naming the free tier = free key, 200 = paid key, anything else = unknown (behaves exactly like 1.10.45).
+            (2) any real call that fails with 429 / 400 / 403 / 404 and the words free tier / FreeTier in Google's reply marks the key free.
+                Keys saved before this version learn on their first such failure, in the same route.
+            A free key: Pro / Argon and any model that answered "no free quota" (limit 0) go to the back of the list, and it tries up to 6 models per route instead of 3
+            (Flash x2, Flash-Lite x2, Gemma x2). A paid-tier 429 does not mark a key free. A marked model that answers clears the mark. A mark expires after 7 days.
+            The Providers detail line shows "Free-tier key detected" until the next health check overwrites it. Stored on the key as tier / tierAt / noFree.
+GEMMA       www/providers.js: gemma-* models from the key's live list are now routed (they were excluded). Order: after Flash-Lite, newest then largest first
+            (live list decides; Google documents gemma-4-31b-it and gemma-4-26b-a4b-it on the Gemini API). Embedding / speech / image / shield / live variants stay out.
+            Gemma 4 gets normal systemInstruction, JSON mode and tools. Older Gemma builds that refuse them are handled: "Developer instruction is not enabled" ->
+            instructions go in front of the first user turn; "JSON mode is not enabled" -> JSON instruction in the prompt and a code fence stripped from the reply;
+            tools refused -> retried without tools. Each refusal is remembered per model (ember_gem_quirks) so it is not asked twice.
+            Reply parts flagged thought:true are dropped from the text.
+BUG FIXED   streamClaude(): `parsed` was never defined there, so any Claude HTTP error (bad key, 429, 5xx) on the streaming path came out as
+            "parsed is not defined" instead of the real status. Reproduced on 1.10.45, fixed here.
+EXPORT      Prov.tierOf(id,key), Prov.probeTier(key), Prov._gemAdjust (read-only helpers for tests).
+NOT DONE    Nothing shows the tier in the UI beyond the Providers detail line (not asked for). Gemini limits are per Google project, not per key: two keys from one
+            project share one quota and detection cannot see that. Groq untouched.
+UNVERIFIED  The exact error Google returns for a paid-only model on a free key. Detection relies on the free-tier wording in the reply, which Google has used for
+            quota errors. If Google answers differently the key stays "unknown" and routing is the same as 1.10.45, no worse.
+            Gemma free-tier numbers (RPM / RPD) were not verified; third-party pages quote different figures. The live /models list and Google's pricing page decide.
+SOURCES     Google AI "Gemma on the Gemini API" (gemma-4-31b-it, gemma-4-26b-a4b-it, system instruction + function calling) and Gemini pricing page via search, 2026-11-03.
+FILES       www/providers.js (changed), tests/gemini-free-gemma-11046.cjs (new). Other files as in 1.10.45. index.html / sw.js untouched.
+TESTED      node --check. node tests/gemini-free-gemma-11046.cjs: 30 checks, 30 pass. It runs providers.js in Node with a mocked network and drives the real router:
+            ranking with Gemma; probe on add (free / paid / paid-tier 429); deep lane on a free key never tries Pro and reaches Gemma; an unknown key learns mid-route;
+            mark expiry and clearing; Gemma quirks and their memory; Gemma 4 keeps systemInstruction; Groq ranking from 1.10.45; Claude error path.
+NOT TESTED  Live Google calls, Android device, APK, the app UI (index.html is not in this package), existing suites.

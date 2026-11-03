@@ -1,0 +1,49 @@
+/* Ember V1.10.42 - ember_visuals.css: additive visuals only.
+   1 provider badge on replies · 2 artifact type badges · 3 ember-flicker thinking · 4 empty-state art · 5 blue toggles.
+   Loaded after every other stylesheet. Touches nothing outside these five things. */
+
+/* ---------- 1. provider badge (small logo on each reply, shows who actually answered) ---------- */
+.vb-prov{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:20px;height:20px;margin-right:6px;border-radius:6px;background:#f4f1ea;vertical-align:middle;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+.vb-prov img{display:block;width:14px;height:14px;object-fit:contain}
+.vb-prov.vb-free{background:linear-gradient(135deg,#ff8a1f,#ff5a00)}
+.vb-prov.vb-free svg{display:block;width:13px;height:13px}
+.vb-prov.vb-letter{color:#1a1a1a;font:800 11px/1 system-ui,sans-serif}
+
+/* ---------- 2. artifact type badges (icon tile per type in the Artifacts list) ---------- */
+.art-ic.vb-ai{background:color-mix(in srgb,var(--vb-c,#888) 16%,#111);color:var(--vb-c,#aaa);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--vb-c,#888) 40%,transparent);font-size:0}
+.art-ic.vb-ai svg{display:block;width:22px;height:22px}
+.art-ic.vb-ai[data-vt="pdf"]{--vb-c:#ff5a4d}
+.art-ic.vb-ai[data-vt="doc"]{--vb-c:#6ea8ff}
+.art-ic.vb-ai[data-vt="svg"]{--vb-c:#ffb347}
+.art-ic.vb-ai[data-vt="image"]{--vb-c:#46d39a}
+.art-ic.vb-ai[data-vt="html"]{--vb-c:#c58bff}
+.art-ic.vb-ai[data-vt="code"]{--vb-c:#7be0d0}
+.art-ic.vb-ai[data-vt="data"]{--vb-c:#d6c95a}
+
+/* ---------- 3. ember-flicker thinking animation (calm flames instead of plain bouncing dots) ---------- */
+@keyframes vb-flick{0%,100%{transform:translateY(0) scale(1,1);opacity:.78}35%{transform:translateY(-1.5px) scale(.94,1.1);opacity:1}70%{transform:translateY(.5px) scale(1.04,.95);opacity:.88}}
+html body .msg.typing i,html body .etm.typing i{width:8px;height:12px;border-radius:50% 50% 50% 50%/62% 62% 38% 38%;background:linear-gradient(to top,#ff5a00 0%,#ff8a1f 55%,#ffd08a 100%);box-shadow:0 0 8px rgba(255,106,0,.45);transform-origin:50% 100%;animation:vb-flick 2.1s ease-in-out infinite}
+html body .msg.typing i:nth-child(2),html body .etm.typing i:nth-child(2){animation-delay:.35s;height:14px}
+html body .msg.typing i:nth-child(3),html body .etm.typing i:nth-child(3){animation-delay:.7s}
+html body .et-claude .et-dots i{width:5px;height:8px;border-radius:50% 50% 50% 50%/62% 62% 38% 38%;background:linear-gradient(to top,#ff5a00,#ffb347);opacity:.85;transform-origin:50% 100%;animation:vb-flick 2.1s ease-in-out infinite both}
+html body .et-claude .et-dots i:nth-child(1){animation-delay:0s}
+html body .et-claude .et-dots i:nth-child(2){animation-delay:.35s}
+html body .et-claude .et-dots i:nth-child(3){animation-delay:.7s}
+@media(prefers-reduced-motion:reduce){html body .msg.typing i,html body .etm.typing i,html body .et-claude .et-dots i{animation:none;opacity:.9}}
+
+/* ---------- 4. empty-state art (local SVG: hearth glow with rising sparks above the Ember mark) ---------- */
+.vb-empty-art{display:block;width:min(260px,80%);height:64px;margin:0 auto -18px;pointer-events:none;overflow:visible}
+.vb-empty-art .vb-sp{transform-box:fill-box;transform-origin:50% 100%;animation:vb-rise 5.2s ease-in infinite;opacity:0}
+.vb-empty-art .vb-sp:nth-of-type(2){animation-delay:.9s;animation-duration:6s}
+.vb-empty-art .vb-sp:nth-of-type(3){animation-delay:1.8s;animation-duration:4.8s}
+.vb-empty-art .vb-sp:nth-of-type(4){animation-delay:2.7s;animation-duration:5.6s}
+.vb-empty-art .vb-sp:nth-of-type(5){animation-delay:3.4s;animation-duration:6.4s}
+.vb-empty-art .vb-sp:nth-of-type(6){animation-delay:4.1s;animation-duration:5s}
+@keyframes vb-rise{0%{transform:translateY(34px) scale(.6);opacity:0}15%{opacity:.95}100%{transform:translateY(-12px) scale(.2);opacity:0}}
+@media(prefers-reduced-motion:reduce){.vb-empty-art .vb-sp{animation:none;opacity:.7}}
+
+/* ---------- 5. blue toggles (the ones still orange: Permissions switches, cockpit feature switches, keyless switches) ---------- */
+html body #settings #cockpitSettings #cockpit_permissions :is(.prow,.cr) .sw.on{background:linear-gradient(135deg,#5aa0ff,#3d8bff)!important;box-shadow:0 0 18px rgba(61,139,255,.45)!important}
+html body #settings #cockpitSettings #cockpit_permissions :is(.prow,.cr) .sw.on::before{color:#fff!important}
+html body.cockpit-ui #settings .ef-switch.on[role="switch"]{background:#3d8bff!important;border-color:#3d8bff!important;color:#fff!important;box-shadow:0 0 10px rgba(61,139,255,.4)!important}
+html body .ekl-switch.on{background:#3d8bff!important}

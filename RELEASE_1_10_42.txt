@@ -1,0 +1,12 @@
+EMBER V1.10.42 - VISUALS ADD-ON (additive)
+ADDED      Provider badge: a small logo chip at the start of each reply footer, taken from the engine that really answered (Free mode gets the flame chip). Claude/Gemini/Groq/Mistral/Cohere/OpenRouter/Plugsky/LongCat/Stability use the local provider-icons/ files.
+ADDED      Artifact type badges: PDF, Doc, SVG, Image, HTML, Code and Data line icons in coloured tiles in the Artifacts list.
+ADDED      Ember-flicker thinking animation: three calm flames replace the bouncing dots in the typing bubble and the thinking card. Off under reduced-motion.
+ADDED      Empty-state art: a local SVG hearth glow with slowly rising sparks above the Ember mark on a new chat. Still under reduced-motion.
+CHANGED    Blue toggles: the switches that were still orange (Permissions ON/OFF switches, cockpit feature switches, keyless switches) now use the same blue as the rest.
+ALREADY    Together AI and Fireworks AI were already removed in V1.10.37 and nothing for them remains in www/. Not touched here.
+FILES      New: www/ember_visuals.css, www/ember_visuals.js, RELEASE_1_10_42.txt. Edited (one-line wiring only): www/index.html (one link, one script), www/sw.js (cache name + two precache entries).
+UNTOUCHED  Every other file, byte for byte. package.json and Android versions unchanged.
+NOTE       The blue toggles use the literal blue (#3d8bff), not var(--blue): the cockpit stylesheet remaps --blue to orange inside Settings.
+TESTED     node --check on every www/*.js. New tests/visuals-11042-browser-test.cjs (headless Chromium, offline): 22 checks passed - badges on Groq/Free/Gemini (incl. a pin-failed footer)/Claude/OpenRouter/Cohere/Mistral/LongCat/Plugsky, none on unknown engines or user messages, no duplicates; 9 artifact types map to the right icon; flame animation applied; reduced-motion turns the animations off; Permissions, cockpit and keyless switches computed blue; no external requests; no page errors. Existing suites re-run unchanged: chat-graphics 42 passed, A4 unit 41 passed, A4 browser 22 passed.
+NOT TESTED Physical Android device, APK rebuild, live provider replies. Reply footers and Artifacts-list rows in the test are injected with the same markup the app renders (not produced by a real chat or the real Artifacts sheet). The ember-flicker look and empty-state art were checked for presence, not judged by eye on a phone.

@@ -1,0 +1,195 @@
+{
+  "tests": [
+    {
+      "test": "streaming-routing-test.js",
+      "baseline": {
+        "status": "PASS",
+        "exitCode": 0
+      },
+      "patched": {
+        "status": "PASS",
+        "exitCode": 0
+      },
+      "regression": false
+    },
+    {
+      "test": "routing-fallback-test.js",
+      "baseline": {
+        "status": "PASS",
+        "exitCode": 0
+      },
+      "patched": {
+        "status": "PASS",
+        "exitCode": 0
+      },
+      "regression": false
+    },
+    {
+      "test": "tool-followup-routing-test.js",
+      "baseline": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "patched": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "regression": false
+    },
+    {
+      "test": "artifact-test.js",
+      "baseline": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "patched": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "regression": false
+    },
+    {
+      "test": "v1991-deliverables-test.js",
+      "baseline": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "patched": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "regression": false
+    },
+    {
+      "test": "keyscan-test.js",
+      "baseline": {
+        "status": "PASS",
+        "exitCode": 0
+      },
+      "patched": {
+        "status": "PASS",
+        "exitCode": 0
+      },
+      "regression": false
+    },
+    {
+      "test": "context-test.js",
+      "baseline": {
+        "status": "PASS",
+        "exitCode": 0
+      },
+      "patched": {
+        "status": "PASS",
+        "exitCode": 0
+      },
+      "regression": false
+    },
+    {
+      "test": "routing94-test.js",
+      "baseline": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "patched": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "regression": false
+    },
+    {
+      "test": "knowledge-brain-test.js",
+      "baseline": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "patched": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "regression": false
+    },
+    {
+      "test": "command-center-test.js",
+      "baseline": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "patched": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "regression": false
+    },
+    {
+      "test": "v1974-test.js",
+      "baseline": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "patched": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "regression": false
+    },
+    {
+      "test": "v1951-api-audit-test.js",
+      "baseline": {
+        "status": "PASS",
+        "exitCode": 0
+      },
+      "patched": {
+        "status": "PASS",
+        "exitCode": 0
+      },
+      "regression": false
+    },
+    {
+      "test": "v1955-api-profile-test.js",
+      "baseline": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "patched": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "regression": false
+    },
+    {
+      "test": "handoff-test.js",
+      "baseline": {
+        "status": "PASS",
+        "exitCode": 0
+      },
+      "patched": {
+        "status": "PASS",
+        "exitCode": 0
+      },
+      "regression": false
+    },
+    {
+      "test": "app-test.js",
+      "baseline": {
+        "status": "TIMEOUT"
+      },
+      "patched": {
+        "status": "TIMEOUT"
+      },
+      "regression": false
+    },
+    {
+      "test": "v1992-repo-runner-test.js",
+      "baseline": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "patched": {
+        "status": "FAIL",
+        "exitCode": 1
+      },
+      "regression": false
+    }
+  ],
+  "newRegressions": 0
+}

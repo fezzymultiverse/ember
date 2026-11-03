@@ -1,3 +1,4 @@
+// Ember V1.10.47 - search rows expand to tappable source links with site icons (web_search, search_and_read, youtube_search).
 // Ember V1.9.51 - rotating status first; tap it to expand the dots/icons timeline.
 // Ember V1.9.50 - stable status text: update one node in place; only the spinner moves.
 // Ember V1.9.45 - thought-by-thought reveal queue (rv flags) for every style.
@@ -21,6 +22,75 @@
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const clip = (s, n) => { s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '\u2026' : s; };
+
+  // ---------- V1.10.47: tappable sources ----------
+  // Search results are untrusted web data: only plain http(s) URLs survive, everything else is dropped.
+  const MAX_LINKS = 8;
+  const safeUrl = u => {
+    try {
+      const x = new URL(String(u || '').trim());
+      return (x.protocol === 'https:' || x.protocol === 'http:') && x.hostname && x.hostname.indexOf('.') > 0 ? x.href.slice(0, 400) : '';
+    } catch (_) { return ''; }
+  };
+  const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (_) { return ''; } };
+  // [title, url] pairs from a tool result: results[] (web_search, youtube_search), pages[] + also_found[] (search_and_read).
+  function linksOf(res) {
+    const out = [], seen = new Set();
+    if (!res || typeof res !== 'object' || res.error || res.ok === false) return out;
+    const take = list => (Array.isArray(list) ? list : []).forEach(x => {
+      if (!x || typeof x !== 'object' || out.length >= MAX_LINKS) return;
+      const u = safeUrl(x.url); if (!u) return;
+      const k = hostOf(u) + u.replace(/^https?:\/\/[^/]+/i, '').replace(/[#?].*$/, '').replace(/\/$/, '');
+      if (seen.has(k)) return; seen.add(k);
+      out.push([clip(x.title || hostOf(u), 90), u]);
+    });
+    take(res.results); take(res.pages); take(res.also_found);
+    return out;
+  }
+  const faviconUrl = host => 'https://icons.duckduckgo.com/ip3/' + encodeURIComponent(host) + '.ico';
+  const letterOf = host => { // first letter of the site name: docs.example.com -> E, news.bbc.co.uk -> B
+    const parts = String(host || '').split('.').filter(Boolean);
+    let name = parts[0] || '';
+    if (parts.length >= 2) name = /^(co|com|org|net|gov|edu|ac)$/i.test(parts[parts.length - 2]) && parts.length >= 3 ? parts[parts.length - 3] : parts[parts.length - 2];
+    return (String(name).replace(/[^a-z0-9]/gi, '').charAt(0) || '?').toUpperCase();
+  };
+  const badIcons = new Set(); // hosts whose icon failed once: straight to the letter chip next time
+  function linksHtml(links) {
+    if (!links || !links.length) return '';
+    const items = links.map(l => {
+      const t = String(l[0] || ''), u = safeUrl(l[1]); if (!u) return '';
+      const h = hostOf(u);
+      const ico = badIcons.has(h)
+        ? '<span class="ek-fav ek-fav-l" aria-hidden="true">' + esc(letterOf(h)) + '</span>'
+        : '<span class="ek-fav" aria-hidden="true"><img src="' + esc(faviconUrl(h)) + '" data-h="' + esc(h) + '" alt="" width="18" height="18" loading="lazy" decoding="async" referrerpolicy="no-referrer"></span>';
+      return '<a class="ek-link" href="' + esc(u) + '" data-ek-url="' + esc(u) + '" target="_blank" rel="noopener noreferrer" title="' + esc(u) + '">' + ico
+        + '<span class="ek-link-t"><span class="ek-link-n">' + esc(t || h) + '</span><span class="ek-link-h">' + esc(h) + '</span></span></a>';
+    }).join('');
+    if (!items) return '';
+    return '<details class="ek-src"><summary><span class="ek-src-n">' + links.length + (links.length === 1 ? ' source' : ' sources') + '</span></summary><div class="ek-links">' + items + '</div></details>';
+  }
+  // One stylesheet, injected once, so this release needs no CSS file or index.html link.
+  (function injectCss() {
+    try {
+      if (document.getElementById('ek-src-css')) return;
+      const st = document.createElement('style'); st.id = 'ek-src-css';
+      st.textContent = '.ek-src{margin:6px 0 2px}'
+        + '.ek-src>summary{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:4px 12px 4px 12px;border-radius:999px;background:rgba(255,255,255,.08);color:#d9d3cc;font-size:12.5px;font-weight:600;cursor:pointer;list-style:none;-webkit-tap-highlight-color:transparent;user-select:none}'
+        + '.ek-src>summary::-webkit-details-marker{display:none}'
+        + '.ek-src>summary::after{content:"";width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-2px);transition:transform .2s;opacity:.75}'
+        + '.ek-src[open]>summary::after{transform:rotate(-135deg) translateY(-1px)}'
+        + '.ek-links{display:flex;flex-direction:column;gap:4px;margin:6px 0 2px;max-width:100%}'
+        + '.ek-link{display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 10px;border-radius:12px;background:rgba(255,255,255,.05);color:#f1ede8;text-decoration:none;-webkit-tap-highlight-color:rgba(255,255,255,.12)}'
+        + '.ek-link:active{background:rgba(255,255,255,.14)}'
+        + '.ek-fav{flex:0 0 24px;width:24px;height:24px;border-radius:7px;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;overflow:hidden}'
+        + '.ek-fav img{width:18px;height:18px;display:block;object-fit:contain}'
+        + '.ek-fav-l{background:rgba(255,255,255,.16);color:#fff;font-size:12px;font-weight:800}'
+        + '.ek-link-t{display:flex;flex-direction:column;min-width:0;flex:1}'
+        + '.ek-link-n{font-size:13.5px;line-height:1.3;font-weight:600;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}'
+        + '.ek-link-h{font-size:11.5px;line-height:1.3;color:#a9a39b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}';
+      (document.head || document.documentElement).appendChild(st);
+    } catch (_) { /* styling is optional */ }
+  })();
 
   const CHEV = '<svg class="et-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>';
 
@@ -226,7 +296,7 @@
     if (line) line.tool = name;
     if (line) { line.k = 'a'; line.st = 'run'; paint(); pump(); } // V1.9.39: repaint so the RUNNING pill / "Executing Tool…" show while the tool works (they were set after the paint)
     return {
-      end(res) { if (line) { line.bad = failed(res); line.st = line.bad ? 'bad' : 'ok'; paint(); } }
+      end(res) { if (line) { line.bad = failed(res); line.st = line.bad ? 'bad' : 'ok'; if (!line.bad) { const lk = linksOf(res); if (lk.length) line.links = lk; } paint(); } }
     };
   }
 
@@ -255,7 +325,7 @@
   function collapse() { if (!live) return; live.open = false; paint(); }
   function snapshot() {
     if (!live || (!live.toolRan && live.lines.length < 2)) return null;
-    return { ms: Date.now() - live.t0, lines: live.lines.slice(-MAX).map(l => [l.text, l.bad ? 1 : 0, l.k || 't', l.pill || '', l.err || '', l.tool || '', l.key || '', l.ic || '']) };
+    return { ms: Date.now() - live.t0, lines: live.lines.slice(-MAX).map(l => [l.text, l.bad ? 1 : 0, l.k || 't', l.pill || '', l.err || '', l.tool || '', l.key || '', l.ic || '', l.links && l.links.length ? l.links : '']) };
   }
 
   // ---------- html ----------
@@ -327,9 +397,9 @@
       : l.st === 'ok' ? '<span class="tl-pill tl-pill-ok">SUCCESS</span>'
       : l.st === 'bad' ? '<span class="tl-pill tl-pill-bad">FAILED</span>'
       : l.st === 'run' ? '<span class="tl-pill tl-pill-run">RUNNING</span>' : '';
-    const sig = [l.text, l.st, l.pill, l.err, l.bad ? 1 : 0, l.pct || 0, l.ic || ''].join('|');
+    const sig = [l.text, l.st, l.pill, l.err, l.bad ? 1 : 0, l.pct || 0, l.ic || '', l.links ? l.links.length : 0].join('|');
     return '<div class="ek-row' + (act ? ' ek-act' : '') + (l.st === 'run' ? ' ek-run' : '') + (l.bad ? ' ek-bad' : '') + (drop ? ' ek-drop' : '') + '" data-id="' + esc(l.id == null ? '' : l.id) + '"' + (l.key ? ' data-key="' + esc(l.key) + '"' : '') + ' data-sig="' + esc(sig) + '">'
-      + ico + '<div class="ek-txt">' + esc(l.text) + pill + (l.err ? '<div class="tl-err">' + esc(l.err) + '</div>' : '') + (l.st === 'run' && l.pct > 0 ? '<div class="ek-bar"><i style="width:' + Math.min(100, Math.round(l.pct)) + '%"></i></div>' : '') + '</div></div>';
+      + ico + '<div class="ek-txt">' + esc(l.text) + pill + (l.err ? '<div class="tl-err">' + esc(l.err) + '</div>' : '') + (l.st === 'run' && l.pct > 0 ? '<div class="ek-bar"><i style="width:' + Math.min(100, Math.round(l.pct)) + '%"></i></div>' : '') + (l.st !== 'run' ? linksHtml(l.links) : '') + '</div></div>';
   };
   const rowsHtml = (lines, drop) => '<div class="ek-rows">' + (lines || []).map(l => ekRowHtml(l, drop)).join('') + '</div>';
   // Add rows that are new (they drop in), refresh rows whose state changed, never rebuild the rest.
@@ -343,7 +413,7 @@
     v.forEach(l => {
       const cur = have[String(l.id)], fresh = ekRowHtml(l, !cur);
       if (!cur) { box.insertAdjacentHTML('beforeend', fresh); return; }
-      const sig = [l.text, l.st, l.pill, l.err, l.bad ? 1 : 0, l.pct || 0, l.ic || ''].join('|');
+      const sig = [l.text, l.st, l.pill, l.err, l.bad ? 1 : 0, l.pct || 0, l.ic || '', l.links ? l.links.length : 0].join('|');
       if (cur.getAttribute('data-sig') !== sig) { const t = document.createElement('div'); t.innerHTML = fresh; const nn = t.firstChild; nn.classList.remove('ek-drop'); cur.replaceWith(nn); }
     });
   }
@@ -384,7 +454,7 @@
     if (!tl || !Array.isArray(tl.lines) || !tl.lines.length) return '';
     const secs = tl.ms ? (tl.ms / 1000).toFixed(1) + 's' : '\u2013';
     if (getStyle() === 'claude') {
-      const saved = tl.lines.map(l => ({ id: '', text: l[0], bad: !!l[1], k: l[2] === 'a' ? 'a' : 't', st: l[2] === 'a' ? (l[1] ? 'bad' : 'ok') : '', pill: l[3], err: l[4], tool: l[5], key: l[6] || '', ic: l[7] || '' }));
+      const saved = tl.lines.map(l => ({ id: '', text: l[0], bad: !!l[1], k: l[2] === 'a' ? 'a' : 't', st: l[2] === 'a' ? (l[1] ? 'bad' : 'ok') : '', pill: l[3], err: l[4], tool: l[5], key: l[6] || '', ic: l[7] || '', links: Array.isArray(l[8]) ? l[8] : null }));
       return '<details class="et-saved et-claude-saved ek-saved"><summary><span class="et-egg et-egg-static" aria-hidden="true"><img class="et-egg-img" src="ember-icon.svg" alt=""></span><span class="ek-done-t">Thought for ' + secs + '</span>' + DOWN + '</summary><div class="et-lines">' + rowsHtml(saved, false) + '</div></details>';
     }
     if (getStyle() === 'dd') {
@@ -408,6 +478,27 @@
     const c = b.closest('.tl-card'); if (c) c.classList.toggle('tl-open', live.open);
     const d = b.closest('.et-inner'); if (d) d.classList.toggle('et-open', live.open);
   });
+
+  // V1.10.47: tapping a source opens it outside the app; the summary toggles the list and must not collapse the whole card.
+  document.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('a[data-ek-url]');
+    if (a) {
+      e.preventDefault(); e.stopPropagation();
+      const u = safeUrl(a.getAttribute('data-ek-url'));
+      if (u) { try { const w = window.open(u, '_blank', 'noopener,noreferrer'); if (!w) location.href = u; } catch (_) { /* blocked */ } }
+      return;
+    }
+    const sm = e.target.closest && e.target.closest('.ek-src > summary');
+    if (sm) e.stopPropagation();
+  }, true);
+  // An icon that fails to load becomes a letter chip, and the host is remembered for the session.
+  document.addEventListener('error', e => {
+    const im = e.target;
+    if (!im || im.tagName !== 'IMG' || !im.closest || !im.closest('.ek-fav')) return;
+    const h = im.getAttribute('data-h') || ''; if (h) badIcons.add(h);
+    const box = im.parentNode; if (!box) return;
+    box.classList.add('ek-fav-l'); box.textContent = letterOf(h);
+  }, true);
 
   document.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -481,5 +572,5 @@
   window.addEventListener('ember-duty', e => { if (live && e.detail && e.detail.text) note(String(e.detail.text), e.detail.key || 'duty'); });
   // V1.9.78: step(icon, text, key, opt): a thinking line with its own icon. Same key = the same line updated in place.
   function step(ic, text, key, opt) { return upsert(key || ('st' + (++uidc)), text, 't', '', Object.assign({ ic }, opt || {})); }
-  window.EmberTimeline = { step, patchSaved, getStyle, setStyle, begin, drop, note, tool, upsert, unkey, collapse, snapshot, liveHtml, savedHtml, label, flush, _failed: failed, _live: () => live };
+  window.EmberTimeline = { step, patchSaved, getStyle, setStyle, begin, drop, note, tool, upsert, unkey, collapse, snapshot, liveHtml, savedHtml, label, flush, _failed: failed, _live: () => live, _linksOf: linksOf, _safeUrl: safeUrl };
 })();

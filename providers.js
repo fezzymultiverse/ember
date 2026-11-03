@@ -1,5 +1,4 @@
-// Ember provider router - V1.10.19: COHERE ONLY, 24/7. Every chat lane (fast, deep, util) goes to Cohere and nothing else.
-// The other engines stay defined (their keys are never deleted) but can no longer be routed to or pinned. No Free Mode (Pollinations) chat fallback.
+// Ember provider router - Groq, Mistral, Gemini, Cohere and Claude behind one door.
 // Pulls keys out of pasted notes, health-checks every key, picks models from each provider's live model list (no hard-coded names that go stale),
 // and fails over key to key and engine to engine so the chat keeps going when one is rate-limited.
 'use strict';
@@ -8,6 +7,8 @@ const { LS } = U;
 const CFG = {
   openrouter: { name: 'OpenRouter', base: 'https://openrouter.ai/api/v1', kind: 'oai', color: '#93c5fd', optIn: true },
   plugsky: { name: 'Plugsky AI', base: 'https://plugsky.com/v1', kind: 'oai', color: '#7dd3fc', optIn: true },
+  // V1.10.32: LongCat AI (Meituan). OpenAI-style, your own key, opt-in (never in Auto unless switched on or pinned) so the daily quota is not used behind your back.
+  longcat: { name: 'LongCat AI', base: 'https://api.longcat.chat/openai/v1', kind: 'oai', color: '#ffb347', optIn: true, credits: true },
   stability: { name: 'Stability AI', base: 'https://api.stability.ai', kind: 'media', color: '#b4a3ff' },
   groq: { name: 'Groq', base: 'https://api.groq.com/openai/v1', kind: 'oai', color: '#ff6a00' },
   mistral: { name: 'Mistral', base: 'https://api.mistral.ai/v1', kind: 'oai', color: '#ffb020' },
@@ -18,10 +19,11 @@ const CFG = {
 };
 const IDS = Object.keys(CFG);
 // Automatic profile for this installation. Mistral stays active because it is working for him.
-const LOCK = 'cohere'; // V1.10.19: the only chat engine
-const ACTIVE_IDS = [LOCK];
+const ACTIVE_IDS = IDS.filter(id => CFG[id].kind !== 'media');
+// V1.10.32: LongCat may not publish a /models list; these names are used when it does not answer one (a rejected key still fails).
+const LONGCAT_MODELS = ['LongCat-2.5-Preview', 'LongCat-2.0-Preview', 'LongCat-Flash-Thinking', 'LongCat-Flash-Chat'];
 // fast = quick everyday replies. deep = slow, careful turns. util = background jobs (memory, titles).
-const ORDER = { fast: [LOCK], deep: [LOCK], util: [LOCK] };
+const ORDER = { fast: ['groq', 'mistral', 'gemini', 'cohere'], deep: ['mistral', 'groq', 'gemini', 'cohere'], util: ['groq', 'mistral', 'gemini', 'cohere'] }; // V1.10.21: Groq and Mistral first, Cohere only as the last resort
 
 // V1.5.6: pasted keys often carry invisible junk (zero-width chars, quotes, "Bearer ", "key=", a trailing comma). Any of it makes
 // the provider answer 401/403 even though the key itself is fine, so every key is cleaned before it is stored or sent.
@@ -39,25 +41,32 @@ function load() {
   if (LS.get('ember_puter_on', null) !== null) LS.del('ember_puter_on');
   if (LS.get('ember_pin', null) === 'puter') LS.del('ember_pin');
   const pm = LS.get('ember_pin_model', null); if (pm && pm.id === 'puter') LS.del('ember_pin_model');
-  const lg = LS.get('ember_last_good', null); if (lg === 'puter') LS.del('ember_last_good');
+  const lg = LS.get('ember_last_good', null); if (lg === 'puter' || lg === 'cohere') LS.del('ember_last_good');
+  // V1.10.37: Together AI and Fireworks AI removed. Any saved key, pin or switch for them is erased once so nothing for a removed service stays on the phone.
+  ['together','fireworks'].forEach(x => { if (k && Object.prototype.hasOwnProperty.call(k, x)) { delete k[x]; LS.set('ember_keys', k); }
+    if (LS.get('ember_pin', null) === x) LS.del('ember_pin'); const pm2 = LS.get('ember_pin_model', null); if (pm2 && pm2.id === x) LS.del('ember_pin_model');
+    if (LS.get('ember_last_good', null) === x) LS.del('ember_last_good'); const en = LS.get('ember_route_enabled', null); if (en && x in en) { delete en[x]; LS.set('ember_route_enabled', en); } });
   IDS.forEach(id => { o[id] = (Array.isArray(k[id]) ? k[id] : []).filter(e => e && typeof e.key === 'string' && e.key).map(e => { e.key = clean(e.key); return e; }).filter(e => e.key); });
   return o;
 }
 let keys = load();
-let freePref = null; // null = auto (Free Mode on only while the user has no keys); true/false = the user's own choice
+let freePref = LS.get('ember_free_pref', null); // null = auto (Free Mode on only while the user has no keys); true/false = the user's own choice
 // V1.6.1: engine pin. null/'auto' = router decides (Groq first in fast/util since it's near-instant). Any CFG id = try that engine's keys first, every lane.
-let pinnedEngine = LOCK; LS.set('ember_pin', LOCK); // V1.10.19: always pinned to Cohere
-function setPinned(id) { pinnedEngine = LOCK; LS.set('ember_pin', LOCK); } // any request to pin another engine keeps Cohere
+let pinnedEngine = LS.get('ember_pin', null); if (pinnedEngine && !CFG[pinnedEngine]) pinnedEngine = null;
+function setPinned(id) { pinnedEngine = (id && CFG[id] && CFG[id].kind !== 'media') ? id : null; LS.set('ember_pin', pinnedEngine); }
 // V1.6.8: model pin. {id, model} or null. Strict: when set, that engine only ever uses that exact model (no silent swap to another one).
 let pinnedModel = LS.get('ember_pin_model', null);
-if (pinnedModel && !(pinnedModel.id === LOCK && pinnedModel.model)) pinnedModel = null;
-function setPinnedModel(id, model) { pinnedModel = (id === LOCK && model) ? { id, model: String(model) } : null; LS.set('ember_pin_model', pinnedModel); }
+if (pinnedModel && !(pinnedModel.id && pinnedModel.model && CFG[pinnedModel.id])) pinnedModel = null;
+function setPinnedModel(id, model) { pinnedModel = (id && CFG[id] && model) ? { id, model: String(model) } : null; LS.set('ember_pin_model', pinnedModel); }
 // V1.9.15: strict pin. With an engine pinned, a failure is shown plainly (real reason) instead of silently answering from another engine.
 // That silent swap, always landing on Groq first in the default order, is what kept pushing him back to Groq. Background jobs (util) still fail over.
-let strictPin = true; LS.set('ember_pin_strict', true); // V1.10.19: strict, a Cohere failure is shown plainly
-function setStrict(v) { strictPin = true; LS.set('ember_pin_strict', true); }
+let strictPin = LS.get('ember_pin_strict', true) !== false;
+function setStrict(v) { strictPin = !!v; LS.set('ember_pin_strict', strictPin); }
 const onlyPinned = lane => !!(strictPin && pinnedEngine && lane != 'util');
-function orderFor(lane) { return [LOCK]; } // V1.10.19: one engine, every lane
+function orderFor(lane) { const enabled = LS.get('ember_route_enabled', {}); let base = (ORDER[lane] || ORDER.fast).concat(['openrouter', 'plugsky', 'longcat'].filter(id => enabled[id] === true)).filter(id => CFG[id].kind !== 'media' && enabled[id] !== false); const liveIds = base.filter(id => keys[id] && keys[id].some(e => !e.bad)); if (liveIds.length) base = liveIds; /* V1.10.21: only engines that hold a live key; per-provider OFF switch */ if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
+    const lg = lane == 'fast' ? LS.get('ember_last_good', null) : null;
+    if (lg && base.includes(lg) && keys[lg] && keys[lg].some(e => !e.bad)) return [lg].concat(base.filter(x => x != lg));
+    return base; } return [pinnedEngine].concat(base.filter(id => id != pinnedEngine)); }
 const save = () => { LS.set('ember_keys', keys); emitStats(); };
 const cool = new Map(); // credential-wide failures only; model failures are independent
 const modelCool = new Map(), cursors = new Map();
@@ -86,7 +95,7 @@ function stats() {
     for (const e of keys[id]) for (const [k,until] of modelCool) { const [pid,key,model] = JSON.parse(k); if (pid === id && key === e.key && until > Date.now()) p.cooldowns.push({ key:mask(key), model, retry:Math.ceil((until-Date.now())/1000) }); }
   }); return out;
 }
-function setEnabled(id, on) { if (id !== LOCK) return; const cfg=LS.get('ember_route_enabled',{}); cfg[id]=!!on; LS.set('ember_route_enabled',cfg); emitStats(); }
+function setEnabled(id, on) { if (!CFG[id] || CFG[id].kind === 'media' || id === 'anthropic') return; const cfg=LS.get('ember_route_enabled',{}); cfg[id]=!!on; LS.set('ember_route_enabled',cfg); emitStats(); }
 function authFailure(er) { return Number(er.status) === 401 || (Number(er.status) === 403 && /invalid.{0,15}(key|token)|revoked|authentication_error|unauthenticated/i.test(er.message || '')); }
 
 const activeControllers = new Set(), activeReaders = new Set(); let routeCancelled = false;
@@ -96,6 +105,53 @@ const coolKey = (key, seconds) => cool.set(key, Date.now() + Math.max(1, Number(
 const transient = er => !er || !er.status || [408, 409, 425, 500, 502, 503, 504, 522, 524, 529].includes(Number(er.status));
 const mask = k => k.length > 12 ? k.slice(0, 6) + '…' + k.slice(-4) : k.slice(0, 3) + '…';
 const has = k => IDS.some(id => keys[id].some(e => e.key === k));
+
+// ---------- V1.10.46: Gemini key tier (free / paid), learned from Google's own answers ----------
+// Google has no "what plan am I on" call. A free key tells on itself: a model it has no free quota for, or a free-tier daily cap, comes back with a
+// 429 (or 400/403/404) whose body names the free tier. That is remembered on the key (e.tier, e.noFree) and a free key then skips paid-only models.
+// Nothing is hard-coded about WHICH models are free except the name rule below for models Google lists as paid-only; a model that actually
+// answers on a key clears its mark. A mark expires after 7 days so an upgraded key is picked up again.
+const GEM_PAID_ONLY = /(^|-)pro(-|$)|argon/i;
+const GEM_TIER_TTL = 7 * 24 * 3600 * 1000, GEM_FREE_TRIES = 6; // a free key tries up to 6 models per route (Flash x2, Flash-Lite x2, Gemma x2) instead of 3
+const gemEntry = (key) => (keys.gemini || []).find(e => e.key === key) || null;
+const gemTier = e => e && e.tier && Date.now() - (e.tierAt || 0) < GEM_TIER_TTL ? e.tier : '';
+function gemQuota(er) {
+  const st = Number(er && er.status); if (![400, 403, 404, 429].includes(st)) return null;
+  const t = String((er && er.raw) || '') + ' ' + String((er && er.message) || '');
+  if (!/free[_ -]?tier/i.test(t)) return null;
+  const zero = st == 429 ? /"quotaValue"\s*:\s*"?0"?\s*[,}]|limit:\s*0\b/i.test(t) : /not (available|supported)|only available|paid|upgrade|billing/i.test(t);
+  return { zero };
+}
+function gemNote(e, model, er) { // learn from one failed call; returns true when the key was newly recognised as free
+  const q = gemQuota(er); if (!q || !e) return false;
+  const was = gemTier(e); e.tier = 'free'; e.tierAt = Date.now();
+  if (q.zero && model) { const l = e.noFree || (e.noFree = []); if (!l.includes(model)) { l.push(model); if (l.length > 40) l.shift(); } }
+  if (was !== 'free') { e.st = Object.assign({}, e.st || {}, { msg: 'Free-tier key detected: paid-only models are skipped, Flash / Flash-Lite / Gemma are tried instead.' }); }
+  save(); return was !== 'free';
+}
+function gemClear(e, model) { // a model marked "no free quota" answered: this key is paid
+  if (!e || !(e.noFree || []).includes(model)) return;
+  e.noFree = e.noFree.filter(x => x !== model); e.tier = 'paid'; e.tierAt = Date.now(); save();
+}
+function gemAdjust(e, list) { // free key: paid-only and known no-free-quota models go to the back, order otherwise unchanged
+  if (gemTier(e) !== 'free') return list;
+  const no = e.noFree || [], dem = m => GEM_PAID_ONLY.test(m) || no.includes(m);
+  return list.filter(m => !dem(m)).concat(list.filter(dem));
+}
+// One tiny request to the top Pro model, once, when a Gemini key is added: 429 naming the free tier = free key, 200 = paid key.
+// Anything else (network, 400 about the request itself) says nothing and leaves the tier unknown, which behaves exactly like before.
+async function gemProbe(e) {
+  const list = ((LS.get('ember_models', {}).gemini || {}).list) || [];
+  const pro = rank('gemini', list, 'deep').find(m => /^gemini-/.test(m) && GEM_PAID_ONLY.test(m));
+  if (!pro || !e) return gemTier(e);
+  try {
+    await gemFetch(CFG.gemini.base + '/models/' + pro + ':generateContent', e.key, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'hi' }] }], generationConfig: { maxOutputTokens: 8 } }) }, 20000);
+    e.tier = 'paid'; e.tierAt = Date.now(); e.noFree = (e.noFree || []).filter(x => x !== pro); save();
+  } catch (er) { gemNote(e, pro, er); }
+  return gemTier(e);
+}
+const GQ = LS.get('ember_gem_quirks', {}); // per model: what the API refused once (system instruction, JSON mode, tools), so it is not asked again
+const gemQuirk = (model, k) => { const q = GQ[model] || (GQ[model] = {}); if (!q[k]) { q[k] = 1; LS.set('ember_gem_quirks', GQ); } };
 
 // ---------- network: normal fetch, native HTTP as the fallback inside the APK ----------
 async function net(url, opt, timeout) {
@@ -123,7 +179,7 @@ async function jfetch(url, opt, timeout) {
     if (retryHeader && !retryAfter) { const at = Date.parse(retryHeader); if (Number.isFinite(at)) retryAfter = Math.max(0, Math.ceil((at - Date.now()) / 1000)); }
     if (!retryAfter && parsed) retryAfter = Number(parsed.retry_after || parsed.retryAfter || (parsed.error && (parsed.error.retry_after || parsed.error.retryAfter)) || (parsed.meta && parsed.meta.retry_after)) || 0;
     retryAfter = Math.max(0, retryAfter);
-    throw Object.assign(new Error(String(msg || body || ('HTTP ' + r.status)).slice(0, 200)), { status: r.status, retryAfter, metadata: parsed && parsed.error && parsed.error.metadata });
+    throw Object.assign(new Error(String(msg || body || ('HTTP ' + r.status)).slice(0, 200)), { status: r.status, retryAfter, metadata: parsed && parsed.error && parsed.error.metadata, raw: String(body || '').slice(0, 4000) }); // V1.10.46: raw body kept (Gemini's quota details are in it)
   }
   return r.json();
 }
@@ -174,7 +230,7 @@ async function streamClaude(url, body, key, o, timeout) {
   const r = await net(url, { method: 'POST', headers: Object.assign({ Accept: 'text/event-stream' }, claudeHeaders(key)), body: JSON.stringify(body) }, timeout || 60000);
   if (!r.ok) {
     let raw = ''; try { raw = await r.text(); } catch (_) {}
-    let msg = '', parsed = null; try { parsed = JSON.parse(raw); msg = (parsed.error && (parsed.error.message || parsed.error)) || parsed.message || ''; } catch (_) {}
+    let msg = '', parsed = null; try { const p = JSON.parse(raw); parsed = p; msg = (p.error && (p.error.message || p.error)) || p.message || ''; } catch (_) {} // V1.10.46: `parsed` was undefined here, so a Claude HTTP error threw a ReferenceError instead of the real status
     const h = r.headers && r.headers.get && r.headers.get('retry-after'); const retryAfter = Math.max(0, Math.min(900, Number(h) || 0));
     throw Object.assign(new Error(String(msg || raw || ('HTTP ' + r.status)).slice(0, 200)), { status: r.status, retryAfter, metadata: parsed && parsed.error && parsed.error.metadata });
   }
@@ -203,32 +259,94 @@ async function streamClaude(url, body, key, o, timeout) {
 }
 
 // ---------- models ----------
+// 1.10.40: live catalog metadata, free text variants, bounded pagination.
+function rememberModels(id, rows) {
+  const all = LS.get('ember_model_metadata', {}), by = {};
+  (rows || []).forEach(m => { const name = m && (m.id || m.name); if (!name) return;
+    const pricing = m.pricing || {}, output = m.architecture && m.architecture.output_modalities;
+    const zero = v => v !== undefined && v !== null && String(v).trim() !== '' && Number(v) === 0;
+    const tokenFree = zero(pricing.prompt) && zero(pricing.completion);
+    const extraCharges = Object.entries(pricing).some(([k,v]) => k !== 'overrides' && v != null && String(v).trim() !== '' && Number(v) !== 0);
+    const overrides = Array.isArray(pricing.overrides) && pricing.overrides.length > 0;
+    by[name] = { free: (tokenFree || /:free$/.test(name) || name === 'openrouter/free') && !extraCharges && !overrides,
+      // Text-only output prevents zero token prices from disguising per-song/image generation fees.
+      text: !Array.isArray(output) || (output.length === 1 && output[0] === 'text'),
+      maxOutput: Number(m.top_provider && m.top_provider.max_completion_tokens || m.max_output_tokens) || 0,
+      parameters: Array.isArray(m.supported_parameters) ? m.supported_parameters : null };
+  }); all[id] = by; LS.set('ember_model_metadata', all);
+}
+function isFreeModel(id, model) {
+  const md = LS.get('ember_model_metadata', {}), e = md[id] && md[id][model];
+  return e ? e.free && e.text : /:free$/.test(model) || model === 'openrouter/free';
+}
+function routeModels(id, list) {
+  // Auto may use OpenRouter only through free variants. Explicit provider/model pins retain their old behavior.
+  return id === 'openrouter' && pinnedEngine !== id && !(pinnedModel && pinnedModel.id === id)
+    ? list.filter(m => isFreeModel(id,m)) : list;
+}
+async function freeModelsOf(id, fresh) {
+  id = id || 'openrouter';
+  if (id !== 'openrouter') throw new Error('Zero-price catalog is supported for OpenRouter; other providers have account-specific free quotas.');
+  const cache = LS.get('ember_models', {});
+  let list = !fresh && cache[id] && Date.now() - cache[id].at < MC ? cache[id].list : null;
+  if (!Array.isArray(list) || !list.length) {
+    const e = (keys[id] || []).find(x => !x.bad);
+    list = await listModels(id, e ? e.key : '');
+    cache[id] = { at: Date.now(), list }; LS.set('ember_models', cache);
+  }
+  return Array.from(new Set(list.filter(m => isFreeModel(id,m) && !/content[-_]safety|guard|moderation|embed|rerank/i.test(m)))).sort();
+}
 async function listModels(id, key) {
   const c = CFG[id];
   if (c.kind === 'media') { await jfetch(c.base + '/v1/user/account', { headers: { Authorization: 'Bearer ' + key } }, 15000); return []; }
   if (c.kind == 'oai') {
-    const j = await jfetch(c.base + '/models', { headers: { Authorization: 'Bearer ' + key } }, 15000);
-    return (j.data || []).map(m => m.id).filter(Boolean);
+    // V1.10.32: LongCat. Use its live list when it has one; if the route is missing (404/405) fall back to the known names. 401/403 still reject the key.
+    if (id === 'longcat') {
+      try { const jl = await jfetch(c.base + '/models', { headers: { Authorization: 'Bearer ' + key } }, 15000); const ids = (Array.isArray(jl) ? jl : (jl.data || [])).map(m => m && m.id).filter(Boolean); return ids.length ? ids : LONGCAT_MODELS.slice(); }
+      catch (er) { if (er && (er.status === 404 || er.status === 405)) return LONGCAT_MODELS.slice(); throw er; }
+    }
+    const j = await jfetch(c.base + '/models', { headers: key ? { Authorization: 'Bearer ' + key } : {} }, 15000);
+    const rows = Array.isArray(j.data) ? j.data : []; rememberModels(id, rows);
+    return Array.from(new Set(rows.map(m => m && m.id).filter(m => typeof m === 'string' && m)));
   }
   if (c.kind == 'claude') {
     const j = await jfetch(c.base + '/models?limit=100', { headers: claudeHeaders(key) }, 15000);
     return (j.data || []).map(m => m.id).filter(Boolean);
   }
   if (c.kind == 'cohere') {
-    const j = await jfetch(c.base + '/v1/models?endpoint=chat&page_size=100', { headers: { Authorization: 'Bearer ' + key, Accept: 'application/json' } }, 15000);
-    return (j.models || []).map(m => m.name).filter(Boolean);
+    const rows = [], seen = new Set(); let token = '';
+    do {
+      if (seen.has(token) || seen.size >= 20) throw new Error('Cohere model catalog pagination did not terminate safely.');
+      seen.add(token);
+      const j = await jfetch(c.base + '/v1/models?endpoint=chat&page_size=100' + (token ? '&page_token=' + encodeURIComponent(token) : ''), { headers: { Authorization: 'Bearer ' + key, Accept: 'application/json' } }, 15000);
+      rows.push(...(Array.isArray(j.models) ? j.models : [])); token = j.next_page_token || '';
+    } while (token);
+    rememberModels(id,rows); return Array.from(new Set(rows.map(m => m && m.name).filter(m => typeof m === 'string' && m)));
   }
-  const j = await gemFetch(c.base + '/models?pageSize=200', key, {}, 15000);
-  return (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => String(m.name).replace(/^models\//, ''));
+  const rows = [], seen = new Set(); let token = '';
+  do {
+    if (seen.has(token) || seen.size >= 20) throw new Error('Gemini model catalog pagination did not terminate safely.');
+    seen.add(token);
+    const j = await gemFetch(c.base + '/models?pageSize=200' + (token ? '&pageToken=' + encodeURIComponent(token) : ''), key, {}, 15000);
+    rows.push(...(Array.isArray(j.models) ? j.models : [])); token = j.nextPageToken || '';
+  } while (token);
+  return Array.from(new Set(rows.filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => String(m.name).replace(/^models\//, ''))));
 }
 const ver = m => { const x = /(\d+(?:\.\d+)?)/.exec(m); return x ? parseFloat(x[1]) : 0; };
 function rank(id, list, lane) {
   if (id === 'stability') return [];
-  if (id === 'openrouter' || id === 'plugsky') return list.filter(m => !/embed|rerank|whisper|tts|audio|video|flux|stable-diffusion|imagen|veo|sora|moderation/i.test(m)).sort((a,b) => Number(/:free$|^plugsky-(micro|lite)$/.test(b)) - Number(/:free$|^plugsky-(micro|lite)$/.test(a)));
+  if (id === 'openrouter' || id === 'plugsky') return list.filter(m => !/embed|rerank|whisper|tts|audio|video|flux|stable-diffusion|imagen|veo|sora|moderation|content[-_]safety|guard/i.test(m)).sort((a,b) => Number(isFreeModel(id,b) || /^plugsky-(micro|lite)$/.test(b)) - Number(isFreeModel(id,a) || /^plugsky-(micro|lite)$/.test(a)));
   const deep = lane == 'deep';
+  if (id === 'longcat') { // V1.10.32: newest preview first, then the free-quota 2.0 preview, thinking, flash
+    const ok = list.filter(m => !/embed|rerank|whisper|guard|tts|audio|image|moderation|transcri/i.test(m));
+    const pref = deep ? [/2\.5/i, /thinking/i, /2\.0/i, /flash/i] : [/2\.5/i, /2\.0/i, /flash-chat/i, /flash/i];
+    const out = []; pref.forEach(p => ok.filter(m => p.test(m)).forEach(m => { if (!out.includes(m)) out.push(m); }));
+    ok.forEach(m => { if (!out.includes(m)) out.push(m); });
+    return out;
+  }
   if (id == 'groq') {
-    const ok = list.filter(m => !/whisper|guard|tts|embed|playai|distil/i.test(m));
-    const pref = [/llama-3\.3-70b/, /llama.*70b/, /llama-4/, /llama/, /gpt-oss/, /qwen/];
+    const ok = list.filter(m => !/whisper|guard|tts|embed|playai|distil|orpheus/i.test(m)); // V1.10.45: orpheus = text-to-speech
+    const pref = [/llama-3\.3-70b/, /llama.*70b/, /llama-4/, /llama/, /gpt-oss-120b/, /gpt-oss/, /qwen/];
     const out = []; pref.forEach(p => ok.filter(m => p.test(m)).forEach(m => { if (!out.includes(m)) out.push(m); }));
     ok.forEach(m => { if (!out.includes(m)) out.push(m); });
     return out;
@@ -254,21 +372,27 @@ function rank(id, list, lane) {
     ok.forEach(m => { if (!out.includes(m)) out.push(m); });
     return out;
   }
-  const bad = /lite|image|tts|embed|live|audio|native|robotics|computer|imagen|veo|gemma|aqa|learnlm|vision|nano/i;
+  const bad = /lite|image|tts|embed|live|audio|native|robotics|computer|imagen|veo|gemma|aqa|learnlm|vision|nano|transcribe|translate/i;
   let c = list.filter(m => /^gemini-/.test(m) && !bad.test(m));
+  // V1.10.45: Flash-Lite was excluded outright, so when the top Flash models hit their small free daily cap the router fell to a Pro model with no free quota. Lite now sits after Flash.
+  const lt = list.filter(m => /^gemini-/.test(m) && /flash-lite/.test(m) && !/image|tts|embed|live|audio|native|robotics|computer|transcribe|translate|preview-tts/i.test(m));
   const want = deep ? 'pro' : 'flash';
   const w = c.filter(m => m.includes(want));
   const rest = c.filter(m => !m.includes(want));
   const srt = a => a.sort((x, y) => ver(y) - ver(x) || (/preview|exp/.test(x) ? 1 : 0) - (/preview|exp/.test(y) ? 1 : 0) || x.length - y.length);
-  return srt(w).concat(srt(rest));
+  // V1.10.46: Gemma (served by the Gemini API, its own free quota). Newest first, then the larger size; after Flash-Lite, so Gemini answers first and Gemma is the next bucket when those are capped.
+  const size = m => { const x = /(\d+)b/i.exec(m); return x ? Number(x[1]) : 0; };
+  const gm = list.filter(m => /^gemma-/.test(m) && !/embed|tts|image|audio|shield|pali|transcri|translate|live|vision/i.test(m)).sort((x, y) => ver(y) - ver(x) || size(y) - size(x) || x.length - y.length);
+  return deep ? srt(w).concat(srt(rest), srt(lt), gm) : srt(w).concat(srt(lt), gm, srt(rest));
 }
 const MC = 12 * 3600 * 1000;
 async function modelsFor(id, key, lane) {
+  const fin = r => id === 'gemini' ? gemAdjust(gemEntry(key), r) : r; // V1.10.46: a free Gemini key skips paid-only models
   const cache = LS.get('ember_models', {});
-  if (cache[id] && Date.now() - cache[id].at < MC && cache[id].list.length) return rank(id, cache[id].list, lane);
+  if (cache[id] && Date.now() - cache[id].at < MC && cache[id].list.length) return fin(rank(id, cache[id].list, lane));
   const list = await listModels(id, key);
   cache[id] = { at: Date.now(), list }; LS.set('ember_models', cache);
-  return rank(id, list, lane);
+  return fin(rank(id, list, lane));
 }
 
 // ---------- one call ----------
@@ -359,18 +483,27 @@ async function streamOAI(url, key, body, o, timeout) {
 }
 async function call(id, key, model, o) {
   const c = CFG[id], t0 = performance.now();
+  o = Object.assign({}, o);
+  const md = LS.get('ember_model_metadata', {}), info = md[id] && md[id][model];
+  if (info && info.maxOutput) o.max = Math.min(o.max || 400, info.maxOutput);
+  if (info && info.parameters && !info.parameters.includes('tools')) o.tools = null;
+  const requestTimeout = o.documentMode ? 90000 : 40000;
   let text = '';
   if (c.kind == 'oai') {
     const body = { model, messages: [{ role: 'system', content: o.system }].concat(o.messages), temperature: o.temp == null ? 0.8 : o.temp, max_tokens: o.max || 400 };
-    if (o.json) body.response_format = { type: 'json_object' };
+    if (o.json) {
+      if (!info || !info.parameters || info.parameters.includes('response_format')) body.response_format = { type: 'json_object' };
+      else body.messages[0].content = String(body.messages[0].content || '') + '\nReturn one valid JSON object and nothing else.';
+    }
+    if (info && info.parameters && !info.parameters.includes('temperature')) delete body.temperature;
     const decl = (!o.json && o.tools && o.tools.length) ? toolDecls(o.tools, false) : [];
-    if (decl.length) { body.tools = decl.map(f => ({ type: 'function', function: f })); body.tool_choice = 'auto'; }
+    if (decl.length) { body.tools = decl.map(f => ({ type: 'function', function: f })); if (!info || !info.parameters || info.parameters.includes('tool_choice')) body.tool_choice = 'auto'; }
     let j;
     if (typeof o.onToken === 'function' && !decl.length && !o.json) {
-      try { text = await streamOAI(c.base + '/chat/completions', key, body, o, 40000); }
+      try { text = await streamOAI(c.base + '/chat/completions', key, body, o, requestTimeout); }
       catch (er) { if (er.code === 'cancelled') throw er; if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
     } else {
-      try { j = await jfetch(c.base + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, 40000); }
+      try { j = await jfetch(c.base + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, requestTimeout); }
       catch (er) { if (er.code === 'cancelled') throw er; if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
       o._usage = j.usage || null;
       text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content || '';
@@ -404,38 +537,41 @@ async function call(id, key, model, o) {
     const decl = (!o.json && o.tools && o.tools.length) ? toolDecls(o.tools, false) : [];
     if (decl.length) body.tools = decl.map(f => ({ type: 'function', function: f }));
     let j;
-    const send = () => jfetch(c.base + '/v2/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, 40000);
-    try {
-      try { j = await send(); }
-      catch (e1) { // V1.10.19: Cohere trial keys are rate limited per minute. Wait once (max 20 s, a little jitter) and retry the same key before the router gives up on it.
-        if (e1.status != 429 && e1.status != 503 && e1.status != 502) throw e1;
-        if (routeCancelled) throw e1;
-        const wait = Math.min(20, Math.max(2, Number(e1.retryAfter) || (e1.status == 429 ? 6 : 2))) * 1000 + Math.floor(Math.random() * 600);
-        await new Promise(r => setTimeout(r, wait));
-        if (routeCancelled) throw Object.assign(new Error('Stopped by user.'), { status: 0, code: 'cancelled' });
-        j = await send();
-      }
-    }
+    try { j = await jfetch(c.base + '/v2/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, requestTimeout); }
     catch (er) { if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
     text = j.message && Array.isArray(j.message.content) ? j.message.content.map(p => p.text || '').join('') : '';
     const tc = decl.length && j.message && Array.isArray(j.message.tool_calls) && j.message.tool_calls[0], tf = tc && tc.function;
     if (tf && tf.name) { let ar = tf.arguments; if (typeof ar == 'string') { try { ar = JSON.parse(ar || '{}'); } catch (e) { ar = {}; } } text = joinCall(text, tf.name, ar); }
   } else {
     const contents = [];
+    const q = GQ[model] || {}, fold = !!(o._gemFold || q.fold), noJson = !!(o._gemNoJson || q.nojson), noTools = !!(o._gemNoTools || q.notools);
     o.messages.forEach(m => {
       const role = m.role == 'assistant' ? 'model' : 'user', last = contents[contents.length - 1];
       if (last && last.role == role) last.parts[0].text += '\n\n' + m.content; else contents.push({ role, parts: [{ text: m.content }] });
     });
+    // V1.10.46: some Gemma builds refuse systemInstruction ("Developer instruction is not enabled"). Then the instructions go in front of the first user turn instead.
+    const sys = String(o.system || '') + (o.json && noJson ? '\n\nReply with one valid JSON object and nothing else.' : '');
+    if (fold) { if (contents.length && contents[0].role == 'user') contents[0].parts[0].text = sys + '\n\n' + contents[0].parts[0].text; else contents.unshift({ role: 'user', parts: [{ text: sys }] }); }
     const gc = { temperature: o.temp == null ? 0.8 : o.temp, maxOutputTokens: (o.max || 400) * 4 }; // headroom: some Gemini models spend output tokens on thinking
-    if (o.json) gc.responseMimeType = 'application/json';
-    const decl = (!o.json && o.tools && o.tools.length) ? toolDecls(o.tools, true) : [];
-    const gbody = { systemInstruction: { parts: [{ text: o.system }] }, contents, generationConfig: gc };
+    if (o.json && !noJson) gc.responseMimeType = 'application/json';
+    const decl = (!o.json && !noTools && o.tools && o.tools.length) ? toolDecls(o.tools, true) : [];
+    const gbody = { contents, generationConfig: gc };
+    if (!fold) gbody.systemInstruction = { parts: [{ text: sys }] };
     if (decl.length) { gbody.tools = [{ functionDeclarations: decl }]; gbody.toolConfig = { functionCallingConfig: { mode: 'AUTO' } }; }
     let j;
     try { j = await gemFetch(c.base + '/models/' + model + ':generateContent', key, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(gbody) }, 60000); }
-    catch (er) { if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
-    const cand = j.candidates && j.candidates[0], parts = cand && cand.content && cand.content.parts ? cand.content.parts : [];
+    catch (er) {
+      if (er.status == 400 || er.status == 422) {
+        const why = String(er.message || '') + ' ' + String(er.raw || '');
+        if (!fold && /developer instruction|system.?instruction/i.test(why)) { gemQuirk(model, 'fold'); return call(id, key, model, Object.assign({}, o, { _gemFold: true })); }
+        if (o.json && !noJson && /json mode|response.?mime/i.test(why)) { gemQuirk(model, 'nojson'); return call(id, key, model, Object.assign({}, o, { _gemNoJson: true })); }
+        if (decl.length) { if (/function calling|tool/i.test(why)) gemQuirk(model, 'notools'); return call(id, key, model, Object.assign({}, o, { tools: null, _gemNoTools: true })); }
+      }
+      throw er;
+    }
+    const cand = j.candidates && j.candidates[0], parts = (cand && cand.content && cand.content.parts ? cand.content.parts : []).filter(p => !p.thought);
     text = parts.map(p => p.text || '').join('');
+    if (o.json && noJson) text = text.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, ''); // no JSON mode: strip a code fence if the model added one
     const fc = decl.length && parts.find(p => p.functionCall && p.functionCall.name); if (fc) text = joinCall(text, fc.functionCall.name, fc.functionCall.args);
   }
   text = String(text || '').trim();
@@ -445,7 +581,7 @@ async function call(id, key, model, o) {
 
 // ---------- key bookkeeping ----------
 const entries = id => keys[id];
-const hasKeys = () => keys[LOCK].length > 0;
+const hasKeys = () => ACTIVE_IDS.some(id => keys[id].length > 0);
 async function health(id, e) {
   const t0 = performance.now(), st = { at: Date.now(), ok: false, limited: false, ms: 0, model: '', code: 0, msg: '' };
   try {
@@ -469,9 +605,10 @@ async function healthAll() { for (const id of ACTIVE_IDS) for (const e of keys[i
 async function addKey(id, key) {
   key = clean(key);
   if (!key || !keys[id]) return { ok: false, why: 'empty' };
-  if (id !== LOCK && CFG[id].kind !== 'media') return { ok: false, why: 'Ember is set to Cohere only. Add a Cohere key.' };
   if (keys[id].some(e => e.key === key)) return { ok: false, why: 'already added' };
-  const e = { key, st: null }; keys[id].push(e); save(); await health(id, e); return { ok: true, e };
+  const e = { key, st: null }; keys[id].push(e); save(); await health(id, e);
+  if (id === 'gemini' && e.st && e.st.ok && !e.st.limited) gemProbe(e).then(() => emitStats(), () => {}); // V1.10.46: not awaited, adding a key stays as fast as before
+  return { ok: true, e };
 }
 function removeKey(id, key) { keys[id] = keys[id].filter(e => e.key !== key); cool.delete(key); save(); }
 
@@ -551,8 +688,8 @@ async function callPollinations(prompt, o) {
   return { text, provider: 'pollinations', model: 'openai', ms: Math.round(used()) };
 }
 const flat = o => String(o.system || '') + '\n\n' + o.messages.map(m => (m.role == 'assistant' ? 'Ember' : 'Him') + ': ' + m.content).join('\n') + '\n\nEmber:';
-const freeOn = () => false; // V1.10.19: no Free Mode (Pollinations) for chat, Cohere only
-const setFree = v => { freePref = false; };
+const freeOn = () => freePref == null ? !hasKeys() : freePref;
+const setFree = v => { freePref = v == null ? null : !!v; LS.set('ember_free_pref', freePref); };
 const label = id => CFG[id] ? CFG[id].name : id == 'pollinations' ? 'Free' : id;
 
 // ---------- V1.6.8: one source of truth for "who answers" ----------
@@ -587,7 +724,7 @@ function factsBlock(id, model, failed) {
   else L.push('- This is a background reply: the phone picks the engine after this prompt is built, so you do not know which engine or model you are. Do not name one.');
   const noKey = IDS.filter(x => !keys[x].length).map(x => CFG[x].name);
   if (noKey.length) L.push('- NO key is saved for: ' + noKey.join(', ') + '. You cannot be any of those engines, and you must never say you are one of them.');
-  L.push('- AI route in this build: Cohere ONLY, on every message. No other engine (Groq, Gemini, Mistral, Claude, OpenRouter, Plugsky, Free Mode) can answer, so never say you are or might switch to one. Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
+  L.push('- Automatic AI route in this build: ' + orderFor('fast').map(x => CFG[x].name).join(' → ') + '. Ember stays on the engine that last answered and only moves on when it fails. Keys he saved: ' + inv + '. There is NO bundled, shared or placeholder key in this app; every key is one he added himself. Never say you "fall back to a bundled key" or that you lack keys he saved.');
   if (pinnedEngine) {
     const miss = id && id != pinnedEngine, why = (failed || []).find(f => f.id == pinnedEngine);
     L.push('- Pinned engine in Settings: ' + CFG[pinnedEngine].name + (pinnedModel && pinnedModel.id == pinnedEngine ? ' (model ' + pinnedModel.model + ')' : '') + ' [' + STATE_TXT[st[pinnedEngine]] + ']' + (miss ? '. It could not answer this message' + (why ? ' (' + String(why.why || '').slice(0, 120) + ')' : '') + ', so ' + (id == 'pollinations' ? 'Free Mode' : CFG[id].name) + ' answered instead. Tell him that plainly if he asks.' : '.'));
@@ -610,11 +747,11 @@ async function modelsOf(id, fresh) {
     if (!e) throw Object.assign(new Error('No ' + CFG[id].name + ' key saved.'), { status: 0 });
     list = await listModels(id, e.key); cache[id] = { at: Date.now(), list }; LS.set('ember_models', cache);
   }
-  const ok = list.filter(m => !/embed|whisper|guard|tts|moderation|rerank|flux|stable-diffusion|imagen|veo|sora|playai|ocr/i.test(m));
+  const ok = list.filter(m => !/embed|whisper|guard|tts|moderation|rerank|flux|stable-diffusion|imagen|veo|sora|playai|ocr|orpheus|transcribe/i.test(m));
   const isFree = m => /:free$/.test(m);
   return ok.slice().sort((a, b) => (isFree(b) - isFree(a)) || a.localeCompare(b));
 }
-const cachedModels = id => { const c = LS.get('ember_models', {}); return c[id] && c[id].list ? c[id].list.filter(m => !/embed|whisper|guard|tts|moderation|rerank|flux|stable-diffusion|imagen|veo|sora|playai|ocr/i.test(m)).sort() : []; };
+const cachedModels = id => { const c = LS.get('ember_models', {}); return c[id] && c[id].list ? c[id].list.filter(m => !/embed|whisper|guard|tts|moderation|rerank|flux|stable-diffusion|imagen|veo|sora|playai|ocr|orpheus|transcribe/i.test(m)).sort() : []; };
 
 // ---------- the router ----------
 // Free Mode ON: Pollinations goes first, then the keys. OFF: keys first. Either way Pollinations is the last resort,
@@ -625,7 +762,7 @@ async function runInner(lane, o, tok) {
   const halted = () => { if (tok && tok.stop) throw HANDOFF(); if (routeCancelled || (tok && tok.abort)) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' }); };
   const trying = (name, model) => { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-try', { detail: { name, model } })); } catch (e) { /* no listener */ } } }; // V1.8.3: once the native worker took the request, the page makes no further paid calls
   // when an engine failed and a different one answered, tell the UI (ai.js shows a toast). Background jobs stay silent.
-  const done = r => { if (!pinnedEngine && lane == 'fast' && r.provider && CFG[r.provider] && r.provider != 'anthropic') LS.set('ember_last_good', r.provider); if (pinnedEngine && r.provider != pinnedEngine) { const p0 = failed.find(x => x.id == pinnedEngine); r.pinMiss = { want: pinnedEngine, why: p0 ? (p0.why || '') : 'no usable key' }; } const f = failed.find(x => x.id != r.provider); if (f && pl && !(pinnedEngine && r.provider == pinnedEngine)) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
+  const done = r => { if (!pinnedEngine && lane == 'fast' && r.provider && CFG[r.provider] && r.provider != 'anthropic' && r.provider != 'cohere') LS.set('ember_last_good', r.provider); if (pinnedEngine && r.provider != pinnedEngine) { const p0 = failed.find(x => x.id == pinnedEngine); r.pinMiss = { want: pinnedEngine, why: p0 ? (p0.why || '') : 'no usable key' }; } const f = failed.find(x => x.id != r.provider); if (f && pl && !(pinnedEngine && r.provider == pinnedEngine)) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
   let tried = false, routeStop = null;
   halted();
   if (o.routeProvider && !CFG[o.routeProvider]) throw Object.assign(new Error('The original engine cannot continue this tool result. No other engine was called for this follow-up.'), { code: 'fail' });
@@ -637,12 +774,12 @@ async function runInner(lane, o, tok) {
   const routeIds = o.routeProvider && CFG[o.routeProvider] ? [o.routeProvider] : orderFor(lane);
   for (const id of routeIds) {
     if (!o.routeProvider && onlyPinned(lane) && id != pinnedEngine) break; // V1.9.15: strict pin
-    const soft = false;
+    const soft = id === 'openrouter' && pinnedEngine !== id;
     for (const e of rotation(id, lane)) {
       if (e.bad || isCool(e.key)) { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-skip', { detail: { id, why: e.bad ? 'key rejected' : 'resting after a rate limit' } })); } catch (_) { /* no listener */ } } continue; } // V1.9.78: a skipped engine is a real step
       halted();
       let models;
-      try { models = await modelsFor(id, e.key, lane); }
+      try { models = routeModels(id, await modelsFor(id, e.key, o.documentMode && id === 'cohere' ? 'deep' : lane)); }
       catch (er) {
         if (er.code === 'cancelled' || routeCancelled) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' });
         if (authFailure(er)) { e.bad = true; save(); } else if (er.status == 429) coolKey(e.key, er.retryAfter);
@@ -651,15 +788,18 @@ async function runInner(lane, o, tok) {
       }
       const pm = pinnedModel && pinnedModel.id == id ? pinnedModel.model : null;
       const routeModel = o.routeProvider === id && o.routeModel ? String(o.routeModel) : null;
-      for (const m of (routeModel ? [routeModel] : (pm ? [pm] : models.slice(0, soft ? 5 : 3)))) {
+      // V1.10.46: a Gemini key known to be free tries up to 6 models (so Gemma is reachable); every other case keeps the old 3 (5 for opt-in engines)
+      let pool = routeModel ? [routeModel] : (pm ? [pm] : models), cap = routeModel || pm ? 1 : (soft ? 5 : (id === 'gemini' && gemTier(e) === 'free' ? GEM_FREE_TRIES : 3));
+      for (let mi = 0; mi < pool.length && mi < cap; mi++) {
+        const m = pool[mi];
         halted();
         if (modelResting(id,e.key,m)) continue;
-        trying(CFG[id].name, m); try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); record(id,m,true,r.ms,200,r.usage); save(); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
+        trying(CFG[id].name, m); try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); if (id === 'gemini') gemClear(e, m); record(id,m,true,r.ms,200,r.usage); save(); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
         catch (er) {
           if (er.code === 'cancelled' || routeCancelled) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' });
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
-          if (soft && (er.status == 400 || er.status == 402 || er.status == 403 || er.status == 422) && !pm) continue; // V1.9.15: try the next model, keep the key, the reason stays in failed[]
           record(id,m,false,0,er.status); e.st = Object.assign({},e.st || {},{at:Date.now(),code:er.status || 0,msg:String(er.message || '').slice(0,160),model:m});
+          if (id === 'gemini' && gemNote(e, m, er) && !routeModel && !pm) { pool = gemAdjust(e, pool); cap = Math.max(cap, GEM_FREE_TRIES); } // V1.10.46: this key just showed it is free: paid-only models to the back, Gemma becomes reachable in this same route
           if (er.partial || (o._emitted && o._emitted.value)) { save(); throw Object.assign(er,{code:'partial_stream',message:'Stream interrupted after partial output. Retry explicitly to avoid mixing providers.'}); }
           if (authFailure(er)) { e.bad=true; e.st.ok=false; save(); break; }
           if (er.status == 402 && !(er.metadata && er.metadata.limit_source === 'openrouter_in_flight_budget')) { coolKey(e.key,er.retryAfter || 300); save(); break; }
@@ -676,9 +816,11 @@ async function runInner(lane, o, tok) {
     throw Object.assign(new Error(nm + ' failed (' + (er.status || 'error') + '): ' + String(er.message || 'request failed')), { code: 'fail', status: er.status });
   }
   if (pl && !o.routeProvider && !tried && !onlyPinned(lane)) {
+    if (freePref !== false) {
     halted();
     try { trying('Free Mode', 'openai'); const o2 = withFacts(o, lane, 'pollinations', 'openai', failed); const r = await callPollinations(flat(o2), o2); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
     catch (er) { errs.push('Free Mode: ' + er.message); failed.push({ id: 'pollinations', status: er.status, why: er.message }); }
+  }
   }
   if (o.routeProvider && CFG[o.routeProvider]) {
     const nm = CFG[o.routeProvider].name;
@@ -687,16 +829,18 @@ async function runInner(lane, o, tok) {
   if (onlyPinned(lane)) { // V1.9.15: say what really happened instead of answering from someone else
     const nm = CFG[pinnedEngine].name, w = failed.filter(f => f.id == pinnedEngine).slice(-1)[0];
     const why = w ? String(w.why || 'failed').slice(0, 170) + (w.status ? ' (' + w.status + ')' : '') : (keys[pinnedEngine].length ? 'every ' + nm + ' key is resting or rejected' : 'no ' + nm + ' key is saved');
-    throw Object.assign(new Error(nm + ' did not answer: ' + why + '. Cohere is the only engine in this build, so there is nothing to switch to. ' + (keys[pinnedEngine].length ? 'Ember retries on your next message.' : 'Add a Cohere key in Settings > Keys.')), { code: 'fail' });
+    throw Object.assign(new Error(nm + ' is pinned and did not answer: ' + why + '. Not switching engines because it is pinned. Fix it in Settings > Keys, or set the engine to Auto.'), { code: 'fail' });
   }
-  if (!hasKeys() && pl) throw Object.assign(new Error('Add a Cohere API key in Settings > Keys. Ember runs on Cohere only.'), { code: 'nokeys' });
-  if (!hasKeys()) throw Object.assign(new Error('Add a Cohere API key in Settings > Keys. Ember runs on Cohere only.'), { code: 'nokeys' });
+  if (!hasKeys() && pl) throw Object.assign(new Error(FREE_BUSY), { code: 'fail' });
+  if (!hasKeys()) throw Object.assign(new Error('Add an API key in Settings first.'), { code: 'nokeys' });
   throw Object.assign(new Error('No engine answered. ' + (errs.slice(-2).join(' | ') || 'All keys are resting or rejected. Open Settings > Keys and tap Check all.')), { code: 'fail' });
 }
 // V1.5.9: remember the chat request that is in flight so app.js can hand it to the native background task if the app is backgrounded.
 let inflight = null;
 async function run(lane, o) {
-  o = Object.assign({},o); if (typeof o.onToken === 'function') { const cb=o.onToken; o._emitted={value:false}; o.onToken=(piece,all)=>{ if(piece) o._emitted.value=true; cb(piece,all); }; }
+  o = Object.assign({},o);
+  if (window.EmberDocumentEngine) o = window.EmberDocumentEngine.apply(o, lane);
+  if (typeof o.onToken === 'function') { const cb=o.onToken; o._emitted={value:false}; o.onToken=(piece,all)=>{ if(piece) o._emitted.value=true; cb(piece,all); }; }
   try { if (lane !== 'util' && window.EmberCommandCenter) window.EmberCommandCenter.observeRequest(o); } catch (_) { /* passive inspector */ }
   if (lane !== 'util') routeCancelled = false;
   const tok = { lane, o };
@@ -720,7 +864,7 @@ function nativePlan(lane) {
     for (const e of rotation(id, lane)) {
       if (e.bad || isCool(e.key)) continue;
       const c = cache[id]; if (!c || !c.list || !c.list.length) continue;
-      const models = pinnedModel && pinnedModel.id == id ? [pinnedModel.model] : rank(id,c.list,lane).slice(0,3); for(const m of models)if(m && !modelResting(id,e.key,m))out.push({id,base:CFG[id].base,key:e.key,model:m});
+      const models = pinnedModel && pinnedModel.id == id ? [pinnedModel.model] : routeModels(id,rank(id,c.list,lane)).slice(0,3); for(const m of models)if(m && !modelResting(id,e.key,m))out.push({id,base:CFG[id].base,key:e.key,model:m});
     }
   }
   return out.slice(0, 18);
@@ -770,5 +914,5 @@ function detail(id) {
 }
 async function pingAll() { await Promise.all(ACTIVE_IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); } // AI engines only (Stability: Prov.ping('stability') from its own card)
 function status() { const o = {}; IDS.forEach(id => { o[id] = stateOf(id); }); return o; }
-window.Prov = { stats, setEnabled, record, rotation, peek, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
+window.Prov = { _rank: rank, _gemAdjust: gemAdjust, tierOf: (id, key) => id === 'gemini' ? gemTier(gemEntry(key)) : '', probeTier: key => gemProbe(gemEntry(key)), stats, setEnabled, record, rotation, peek, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels, freeModelsOf, isFreeModel };
 })();
