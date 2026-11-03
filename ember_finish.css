@@ -1,25 +1,26 @@
 /* Additive Ember orange / electric-blue finishes. Scoped to requested UI. */
 :root{--ember-toggle-blue:#3b9dff;--ember-thread-yellow:#f3cc53}
-html body.cockpit-ui #settings .sw.on,html body #settings .sw.on,html body .sw.on,html body [role=switch][aria-checked=true]{background:linear-gradient(120deg,#246ee9,#49b6ff)!important;border-color:#69c3ff!important;box-shadow:0 0 0 1px #5ebaff40,0 0 12px #298eff24!important}
+html body.cockpit-ui #settings .sw.on,html body #settings .sw.on,html body .sw.on,html body .ef-switch[role=switch][aria-checked=true]{background:linear-gradient(120deg,#246ee9,#49b6ff)!important;border-color:#69c3ff!important;box-shadow:0 0 0 1px #5ebaff40,0 0 12px #298eff24!important}
 html body input[type=checkbox],html body input[type=radio]{accent-color:#329bff!important}
 html body .sw.on::after,html body.cockpit-ui #settings .sw.on::after{background:#fff!important}
-.ef-provider{display:inline-flex;gap:6px;align-items:center;position:relative;padding:4px 8px 4px 5px;border:1px solid #fa874a35;border-radius:20px;background:#ff82100a;color:#ffc18e;font-size:10px;line-height:18px;max-width:100%;vertical-align:middle;white-space:nowrap}
-.ef-provider-letter{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;background:#27282d;color:#f6f0e7;font-size:8px;font-weight:700;flex:none}
-.ef-provider img{position:absolute;left:5px;width:18px;height:18px;padding:2px;box-sizing:border-box;border-radius:4px;background:#f4f1ea;object-fit:contain}
-html body .msg.a:not(.egg):not(.stream-preview)>.mt>.ef-provider{display:inline-flex!important;flex:0 0 auto!important;width:max-content!important;max-width:100%!important;order:-2!important;margin:0 5px 0 0!important;font-size:10px!important;color:#ffc18e!important}
-.ef-provider-unknown{color:#a6a8ae;border-color:#4447}.ef-provider>svg{width:14px;height:14px}
+.ef-answer-provider{display:inline-flex;gap:6px;align-items:center;position:relative;padding:4px 8px 4px 5px;border:1px solid #fa874a35;border-radius:20px;background:#ff82100a;color:#ffc18e;font-size:10px;line-height:18px;max-width:100%;vertical-align:middle;white-space:nowrap}
+.ef-answer-provider-letter{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;background:#27282d;color:#f6f0e7;font-size:8px;font-weight:700;flex:none}
+.ef-answer-provider img{position:absolute;left:5px;width:18px;height:18px;padding:2px;box-sizing:border-box;border-radius:4px;background:#f4f1ea;object-fit:contain}
+html body .msg.a:not(.egg):not(.stream-preview)>.mt>.ef-answer-provider{display:inline-flex!important;flex:0 0 auto!important;width:max-content!important;max-width:100%!important;order:-2!important;margin:0 5px 0 0!important;font-size:10px!important;color:#ffc18e!important}
+.ef-answer-provider-unknown{color:#a6a8ae;border-color:#4447}.ef-answer-provider>svg{width:14px;height:14px}
 .ef-type-badge{display:inline-flex;align-items:center;gap:4px;width:max-content;white-space:nowrap;color:#c2dfff;background:#3b9dff13;border:1px solid #3b9dff3b;border-radius:6px;padding:3px 6px;font:600 9px/1.2 system-ui;letter-spacing:.04em}
 .ef-type-badge svg{width:13px;height:13px;flex-shrink:0}.ef-type-pdf{color:#ffb58d;background:#ff741312;border-color:#ff741344}.ef-type-svg{color:#e0c4ff;background:#b475ff12;border-color:#b475ff44}.ef-type-image{color:#a6efce;background:#42cf9e12;border-color:#42cf9e44}
 .artifact-info .ef-type-badge{margin-top:5px}.artifact-shelf-row{gap:8px;flex-wrap:wrap}.artifact-shelf-row>b{min-width:90px;flex:1;overflow-wrap:anywhere}.artifact-inline figcaption{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 #empty:has(.ef-empty-art)>.ev-hero,#empty:has(.ef-empty-art)>.vb-empty-art{display:none!important}
-#log .mt:has(.ef-provider)>.vb-prov{display:none!important}
+#log .mt:has(.ef-answer-provider)>.vb-prov{display:none!important}
 #artList .art-tx>.ef-type-badge{margin-top:6px}
 .ef-empty-art{display:block;width:min(300px,75vw);height:auto;max-height:160px;margin:0 auto 14px;pointer-events:none}
 /* Calmer flicker, no bouncing dots. Motion is entirely disabled when requested. */
 @keyframes emberCalmFlicker{0%,100%{opacity:.65;filter:drop-shadow(0 0 2px #ff8b3650)}38%{opacity:.9;filter:drop-shadow(0 0 5px #ff8b3655)}65%{opacity:.75;filter:drop-shadow(0 0 3px #ffbb3655)}}
 #typ .et-egg,#typ .et-spinner,#typ .et-spin-icon,#typ .tl-live,#amber-think .tl-live,#typ .et-led,#typ .tl-spark{animation:emberCalmFlicker 3.6s ease-in-out infinite!important;transform:none!important}
 #typ .et-egg img,#typ .et-egg-img{animation:none!important;transform:none!important}
-#typ .et-egg-ring{animation:none!important;opacity:.25}
+#typ .et-egg-ring{animation:emberReliableOrbit 1.6s linear infinite!important;opacity:.65}
+@keyframes emberReliableOrbit{to{transform:rotate(360deg)}}
 #typ .ek-run .ek-ico{animation:emberCalmFlicker 3.6s ease-in-out infinite!important;transform:none!important}
 html body #typ.typing i{position:relative;animation:emberCalmFlicker 3.6s ease-in-out infinite!important;background:#ff8c38!important;transform:none!important}
 #typ.typing i:nth-child(2){animation-delay:.6s!important}#typ.typing i:nth-child(3){animation-delay:1.1s!important}

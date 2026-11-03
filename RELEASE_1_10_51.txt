@@ -1,0 +1,72 @@
+EMBER 1.10.51 — PROVIDER / UI REPAIR RELEASE
+Based on your supplied Ember-V1_10_50-FULL.zip. Updated project source, not a compiled APK.
+
+OPEN THE NEW CONTROLS
+Tap the existing top-right Settings/actions button, then API keys.
+The dedicated right-side panel adds/removes AI keys and refreshes model catalogs.
+AI providers & routing stays separate. Auto chooses models from live provider catalogs;
+explicit model pins stay exact and strict provider pins are not silently bypassed.
+Appearance is at the top of Settings: Dark, Light, or Use device setting.
+Actual web-search results show expandable source cards, full URLs and site icons
+(with a local letter fallback when an icon cannot load).
+
+PATCH SCOPE
+- Bounded HTTP requests through response-body completion, not only response headers.
+- JS-side timeout/cancellation for native HTTP fallback; native plugin operations may
+  still need their own underlying network timeout. No Android hardware test was performed.
+- Ordinary chat calls: up to 25 seconds per attempt, 40 seconds per provider and
+  150 seconds for routing. Document calls retain longer allowances (90 seconds per
+  attempt, 100 seconds per provider, 330 seconds for routing). Catalog pagination
+  has one 15-second total budget. Existing outer app/turn deadlines remain.
+- Automatic model catalogs are invalidated after model 404 responses so the next
+  request discovers a fresh list. Explicit model pins remain unchanged.
+- Adding a Gemini key no longer starts a hidden generation probe.
+- Key catalog checks use up to three concurrent jobs.
+- Web scrape response-body reads remain under an 18-second per-request timeout.
+- Separate AI-key entry from provider/routing settings. No new credential store.
+- Blue on-state styles no longer paint whole connection rows.
+- Answer-badge styles no longer collide with routing statistics cards; logo sizes bounded.
+- Restored the existing fire orbit with a compositor-friendly rotation; reduced-motion respected.
+- Narrowed the cosmetic whole-body observer and avoided unchanged permission-banner rewrites.
+- Enhanced amber activity rail, safe source cards and direct page-read evidence links.
+- Optional Light Mode with persisted device/system preference.
+- Removed the duplicate unstyled startup block from layout; existing animated startup retained.
+- Source assets and www assets synchronized; cache namespace and package version updated.
+
+WHAT WAS PRESERVED
+Existing provider order, key rotation, safety/persona rules, tool follow-up provider ownership,
+paid-provider opt-ins, strict pins and existing credential storage are retained. No settings
+are forcibly changed to allow paid providers or bypass a pin. GitHub/native/build code is
+not replaced. Existing source tree and historical release/test evidence remain in the ZIP.
+
+VERIFICATION
+170 focused checks passed: 14 new provider/network, 28 new browser/UI, 10 routing fallback,
+3 streaming/cancellation, 74 scraper and 41 document/provider checks.
+Browser tests use synthetic network responses and fixture credentials, not your private keys.
+Phone-size 393 x 852 and desktop drawer behavior checked. Spinner movement, UI event-loop
+responsiveness, clickable full URLs/icons, light-theme persistence, API-key add/remove,
+Back navigation, and absence of JavaScript exceptions checked in those flows.
+No compiled APK or real-phone/native-plugin run is included. Your saved on-device keys
+and their actual quotas were not accessible here, so real generation access is unverified.
+
+The old tests/wiring-test.cjs is NOT a clean release gate: it still expects the historical
+ember-v1.10.17-wired cache name and original V1.10.16 backend hashes. Its static event check
+also cannot see one inherited array-registered listener. The full historical test suite was
+not run and is not claimed to pass. New tests are included alongside old ones, not substituted.
+See verification-1.10.51/ for focused test logs and mobile previews, and
+RELEASE_MANIFEST_1_10_51.json for changed-file accounting.
+
+INSTALL / UPDATE
+Use this ZIP as the updated project with your existing Capacitor/GitHub Android build flow.
+package.json is 1.10.51; the existing Android patcher derives the native version from it.
+Build with the same app ID and signing key to update in place. Do not clear app storage or
+uninstall the existing app just to test this source update: that can erase device-local keys.
+For a hosted web/PWA deployment, deploy www and reload after the updated service worker
+activates. Native APK users must rebuild/install an APK to receive these source changes.
+
+ACCOUNT LIMITS
+The app cannot force invalid/revoked/restricted keys to work, create missing credits, bypass
+project/organization quotas, or guarantee public-service uptime. Key rotation does not multiply
+shared provider quotas. Catalog visibility is not proof that a key can generate a reply.
+Select Auto in provider routing for cross-provider selection; a strict pin intentionally stays
+with the pinned provider. Consult PROVIDER_GUIDE_1_10_51.txt for official free-tier references.

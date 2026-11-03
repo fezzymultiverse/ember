@@ -16,18 +16,18 @@
   const kind = type => ({pdf:'PDF',document:'DOC',docx:'DOC',markdown:'MD',md:'MD',svg:'SVG',image:'IMAGE',html:'HTML'})[type] || String(type || 'DOC').toUpperCase();
   function badge(type) { const label = kind(type); return '<span class="ef-type-badge ef-type-'+label.toLowerCase()+'">'+svg(label)+'<span>'+esc(label)+'</span></span>'; }
   function providerBadge(eng) {
-    if (!eng?.p) return '<span class="ef-provider ef-provider-unknown" title="No answering-provider metadata was stored for this reply">'+svg('DOC')+'<span>Provider not recorded</span></span>';
+    if (!eng?.p) return '<span class="ef-answer-provider ef-answer-provider-unknown" title="No answering-provider metadata was stored for this reply">'+svg('DOC')+'<span>Provider not recorded</span></span>';
     const cfg = W.Prov?.CFG?.[eng.p], label = cfg?.name || (W.Prov?.label ? W.Prov.label(eng.p) : eng.p);
     // Read only the provider actually stored on this message, never the active provider or attempted fallback.
     const text = String(label), logos = {openrouter:'openrouter.svg',plugsky:'plugsky.ico',longcat:'longcat.svg',stability:'stability.svg',groq:'groq.svg',mistral:'mistral.svg',gemini:'gemini.svg',cohere:'cohere.svg',anthropic:'anthropic.svg'}, logo = logos[eng.p];
-    const fallback = '<span class="ef-provider-letter" aria-hidden="true">'+esc(text.slice(0,2).toUpperCase())+'</span>';
-    return '<span class="ef-provider" data-provider="'+esc(eng.p)+'" title="Answered by '+esc(text)+(eng.m?' · '+esc(eng.m):' · model not disclosed')+'">'+fallback+(logo?'<img src="provider-icons/'+logo+'" alt="" loading="lazy" decoding="async">':'')+'<span>'+esc(text)+'</span></span>';
+    const fallback = '<span class="ef-answer-provider-letter" aria-hidden="true">'+esc(text.slice(0,2).toUpperCase())+'</span>';
+    return '<span class="ef-answer-provider" data-provider="'+esc(eng.p)+'" title="Answered by '+esc(text)+(eng.m?' · '+esc(eng.m):' · model not disclosed')+'">'+fallback+(logo?'<img src="provider-icons/'+logo+'" alt="" loading="lazy" decoding="async">':'')+'<span>'+esc(text)+'</span></span>';
   }
   let raf = 0;
   function decorate() {
     let messages = []; try { messages = W.EmberBridge?.getConversation?.() || []; } catch (_) {}
     document.querySelectorAll('#log .msg.a:not(.typing):not(.stream-preview)').forEach(row => {
-      if (row.querySelector('.ef-provider')) return;
+      if (row.querySelector('.ef-answer-provider')) return;
       const copy = row.querySelector('[data-act="copy"][data-i]'), message = copy ? messages[+copy.dataset.i] : null;
       if (!copy || !message) return;
       const footer = row.querySelector('.mt'); if (footer) footer.insertAdjacentHTML('afterbegin', providerBadge(message.eng));
@@ -78,7 +78,7 @@
     if (!/^(Enter| )$/.test(e.key) || !e.target.matches('[data-ef-sources]')) return;
     const details = e.target.querySelector('.ek-src'); if (details) { e.preventDefault(); details.open = !details.open; }
   });
-  document.addEventListener('error', e => { const im = e.target; if (im?.matches?.('.ef-provider img')) im.remove(); }, true);
+  document.addEventListener('error', e => { const im = e.target; if (im?.matches?.('.ef-answer-provider img')) im.remove(); }, true);
   const emit = ['ember-saved-row-changed','ember-boot-ready','ember-media-update']; emit.forEach(name => W.addEventListener(name, schedule));
   W.EmberFinish = {version:'1.10.48',decorate,providerBadge,badge}; decorate();
 })();

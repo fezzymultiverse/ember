@@ -264,6 +264,7 @@
     D.addEventListener('click', e => {
       const b = e.target.closest('#bSetTop,#bGoKeys,#bKeys,#bKeysMenu,#bEngineKeys,#bAiFeatures,#efOpenSettings');
       if (!b) return; e.preventDefault(); e.stopImmediatePropagation();
+      if (['bGoKeys','bKeys','bKeysMenu','bEngineKeys'].includes(b.id) && W.EmberKeyManager) return W.EmberKeyManager.open();
       openSettings(['bGoKeys','bKeys','bKeysMenu','bEngineKeys'].includes(b.id) ? 'engine' : ['bAiFeatures','efOpenSettings'].includes(b.id) ? 'providers' : null);
     },true);
     $('stabs').addEventListener('click', e => { const t = e.target.closest('[data-st]'); if (t) setTimeout(() => (sections[map[t.dataset.st]] || sections.general).scrollIntoView({block:'start'}), 60); });

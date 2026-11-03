@@ -1033,7 +1033,7 @@ function renderKeys() {
     let rows = '';
     list.forEach(e => {
       const st = e.st, cls = !st ? '' : st.ok ? (st.limited ? 'limited' : 'ok') : 'bad';
-      const line = !st ? 'not checked yet' : st.ok ? (st.limited ? st.msg : '✓ working · ' + st.ms + ' ms · ' + st.model) : '✗ ' + st.msg;
+      const line = !st ? 'not checked yet' : st.ok ? (st.limited ? st.msg : (st.lat ? '✓ replied · ' : 'Catalog available · ') + (st.lat || st.ms) + ' ms · ' + st.model) : '✗ ' + st.msg;
       rows += '<div class="kr"><span class="d ' + (DOT[cls] || '') + '"></span><div class="kt"><b>' + esc(Prov.mask(e.key)) + '</b><small>' + esc(line) + '</small></div><button data-k="chk" data-id="' + id + '" data-key="' + esc(e.key) + '" title="Check">↻</button><button data-k="rm" data-id="' + id + '" data-key="' + esc(e.key) + '" title="Remove">✕</button></div>';
     });
     const title = (window.EmberProviderBadge ? EmberProviderBadge(id) : '') + Prov.CFG[id].name + (Prov.CFG[id].status == 'prototype' ? ' <span class="pbadge">Prototype</span>' : '') + ' <small>(' + list.length + ')</small>';

@@ -7,7 +7,7 @@
 (() => {
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const TXT = { ok: 'authenticated / available', limited: 'rate limited, key is valid', bad: 'key rejected or unreachable', none: 'no key saved', unknown: 'key saved, not checked yet' };
+const TXT = { ok: 'catalog reachable / last request status', limited: 'rate limited, key is valid', bad: 'key rejected or unreachable', none: 'no key saved', unknown: 'key saved, not checked yet' };
 window.addEventListener('ember-provider-stats', () => { if(open && !busy) paint(); });
 let open = false, busy = false, lastAt = 0, tk = 0, sessionChecked = false;
 
@@ -64,7 +64,7 @@ function paint() {
   const t = lastChecked();
   d.innerHTML = '<div class="pdh"><div><b>API &amp; Engine Health</b><small class="pdsummary">' + esc(summary()) + '</small></div><button class="pdre" id="pdRe" aria-label="Check all providers now"' + (busy ? ' disabled' : '') + '>' + (busy ? '…' : '↻ Check') + '</button></div>' +
     aiIds().map(rowFor).join('') + freeRow() +
-    '<div class="pdleg"><span><i class="pdd ok"></i>API available</span><span><i class="pdd limited"></i>Rate limited</span><span><i class="pdd bad"></i>Key/API error</span><span><i class="pdd none"></i>No key</span></div>' +
+    '<div class="pdleg"><span><i class="pdd ok"></i>Catalog / recent reply</span><span><i class="pdd limited"></i>Rate limited</span><span><i class="pdd bad"></i>Key/API error</span><span><i class="pdd none"></i>No key</span></div>' +
     '<p class="pdnote">' + (t ? 'Checked ' + new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '. ' : 'Not checked yet. ') + 'A provider with no key can never show green.</p>';
 }
 async function check() {

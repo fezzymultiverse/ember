@@ -39,12 +39,15 @@
     if (!res || typeof res !== 'object' || res.error || res.ok === false) return out;
     const take = list => (Array.isArray(list) ? list : []).forEach(x => {
       if (!x || typeof x !== 'object' || out.length >= MAX_LINKS) return;
-      const u = safeUrl(x.url); if (!u) return;
+      const u = safeUrl(x.url || x.link || x.href); if (!u) return;
       const k = hostOf(u) + u.replace(/^https?:\/\/[^/]+/i, '').replace(/[#?].*$/, '').replace(/\/$/, '');
       if (seen.has(k)) return; seen.add(k);
       out.push([clip(x.title || hostOf(u), 90), u]);
     });
-    take(res.results); take(res.pages); take(res.also_found);
+    take(res.results); take(res.pages); take(res.also_found); take(res.sources); take(res.organic_results);
+    if (Array.isArray(res)) take(res);
+    if (res.data && typeof res.data === 'object') { take(res.data.results); take(res.data.pages); take(res.data.sources); }
+    if (res.url || res.link) take([res]);
     return out;
   }
   const faviconUrl = host => 'https://icons.duckduckgo.com/ip3/' + encodeURIComponent(host) + '.ico';
@@ -64,7 +67,7 @@
         ? '<span class="ek-fav ek-fav-l" aria-hidden="true">' + esc(letterOf(h)) + '</span>'
         : '<span class="ek-fav" aria-hidden="true"><img src="' + esc(faviconUrl(h)) + '" data-h="' + esc(h) + '" alt="" width="18" height="18" loading="lazy" decoding="async" referrerpolicy="no-referrer"></span>';
       return '<a class="ek-link" href="' + esc(u) + '" data-ek-url="' + esc(u) + '" target="_blank" rel="noopener noreferrer" title="' + esc(u) + '">' + ico
-        + '<span class="ek-link-t"><span class="ek-link-n">' + esc(t || h) + '</span><span class="ek-link-h">' + esc(h) + '</span></span></a>';
+        + '<span class="ek-link-t"><span class="ek-link-n">' + esc(t || h) + '</span><span class="ek-link-h">' + esc(u) + '</span></span></a>';
     }).join('');
     if (!items) return '';
     const q = query ? '<div class="ek-q"><span class="ek-q-l">Searched</span><span class="ek-q-t">\u201c' + esc(query) + '\u201d</span></div>' : '';
@@ -318,6 +321,7 @@
       if (live.lines.length > MAX) live.lines.shift();
     }
     line.text = clip(text, opt.max || 120); line.k = k || line.k || 't'; line.st = st || '';
+    if (Array.isArray(opt.links)) line.links = opt.links.map(l => [String(l[0] || ''), safeUrl(l[1])]).filter(l => l[1]).slice(0,MAX_LINKS);
     line.bad = st === 'bad'; line.pill = opt.pill || ''; line.err = opt.err ? clip(opt.err, 140) : ''; line.pct = +opt.pct || 0; if (opt.ic) line.ic = opt.ic;
     // V1.9.70: new keyed lines wait their turn in the reveal queue so they drop in one by one like the rest.
     if (line.k === 'a') live.toolRan = true;

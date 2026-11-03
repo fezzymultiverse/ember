@@ -13,6 +13,7 @@
     { id: 'hub', open: () => D.body.classList.contains('ehub-on'), close: () => { if (W.EmberHub && W.EmberHub.close) W.EmberHub.close(); } },
     { id: 'apis', open: () => has('emberApis', 'open'), close: () => { const b = $('emberApisClose'); if (b) b.click(); } },
     { id: 'plugins', open: () => D.body.classList.contains('epl-on'), close: () => { if (W.EmberPlugins) W.EmberPlugins.close(); } },
+    { id: 'apiKeyManager', open: () => !!W.EmberKeyManager?.isOpen(), close: () => W.EmberKeyManager?.close() },
     { id: 'plus', open: () => { const m = $('plusMenu'); return !!(m && !m.classList.contains('hidden')); }, close: () => D.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })) },
   ];
   let stack = [];      // ids of panels that are open, oldest first

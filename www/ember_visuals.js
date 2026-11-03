@@ -78,7 +78,7 @@
   const tick = () => { raf = 0; try { paintProviders(); paintArtifacts(); } catch (_) { /* cosmetic only */ } };
   const queue = () => { if (!raf) raf = requestAnimationFrame(tick); };
   try { paintEmpty(); } catch (_) { /* cosmetic only */ }
-  new MutationObserver(queue).observe(D.body, { childList: true, subtree: true });
+  ['log','artList'].forEach(id => { const node = D.getElementById(id); if (node) new MutationObserver(queue).observe(node, { childList: true, subtree: true }); });
   queue();
   window.EmberVisuals = { providerName: answeringName, artifactType: k => { const t = kindToType(k); return t ? t.t : ''; } };
 })();

@@ -5,13 +5,15 @@
   const rows = () => Array.from(D.querySelectorAll('#cockpit_permissions .prow')).filter(r => r.querySelector('.pstatus'));
   const stateOf = r => { const p = r.querySelector('.pstatus'); return p.classList.contains('ok') ? 'ok' : p.classList.contains('bad') ? 'bad' : p.classList.contains('warn') ? 'warn' : 'na'; };
   const labelOf = r => ((r.querySelector(':scope > span:first-child') || r).textContent || '').trim();
-  let box = null, raf = 0;
+  let box = null, raf = 0, signature = '';
   function el(tag, cls, text) { const e = D.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function paint() {
     raf = 0;
     const sec = D.getElementById('cockpit_permissions'); if (!sec) return;
     const list = rows().map(r => ({ r, s: stateOf(r) })).filter(x => x.s !== 'na');
     if (!list.length) return;
+    const next = list.map(x => x.s + ':' + labelOf(x.r)).join('|');
+    if (next === signature && box?.isConnected) return; signature = next;
     if (!box || !box.isConnected) { box = el('div'); box.id = 'pmSummary'; box.setAttribute('role', 'status'); const first = sec.querySelector('.card'); sec.insertBefore(box, first || null); }
     const ok = list.filter(x => x.s === 'ok').length, need = list.filter(x => x.s !== 'ok');
     const pct = Math.round(ok * 100 / list.length);

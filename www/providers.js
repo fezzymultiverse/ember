@@ -155,18 +155,32 @@ const gemQuirk = (model, k) => { const q = GQ[model] || (GQ[model] = {}); if (!q
 
 // ---------- network: normal fetch, native HTTP as the fallback inside the APK ----------
 async function net(url, opt, timeout) {
-  const ac = new AbortController(), t = setTimeout(() => ac.abort(), timeout || 30000); activeControllers.add(ac);
-  try {
-    try { return await fetch(url, Object.assign({}, opt, { signal: ac.signal })); }
+  const ac = new AbortController(); activeControllers.add(ac);
+  const failure = () => Object.assign(new Error(routeCancelled ? 'Stopped by user.' : 'Request timed out; trying the next eligible model.'), { status: 0, code: routeCancelled ? 'cancelled' : 'timeout' });
+  let timer, onAbort;
+  const interrupted = new Promise((_, reject) => {
+    onAbort = () => reject(failure()); ac.signal.addEventListener('abort', onAbort, { once: true });
+    timer = setTimeout(() => ac.abort(), Math.max(1, timeout || 30000));
+  });
+  const work = async () => {
+    let r;
+    try { r = await fetch(url, Object.assign({}, opt, { signal: ac.signal })); }
     catch (e) {
-      if (e && e.name === 'AbortError') throw Object.assign(new Error(routeCancelled ? 'Stopped by user.' : 'timed out'), { status: 0, code: routeCancelled ? 'cancelled' : 'timeout' });
+      if (ac.signal.aborted || routeCancelled) throw failure();
       const H = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.CapacitorHttp;
-      if (!H || !H.request) throw Object.assign(new Error('network error or blocked by the browser'), { status: 0 });
-      const r = await H.request({ url, method: (opt && opt.method) || 'GET', headers: (opt && opt.headers) || {}, data: opt && opt.body ? JSON.parse(opt.body) : undefined, connectTimeout: timeout || 30000, readTimeout: timeout || 30000 });
-      const hd = r.headers || {};
-      return { ok: r.status >= 200 && r.status < 300, status: r.status, headers: { get: k => hd[k] || hd[k.toLowerCase()] || null }, text: async () => typeof r.data === 'string' ? r.data : JSON.stringify(r.data), json: async () => typeof r.data === 'string' ? JSON.parse(r.data) : r.data };
+      if (!H || !H.request) throw Object.assign(new Error('Network error or browser CORS restriction. Try the native APK or check connectivity.'), { status: 0 });
+      const native = await H.request({ url, method: (opt && opt.method) || 'GET', headers: (opt && opt.headers) || {}, data: opt && opt.body ? JSON.parse(opt.body) : undefined, connectTimeout: timeout || 30000, readTimeout: timeout || 30000 });
+      if (ac.signal.aborted || routeCancelled) throw failure();
+      const hd = native.headers || {}, data = typeof native.data === 'string' ? native.data : JSON.stringify(native.data);
+      return { ok: native.status >= 200 && native.status < 300, status: native.status, headers: { get: k => hd[k] || hd[k.toLowerCase()] || null }, text: async () => data, json: async () => JSON.parse(data) };
     }
-  } finally { clearTimeout(t); activeControllers.delete(ac); }
+    // SSE readers have their own idle watchdog. Ordinary JSON remains abortable UNTIL the body is read.
+    if (r.ok && (/text\/event-stream/i.test(r.headers?.get('content-type') || '') || (r.body && /text\/event-stream/i.test(opt?.headers?.Accept || '')))) return r;
+    const data = await r.text();
+    return { ok: r.ok, status: r.status, headers: r.headers, text: async () => data, json: async () => JSON.parse(data) };
+  };
+  try { return await Promise.race([work(), interrupted]); }
+  finally { clearTimeout(timer); ac.signal.removeEventListener('abort', onAbort); activeControllers.delete(ac); }
 }
 async function jfetch(url, opt, timeout) {
   const r = await net(url, opt, timeout);
@@ -297,20 +311,21 @@ async function freeModelsOf(id, fresh) {
   return Array.from(new Set(list.filter(m => isFreeModel(id,m) && !/content[-_]safety|guard|moderation|embed|rerank/i.test(m)))).sort();
 }
 async function listModels(id, key) {
-  const c = CFG[id];
-  if (c.kind === 'media') { await jfetch(c.base + '/v1/user/account', { headers: { Authorization: 'Bearer ' + key } }, 15000); return []; }
+  const c = CFG[id], deadline = Date.now() + 15000;
+  const catalogTimeout = () => { const ms = deadline - Date.now(); if (ms <= 0) throw Object.assign(new Error('Model catalog timed out.'), {code:'timeout',status:0}); return ms; };
+  if (c.kind === 'media') { await jfetch(c.base + '/v1/user/account', { headers: { Authorization: 'Bearer ' + key } }, catalogTimeout()); return []; }
   if (c.kind == 'oai') {
     // V1.10.32: LongCat. Use its live list when it has one; if the route is missing (404/405) fall back to the known names. 401/403 still reject the key.
     if (id === 'longcat') {
-      try { const jl = await jfetch(c.base + '/models', { headers: { Authorization: 'Bearer ' + key } }, 15000); const ids = (Array.isArray(jl) ? jl : (jl.data || [])).map(m => m && m.id).filter(Boolean); return ids.length ? ids : LONGCAT_MODELS.slice(); }
+      try { const jl = await jfetch(c.base + '/models', { headers: { Authorization: 'Bearer ' + key } }, catalogTimeout()); const ids = (Array.isArray(jl) ? jl : (jl.data || [])).map(m => m && m.id).filter(Boolean); return ids.length ? ids : LONGCAT_MODELS.slice(); }
       catch (er) { if (er && (er.status === 404 || er.status === 405)) return LONGCAT_MODELS.slice(); throw er; }
     }
-    const j = await jfetch(c.base + '/models', { headers: key ? { Authorization: 'Bearer ' + key } : {} }, 15000);
+    const j = await jfetch(c.base + '/models', { headers: key ? { Authorization: 'Bearer ' + key } : {} }, catalogTimeout());
     const rows = Array.isArray(j.data) ? j.data : []; rememberModels(id, rows);
     return Array.from(new Set(rows.map(m => m && m.id).filter(m => typeof m === 'string' && m)));
   }
   if (c.kind == 'claude') {
-    const j = await jfetch(c.base + '/models?limit=100', { headers: claudeHeaders(key) }, 15000);
+    const j = await jfetch(c.base + '/models?limit=100', { headers: claudeHeaders(key) }, catalogTimeout());
     return (j.data || []).map(m => m.id).filter(Boolean);
   }
   if (c.kind == 'cohere') {
@@ -318,7 +333,7 @@ async function listModels(id, key) {
     do {
       if (seen.has(token) || seen.size >= 20) throw new Error('Cohere model catalog pagination did not terminate safely.');
       seen.add(token);
-      const j = await jfetch(c.base + '/v1/models?endpoint=chat&page_size=100' + (token ? '&page_token=' + encodeURIComponent(token) : ''), { headers: { Authorization: 'Bearer ' + key, Accept: 'application/json' } }, 15000);
+      const j = await jfetch(c.base + '/v1/models?endpoint=chat&page_size=100' + (token ? '&page_token=' + encodeURIComponent(token) : ''), { headers: { Authorization: 'Bearer ' + key, Accept: 'application/json' } }, catalogTimeout());
       rows.push(...(Array.isArray(j.models) ? j.models : [])); token = j.next_page_token || '';
     } while (token);
     rememberModels(id,rows); return Array.from(new Set(rows.map(m => m && m.name).filter(m => typeof m === 'string' && m)));
@@ -327,7 +342,7 @@ async function listModels(id, key) {
   do {
     if (seen.has(token) || seen.size >= 20) throw new Error('Gemini model catalog pagination did not terminate safely.');
     seen.add(token);
-    const j = await gemFetch(c.base + '/models?pageSize=200' + (token ? '&pageToken=' + encodeURIComponent(token) : ''), key, {}, 15000);
+    const j = await gemFetch(c.base + '/models?pageSize=200' + (token ? '&pageToken=' + encodeURIComponent(token) : ''), key, {}, catalogTimeout());
     rows.push(...(Array.isArray(j.models) ? j.models : [])); token = j.nextPageToken || '';
   } while (token);
   return Array.from(new Set(rows.filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => String(m.name).replace(/^models\//, ''))));
@@ -487,7 +502,9 @@ async function call(id, key, model, o) {
   const md = LS.get('ember_model_metadata', {}), info = md[id] && md[id][model];
   if (info && info.maxOutput) o.max = Math.min(o.max || 400, info.maxOutput);
   if (info && info.parameters && !info.parameters.includes('tools')) o.tools = null;
-  const requestTimeout = o.documentMode ? 90000 : 40000;
+  if (!o._requestDeadline) o._requestDeadline = Date.now() + (o.documentMode ? 90000 : 25000);
+  const requestTimeout = Math.max(1, Math.min(o.documentMode ? 90000 : 25000, o._requestDeadline - Date.now(), o._providerDeadline ? o._providerDeadline - Date.now() : Infinity));
+  if (requestTimeout <= 1) throw Object.assign(new Error('Provider time budget reached.'), { code: 'timeout', status: 0 });
   let text = '';
   if (c.kind == 'oai') {
     const body = { model, messages: [{ role: 'system', content: o.system }].concat(o.messages), temperature: o.temp == null ? 0.8 : o.temp, max_tokens: o.max || 400 };
@@ -522,9 +539,9 @@ async function call(id, key, model, o) {
     };
     for (let pass = 0; pass < 2 && !text; pass++) {
       try {
-        if (typeof o.onToken == 'function' && !decl.length && !o.json) { text = await streamClaude(c.base + '/messages', body, key, o, 60000); }
+        if (typeof o.onToken == 'function' && !decl.length && !o.json) { text = await streamClaude(c.base + '/messages', body, key, o, requestTimeout); }
         else {
-          const j = await jfetch(c.base + '/messages', { method: 'POST', headers: claudeHeaders(key), body: JSON.stringify(body) }, 60000);
+          const j = await jfetch(c.base + '/messages', { method: 'POST', headers: claudeHeaders(key), body: JSON.stringify(body) }, requestTimeout);
           const blocks = Array.isArray(j.content) ? j.content : [];
           text = blocks.filter(p => p.type == 'text').map(p => p.text || '').join('');
           const tu = decl.length && blocks.find(p => p.type == 'tool_use' && p.name); if (tu) text = joinCall(text, tu.name, tu.input);
@@ -559,7 +576,7 @@ async function call(id, key, model, o) {
     if (!fold) gbody.systemInstruction = { parts: [{ text: sys }] };
     if (decl.length) { gbody.tools = [{ functionDeclarations: decl }]; gbody.toolConfig = { functionCallingConfig: { mode: 'AUTO' } }; }
     let j;
-    try { j = await gemFetch(c.base + '/models/' + model + ':generateContent', key, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(gbody) }, 60000); }
+    try { j = await gemFetch(c.base + '/models/' + model + ':generateContent', key, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(gbody) }, requestTimeout); }
     catch (er) {
       if (er.status == 400 || er.status == 422) {
         const why = String(er.message || '') + ' ' + String(er.raw || '');
@@ -590,7 +607,7 @@ async function health(id, e) {
     const cands = rank(id, list, 'fast');
     if (CFG[id].kind === 'media') { st.ok = true; st.msg = 'Account authenticated; image and audio features available'; }
     else if (!cands.length) throw Object.assign(new Error('key works but no chat model is available on it'), { status: 0 });
-    st.model = cands[0] || ''; st.ok = true; st.msg = st.msg || 'Model list accessible; generation not yet tested';
+    st.model = cands[0] || ''; st.ok = true; st.msg = st.msg || 'Catalog reachable; generation and account quota not yet tested';
   } catch (er) {
     st.code = er.status || 0;
     if (er.status == 429) { st.ok = true; st.limited = true; st.msg = 'rate limited right now (key is valid)'; }
@@ -601,13 +618,13 @@ async function health(id, e) {
   if (isCool(e.key)) st.limited = true;
   save(); return st;
 }
-async function healthAll() { for (const id of ACTIVE_IDS) for (const e of keys[id]) await health(id, e); } // AI engines only: Stability is a content-creation engine, checked from + > Media & Music
+async function healthAll() { const jobs = ACTIVE_IDS.flatMap(id => keys[id].map(e => [id,e])); let at = 0; await Promise.all(Array.from({length: Math.min(3,jobs.length)}, async () => { while (at < jobs.length) { const [id,e] = jobs[at++]; await health(id,e); } })); } // AI engines only: Stability is a content-creation engine, checked from + > Media & Music
 async function addKey(id, key) {
   key = clean(key);
   if (!key || !keys[id]) return { ok: false, why: 'empty' };
   if (keys[id].some(e => e.key === key)) return { ok: false, why: 'already added' };
   const e = { key, st: null }; keys[id].push(e); save(); await health(id, e);
-  if (id === 'gemini' && e.st && e.st.ok && !e.st.limited) gemProbe(e).then(() => emitStats(), () => {}); // V1.10.46: not awaited, adding a key stays as fast as before
+  // Tier is inferred only from actual user requests; no hidden generation probe on key add.
   return { ok: true, e };
 }
 function removeKey(id, key) { keys[id] = keys[id].filter(e => e.key !== key); cool.delete(key); save(); }
@@ -763,6 +780,8 @@ async function runInner(lane, o, tok) {
   const trying = (name, model) => { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-try', { detail: { name, model } })); } catch (e) { /* no listener */ } } }; // V1.8.3: once the native worker took the request, the page makes no further paid calls
   // when an engine failed and a different one answered, tell the UI (ai.js shows a toast). Background jobs stay silent.
   const done = r => { if (!pinnedEngine && lane == 'fast' && r.provider && CFG[r.provider] && r.provider != 'anthropic' && r.provider != 'cohere') LS.set('ember_last_good', r.provider); if (pinnedEngine && r.provider != pinnedEngine) { const p0 = failed.find(x => x.id == pinnedEngine); r.pinMiss = { want: pinnedEngine, why: p0 ? (p0.why || '') : 'no usable key' }; } const f = failed.find(x => x.id != r.provider); if (f && pl && !(pinnedEngine && r.provider == pinnedEngine)) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
+  const routeDeadline = Date.now() + (o.documentMode ? 330000 : 150000);
+  let providerDeadline = Infinity;
   let tried = false, routeStop = null;
   halted();
   if (o.routeProvider && !CFG[o.routeProvider]) throw Object.assign(new Error('The original engine cannot continue this tool result. No other engine was called for this follow-up.'), { code: 'fail' });
@@ -773,9 +792,12 @@ async function runInner(lane, o, tok) {
   }
   const routeIds = o.routeProvider && CFG[o.routeProvider] ? [o.routeProvider] : orderFor(lane);
   for (const id of routeIds) {
+    halted(); if (Date.now() >= routeDeadline) break;
+    providerDeadline = Math.min(routeDeadline, Date.now() + (o.documentMode ? 100000 : 40000));
     if (!o.routeProvider && onlyPinned(lane) && id != pinnedEngine) break; // V1.9.15: strict pin
     const soft = id === 'openrouter' && pinnedEngine !== id;
     for (const e of rotation(id, lane)) {
+      if (Date.now() >= providerDeadline) break;
       if (e.bad || isCool(e.key)) { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-skip', { detail: { id, why: e.bad ? 'key rejected' : 'resting after a rate limit' } })); } catch (_) { /* no listener */ } } continue; } // V1.9.78: a skipped engine is a real step
       halted();
       let models;
@@ -792,15 +814,16 @@ async function runInner(lane, o, tok) {
       let pool = routeModel ? [routeModel] : (pm ? [pm] : models), cap = routeModel || pm ? 1 : (soft ? 5 : (id === 'gemini' && gemTier(e) === 'free' ? GEM_FREE_TRIES : 3));
       for (let mi = 0; mi < pool.length && mi < cap; mi++) {
         const m = pool[mi];
-        halted();
+        halted(); if (Date.now() >= providerDeadline) break;
         if (modelResting(id,e.key,m)) continue;
-        trying(CFG[id].name, m); try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); if (id === 'gemini') gemClear(e, m); record(id,m,true,r.ms,200,r.usage); save(); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
+        trying(CFG[id].name, m); try { const r = await call(id, e.key, m, Object.assign(withFacts(o, lane, id, m, failed), { _providerDeadline: providerDeadline })); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); if (id === 'gemini') gemClear(e, m); record(id,m,true,r.ms,200,r.usage); save(); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
         catch (er) {
           if (er.code === 'cancelled' || routeCancelled) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' });
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
           record(id,m,false,0,er.status); e.st = Object.assign({},e.st || {},{at:Date.now(),code:er.status || 0,msg:String(er.message || '').slice(0,160),model:m});
           if (id === 'gemini' && gemNote(e, m, er) && !routeModel && !pm) { pool = gemAdjust(e, pool); cap = Math.max(cap, GEM_FREE_TRIES); } // V1.10.46: this key just showed it is free: paid-only models to the back, Gemma becomes reachable in this same route
           if (er.partial || (o._emitted && o._emitted.value)) { save(); throw Object.assign(er,{code:'partial_stream',message:'Stream interrupted after partial output. Retry explicitly to avoid mixing providers.'}); }
+          if (er.status === 404 && !pm && !routeModel) { const c = LS.get('ember_models', {}); delete c[id]; LS.set('ember_models', c); }
           if (authFailure(er)) { e.bad=true; e.st.ok=false; save(); break; }
           if (er.status == 402 && !(er.metadata && er.metadata.limit_source === 'openrouter_in_flight_budget')) { coolKey(e.key,er.retryAfter || 300); save(); break; }
           if (er.status == 429 || er.status == 402) { modelRest(id,e.key,m,er.retryAfter || 60); e.st.ok=true; e.st.limited=true; save(); continue; }

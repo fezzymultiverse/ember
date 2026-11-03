@@ -1,0 +1,82 @@
+/* 1.10.51: targeted repairs, no layout redesign. */
+#emberBootScreen{display:none!important}
+html body.cockpit-ui #settings #cockpitSettings .ember-legacy-key-card{display:none!important}
+#ekmBackdrop[hidden],#emberKeyManager[hidden]{display:none!important}
+#ekmBackdrop{position:fixed;inset:0;width:100%;height:100%;background:#0009;border:0;z-index:110100;backdrop-filter:blur(3px)}
+#emberKeyManager{position:fixed;inset:0 0 0 auto;width:min(480px,100%);height:100dvh;z-index:110101;background:var(--p,#101216);color:var(--t,#fff);border-left:1px solid var(--b,#333);display:flex;flex-direction:column;box-shadow:-12px 0 60px #0005;overscroll-behavior:contain}
+#emberKeyManager header{display:flex;justify-content:space-between;align-items:flex-start;flex-shrink:0;background:var(--p);padding:24px 20px 18px;gap:12px;border-bottom:1px solid var(--b)}
+#emberKeyManager header small{font-size:10px;color:var(--ac);letter-spacing:.12em}#emberKeyManager h2{font-size:25px;margin:5px 0}#emberKeyManager header p{font-size:12px;line-height:1.5;color:var(--m)}
+#emberKeyManager button,#emberKeyManager select,#emberKeyManager input{font:inherit;color:var(--t);background:var(--p2);border:1px solid var(--b);border-radius:10px;min-height:44px;padding:10px 12px}
+#emberKeyManager button{cursor:pointer}#emberKeyManager button:disabled{opacity:.55;cursor:wait}#emberKeyManager #ekmClose{font-size:24px;line-height:24px;flex:none}
+#emberKeyManager .ekm-body{overflow-y:auto;min-height:0;padding:20px;padding-bottom:max(24px,env(safe-area-inset-bottom));scrollbar-width:thin}
+#emberKeyManager label{display:block;font-size:13px;font-weight:650;margin-bottom:8px}#ekmProvider{width:100%}.ekm-entry{display:flex;gap:8px}.ekm-entry input{flex:1;min-width:0}#emberKeyManager #ekmAdd{background:var(--ac);color:#1a0800;border-color:var(--ac);font-weight:750;flex:none}
+#emberKeyManager .ekm-hint{font-size:12px;line-height:1.55;color:var(--m);margin:10px 0 16px}#emberKeyManager a{color:#7cbcff}#ekmStatus{font-size:12px;line-height:1.6;color:var(--m);margin:16px 0;overflow-wrap:anywhere;min-height:40px}.ekm-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--b);padding-top:16px}.ekm-toolbar h3{font-size:16px}
+.ekm-group{border:1px solid var(--b);border-radius:14px;margin:12px 0;overflow:hidden}.ekm-group h4{display:flex;gap:8px;align-items:center;font-size:14px;padding:12px;background:var(--p2)}.ekm-group h4>small{margin-left:auto;color:var(--m)}.ekm-key{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border-top:1px solid var(--b)}.ekm-key>div{min-width:0}.ekm-key b{font:12px ui-monospace,monospace}.ekm-key small{display:block;font-size:11px;line-height:1.5;margin-top:5px;color:var(--m);overflow-wrap:anywhere}.ekm-key button{font-size:12px!important;color:#ff9d8f!important}.ekm-empty{padding:20px;color:var(--m);font-size:13px}
+.ekm-appearance{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:16px 18px;border-bottom:1px solid var(--b);color:var(--t);background:var(--p)}.ekm-appearance label{font-weight:650;font-size:14px}.ekm-appearance select{max-width:65%;background:var(--p2);color:var(--t);border:1px solid var(--b);border-radius:10px;padding:10px;font:inherit}
+/* Never paint a connection row blue; only the little thumb track changes. */
+html body .epl-row[role=switch][aria-checked=true]{background:var(--p2,#0c1622)!important;border-color:var(--b,#273442)!important;box-shadow:none!important}
+html body .epl-sw.on{background:#287be2!important;border-color:#4ca6ff!important}.epl-tx{min-width:0}
+/* Stats cards and answer badges have distinct names now. Logo tiles cannot stretch. */
+html body .ef-provider{display:flex;align-items:center;gap:10px;white-space:normal;border-radius:12px;background:transparent;color:var(--t);font-size:13px;padding:12px;border:1px solid var(--b)}
+html body .ef-provider>div{min-width:0;flex:1}html body .ef-provider small{display:block;white-space:normal;overflow-wrap:anywhere;color:var(--m);font-size:11px;margin-top:4px}
+html body .ef-badge.ef-logo{display:inline-flex!important;position:relative!important;width:30px!important;height:30px!important;min-width:30px!important;max-width:30px!important;flex:0 0 30px!important;padding:4px!important;overflow:hidden!important;border-radius:8px!important}
+html body .ef-badge.ef-logo img{position:static!important;display:block!important;width:100%!important;height:100%!important;object-fit:contain!important;padding:0!important;max-width:100%!important}
+/* A continuous thin amber activity rail; decorative, never a progress percentage. */
+html body #typ .ek-row:not(:last-child)::before{left:13px;top:27px;bottom:-7px;width:1.5px;background:linear-gradient(#e5b539b3,#e5b53955);opacity:1}
+html body #typ .ek-ico{background:var(--bg);border-radius:50%}html body #typ .ek-run .ek-ico{box-shadow:0 0 0 3px #e5b53919}
+html body .ek-link-h{white-space:normal;overflow-wrap:anywhere;word-break:break-word;-webkit-line-clamp:3;display:-webkit-box;-webkit-box-orient:vertical}
+html body .ek-src summary:focus-visible,html body .ek-link:focus-visible{outline:2px solid #e5b539;outline-offset:3px}
+/* Light appearance: theme tokens plus legacy hard-coded surface overrides. Dark is unchanged. */
+html[data-ember-theme=light]{--bg:#f6f7fa;--p:#fff;--p2:#edf0f5;--b:#d4dae4;--t:#1c2534;--m:#546174;--ac:#ed7417;--ac2:#c85d0b;--on:#fff6ed;--cy:#976500;--gr:#168550;--rd:#b52d2d;--ember-thread-yellow:#af7b10;background:#f6f7fa!important;color:#1c2534!important}
+html[data-ember-theme=light] body{--bg:#f6f7fa;--p:#fff;--p2:#edf0f5;--b:#d4dae4;--t:#1c2534;--m:#546174;background:#f6f7fa!important;color:#1c2534!important}
+html[data-ember-theme=light] body #app{background:#f6f7fa!important}
+html[data-ember-theme=light] body :is(#app>header,#settings,#settings .sh,#settings .sb,#cockpitSettings,#cockpitMenu,.cockpit-menu,.cockpit-section,#drawer,#drawer .dh,#emberRightPanel,#keysSidePanel,#emberCommandCenter,.ecc-shell,.epl-sheet,.epl-body,.epl-head,#eplugins,.pmenu,#provDrop,.provdrop,.header-actions-menu,.artifact-viewer,.eb-viewer,.ei-panel){background:#fff!important;color:#1c2534!important;border-color:#d4dae4!important;box-shadow:0 8px 32px #192d5012}
+html[data-ember-theme=light] body :is(.card,.cr,.prow,.kgrp,.kghead,.kgbody,.ef-provider,.epl-grp,.epl-row,.pdrow,.cockpit-menu-row,.cset-row,.cmenu-row,.erp-group-head,.erp-item,.erp-side-head,.erp-bottom,.ccw-body,.cc-widget,.ef-panel,.ekm-settings-entry,.ekm-appearance){background:#fff!important;color:#1c2534!important;border-color:#d4dae4!important}
+html[data-ember-theme=light] body :is(.ct,.kghead,.provider-title,.epl-tx b,.pdn,.ksp-info b,.cmenu-title,.cockpit-menu b,.sh b,.erp-label b,.erp-side-head h2,.ek-txt,.tl-txt,.tl-done-t,.ek-link-n,.ek-q-t){color:#1c2534!important}
+html[data-ember-theme=light] body :is(.hint,.epl-tx small,.ksp-info small,.pdinfo small,.pdnote,.ek-link-h,.erp-sub,.erp-label small,.cmenu-sub,.cockpit-menu small,.mt,.ekm-hint){color:#546174!important}
+html[data-ember-theme=light] body :is(button,input,textarea,select,.btn,.hb,.engpill,#engs,.epf-orbit,.chip,.modes,.mode-menu,.epl-tab,.pdre,.ek-src>summary,.ek-link,.cr input,.cr select){color:#26354c;border-color:#c8d1df}
+html[data-ember-theme=light] body :is(input,textarea,select,.btn.g,.hb,.engpill,.modes,.mode-menu,.epl-tab,.pdre,.ek-src>summary,.ek-link){background:#edf0f5!important;color:#26354c!important}
+html[data-ember-theme=light] body :is(.msg.a,#typ,#amber-think,.tl-wrap,.et-wrap){background:transparent!important;color:#1c2534!important}
+html[data-ember-theme=light] body .msg.u{background:#e8edf5!important;color:#1c2534!important;border-color:#d4dae4!important}
+html[data-ember-theme=light] body :is(.composer,.compose,#dock,.dock,.inputwrap,.input-wrap,.inputbox,.composer-box,#inpWrap,#engs,#emberProviderFooter){background:#f6f7fa!important;color:#1c2534!important;border-color:#c8d1df!important}
+html[data-ember-theme=light] body :is(#inp,#text,#msg,#q){background:transparent!important;color:#1c2534!important}
+html[data-ember-theme=light] body #emberKeyManager{background:#fff!important;color:#1c2534!important}
+html[data-ember-theme=light] body #emberKeyManager :is(header,.ekm-group){background:#fff!important;border-color:#d4dae4!important}
+html[data-ember-theme=light] body #emberKeyManager :is(button,select,input,.ekm-group h4){background:#edf0f5;color:#26354c;border-color:#c8d1df}
+html[data-ember-theme=light] body .ekm-key button{color:#a62e22!important}
+html[data-ember-theme=light] body #emberKeyManager a{color:#175caa}
+html[data-ember-theme=light] body .ef-answer-provider{background:#fff0e2;color:#854214!important;border-color:#edc6a5}
+html[data-ember-theme=light] body .ekm-key small,html[data-ember-theme=light] body #ekmStatus{color:#546174}
+html[data-ember-theme=light] body .epl-row[role=switch][aria-checked=true]{background:#fff!important}
+/* Match legacy high-specificity cockpit rules without changing geometry. */
+html[data-ember-theme=light] body.cockpit-ui #settings.sheet,
+html[data-ember-theme=light] body.cockpit-ui #settings>.sh,
+html[data-ember-theme=light] body.cockpit-ui #settings>.sb,
+html[data-ember-theme=light] body.cockpit-ui #settings #cockpitMenu,
+html[data-ember-theme=light] body.cockpit-ui #settings #cockpitMenu .cmenu-row,
+html[data-ember-theme=light] body.cockpit-ui #settings #cockpitSettings .card{background:#fff!important;color:#1c2534!important;border-color:#d4dae4!important}
+html[data-ember-theme=light] body.cockpit-ui #settings #cockpitMenu .cmenu-t b,
+html[data-ember-theme=light] body.cockpit-ui #settings .sh .sh-t b,
+html[data-ember-theme=light] body.cockpit-ui #settings #cockpitSettings :is(.ct,.cr>span,.cockpit-subtitle,.cockpit-section>h2){color:#1c2534!important}
+html[data-ember-theme=light] body.cockpit-ui #settings #cockpitMenu .cmenu-t small,
+html[data-ember-theme=light] body.cockpit-ui #settings #cockpitMenu .cmenu-c,
+html[data-ember-theme=light] body.cockpit-ui #settings .sh .sh-t small,
+html[data-ember-theme=light] body.cockpit-ui #settings #cockpitSettings :is(.hint,.lb,.cockpit-desc){color:#546174!important}
+html[data-ember-theme=light] body.cockpit-ui #settings #cockpitSettings :is(input:not([type=checkbox]):not([type=range]),select,textarea){background:#edf0f5!important;color:#26354c!important;border-color:#c8d1df!important}
+html[data-ember-theme=light] body.cockpit-ui #settings :is(.set-search,.settings-search,.csearch,#cockpitSearchWrap,#settingsSearchWrap){background:#edf0f5!important;color:#26354c!important;border-color:#c8d1df!important}
+html[data-ember-theme=light] body.cockpit-ui #settings input[type=search]{background:#edf0f5!important;color:#26354c!important}
+html[data-ember-theme=light] body.cockpit-ui #settings #cockpitMenu .ekm-appearance{background:#fff!important}
+html[data-ember-theme=light] body.cockpit-ui #settings #cockpitMenu .ekm-appearance label{color:#26354c!important}
+html[data-ember-theme=light] body #app header .who b{color:#1c2534!important}
+html[data-ember-theme=light] body #app :is(.comp,.comp .row,.comp textarea,.comp input,.comp .side){background:#f6f7fa!important;color:#26354c!important}
+html[data-ember-theme=light] body #app .empty p{color:#546174!important}
+html[data-ember-theme=light] body #app :is(.eterm-bar,.eterm-dock,.et-dock,#etDock,#etTicker,.et-bottom){background:#edf0f5!important;color:#26354c!important}
+@media(prefers-reduced-motion:reduce){html body #typ .et-egg-ring,html body #typ .et-egg,html body #typ .tl-live,html body #typ .ek-run .ek-ico{animation:none!important;transition:none!important}}
+
+html[data-ember-theme=light] body.cockpit-ui #settings #cockpitSearchBox{background:#fff!important;border-color:#d4dae4!important}
+html[data-ember-theme=light] body.cockpit-ui #settings #cockpitSearchBox label{background:#edf0f5!important;color:#546174!important;border-color:#c8d1df!important}
+html[data-ember-theme=light] body.cockpit-ui #settings #gitWidget{background:#fff!important;color:#26354c!important;box-shadow:0 -5px 18px #192d5010!important}
+html[data-ember-theme=light] body.cockpit-ui #settings #gitWidget :is(.gw-head,.gw-t b,.gw-view,.gw-s,.gw-s b,.gw-tabs button){color:#26354c!important;background:#fff!important}
+html[data-ember-theme=light] body.cockpit-ui #settings #gitWidget :is(.gw-t small,.gw-s,.gw-sub,.hint){color:#546174!important}
+html[data-ember-theme=light] body.cockpit-ui #settings #cockpitSettings .ember-legacy-key-card{display:none!important}
+html[data-ember-theme=light] body #app :is(#etDock,#etDock .et-bar,.comp .moderow,.mode-pill,#bMode){background:#edf0f5!important;color:#26354c!important;border-color:#c8d1df!important}

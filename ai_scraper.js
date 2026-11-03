@@ -187,11 +187,12 @@ function focus(md, objective, max) {
 // ---------- providers ----------
 async function http(url, opt, tries) {
   tries = tries == null ? 1 : tries; // V1.8.2: was 2: a retry after a 5xx/network error is billed again by the provider. Rotation to the next provider replaces it.
-  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 45000);
+  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 18000);
   try {
     const r = await fetch(url, Object.assign({ signal: ctl.signal }, opt || {}));
     if (!r.ok) throw Object.assign(new Error('HTTP ' + r.status), { status: r.status });
-    return r;
+    const data = await r.text();
+    return { ok:r.ok, status:r.status, headers:r.headers, url:r.url, text:async()=>data, json:async()=>JSON.parse(data) };
   } catch (e) {
     const retryable = e.name == 'AbortError' ? false : (!e.status || e.status == 429 || e.status >= 500);
     if (tries > 1 && retryable) { await new Promise(r => setTimeout(r, 1200)); return http(url, opt, tries - 1); }
