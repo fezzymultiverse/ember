@@ -56,7 +56,27 @@
     }
   }
 
+  // ---- 3) V1.10.49: the live engine status ("Trying Groq · model", "Auto", ...) now lives at the bottom of the chat ----
+  // The header pill (#engs) stays in the DOM (other panels read it) but is hidden by CSS; its text and colour are mirrored here.
+  function mirrorStatus() {
+    const src = $('engs'), foot = $('emberProviderFooter'), txt = $('emberProviderText'); if (!src || !foot || !txt) return;
+    const t = (src.textContent || '').trim() || 'Provider activity \u00b7 ready';
+    if (txt.textContent !== t) txt.textContent = t;
+    const st = (src.className.match(/\b(ok|limited|bad|free|none)\b/) || [])[1] || 'none';
+    foot.setAttribute('data-st', st); foot.classList.toggle('epf-work', /working|activity/.test(src.className));
+    foot.title = src.title || '';
+  }
+  function startMirror() {
+    const src = $('engs'), foot = $('emberProviderFooter'); if (!src || !foot) return;
+    new MutationObserver(mirrorStatus).observe(src, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'title'] });
+    foot.tabIndex = 0; foot.setAttribute('role', 'button'); foot.setAttribute('aria-live', 'polite');
+    foot.addEventListener('click', e => { if (!e.target.closest('#emberProviderPause')) src.click(); }); // same as the old header pill: open Keys
+    foot.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); src.click(); } });
+    mirrorStatus();
+  }
+
   function start() {
+    startMirror();
     let tries = 0;
     const iv = setInterval(() => { tries++; if (mount() || tries > 40) { clearInterval(iv); paint(); } }, 250);
     ['ember-provider-stats', 'ember-names', 'ember-git-state'].forEach(n => window.addEventListener(n, paint));

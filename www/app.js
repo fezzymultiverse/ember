@@ -411,6 +411,19 @@ async function resolveAddonCalls(text, L, route) {
   if (route && route.webEvidence) msgs.push({ role: 'user', content: route.webEvidence });
   const request = [...conv.msgs].reverse().find(m => m.r == 'u');
   const artifactBudget = request && window.EmberDeliverables && (window.EmberDeliverables.intentCtx ? window.EmberDeliverables.intentCtx(request.t, conv.msgs) : window.EmberDeliverables.intent(request.t)) ? 12000 : 450;
+  // V1.10.43: if a file request ends with no text (the model kept emitting tool calls), ask once more with tools off and the file demanded.
+  const docRetry = async () => {
+    if (artifactBudget <= 450 || verbatim.length || Safety.lastLevel() >= 3) return '';
+    try {
+      if (window.EmberTimeline) window.EmberTimeline.note('The first try came back empty. Writing the file directly');
+      const base = Persona.sentMsgs(conv, S).map(x => ({ role: x.r == 'u' ? 'user' : 'assistant', content: Persona.body(x) }));
+      if (base.length && base[0].role == 'assistant') base.unshift({ role: 'user', content: '(we are picking the conversation back up)' });
+      base.push({ role: 'user', content: '[SYSTEM CHECK, not from him: no tools are available now. Write the complete requested file now as ONE <artifact type="..." title="..."> block, using only what you know and any web evidence already given. Do not reply with a tool_call block, and do not talk about repositories or code.]' });
+      const sysR = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, noTools: true, noAmbient: true, uiState: uiStateBlock() }), Safety.lastLevel());
+      const rr = await Prov.run(L.lane, Object.assign({ system: sysR + '\nDELIVERABLE OVERRIDE: the user requested a file. Ignore sentence limits; include the complete artifact block.', messages: base, temp: 0.6, max: artifactBudget, tools: null }, route ? { routeProvider: route.provider, routeModel: route.model } : {}));
+      return stripTags(String(rr.text || ''));
+    } catch (e) { return ''; }
+  };
   const rounds = []; // V1.9.19: every tool call made this turn, oldest first — feeds the RECENT ACTIONS block below
   const seenKeys = new Set();
   for (let round = 0; round < 4 && calls.length; round++) {
@@ -448,10 +461,10 @@ async function resolveAddonCalls(text, L, route) {
       const sys = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, noTools: last, noAmbient: Safety.lastLevel() >= 3, uiState: uiStateBlock(), actionHistory: historyLines(rounds) }), Safety.lastLevel());
       const synth = await Prov.run(L.lane, Object.assign({ system: sys + (artifactBudget > 450 ? '\nDELIVERABLE OVERRIDE: the user requested a file. Ignore sentence limits; include complete artifact blocks with the requested content, not just a summary. The no-raw-data instruction means do not dump tool logs; it does not prohibit requested JSON/CSV/code artifacts.' : ''), messages: msgs, temp: 0.85, max: artifactBudget, tools: last ? null : toolCatalog() }, route ? { routeProvider: route.provider, routeModel: route.model } : {}));
       cur = String(synth.text || '');
-    } catch (e) { return withVerbatim(stripTags(cur) || 'I tried, but the add-on came back empty.', verbatim); }
+    } catch (e) { return withVerbatim(stripTags(cur) || await docRetry() || 'I tried, but the add-on came back empty.', verbatim); }
     calls = last ? [] : parseCalls(cur);
   }
-  return withVerbatim(stripTags(cur) || (verbatim.length ? 'Here it is.' : 'I tried, but the add-on came back empty.'), verbatim);
+  return withVerbatim(stripTags(cur) || (verbatim.length ? 'Here it is.' : (await docRetry() || 'I tried, but the add-on came back empty.')), verbatim);
 }
 const REPLY_MS = 100000;
 async function reply(o) {
@@ -519,6 +532,24 @@ async function reply(o) {
     else if (finalText) finalText = await withinTurn(resolveAddonCalls(finalText, L, { provider: r.provider, model: r.model, webRead: web.results.some(x => x.result && x.result.markdown && !x.result.error), webEvidence: web.context }));
     if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });
     if (finalText && window.EmberDeliverables && Safety.lastLevel() < 3) finalText = window.EmberDeliverables.normalize(finalText, latest);
+    // V1.10.44: a visual request with no layout blocks, or under ~80% of the page target, gets ONE expand-and-add-visuals pass. The first draft is kept if the pass fails.
+    if (finalText && !bgWon() && window.EmberDeliverables && window.EmberDeliverables.visualGap && Safety.lastLevel() < 3 && !window.EmberDeliverables.hasOpenArtifact(finalText)) {
+      const DLv = window.EmberDeliverables, gap = DLv.visualGap(finalText, latest, conv.msgs);
+      if (gap) {
+        try {
+          if (TLn && TLn.note) TLn.note('Checking the layout: adding visuals and detail', 'vpass');
+          const base3 = Persona.sentMsgs(conv, S).map(x => ({ role: x.r == 'u' ? 'user' : 'assistant', content: Persona.body(x) }));
+          if (base3.length && base3[0].role == 'assistant') base3.unshift({ role: 'user', content: '(we are picking the conversation back up)' });
+          base3.push({ role: 'assistant', content: finalText }); base3.push({ role: 'user', content: DLv.visualPassPrompt(gap) });
+          const sysV = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, noTools: true, noAmbient: true, uiState: uiStateBlock() }), Safety.lastLevel());
+          const pgs = DLv.pageTarget ? DLv.pageTarget(latest, conv.msgs) : 0;
+          const o3 = { system: sysV + (web && web.context ? '\n' + web.context : '') + '\nDELIVERABLE OVERRIDE: write the full file as one artifact block.' + (DLv.pageNote ? DLv.pageNote(pgs) : ''), messages: base3, temp: 0.5, max: 8192, tools: null };
+          let r3; try { r3 = await withinTurn(Prov.run(L.lane, Object.assign(o3, r.provider ? { routeProvider: r.provider, routeModel: r.model } : {}))); } catch (_) { r3 = null; }
+          const nt = r3 && r3.text ? DLv.normalize(String(r3.text), latest) : '';
+          if (nt && !DLv.hasOpenArtifact(nt) && window.EmberArtifacts && window.EmberArtifacts.parse(nt).items.length && nt.length >= finalText.length * 0.9) finalText = nt;
+        } catch (e) { /* the first draft stands */ }
+      }
+    }
     GHr.assertReadFirst();
     if (finalText && (GHr.isCodeQuestion(latest, previous) || (window.EmberDeliverables ? window.EmberDeliverables.answerHasCode(finalText) : GHr.isCodeQuestion(finalText, latest)))) { const proof = GHr.lastRead(); if (!GHr.hasLiveRead(proof)) throw new Error('Read-First blocked this code answer: no live file was read from Knowledge Brain Repo. Check Command Centre > GitHub.'); }
     if (finalText && TLn && window.EmberArtifacts) { const made=window.EmberArtifacts.parse(finalText).items; if(made.length) TLn.note('Writing ' + made.map(a=>a.title).join(', ')); }

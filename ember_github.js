@@ -702,10 +702,12 @@ const RF_STOP = new Set(('the and for with that this what when where which who h
 const RF = { required: false, error: '', block: '', files: [], searched: 0, repos: [], terms: [], at: 0, q: '', ms: 0, timedOut: false };
 const lastRead = () => ({ required: RF.required, error: RF.error, files: RF.files.map(f => Object.assign({}, f)), searched: RF.searched, repos: RF.repos.slice(), terms: RF.terms.slice(), at: RF.at, q: RF.q, ms: RF.ms });
 function isCodeQuestion(msg, prev) {
-  const q = String(msg || '');
-  const code = /```|\b(code|coding|programming|program|software|algorithm|function|method|class|variable|loop|array|object|syntax|bug|debug|error|exception|stack\s?trace|compile|compiler|script|javascript|typescript|python|java|kotlin|swift|rust|golang|sql|html|css|react|node|npm|api|sdk|http|git|github|repo|repository|commit|branch|workflow|runner|source|file|app|application|website|frontend|backend|database|server|token|authentication|refactor|implementation|implement|patch|build|unit test|pull request|readme|docker|regex|recursion|binary|pseudocode|c\+\+|c#)\b|[\w.-]+\.(js|ts|tsx|jsx|py|kt|java|json|html|css|sh|go|rs|cpp|cs|yml|yaml|md)\b|\b\w+[_]\w+\b/i;
-  const matches = t => code.test(t) || /\b[a-z]+[A-Z][A-Za-z]+\b/.test(t);
-  return matches(q) || (q.length < 180 && /\b(it|that|this|yes|continue|fix|change|do|explain|why|how|show|example|again|proceed|more)\b/i.test(q) && matches(String(prev || '')));
+  // V1.10.50: weak words (app, file, error, build, server, token...) only count when the message is an ORDER (EmberTaskGate); a plain question or chat line never triggers a repo read.
+  const q = String(msg || ''), TG = window.EmberTaskGate, task = TG && TG.isTask ? TG.isTask(q, { prevUser: prev }) : true;
+  const strong = /```|\b(code|coding|algorithm|syntax|bug|debug|exception|stack\s?trace|compile|compiler|javascript|typescript|python|java|kotlin|swift|rust|golang|sql|html|css|react|npm|git|github|repo|repository|commit|branch|workflow|refactor|pull request|readme|docker|regex|pseudocode|c\+\+|c#)\b|[\w.-]+\.(js|ts|tsx|jsx|py|kt|java|json|html|css|sh|go|rs|cpp|cs|yml|yaml|md)\b|\b\w+[_]\w+\b/i;
+  const weak = /\b(program|programming|software|function|method|class|variable|loop|array|object|error|script|api|sdk|http|source|file|app|application|website|frontend|backend|database|server|token|authentication|implementation|implement|patch|build|unit test|runner|recursion|binary)\b/i;
+  const hit = t => strong.test(t) || /\b[a-z]+[A-Z][A-Za-z]+\b/.test(t) || (task && weak.test(t));
+  return hit(q) || (q.length < 180 && task && /\b(it|that|this|yes|continue|fix|change|do|explain|why|how|show|example|again|proceed|more)\b/i.test(q) && hit(String(prev || '')));
 }
 function recordRead(file) {
   if (!RF.at || file.at < RF.at) return;
@@ -756,6 +758,8 @@ async function prefetch(msg, prev) {
       const DL = window.EmberDeliverables, docTurn = m => { try { return !!(DL && m && DL.intent(m)); } catch (_) { return false; } };
       if (docTurn(msg) || (String(msg).trim().length <= 40 && docTurn(prev))) { RF.block = ''; RF.error = ''; return lastRead(); }
     }
+    // V1.10.50: a normal question never touches GitHub (the live tree + file reads cost seconds on every message while a token is saved).
+    if (!RF.required) { RF.block = ''; RF.error = ''; return lastRead(); }
     if (!on()) { RF.error = 'No GitHub token saved.'; return lastRead(); }
     // Also read before ordinary turns when connected: unclassified code questions cannot skip retrieval.
     const terms = rfTerms(msg); RF.terms = [...terms.keys()].slice(0, 8);

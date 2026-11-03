@@ -51,6 +51,8 @@ window.addEventListener('load',loaded,{once:true});window.addEventListener('page
 <link rel="stylesheet" href="ember_gitbrain.css?v=1.10.27">
 <link rel="stylesheet" href="ember_boot.css?v=1.10.25">
 <link rel="stylesheet" href="ember_v128.css?v=1.10.28"><link rel="stylesheet" href="ember_artbox.css?v=1.10.30"><link rel="stylesheet" href="ember_v129.css?v=1.10.32"><link rel="stylesheet" href="ember_document_engine.css?v=1.10.40">
+<link rel="stylesheet" href="ember_chat_polish.css?v=1.10.41"><link rel="stylesheet" href="ember_visuals.css?v=1.10.42">
+<link rel="stylesheet" href="ember_finish.css?v=1.10.49">
 </head><body><script src="ember_boot.js?v=1.10.25"></script>
 <section id="emberBootScreen" aria-label="Ember is starting" aria-busy="true">
   <div class="eb-top">EMBER / YOUR WORKSPACE</div>
@@ -85,6 +87,7 @@ window.addEventListener('load',loaded,{once:true});window.addEventListener('page
   </div>
 </section>
 <footer class="comp">
+<div id="emberProviderFooter" class="ember-provider-footer" role="status" aria-live="polite" aria-atomic="true"><span class="epf-orbit" aria-hidden="true"></span><span id="emberProviderText">Provider activity · ready</span><button type="button" id="emberProviderPause" aria-label="Pause provider history rotation" aria-pressed="false" hidden>Pause</button></div>
 <div class="mrow"><button id="bModes" class="mpill" aria-haspopup="menu" aria-expanded="false" aria-label="Modes: Chill, Sharp or Deep"><span class="mp-ic" aria-hidden="true">◐</span><span>Modes</span><b id="modesLbl">Chill</b><span class="mp-ch" aria-hidden="true">▾</span></button><div class="modes mpop hidden" id="modes" role="menu" aria-label="Modes"><button data-m="chill" role="menuitemradio">Chill<small>Relaxed, short and easy</small></button><button data-m="sharp" role="menuitemradio">Sharp<small>Tight, direct, no padding</small></button><button data-m="deep" role="menuitemradio">Deep<small>Slower, careful, longer</small></button></div><button id="bDocsQuick" aria-label="Open Documents: attach a file or note" title="Documents: attach a file or note">📎 <span>Docs</span></button></div>
 <div class="tools"><button id="bPasteIn" aria-label="Paste into the message box">📋 Paste</button><button id="bCopyIn" aria-label="Copy the message box text">⧉ Copy</button><button id="bDevice">📟 Device</button><button id="bReact">🧠 Reasoning</button><button id="bGraph">🕸 Graph</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
 <div id="plusChips" class="pchips hidden" aria-live="polite"></div>
@@ -568,15 +571,15 @@ window.addEventListener('load',loaded,{once:true});window.addEventListener('page
 
 <div class="modal" id="dlg"><div class="mc"><h2 id="dT"></h2><p id="dX"></p><input type="text" id="dI" class="hidden"><div class="btnrow" style="margin-top:14px"><button class="btn" id="dOk">OK</button><button class="btn g" id="dNo">Cancel</button></div></div></div>
 <div id="toast"></div>
-<script src="store.js"></script><script src="ember_keyscan.js"></script><script src="ember_document_engine.js?v=1.10.40"></script><script src="providers.js?v=1.10.40"></script><script src="ember_media.js"></script><script src="ember_downloads.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js?v=1.10.18-p12"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js?v=1.10.18-p12"></script><script src="ember_timeline.js"></script><script src="ember_steps.js"></script><script src="ember_artifacts.js?v=1.10.39"></script>
+<script src="ember_taskgate.js?v=1.10.50"></script><script src="store.js"></script><script src="ember_keyscan.js"></script><script src="ember_document_engine.js?v=1.10.40"></script><script src="providers.js?v=1.10.40"></script><script src="ember_media.js"></script><script src="ember_downloads.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js?v=1.10.18-p12"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js?v=1.10.18-p12"></script><script src="ember_timeline.js?v=1.10.49"></script><script src="ember_steps.js"></script><script src="ember_artifacts.js?v=1.10.39"></script>
 <script src="ember_deliverables.js?v=1.10.39"></script><script src="ember_panel_layout.js?v=1.10.12-panel1"></script><script src="ember_output_archive.js?v=panel-wired-2"></script><script src="ember_command_center.js?v=panel-wired-2"></script>
-<script src="ember_typewriter.js?v=1.10.33"></script><script src="ember_builtins.js?v=1.10.36"></script><script src="ember_keyless_media.js?v=1.10.33"></script><script src="app.js?v=1.10.36"></script><script src="ember_native.js"></script><script src="ai.js?v=panel-wired-2"></script><script src="ember_music_ui.js"></script><script src="ember_getmusic.js"></script><script src="ember_react_ui.js"></script><script src="ember_think_inline.js"></script><script src="ember_device.js?v=1.10.18-p11"></script>
+<script src="ember_graphics.js?v=1.10.41"></script><script src="ember_typewriter.js?v=1.10.47"></script><script src="ember_builtins.js?v=1.10.36"></script><script src="ember_keyless_media.js?v=1.10.33"></script><script src="app.js?v=1.10.36"></script><script src="ember_native.js"></script><script src="ai.js?v=panel-wired-2"></script><script src="ember_music_ui.js"></script><script src="ember_getmusic.js"></script><script src="ember_react_ui.js"></script><script src="ember_think_inline.js"></script><script src="ember_device.js?v=1.10.18-p11"></script>
 <script src="ember_docs_lib.js"></script>
 <script src="ember_graph.js"></script><script src="ember_github.js?v=panel-wired-2"></script><script src="ember_learn.js"></script>
 <script src="ember_find.js"></script><script src="ember_tasks.js"></script><script src="ember_keys.js"></script>
 <script src="ember_browser.js"></script>
 <script src="ember_term.js"></script>
-<script src="ember_voice.js"></script><script src="ember_lyrics.js"></script><script src="ember_musicbrain.js?v=1.10.18-p12"></script><script src="ember_projects.js"></script><script src="ember_lyric_thoughts.js"></script><script src="ember_prov_ui.js?v=1.10.18-p11"></script><script src="ember_pastekeys.js"></script><script src="ember_plus.js?v=1.10.18-p12"></script>
+<script src="ember_voice.js"></script><script src="ember_lyrics.js"></script><script src="ember_musicbrain.js?v=1.10.18-p12"></script><script src="ember_projects.js"></script><script src="ember_lyric_thoughts.js"></script><script src="ember_prov_ui.js?v=1.10.49"></script><script src="ember_pastekeys.js"></script><script src="ember_plus.js?v=1.10.18-p12"></script>
 <script src="ember_plugins.js?v=1.10.38"></script>
 
 <script src="ember_ui.js?v=1.10.18-p11"></script><script src="ember_extras.js"></script><script src="ember_create.js"></script><script src="ember_engines.js"></script>
@@ -685,7 +688,7 @@ window.addEventListener('load',loaded,{once:true});window.addEventListener('page
 })();
 </script>
 <script src="ember_v79.js"></script><script src="ember_v80.js"></script><script src="ember_v83.js"></script><script src="ember_v89.js"></script>
-<script src="ember_features.js?v=1.10.18-p11"></script><script src="ember_workspace.js?v=panel-wired-2"></script><script src="ember_action_menu.js"></script><script src="ember_prov_next.js?v=1.10.3"></script><script src="ember_icons.js?v=1.10.11"></script><script src="ember_v104.js?v=1.10.4"></script><script src="ember_mediaplus.js?v=1.10.5"></script><script src="ember_brainpush.js?v=1.10.5"></script><script src="ember_v110.js?v=1.10.10"></script><script src="ember_apis.js?v=1.10.18-p12"></script><script src="ember_back.js?v=panel-wired-2"></script>
+<script src="ember_features.js?v=1.10.18-p11"></script><script src="ember_workspace.js?v=panel-wired-2"></script><script src="ember_action_menu.js"></script><script src="ember_prov_next.js?v=1.10.49"></script><script src="ember_icons.js?v=1.10.11"></script><script src="ember_v104.js?v=1.10.4"></script><script src="ember_mediaplus.js?v=1.10.5"></script><script src="ember_brainpush.js?v=1.10.5"></script><script src="ember_v110.js?v=1.10.10"></script><script src="ember_apis.js?v=1.10.18-p12"></script><script src="ember_back.js?v=panel-wired-2"></script>
 <script src="ember_cockpit.js?v=1.10.38"></script>
 <script src="ember_gitbrain.js?v=1.10.27"></script>
 <script src="ember_keyless.js?v=1.10.25"></script><script src="ember_menu.js?v=1.10.25"></script>
@@ -705,4 +708,6 @@ window.addEventListener('load',loaded,{once:true});window.addEventListener('page
 <script src="ember_right_panel.js?v=1.10.20-nopanel"></script>
 <script src="ember_artbox.js?v=1.10.30"></script><script src="ember_v129.js?v=1.10.32"></script>
 <script src="ember_wiring.js"></script>
+<script src="ember_chat_polish.js?v=1.10.41"></script><script src="ember_visuals.js?v=1.10.42"></script>
+<script src="ember_builds.js?v=1.10.48"></script><script src="ember_image_lookup.js?v=1.10.48"></script><script src="ember_finish.js?v=1.10.48"></script>
 </body></html>

@@ -1,3 +1,5 @@
 Provider brand marks bundled for identification, from @lobehub/icons-static-svg 1.101.0 (MIT license).
 Upstream project: https://github.com/lobehub/lobe-icons
 Marks remain the property of their respective owners. Missing provider marks use a short text monogram.
+
+V1.10.32: longcat.svg is a simple original cat-ears monogram drawn for Ember, not LongCat's logo.

@@ -1,0 +1,29 @@
+PASS add-ons boot in full mobile app
+PASS existing settings and pinned provider preserved
+PASS local empty-state SVG loads
+PASS mobile page has no horizontal overflow
+PASS HTML HTML aliases normalize to one extension
+PASS HTML requests get a deliverable intent
+PASS search image tool is gated by existing web switch
+PASS real image lookup carries exact URL artist and license
+PASS source metadata is never treated as HTML
+PASS provider badge uses stored answering provider
+PASS missing provider metadata is not guessed
+PASS actual multi-page PDF rendered in-app
+PASS local PDF worker renders at mobile width
+PASS render is not simplified Markdown preview
+PASS Save PDF downloads identical preview bytes
+PASS DOCX embeds actual image media
+PASS DOCX preserves end marker code lists and table
+PASS full source tab includes final content and image reference
+PASS last PDF page loads on demand
+PASS workspace closes cleanly
+PASS PDF DOCX with embedded image do not upload document data
+PASS entire search row expands sources
+PASS source links retain exact returned URLs
+PASS search sources survive saved snapshot
+PASS enabled toggle style has blue accent
+PASS timeline connector is yellow
+PASS reduced-motion disables flicker
+PASS no uncaught browser errors
+ALL 28 CHECKS PASSED; PDF pages=9

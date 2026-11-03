@@ -106,6 +106,53 @@ const transient = er => !er || !er.status || [408, 409, 425, 500, 502, 503, 504,
 const mask = k => k.length > 12 ? k.slice(0, 6) + '…' + k.slice(-4) : k.slice(0, 3) + '…';
 const has = k => IDS.some(id => keys[id].some(e => e.key === k));
 
+// ---------- V1.10.46: Gemini key tier (free / paid), learned from Google's own answers ----------
+// Google has no "what plan am I on" call. A free key tells on itself: a model it has no free quota for, or a free-tier daily cap, comes back with a
+// 429 (or 400/403/404) whose body names the free tier. That is remembered on the key (e.tier, e.noFree) and a free key then skips paid-only models.
+// Nothing is hard-coded about WHICH models are free except the name rule below for models Google lists as paid-only; a model that actually
+// answers on a key clears its mark. A mark expires after 7 days so an upgraded key is picked up again.
+const GEM_PAID_ONLY = /(^|-)pro(-|$)|argon/i;
+const GEM_TIER_TTL = 7 * 24 * 3600 * 1000, GEM_FREE_TRIES = 6; // a free key tries up to 6 models per route (Flash x2, Flash-Lite x2, Gemma x2) instead of 3
+const gemEntry = (key) => (keys.gemini || []).find(e => e.key === key) || null;
+const gemTier = e => e && e.tier && Date.now() - (e.tierAt || 0) < GEM_TIER_TTL ? e.tier : '';
+function gemQuota(er) {
+  const st = Number(er && er.status); if (![400, 403, 404, 429].includes(st)) return null;
+  const t = String((er && er.raw) || '') + ' ' + String((er && er.message) || '');
+  if (!/free[_ -]?tier/i.test(t)) return null;
+  const zero = st == 429 ? /"quotaValue"\s*:\s*"?0"?\s*[,}]|limit:\s*0\b/i.test(t) : /not (available|supported)|only available|paid|upgrade|billing/i.test(t);
+  return { zero };
+}
+function gemNote(e, model, er) { // learn from one failed call; returns true when the key was newly recognised as free
+  const q = gemQuota(er); if (!q || !e) return false;
+  const was = gemTier(e); e.tier = 'free'; e.tierAt = Date.now();
+  if (q.zero && model) { const l = e.noFree || (e.noFree = []); if (!l.includes(model)) { l.push(model); if (l.length > 40) l.shift(); } }
+  if (was !== 'free') { e.st = Object.assign({}, e.st || {}, { msg: 'Free-tier key detected: paid-only models are skipped, Flash / Flash-Lite / Gemma are tried instead.' }); }
+  save(); return was !== 'free';
+}
+function gemClear(e, model) { // a model marked "no free quota" answered: this key is paid
+  if (!e || !(e.noFree || []).includes(model)) return;
+  e.noFree = e.noFree.filter(x => x !== model); e.tier = 'paid'; e.tierAt = Date.now(); save();
+}
+function gemAdjust(e, list) { // free key: paid-only and known no-free-quota models go to the back, order otherwise unchanged
+  if (gemTier(e) !== 'free') return list;
+  const no = e.noFree || [], dem = m => GEM_PAID_ONLY.test(m) || no.includes(m);
+  return list.filter(m => !dem(m)).concat(list.filter(dem));
+}
+// One tiny request to the top Pro model, once, when a Gemini key is added: 429 naming the free tier = free key, 200 = paid key.
+// Anything else (network, 400 about the request itself) says nothing and leaves the tier unknown, which behaves exactly like before.
+async function gemProbe(e) {
+  const list = ((LS.get('ember_models', {}).gemini || {}).list) || [];
+  const pro = rank('gemini', list, 'deep').find(m => /^gemini-/.test(m) && GEM_PAID_ONLY.test(m));
+  if (!pro || !e) return gemTier(e);
+  try {
+    await gemFetch(CFG.gemini.base + '/models/' + pro + ':generateContent', e.key, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'hi' }] }], generationConfig: { maxOutputTokens: 8 } }) }, 20000);
+    e.tier = 'paid'; e.tierAt = Date.now(); e.noFree = (e.noFree || []).filter(x => x !== pro); save();
+  } catch (er) { gemNote(e, pro, er); }
+  return gemTier(e);
+}
+const GQ = LS.get('ember_gem_quirks', {}); // per model: what the API refused once (system instruction, JSON mode, tools), so it is not asked again
+const gemQuirk = (model, k) => { const q = GQ[model] || (GQ[model] = {}); if (!q[k]) { q[k] = 1; LS.set('ember_gem_quirks', GQ); } };
+
 // ---------- network: normal fetch, native HTTP as the fallback inside the APK ----------
 async function net(url, opt, timeout) {
   const ac = new AbortController(), t = setTimeout(() => ac.abort(), timeout || 30000); activeControllers.add(ac);
@@ -132,7 +179,7 @@ async function jfetch(url, opt, timeout) {
     if (retryHeader && !retryAfter) { const at = Date.parse(retryHeader); if (Number.isFinite(at)) retryAfter = Math.max(0, Math.ceil((at - Date.now()) / 1000)); }
     if (!retryAfter && parsed) retryAfter = Number(parsed.retry_after || parsed.retryAfter || (parsed.error && (parsed.error.retry_after || parsed.error.retryAfter)) || (parsed.meta && parsed.meta.retry_after)) || 0;
     retryAfter = Math.max(0, retryAfter);
-    throw Object.assign(new Error(String(msg || body || ('HTTP ' + r.status)).slice(0, 200)), { status: r.status, retryAfter, metadata: parsed && parsed.error && parsed.error.metadata });
+    throw Object.assign(new Error(String(msg || body || ('HTTP ' + r.status)).slice(0, 200)), { status: r.status, retryAfter, metadata: parsed && parsed.error && parsed.error.metadata, raw: String(body || '').slice(0, 4000) }); // V1.10.46: raw body kept (Gemini's quota details are in it)
   }
   return r.json();
 }
@@ -183,7 +230,7 @@ async function streamClaude(url, body, key, o, timeout) {
   const r = await net(url, { method: 'POST', headers: Object.assign({ Accept: 'text/event-stream' }, claudeHeaders(key)), body: JSON.stringify(body) }, timeout || 60000);
   if (!r.ok) {
     let raw = ''; try { raw = await r.text(); } catch (_) {}
-    let msg = ''; try { const p = JSON.parse(raw); msg = (p.error && (p.error.message || p.error)) || p.message || ''; } catch (_) {}
+    let msg = '', parsed = null; try { const p = JSON.parse(raw); parsed = p; msg = (p.error && (p.error.message || p.error)) || p.message || ''; } catch (_) {} // V1.10.46: `parsed` was undefined here, so a Claude HTTP error threw a ReferenceError instead of the real status
     const h = r.headers && r.headers.get && r.headers.get('retry-after'); const retryAfter = Math.max(0, Math.min(900, Number(h) || 0));
     throw Object.assign(new Error(String(msg || raw || ('HTTP ' + r.status)).slice(0, 200)), { status: r.status, retryAfter, metadata: parsed && parsed.error && parsed.error.metadata });
   }
@@ -298,8 +345,8 @@ function rank(id, list, lane) {
     return out;
   }
   if (id == 'groq') {
-    const ok = list.filter(m => !/whisper|guard|tts|embed|playai|distil/i.test(m));
-    const pref = [/llama-3\.3-70b/, /llama.*70b/, /llama-4/, /llama/, /gpt-oss/, /qwen/];
+    const ok = list.filter(m => !/whisper|guard|tts|embed|playai|distil|orpheus/i.test(m)); // V1.10.45: orpheus = text-to-speech
+    const pref = [/llama-3\.3-70b/, /llama.*70b/, /llama-4/, /llama/, /gpt-oss-120b/, /gpt-oss/, /qwen/];
     const out = []; pref.forEach(p => ok.filter(m => p.test(m)).forEach(m => { if (!out.includes(m)) out.push(m); }));
     ok.forEach(m => { if (!out.includes(m)) out.push(m); });
     return out;
@@ -325,21 +372,27 @@ function rank(id, list, lane) {
     ok.forEach(m => { if (!out.includes(m)) out.push(m); });
     return out;
   }
-  const bad = /lite|image|tts|embed|live|audio|native|robotics|computer|imagen|veo|gemma|aqa|learnlm|vision|nano/i;
+  const bad = /lite|image|tts|embed|live|audio|native|robotics|computer|imagen|veo|gemma|aqa|learnlm|vision|nano|transcribe|translate/i;
   let c = list.filter(m => /^gemini-/.test(m) && !bad.test(m));
+  // V1.10.45: Flash-Lite was excluded outright, so when the top Flash models hit their small free daily cap the router fell to a Pro model with no free quota. Lite now sits after Flash.
+  const lt = list.filter(m => /^gemini-/.test(m) && /flash-lite/.test(m) && !/image|tts|embed|live|audio|native|robotics|computer|transcribe|translate|preview-tts/i.test(m));
   const want = deep ? 'pro' : 'flash';
   const w = c.filter(m => m.includes(want));
   const rest = c.filter(m => !m.includes(want));
   const srt = a => a.sort((x, y) => ver(y) - ver(x) || (/preview|exp/.test(x) ? 1 : 0) - (/preview|exp/.test(y) ? 1 : 0) || x.length - y.length);
-  return srt(w).concat(srt(rest));
+  // V1.10.46: Gemma (served by the Gemini API, its own free quota). Newest first, then the larger size; after Flash-Lite, so Gemini answers first and Gemma is the next bucket when those are capped.
+  const size = m => { const x = /(\d+)b/i.exec(m); return x ? Number(x[1]) : 0; };
+  const gm = list.filter(m => /^gemma-/.test(m) && !/embed|tts|image|audio|shield|pali|transcri|translate|live|vision/i.test(m)).sort((x, y) => ver(y) - ver(x) || size(y) - size(x) || x.length - y.length);
+  return deep ? srt(w).concat(srt(rest), srt(lt), gm) : srt(w).concat(srt(lt), gm, srt(rest));
 }
 const MC = 12 * 3600 * 1000;
 async function modelsFor(id, key, lane) {
+  const fin = r => id === 'gemini' ? gemAdjust(gemEntry(key), r) : r; // V1.10.46: a free Gemini key skips paid-only models
   const cache = LS.get('ember_models', {});
-  if (cache[id] && Date.now() - cache[id].at < MC && cache[id].list.length) return rank(id, cache[id].list, lane);
+  if (cache[id] && Date.now() - cache[id].at < MC && cache[id].list.length) return fin(rank(id, cache[id].list, lane));
   const list = await listModels(id, key);
   cache[id] = { at: Date.now(), list }; LS.set('ember_models', cache);
-  return rank(id, list, lane);
+  return fin(rank(id, list, lane));
 }
 
 // ---------- one call ----------
@@ -491,20 +544,34 @@ async function call(id, key, model, o) {
     if (tf && tf.name) { let ar = tf.arguments; if (typeof ar == 'string') { try { ar = JSON.parse(ar || '{}'); } catch (e) { ar = {}; } } text = joinCall(text, tf.name, ar); }
   } else {
     const contents = [];
+    const q = GQ[model] || {}, fold = !!(o._gemFold || q.fold), noJson = !!(o._gemNoJson || q.nojson), noTools = !!(o._gemNoTools || q.notools);
     o.messages.forEach(m => {
       const role = m.role == 'assistant' ? 'model' : 'user', last = contents[contents.length - 1];
       if (last && last.role == role) last.parts[0].text += '\n\n' + m.content; else contents.push({ role, parts: [{ text: m.content }] });
     });
+    // V1.10.46: some Gemma builds refuse systemInstruction ("Developer instruction is not enabled"). Then the instructions go in front of the first user turn instead.
+    const sys = String(o.system || '') + (o.json && noJson ? '\n\nReply with one valid JSON object and nothing else.' : '');
+    if (fold) { if (contents.length && contents[0].role == 'user') contents[0].parts[0].text = sys + '\n\n' + contents[0].parts[0].text; else contents.unshift({ role: 'user', parts: [{ text: sys }] }); }
     const gc = { temperature: o.temp == null ? 0.8 : o.temp, maxOutputTokens: (o.max || 400) * 4 }; // headroom: some Gemini models spend output tokens on thinking
-    if (o.json) gc.responseMimeType = 'application/json';
-    const decl = (!o.json && o.tools && o.tools.length) ? toolDecls(o.tools, true) : [];
-    const gbody = { systemInstruction: { parts: [{ text: o.system }] }, contents, generationConfig: gc };
+    if (o.json && !noJson) gc.responseMimeType = 'application/json';
+    const decl = (!o.json && !noTools && o.tools && o.tools.length) ? toolDecls(o.tools, true) : [];
+    const gbody = { contents, generationConfig: gc };
+    if (!fold) gbody.systemInstruction = { parts: [{ text: sys }] };
     if (decl.length) { gbody.tools = [{ functionDeclarations: decl }]; gbody.toolConfig = { functionCallingConfig: { mode: 'AUTO' } }; }
     let j;
     try { j = await gemFetch(c.base + '/models/' + model + ':generateContent', key, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(gbody) }, 60000); }
-    catch (er) { if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
-    const cand = j.candidates && j.candidates[0], parts = cand && cand.content && cand.content.parts ? cand.content.parts : [];
+    catch (er) {
+      if (er.status == 400 || er.status == 422) {
+        const why = String(er.message || '') + ' ' + String(er.raw || '');
+        if (!fold && /developer instruction|system.?instruction/i.test(why)) { gemQuirk(model, 'fold'); return call(id, key, model, Object.assign({}, o, { _gemFold: true })); }
+        if (o.json && !noJson && /json mode|response.?mime/i.test(why)) { gemQuirk(model, 'nojson'); return call(id, key, model, Object.assign({}, o, { _gemNoJson: true })); }
+        if (decl.length) { if (/function calling|tool/i.test(why)) gemQuirk(model, 'notools'); return call(id, key, model, Object.assign({}, o, { tools: null, _gemNoTools: true })); }
+      }
+      throw er;
+    }
+    const cand = j.candidates && j.candidates[0], parts = (cand && cand.content && cand.content.parts ? cand.content.parts : []).filter(p => !p.thought);
     text = parts.map(p => p.text || '').join('');
+    if (o.json && noJson) text = text.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, ''); // no JSON mode: strip a code fence if the model added one
     const fc = decl.length && parts.find(p => p.functionCall && p.functionCall.name); if (fc) text = joinCall(text, fc.functionCall.name, fc.functionCall.args);
   }
   text = String(text || '').trim();
@@ -539,7 +606,9 @@ async function addKey(id, key) {
   key = clean(key);
   if (!key || !keys[id]) return { ok: false, why: 'empty' };
   if (keys[id].some(e => e.key === key)) return { ok: false, why: 'already added' };
-  const e = { key, st: null }; keys[id].push(e); save(); await health(id, e); return { ok: true, e };
+  const e = { key, st: null }; keys[id].push(e); save(); await health(id, e);
+  if (id === 'gemini' && e.st && e.st.ok && !e.st.limited) gemProbe(e).then(() => emitStats(), () => {}); // V1.10.46: not awaited, adding a key stays as fast as before
+  return { ok: true, e };
 }
 function removeKey(id, key) { keys[id] = keys[id].filter(e => e.key !== key); cool.delete(key); save(); }
 
@@ -678,11 +747,11 @@ async function modelsOf(id, fresh) {
     if (!e) throw Object.assign(new Error('No ' + CFG[id].name + ' key saved.'), { status: 0 });
     list = await listModels(id, e.key); cache[id] = { at: Date.now(), list }; LS.set('ember_models', cache);
   }
-  const ok = list.filter(m => !/embed|whisper|guard|tts|moderation|rerank|flux|stable-diffusion|imagen|veo|sora|playai|ocr/i.test(m));
+  const ok = list.filter(m => !/embed|whisper|guard|tts|moderation|rerank|flux|stable-diffusion|imagen|veo|sora|playai|ocr|orpheus|transcribe/i.test(m));
   const isFree = m => /:free$/.test(m);
   return ok.slice().sort((a, b) => (isFree(b) - isFree(a)) || a.localeCompare(b));
 }
-const cachedModels = id => { const c = LS.get('ember_models', {}); return c[id] && c[id].list ? c[id].list.filter(m => !/embed|whisper|guard|tts|moderation|rerank|flux|stable-diffusion|imagen|veo|sora|playai|ocr/i.test(m)).sort() : []; };
+const cachedModels = id => { const c = LS.get('ember_models', {}); return c[id] && c[id].list ? c[id].list.filter(m => !/embed|whisper|guard|tts|moderation|rerank|flux|stable-diffusion|imagen|veo|sora|playai|ocr|orpheus|transcribe/i.test(m)).sort() : []; };
 
 // ---------- the router ----------
 // Free Mode ON: Pollinations goes first, then the keys. OFF: keys first. Either way Pollinations is the last resort,
@@ -719,14 +788,18 @@ async function runInner(lane, o, tok) {
       }
       const pm = pinnedModel && pinnedModel.id == id ? pinnedModel.model : null;
       const routeModel = o.routeProvider === id && o.routeModel ? String(o.routeModel) : null;
-      for (const m of (routeModel ? [routeModel] : (pm ? [pm] : models.slice(0, soft ? 5 : 3)))) {
+      // V1.10.46: a Gemini key known to be free tries up to 6 models (so Gemma is reachable); every other case keeps the old 3 (5 for opt-in engines)
+      let pool = routeModel ? [routeModel] : (pm ? [pm] : models), cap = routeModel || pm ? 1 : (soft ? 5 : (id === 'gemini' && gemTier(e) === 'free' ? GEM_FREE_TRIES : 3));
+      for (let mi = 0; mi < pool.length && mi < cap; mi++) {
+        const m = pool[mi];
         halted();
         if (modelResting(id,e.key,m)) continue;
-        trying(CFG[id].name, m); try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); record(id,m,true,r.ms,200,r.usage); save(); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
+        trying(CFG[id].name, m); try { const r = await call(id, e.key, m, withFacts(o, lane, id, m, failed)); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); if (id === 'gemini') gemClear(e, m); record(id,m,true,r.ms,200,r.usage); save(); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
         catch (er) {
           if (er.code === 'cancelled' || routeCancelled) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' });
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
           record(id,m,false,0,er.status); e.st = Object.assign({},e.st || {},{at:Date.now(),code:er.status || 0,msg:String(er.message || '').slice(0,160),model:m});
+          if (id === 'gemini' && gemNote(e, m, er) && !routeModel && !pm) { pool = gemAdjust(e, pool); cap = Math.max(cap, GEM_FREE_TRIES); } // V1.10.46: this key just showed it is free: paid-only models to the back, Gemma becomes reachable in this same route
           if (er.partial || (o._emitted && o._emitted.value)) { save(); throw Object.assign(er,{code:'partial_stream',message:'Stream interrupted after partial output. Retry explicitly to avoid mixing providers.'}); }
           if (authFailure(er)) { e.bad=true; e.st.ok=false; save(); break; }
           if (er.status == 402 && !(er.metadata && er.metadata.limit_source === 'openrouter_in_flight_budget')) { coolKey(e.key,er.retryAfter || 300); save(); break; }
@@ -841,5 +914,5 @@ function detail(id) {
 }
 async function pingAll() { await Promise.all(ACTIVE_IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); } // AI engines only (Stability: Prov.ping('stability') from its own card)
 function status() { const o = {}; IDS.forEach(id => { o[id] = stateOf(id); }); return o; }
-window.Prov = { stats, setEnabled, record, rotation, peek, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels, freeModelsOf, isFreeModel };
+window.Prov = { _rank: rank, _gemAdjust: gemAdjust, tierOf: (id, key) => id === 'gemini' ? gemTier(gemEntry(key)) : '', probeTier: key => gemProbe(gemEntry(key)), stats, setEnabled, record, rotation, peek, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels, freeModelsOf, isFreeModel };
 })();

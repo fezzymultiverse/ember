@@ -14,9 +14,23 @@ let open = false, busy = false, lastAt = 0, tk = 0, sessionChecked = false;
 function lat(d) { return d.lat ? '⚡ ' + d.lat + ' ms' : '⚡ —'; }
 // Branded, full-colour provider marks. Inline SVG keeps the icons crisp and available offline.
 function mark(id) { return window.EmberProviderBadge ? window.EmberProviderBadge(id) : '<span class="pdbrand">'+esc(id.slice(0,2).toUpperCase())+'</span>'; }
+// V1.10.49: tapping a provider row SWITCHES to it (same pin as Settings > Keys > engine pin). No key = nothing to switch to, so that row still opens Keys.
+const pinnedId = () => { try { return (window.Prov && window.Prov.getPinned && window.Prov.getPinned()) || ''; } catch (e) { return ''; } };
+const freeChoice = () => { try { return !!(window.Prov.freeOn() && !pinnedId() && localStorage.getItem('ember_cockpit_pollinations') !== null && /true/.test(localStorage.getItem('ember_cockpit_pollinations'))); } catch (e) { return false; } };
+function openKeys() { const s = $('bSet'); if (s) s.click(); setTimeout(() => { const t = document.querySelector('.stab[data-st="keys"]'); if (t) t.click(); }, 60); }
+function switchTo(id) {
+  const P = window.Prov, sel = $('engPin'); if (!P) return;
+  if (id !== 'free' && !(P.entries(id) || []).length) { openKeys(); return; } // no key saved: nothing to switch to
+  const want = id === 'free' ? 'pollinations' : id;
+  const cur = id === 'free' ? (freeChoice() ? 'pollinations' : '') : pinnedId();
+  const next = cur === want ? '' : want; // tapping the engine that is already pinned goes back to Auto
+  if (sel && Array.from(sel.options).some(o => o.value === next)) { sel.value = next; sel.dispatchEvent(new Event('change', { bubbles: true })); }
+  else if (id !== 'free') { try { P.setPinned(next || null); if (!next) P.setPinnedModel(null); } catch (e) { /* pin is best effort */ } }
+  try { window.dispatchEvent(new Event('ember-names')); window.dispatchEvent(new Event('ember-provider-stats')); } catch (e) { /* repaint is best effort */ }
+}
 function rowFor(id) {
   const P = window.Prov, st = P.stateOf(id), n = P.entries(id).length, c = P.CFG[id], d = P.detail(id), chk = false;
-  const proto = c.status === 'prototype' ? ' <i class="pdproto">prototype</i>' : '';
+  const proto = (c.status === 'prototype' ? ' <i class="pdproto">prototype</i>' : '') + (pinnedId() === id ? ' <i class="pdproto pd-on">pinned</i>' : '');
   const keys = n + ' key' + (n === 1 ? '' : 's');
   let sub, right;
   if (!n) { sub = TXT.none; right = '<div class="pdlat pdl-mut">No key</div>'; }
@@ -76,8 +90,7 @@ if ($('bProv')) {
     if (e.target.closest('#pdRe')) { check(); return; }
     const r = e.target.closest('.pdrow'); if (!r) return;
     toggle(false);
-    const s = $('bSet'); if (s) s.click();
-    setTimeout(() => { const t = document.querySelector('.stab[data-st="keys"]'); if (t) t.click(); }, 60);
+    switchTo(r.getAttribute('data-id'));
   });
   document.addEventListener('click', e => { if (open && !e.target.closest('#provDrop') && !e.target.closest('#bProv')) toggle(false); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && open) toggle(false); });

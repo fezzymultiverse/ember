@@ -10,7 +10,7 @@
   };
   const baseName = t => String(t || 'artifact').replace(/\.[A-Za-z0-9]{1,5}$/, '') || 'artifact';
   const isMd = t => t === 'markdown' || t === 'md';
-  const normType = t => { t = String(t || 'code').toLowerCase().trim(); return t === 'md' ? 'markdown' : /^(doc|docx|document|letter|report)$/.test(t) ? 'document' : /^(svg|image\/svg\+xml)$/.test(t) ? 'svg' : t; };
+  const normType = t => { t = String(t || 'code').toLowerCase().trim(); return /^(html(?:\.html)?|htm|text\/html)$/.test(t) ? 'html' : t === 'md' ? 'markdown' : /^(doc|docx|document|letter|report)$/.test(t) ? 'document' : /^(svg|image\/svg\+xml)$/.test(t) ? 'svg' : t; };
   function parse(text) {
     const src = String(text == null ? '' : text), items = [];
     const re = /<artifact\b([^>]*)>([\s\S]*?)<\/artifact\s*>/gi;
@@ -22,6 +22,7 @@
       const language = get('language') || (type === 'html' ? 'html' : isMd(type) ? 'markdown' : type);
       const fallback = ({markdown:'notes.md',html:'index.html',code:'script.' + (language === 'python' ? 'py' : language === 'bash' ? 'sh' : language === 'javascript' ? 'js' : 'txt'),json:'data.json',csv:'data.csv',pdf:'document.pdf',document:'document.md',svg:'image.svg',image:'image.png'})[type] || 'artifact.txt';
       let title = safeName(get('title'), fallback);
+      if (type === 'html') title = title.replace(/(?:\.html?)+$/i, '') + '.html';
       if (type === 'pdf') title = baseName(title) + '.pdf';
       else if (type === 'svg') title = baseName(title) + '.svg';
       const opts = {}; ['theme', 'accent', 'cover', 'toc', 'orientation', 'subtitle', 'author', 'date'].forEach(k => { const v = get(k); if (v) opts[k] = v; });
@@ -33,7 +34,7 @@
     const tail = src.slice(last), open = /<artifact\b([^>]*)>([\s\S]*)$/i.exec(tail);
     if (open && !/<\/artifact\s*>/i.test(open[2]) && open[2].trim().length > 20) {
       const whole = parse(tail.slice(open.index) + '\n</artifact>');
-      if (whole.items.length) { clean += tail.slice(0, open.index); items.push(whole.items[0]); last = src.length; }
+      if (whole.items.length) { clean += tail.slice(0, open.index); whole.items[0].incomplete = true; items.push(whole.items[0]); last = src.length; }
     }
     clean += src.slice(last);
     return { text:clean.trim(), items };
@@ -94,7 +95,7 @@
     const html = a.type === 'html', pdf = a.type === 'pdf', doc = a.type === 'document', svg = a.type === 'svg', md = isMd(a.type);
     const at = (k, label, cls) => '<button class="artifact-action' + (cls ? ' ' + cls : '') + '" data-artifact-' + k + '="' + i + '" data-message-index="' + mi + '">' + label + '</button>';
     const view = html || md || pdf || doc || svg || ['code','json','csv'].includes(a.type);
-    return '<section class="artifact-card" aria-label="Artifact '+esc(a.title)+'"><div class="artifact-icon" aria-hidden="true">'+iconFor(a)+'</div><div class="artifact-info"><b>'+esc(a.title)+'</b><small>'+kindLabel(a)+(a.language && a.type === 'code' ? ' · '+esc(a.language) : '')+' · '+a.content.length.toLocaleString()+' chars</small></div>'
+    return '<section class="artifact-card" aria-label="Artifact '+esc(a.title)+'"><div class="artifact-icon" aria-hidden="true">'+iconFor(a)+'</div><div class="artifact-info"><b>'+esc(a.title)+'</b><small>'+kindLabel(a)+(a.incomplete ? ' · INCOMPLETE' : '')+(a.language && a.type === 'code' ? ' · '+esc(a.language) : '')+' · '+a.content.length.toLocaleString()+' chars</small></div>'
       +(view?at('view', html?'Live Preview':a.type==='code'?'View code':'View'):'')
       +(pdf?at('pdf','Save PDF'):at('pdf','PDF','secondary'))
       +(doc?at('doc','Word','secondary'):'')
@@ -297,6 +298,7 @@
   }
   let pdfBusy = false;
   async function exportPdf(a) {
+    if (window.EmberBuilds) return window.EmberBuilds.exportPdf(a);
     const D = window.EmberDeliverables, name = baseName(a.title);
     if (pdfBusy) { T('A PDF is already being built. One moment.'); return; }
     if (!D || !D.pdf) { T('The bundled PDF engine did not load. Restart Ember and try again.'); return false; }
@@ -417,6 +419,8 @@
   // ---- viewer ----
   function close() { const old=document.getElementById('artifactOverlay'); if(old) old.remove(); }
   function view(a) {
+    if (window.EmberBuilds && window.EmberBuilds.canView(a)) return window.EmberBuilds.view(a);
+    if (window.EmberBuilds) window.EmberBuilds.close();
     close(); const overlay=document.createElement('div'); overlay.id='artifactOverlay'; overlay.className='artifact-overlay';
     const html=a.type==='html', svg=a.type==='svg', paper=a.type==='pdf'||a.type==='document';
     let body, sub, foot = '';
@@ -428,7 +432,7 @@
     else if (isMd(a.type)) { body = '<div class="artifact-dark">' + markdownHtml(a.content) + '</div>'; sub = 'Markdown'; foot = fb('pdf', 'Save PDF') + fb('download', 'Download .md', 'secondary') + fb('copy', 'Copy', 'secondary'); }
     else { body = '<pre class="artifact-text'+(a.type==='code'?' artifact-code':'')+'">'+(a.type==='code'?highlightCode(a.content):esc(a.content))+'</pre>'; sub = 'Artifact preview'; foot = fb('copy', 'Copy') + fb('pdf', 'PDF', 'secondary') + fb('download', 'Download', 'secondary'); }
     overlay.innerHTML='<div class="artifact-viewer" role="dialog" aria-modal="true" aria-label="'+esc(a.title)+'"><header class="artifact-viewer-head"><div><b>'+esc(a.title)+'</b><small>'+sub+'</small></div><button type="button" class="artifact-close" aria-label="Close preview">×</button></header><div class="artifact-viewer-body'+(html?' is-html':'')+'">'+body+'</div>'+(foot?'<footer class="artifact-viewer-foot">'+foot+'</footer>':'')+'</div>';
-    document.body.appendChild(overlay); hydrate(overlay); if(paper) a4Paginate(overlay);
+    document.body.appendChild(overlay); hydrate(overlay); if (window.EmberImageLookup) window.EmberImageLookup.enhance(overlay, a); if(paper) a4Paginate(overlay);
     overlay.querySelector('.artifact-close').onclick=close;
     overlay.addEventListener('click',e=>{
       if(e.target===overlay){close();return;}
