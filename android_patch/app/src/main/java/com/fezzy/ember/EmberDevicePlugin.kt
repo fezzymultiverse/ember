@@ -1,6 +1,9 @@
 package com.fezzy.ember
 
 import android.Manifest
+import android.app.Activity
+import androidx.activity.result.ActivityResult
+import com.getcapacitor.annotation.ActivityCallback
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
@@ -30,6 +33,37 @@ import com.getcapacitor.annotation.PermissionCallback
     permissions = [Permission(strings = [Manifest.permission.ACCESS_FINE_LOCATION], alias = "wifiname")]
 )
 class EmberDevicePlugin : Plugin() {
+
+    // Artifact Save As: works on scoped storage without WRITE_EXTERNAL_STORAGE.
+    @PluginMethod
+    fun saveFile(call: PluginCall) {
+        val data = call.getString("data")
+        if (data.isNullOrEmpty() || data.length > 90000000) { call.reject("Empty file or file exceeds the 64 MB save limit"); return }
+        val name = (call.getString("name") ?: "Ember-artifact").replace(Regex("[\\\\/:*?\"<>|\\x00-\\x1f]"), "_").take(120)
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = call.getString("mime") ?: "application/octet-stream"
+            putExtra(Intent.EXTRA_TITLE, name)
+        }
+        try { startActivityForResult(call, intent, "artifactSaveResult") }
+        catch (e: Exception) { call.reject("No system file picker available: " + (e.message ?: "unknown error")) }
+    }
+
+    @ActivityCallback
+    private fun artifactSaveResult(call: PluginCall?, result: ActivityResult) {
+        if (call == null) return
+        if (result.resultCode != Activity.RESULT_OK) { call.resolve(JSObject().put("cancelled", true)); return }
+        val uri = result.data?.data
+        if (uri == null) { call.reject("No save location returned"); return }
+        bridge.execute {
+            try {
+                val bytes = android.util.Base64.decode(call.getString("data") ?: "", android.util.Base64.DEFAULT)
+                val stream = context.contentResolver.openOutputStream(uri, "w") ?: throw Exception("Cannot open selected location")
+                stream.use { it.write(bytes); it.flush() }
+                call.resolve(JSObject().put("ok", true).put("path", uri.toString()).put("bytes", bytes.size))
+            } catch (e: Exception) { call.reject("File was not saved: " + (e.message ?: "write failed")) }
+        }
+    }
 
     @PluginMethod
     fun getInfo(call: PluginCall) {

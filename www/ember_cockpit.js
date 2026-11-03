@@ -17,7 +17,7 @@
     const sections = {};
     const groups = [
       ['features','Free Mode','Chat with no key needed, and the optional AI capabilities'],
-      ['engine','Engine keys & media engines','Which engine answers, API keys, Puter token, picture and PDF engines, vision'],
+      ['engine','Engine keys & media engines','Which engine answers, API keys, Puter token and vision'],
       ['providers','Routing & providers','Provider routing, live model catalogs, key rotation and fallback, media artifacts'],
       ['general','Memory & persona','Your name, persona, tone, read aloud and voice, memory, look, backup'],
       ['device','Device tools','Wi-Fi, storage and RAM, battery, local diagnostics and document reading'],
@@ -36,7 +36,7 @@
     // 1.10.18 Part 7: Settings is ONE panel. Eight rows, one job each; tap a row to open its sub menu.
     const ROWS = [
       {id:'general', title:'Memory & persona', desc:'Your name, persona, tone, read aloud and voice, memory, look, backup', sections:['general']},
-      {id:'keys', title:'Engines, keys & routing', desc:'Free Mode, which engine answers, API keys, provider routing and media engines', sections:['features','engine','providers']},
+      {id:'keys', title:'Engines, keys & routing', desc:'Free Mode, which engine answers, API keys and provider routing', sections:['features','engine','providers']},
       {id:'scraping', title:'Web scraping & search', desc:'Scraper keys, the free reader, web search, health checks and tests', sections:['scraping']},
       {id:'hacking', title:'Termux & terminal', desc:'Termux mode, pen-test persona and the built-in terminal', sections:['hacking']},
       {id:'device', title:'Device tools', desc:'Wi-Fi, storage and RAM, battery, diagnostics and document reading', sections:['device']},
@@ -105,16 +105,9 @@
       while (keyCard.firstChild) fold.append(keyCard.firstChild);
       keyCard.append(fold);
     }
-    // Actual media controls live inline, including their original delegated handler root.
-    const mediaCard = $('bMediaEng')?.closest('.card'), mediaSheet = $('xengines');
-    if (mediaCard && mediaSheet) {
-      W.EmberEngines.open(); W.EmberEngines.close();
-      mediaSheet.classList.add('cockpit-inline-media'); mediaSheet.querySelector('.sh')?.remove();
-      mediaSheet.removeAttribute('role'); mediaSheet.removeAttribute('aria-modal');
-      mediaCard.append(mediaSheet); $('bMediaEng').remove();
-      W.EmberEngines.open = () => openSettings('engine', mediaCard);
-      W.EmberEngines.close = () => {};
-    }
+    // Automatic output capabilities have a read-only sheet under +, not Settings.
+    const mediaCard = $('bMediaEng')?.closest('.card');
+    if (mediaCard) mediaCard.remove();
     // Downloads retain original on-click handlers; move the entire tail into Hacking.
     const routing = $('efRouting'), content = routing?.querySelector('.ef-content');
     if (content) {
@@ -129,7 +122,7 @@
       if (yt && $('cockpitYouTube')) { const hint = yt.nextElementSibling; $('cockpitYouTube').append(yt); if (hint?.classList.contains('hint')) $('cockpitYouTube').append(hint); }
       routing.querySelector(':scope > .ct').textContent = 'Providers · routing policy';
       const guide = D.createElement('p'); guide.className = 'hint';
-      guide.textContent = 'All bundled providers remain available in Engine & Media Control. Load a pinned engine’s live models to see your account’s catalog; OpenRouter :free models are labelled free. Multiple keys rotate, with key/model cooldowns and provider fallback unchanged. Claude is paid and pin-only; Stability is media-only. Free tiers and availability are determined by each provider, not guaranteed by Ember.';
+      guide.textContent = 'All bundled providers remain available in Engine & Media Control. Load a pinned engine’s live models to see your account’s catalog; OpenRouter :free models are labelled free. Multiple keys rotate, with key/model cooldowns and provider fallback unchanged. Claude is paid and pin-only. Optional media connections live under +, outside Settings. Free tiers and availability are determined by each provider, not guaranteed by Ember.';
       routing.querySelector(':scope > .ct').after(guide);
     }
     // 1.10.18 Part 7: every control lives in the row that matches its job. Nodes are moved, never cloned.
@@ -355,7 +348,7 @@
     const others = Array.from(host.querySelectorAll(':scope > .ecc-card'));
     const thought = others.find(c => /thought/i.test(head(c))), memory = others.find(c => /memory/i.test(head(c)));
     const ov = D.createElement('section'); ov.id = 'eccOverview'; ov.className = 'ecc-card eccx-overview';
-    ov.innerHTML = '<h2>Overview</h2><div id="eccxTiles" class="eccx-tiles"></div><h3 class="eccx-h">Providers, free models and key rotation</h3><div id="eccxTable" class="eccx-table" role="table" aria-label="Providers"></div><p class="hint eccx-note">Free Mode needs no key (Pollinations pictures, Forge community GPUs). Add several keys for one provider and Ember rotates between them: a rate-limited or rejected key rests and the next one answers, then the next provider takes over. OpenRouter :free models and Plugsky micro/lite are labelled free once their live catalog is loaded. Claude is paid and pin-only; Stability is media-only. Free tiers are set by each provider, not guaranteed by Ember.</p><div class="btnrow"><button type="button" class="btn g" id="eccxCheck">Check all keys</button><button type="button" class="btn g" id="eccxOpenKeys">Manage keys in Settings</button></div><p id="eccxStatus" class="hint" role="status"></p>';
+    ov.innerHTML = '<h2>Overview</h2><div id="eccxTiles" class="eccx-tiles"></div><h3 class="eccx-h">Providers, free models and key rotation</h3><div id="eccxTable" class="eccx-table" role="table" aria-label="Providers"></div><p class="hint eccx-note">Free Mode needs no key (Pollinations pictures, Forge community GPUs). Add several keys for one provider and Ember rotates between them: a rate-limited or rejected key rests and the next one answers, then the next provider takes over. OpenRouter :free models and Plugsky micro/lite are labelled free once their live catalog is loaded. Claude is paid and pin-only. Optional media connections live under +, outside Settings. Free tiers are set by each provider, not guaranteed by Ember.</p><div class="btnrow"><button type="button" class="btn g" id="eccxCheck">Check all keys</button><button type="button" class="btn g" id="eccxOpenKeys">Manage keys in Settings</button></div><p id="eccxStatus" class="hint" role="status"></p>';
     const panels = {overview: ov, routing, thought, memory};
     const LABEL = {overview:'Overview', routing:'Routing & keys', thought:'Inspector', memory:'Memory'};
     const bar = D.createElement('div'); bar.id = 'eccDash'; bar.className = 'eccx-tabs'; bar.setAttribute('role','tablist'); bar.setAttribute('aria-label','Command Centre');

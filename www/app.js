@@ -20,11 +20,21 @@ const migrateMem = m => {
 };
 let mem = MEM_DEF();
 let conv = null, busy = false, lastErr = null, backupKeys = false, curTurn = null, handedTurn = '';
+let backgroundTypingTurn = '';
 let streamText = '', cancelRequested = false, activityStatus = '', rejectTurn = null;
 function paintRouteStatus(name, model) { const b = $('engs'); if (!b) return; b.classList.add('working'); const sp = b.querySelector('span'); if (sp) sp.textContent = name ? ('Trying ' + name + (model ? ' · ' + model : '')) : 'Connecting…'; b.title = 'Live routing status: ' + (name || 'connecting') + (model ? ' · ' + model : ''); }
-window.addEventListener('ember-try', e => { streamText = ''; const d = e.detail || {}; paintRouteStatus(d.name, d.model); const p = $('streamPreview'); if (p) p.remove(); });
-window.addEventListener('ember-token', e => { streamText = String(e.detail && e.detail.text || ''); let p = $('streamPreview'); if (!p && streamText) { $('log').insertAdjacentHTML('beforeend', '<div class="msg a stream-preview" id="streamPreview"><div></div><small>Live response</small></div>'); p = $('streamPreview'); } if (p) { const d = p.querySelector('div'); if (d) d.innerHTML = fmt(streamText); down(); } });
-window.addEventListener('ember-switch', () => { streamText = ''; const p = $('streamPreview'); if (p) p.remove(); });
+const writer = window.EmberTypewriter.create({
+  paint: text => {
+    streamText = text;
+    let p = $('streamPreview');
+    if (!p && text) { $('log').insertAdjacentHTML('beforeend', '<div class="msg a stream-preview" id="streamPreview"><div></div><small>Live response</small></div>'); p = $('streamPreview'); }
+    if (p) { const d = p.querySelector('div'); if (d) d.innerHTML = fmt(text); down(); }
+  }
+});
+window.addEventListener('ember-try', e => { writer.reset(); streamText = ''; const d = e.detail || {}; paintRouteStatus(d.name, d.model); const p = $('streamPreview'); if (p) p.remove(); });
+window.addEventListener('ember-token', e => { if (backgroundTypingTurn !== curTurn) writer.push(String(e.detail && e.detail.text || '')); });
+window.addEventListener('ember-switch', () => { writer.reset(); streamText = ''; const p = $('streamPreview'); if (p) p.remove(); });
+window.addEventListener('ember-stop-request', () => writer.reset());
 // V1.9.19: spatial awareness — which sheet/tab he is actually looking at right now, so the AI is not guessing
 let curUI = 'Chat';
 const setUI = name => { curUI = name; };
@@ -446,7 +456,7 @@ async function resolveAddonCalls(text, L, route) {
 const REPLY_MS = 100000;
 async function reply(o) {
   o = o || {}; if (busy) return;
-  busy = true; cancelRequested = false; streamText = ''; lastErr = null; $('bSend').disabled = true; $('bStop').classList.remove('hidden'); $('bStop').disabled = false; $('bStop').textContent = ''; $('bSend').classList.add('hidden'); typing(true);
+  busy = true; cancelRequested = false; writer.reset(); streamText = ''; lastErr = null; $('bSend').disabled = true; $('bStop').classList.remove('hidden'); $('bStop').disabled = false; $('bStop').textContent = ''; $('bSend').classList.add('hidden'); typing(true);
   const turnId = conv.id + ':' + conv.msgs.length; curTurn = turnId;
   const cancelledTurn = new Promise((_, reject) => { rejectTurn = reject; }); cancelledTurn.catch(() => {});
   const withinTurn = promise => Promise.race([promise, cancelledTurn]);
@@ -484,12 +494,13 @@ async function reply(o) {
     const lastU = conv.msgs.length ? [...conv.msgs].reverse().find(m => m.r == 'u') : null;
     const web = !o.directive && Safety.lastLevel() < 3 && window.EmberDeliverables ? await withinTurn(window.EmberDeliverables.prepare(latest, { cancelled: () => cancelRequested || curTurn !== turnId, step: TLn && TLn.step ? TLn.step.bind(TLn) : null })) : { results: [], context: '' };
     if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });
-    const call = Persona.respond(conv, { S, mem, webEvidence: web.context, directive: o.directive, lane: L.lane, deep: L.deep, uiState: uiStateBlock(), planHint: !o.directive && lastU ? planHint(lastU.t) : '', shouldCancel: () => cancelRequested || curTurn !== turnId, onToken: (piece, full) => { try { if (window.EmberCommandCenter) window.EmberCommandCenter.inspect(full); } catch (_) {} if (!GHr.hasLiveRead(GHr.lastRead())) return; try { window.dispatchEvent(new CustomEvent('ember-token', { detail: { piece, text: full } })); } catch (_) {} } });
+    const call = Persona.respond(conv, { S, mem, webEvidence: web.context, directive: o.directive, lane: L.lane, deep: L.deep, uiState: uiStateBlock(), planHint: !o.directive && lastU ? planHint(lastU.t) : '', shouldCancel: () => cancelRequested || curTurn !== turnId, onToken: (piece, full) => { try { if (window.EmberCommandCenter) window.EmberCommandCenter.inspect(full); } catch (_) {} try { window.dispatchEvent(new CustomEvent('ember-token', { detail: { piece, text: full } })); } catch (_) {} } });
     // V1.9.33: no reply may hang the screen. After REPLY_MS the page stops trying engines and shows an error with Resend.
     let dl; const guard = new Promise((_, no) => { dl = setTimeout(() => { try { if (Prov.abortInflight) Prov.abortInflight(); } catch (e) { /* ignore */ } no(Object.assign(new Error('No reply after ' + Math.round(REPLY_MS / 1000) + ' seconds. An engine is stuck or very slow. Tap resend, or pin a different engine in Settings.'), { code: 'timeout' })); }, REPLY_MS); });
     call.catch(() => {}); // the race below reports it; a late failure after the deadline must not surface as an unhandled rejection
     let r; try { r = await Promise.race([window.EmberNative ? window.EmberNative.holdDuringReply(call) : call, guard, cancelledTurn]); } finally { clearTimeout(dl); }
     if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });
+    if (backgroundTypingTurn === turnId) return; // native delivery owns the visible queue
     if (TLn && r) TLn.note('Got a reply from ' + (r.provider || 'an engine') + (r.model ? ' (' + r.model + ')' : '') + (r.ms ? ' in ' + (r.ms / 1000).toFixed(1) + 's' : ''), 'got');
     let finalText = r.text;
     const bgWon = () => conv.msgs.some(m => m.turn === turnId); // the background task already delivered this turn's reply
@@ -502,6 +513,8 @@ async function reply(o) {
     if (finalText && TLn && window.EmberArtifacts) { const made=window.EmberArtifacts.parse(finalText).items; if(made.length) TLn.note('Writing ' + made.map(a=>a.title).join(', ')); }
     try { if (window.EmberCommandCenter && finalText) window.EmberCommandCenter.inspect(finalText); } catch (_) { /* independent view */ }
     if (finalText && !bgWon()) {
+      await withinTurn(writer.finish(finalText, () => cancelRequested || curTurn !== turnId));
+      if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });
       try { window.dispatchEvent(new CustomEvent('ember-turn-end', { detail: { words: (String(streamText || '').trim().match(/\S+/g) || []).length } })); } catch (_) { /* no listener */ }
       const tlSnap = window.EmberTimeline ? window.EmberTimeline.snapshot() : null;
       conv.msgs.push({ r: 'a', t: finalText, ts: Date.now(), turn: turnId, tl: tlSnap || undefined, deep: L.deep || undefined, webRead: web.results.map(x => ({ url: x.url, provider: x.result.provider || null, ok: !x.result.error, cached: !!x.result.cached })), ghRead: GHr.lastRead(), eng: { p: r.provider, m: r.model, ms: r.ms, pm: r.pinMiss ? r.pinMiss.want : undefined } });
@@ -518,7 +531,7 @@ async function reply(o) {
     }
     if (curTurn === turnId && !(e && e.code === 'cancelled')) lastErr = e.message || 'Something broke.';
   }
-  if (curTurn === turnId) { rejectTurn = null; busy = false; streamText = ''; $('bSend').disabled = false; $('bSend').classList.remove('hidden'); $('bStop').classList.add('hidden'); $('bStop').disabled = false; $('engs').classList.remove('working'); typing(false); curTurn = null; }
+  if (curTurn === turnId) { writer.reset(); rejectTurn = null; busy = false; streamText = ''; $('bSend').disabled = false; $('bSend').classList.remove('hidden'); $('bStop').classList.add('hidden'); $('bStop').disabled = false; $('engs').classList.remove('working'); typing(false); curTurn = null; }
   if (talkOn && lastErr) talkOff('Talk mode off: that reply failed');
   renderLog();
   saveSession(); // persist session state after every reply
@@ -604,21 +617,17 @@ async function send() {
     const mks = MP && MP.takeAll ? MP.takeAll() : [], pdfArmed = !!(window.EmberPlus && window.EmberPlus.isOn && window.EmberPlus.isOn('pdf'));
     if (mks.length + (plusImage ? 1 : 0) + (pdfArmed ? 1 : 0) > 1) { // V1.10.22: several Create modes armed together run one after another on the same prompt
       for (const m of mks) await mediaRoute(t, m, false);
-      if (plusImage) { let ok = false; if (MP && MP.bridgeOn()) ok = await mediaRoute(t, { kind: 'image', provider: 'stability' }, true); if (!ok) await imageRoute(t); }
+      if (plusImage) { let ok = false; if (MP && MP.bridgeOn()) ok = await mediaRoute(t, { kind: 'image', provider: 'stability' }, true); if (!ok) await reply({directive: 'Draw the requested illustration directly as a complete <artifact type="svg" title="Ember-image.svg">SVG content</artifact>. Request: '+t}); }
       if (pdfArmed) { try { await reply(); } finally { window.EmberPlus.consume('pdf'); } }
       return;
     }
     if (MP) { mk = mks[0] || null; if (!mk && MP.bridgeOn()) { const k = MP.detect(t); if (k) mk = { kind: k, provider: 'stability' }; else if (plusImage) mk = { kind: 'image', provider: 'stability' }; } }
     if (mk && await mediaRoute(t, mk, plusImage)) return;
   }
-  const mediaKindOnly = /\b(video|animation|audio|music|sound)\b/i.test(t);
-  if (!plusImage && window.EmberMedia?.cfg().enabled && /\b(create|generate|make|draw|render|produce)\b/i.test(t) && /\b(image|picture|artwork|illustration|video|animation|audio|music|sound)\b/i.test(t) && (mediaKindOnly || !(window.EmberEngines && window.EmberEngines.intent && window.EmberEngines.intent(t) == 'image'))) {
-    const kind=/\b(video|animation)\b/i.test(t)?'video':/\b(audio|music|sound)\b/i.test(t)?'audio':'image';
-    const provider='stability';
-    await window.EmberAgentAddon.dispatch('media_prepare',{provider,kind,prompt:t});
-    conv.msgs.push({r:'a',t:'I prepared your '+kind+' request in AI Features. Review the platform and press Generate to authorize it; nothing has been submitted yet.',ts:Date.now()}); await persist();renderLog();return;
+  if (/\b(create|generate|make|produce|compose|render)\b/i.test(t) && /\b(video|animation|audio|music|sound|beat|jingle|instrumental)\b/i.test(t) && !/\b(pdf|document|report|explain|how to|lyrics)\b/i.test(t)) {
+    await mediaRoute(t, { kind: /\b(video|animation)\b/i.test(t) ? 'video' : 'audio', provider: 'keyless' }, false); return;
   }
-  if (plusImage || (window.EmberEngines && window.EmberEngines.intent && window.EmberEngines.intent(t) == 'image')) { await imageRoute(t); return; } // V1.9.84: + > Create image. V1.9.87: plain-English picture requests route here too
+  if (plusImage || (window.EmberEngines && window.EmberEngines.intent && window.EmberEngines.intent(t) == 'image')) { await reply({ directive: 'Create an original SVG illustration matching this request: ' + t + '. Return the complete SVG inside <artifact type="svg" title="Ember-image.svg">...</artifact>. No remote photo service, no invented image URLs. SVG is vector illustration, not a photograph.' }); return; } // V1.9.84: + > Create image. V1.9.87: plain-English picture requests route here too
   if (await directNewPipe(t)) return;
   if (window.EmberPlus && window.EmberPlus.isOn && window.EmberPlus.isOn('pdf')) { try { window.dispatchEvent(new CustomEvent('ember-create-log', { detail: { kind: 'pdf', text: 'PDF mode: Ember writes the document, then Save PDF builds the file with the bundled pdfmake engine.' } })); } catch (_) { /* live terminal optional */ } try { await reply(); } finally { window.EmberPlus.consume('pdf'); } return; }
   reply();
@@ -628,7 +637,7 @@ async function mediaRoute(t, mk, plusImage) {
   const MP = window.EmberMediaPlus, TLn = window.EmberTimeline;
   busy = true; lastErr = null; $('bSend').disabled = true; typing(true);
   const turnId = conv.id + ':' + conv.msgs.length; curTurn = turnId;
-  try { if (TLn && TLn.step) TLn.step('🎨', 'Making ' + mk.kind + ' with ' + 'Stability AI', 'im-media'); } catch (_) { /* timeline optional */ }
+  try { if (TLn && TLn.step) TLn.step('🎨', 'Making ' + mk.kind + ' with ' + (mk.kind === 'image' ? 'Stability AI' : 'keyless media API'), 'im-media'); } catch (_) { /* timeline optional */ }
   let r; try { r = await MP.make(mk.kind, mk.provider, t); } catch (e) { r = { ok: false, kind: mk.kind, error: (e && e.message) || 'The media job failed.' }; }
   if (curTurn !== turnId) return true;
   if (!r.ok && mk.kind === 'image' && r.noKey && plusImage) { busy = false; $('bSend').disabled = false; typing(false); curTurn = null; return false; } // no Stability key: the picture router (Pollinations, Forge) answers instead
@@ -1310,10 +1319,17 @@ async function applyBg(r) {
   if (c.msgs.some(m => m.turn === turn)) return;
   const ghRead = c.ghReadTurns && c.ghReadTurns[turn];
   if (window.EmberGithub && ((ghRead && ghRead.required) || (window.EmberDeliverables ? window.EmberDeliverables.answerHasCode(text) : window.EmberGithub.isCodeQuestion(text, ''))) && !window.EmberGithub.hasLiveRead(ghRead)) return;
+  if (isCur && document.visibilityState !== 'hidden' && (!busy || curTurn === turn)) {
+    backgroundTypingTurn = turn; busy = true; cancelRequested = false; curTurn = turn;
+    writer.reset(); $('bSend').disabled = true; $('bSend').classList.add('hidden'); $('bStop').classList.remove('hidden'); $('bStop').disabled = false;
+    const shown = await writer.finish(text, () => cancelRequested || curTurn !== turn);
+    backgroundTypingTurn = '';
+    if (!shown || cancelRequested || curTurn !== turn) { if(curTurn === turn) { writer.reset(); busy=false; streamText=''; $('bSend').disabled=false; $('bSend').classList.remove('hidden'); $('bStop').classList.add('hidden'); typing(false); curTurn=null; renderLog(); } return; }
+  }
   c.msgs.push({ r: 'a', t: text, ghRead, ts: Date.now(), turn, bg: true, eng: { p: r.provider, m: r.model, ms: 0 } });
   c.updated = Date.now(); await Store.put(c);
   if (isCur) {
-    if (curTurn === turn) { busy = false; $('bSend').disabled = false; typing(false); curTurn = null; }
+    if (curTurn === turn) { writer.reset(); busy = false; streamText = ''; $('bSend').disabled = false; $('bSend').classList.remove('hidden'); $('bStop').classList.add('hidden'); typing(false); curTurn = null; }
     renderLog(); saveSession();
   }
 }

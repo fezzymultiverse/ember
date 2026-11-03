@@ -9,11 +9,10 @@ const $ = id => document.getElementById(id);
 if (!$('bPlus')) return;
 const KEY = 'ember_plus';
 const TOGGLES = [
-  { id: 'image', icon: '🎨', label: 'Create image', hint: 'Next message becomes a picture: Pollinations, Forge, then Stability if you saved a key', chip: 'Create image', once: true },
-  { id: 'audio_gen', icon: '🎵', label: 'Create audio', hint: 'Next message becomes music or sound, made by Stability AI', chip: 'Create audio', once: true },
-  { id: 'video_gen', icon: '🎬', label: 'Create video', hint: 'Next message becomes a video: Stability images + music, composed on this phone', chip: 'Create video', once: true },
-  { id: 'stab', icon: '⚡', label: 'Stability bridge', hint: 'ON: just ask in chat for an image, audio or video and Ember makes it with Stability. OFF: only the Create buttons do', chip: 'Stability bridge' },
-  { id: 'pdf', icon: '📄', label: 'Create PDF', hint: 'Next message becomes a full PDF artifact (Save PDF builds the file)', chip: 'Create PDF', once: true },
+  { id: 'image', icon: '🎨', label: 'Create image', hint: 'Ember draws SVG illustrations directly; no image plugin needed', chip: 'Create image', once: true },
+  { id: 'audio_gen', icon: '🎵', label: 'Create audio', hint: 'Next message uses the configured keyless music API', chip: 'Create audio', once: true },
+  { id: 'video_gen', icon: '🎬', label: 'Create video', hint: 'Next message uses the configured keyless video API', chip: 'Create video', once: true },
+  { id: 'stab', icon: '⚡', label: 'Stability images', hint: 'Optional keyed image generation only; music and video use keyless APIs', chip: 'Stability bridge' },
   { id: 'device', icon: '📱', label: 'Device Access', hint: 'Let Ember read local files & Termux', chip: 'Device Access' },
   { id: 'web', icon: '🌐', label: 'Web Search', hint: 'Force live scraping/DuckDuckGo', chip: 'Web Search' },
   { id: 'reason', icon: '🧠', label: 'Reasoning', hint: 'Use chain-of-thought / slower model', chip: 'Reasoning' },
@@ -28,7 +27,7 @@ const ONCE = [
 const LINES = {
   image: '',
   audio_gen: '', video_gen: '',
-  stab: 'STABILITY BRIDGE is ON: when he asks for an image, music/sound/audio, or a video, call media_generate (kind image|audio|video, prompt). It really makes the file with Stability AI (image, audio; video is several Stability images plus audio composed on the phone) and saves it. A finished IMAGE is shown inline in this chat automatically: do not tell him to look in any panel, tab or Command Centre, and do not paste links; just say it is above. Audio and video are in the AI button in the top bar. If it fails, say the exact error. Do not claim anything was made unless the tool said ok.',
+  stab: 'Optional Stability image generation is ON. It is not a built-in engine and never generates audio or video. Report errors exactly.',
   pdf: 'PDF MODE is ON for this message: write the whole answer as ONE complete document inside <artifact type="pdf" title="Short-Title.pdf"> ... </artifact> in Markdown: a title, a short summary, a ```stats fence (Label: Value lines) for the headline numbers, numbered sections with real detail, tables where they help, a ```chart fence (type: bar|hbar|line|donut, title:, Label: number lines) when numbers are compared, > [!TIP] or > [!WARNING] callouts for key points, a ```steps fence (Title: description lines) for the plan, and a closing list of next steps. If he gave a link, the page was already read for you: use its text, and use its real pictures only from the PAGE PICTURES list as ![caption](https://exact-url); never invent a picture URL. No filler, no truncation. Before the artifact write one short sentence only.',
   device: 'DEVICE ACCESS is ON for this chat: he allowed you to use his saved Documents tools (list, search, read) and the Termux panel when it helps. Use them instead of saying you cannot reach his files. You still cannot see anything outside those tools.',
   web: 'WEB SEARCH is FORCED ON for this chat: before answering anything that could be current or factual, call web_search (or search_and_read) first, then answer from the results and name the source. If the search fails, say so; do not answer from memory as if it had worked.',
@@ -53,15 +52,15 @@ const THINK = [
 const QUICK = [
   { id: 'bGraph', icon: '🕸', label: 'Knowledge Graph', hint: 'Map local documents, memory and chats' },
   { id: 'bPriv', icon: '🔓', label: 'Normal mode', hint: 'Toggle normal privacy mode' },
-  { id: 'bApis', icon: '🔌', label: 'Free APIs', hint: 'IP, grammar, photos, whois, words, lyrics' }
+  { id: 'bApis', icon: '🔌', label: 'Free APIs', hint: 'Public IP and lyric lookup' }
 ];
 const tRow = t => '<button class="pm-i" data-t="' + t.id + '" role="menuitemcheckbox" aria-checked="false"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span><span class="pm-sw"></span></button>';
 const aRow = t => '<button class="pm-i" data-action="' + t.id + '" role="menuitem"><span class="pm-ic">' + t.icon + '</span><span class="pm-tx"><b>' + t.label + '</b><small>' + t.hint + '</small></span></button>';
 const CREATE = ['image', 'audio_gen', 'video_gen', 'pdf', 'stab'];
 const PLUG = (id, icon, label, sumId, hint) => '<button class="pm-i pm-plug" data-plug="' + id + '" role="menuitem"><span class="pm-ic">' + icon + '</span><span class="pm-tx"><b>' + label + '</b><small id="' + sumId + '">' + hint + '</small></span><span class="pm-go">›</span></button>';
-menu.innerHTML = '<div class="pm-h">Plugins</div>' +
+menu.innerHTML = '<button class="pm-i" type="button" role="menuitem" data-builtin-open><span class="pm-ic">✦</span><span class="pm-tx"><b>Built-in engines</b><small>Automatic abilities — complete inventory</small></span></button><div class="pm-h">Connections</div>' +
   PLUG('web', '🌐', 'Web &amp; Scraping', 'pmWebSum', 'Scrapers, search and the free reader') +
-  PLUG('media', '🎛', 'Media &amp; Music', 'pmMediaSum', 'Create image, audio, video, PDF · song ID') +
+  PLUG('media', '🎛', 'Media &amp; Music', 'pmMediaSum', 'Optional media services · song ID') +
   '<div class="pm-h pm-action">Think</div>' + THINK.map(aRow).join('') +
   '<div class="pm-h pm-action">Enable for this chat</div>' + TOGGLES.filter(t => !CREATE.includes(t.id) && t.id != 'web').map(tRow).join('') +
   '<div class="pm-h pm-action">Attach or capture</div>' +

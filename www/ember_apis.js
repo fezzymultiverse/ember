@@ -1,10 +1,11 @@
 // Ember V1.10.12 - ember_apis.js: small free APIs Ember can call from chat.
-// No key: ipify (public IP), LanguageTool (grammar). Own key: Unsplash (photos), WhoisJSON (domain whois), WordsAPI via RapidAPI (word info).
+// Optional public IP and lyrics only. Stock-photo, whois, dictionary and grammar integrations removed.
 // ChartLyrics (lyrics, no key) is written from memory of its public endpoint and NOT verified live.
 // Everything is OFF until the master switch in "+" > Free APIs is turned on. Keys stay in this app's storage; key values are never shown to the AI.
 'use strict';
 (() => {
 const W = window, D = document, STORE = 'ember_apis';
+const removed = new Set(['check_grammar','search_photos','get_whois','get_word_info']);
 const ls = {
   get: k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
   set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
@@ -45,53 +46,6 @@ async function ip() {
   return { ip: j.ip, note: 'This is the public address the internet sees for this phone right now (a VPN or the mobile carrier address if one is active).' };
 }
 
-async function grammar(text, lang) {
-  text = clip(text, 18000); if (!text.trim()) throw new Error('Give me some text to check.');
-  const body = new URLSearchParams({ text, language: String(lang || 'auto').slice(0, 12) });
-  const j = await jget('https://api.languagetool.org/v2/check', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' }, body: body.toString() }, 30000);
-  const all = (j.matches || []).slice(0, 60);
-  const matches = all.slice(0, 40).map(m => ({ message: clip(m.message, 160), rule: m.rule && m.rule.id, found: text.substr(m.offset, m.length), offset: m.offset, length: m.length, suggestions: (m.replacements || []).slice(0, 3).map(r => r.value) }));
-  // apply the first suggestion of each match from the end of the text backwards, skipping overlaps
-  let fixed = text, limit = Infinity;
-  all.slice().sort((a, b) => b.offset - a.offset).forEach(m => {
-    const r = m.replacements && m.replacements[0]; if (!r || m.offset + m.length > limit) return;
-    fixed = fixed.slice(0, m.offset) + r.value + fixed.slice(m.offset + m.length); limit = m.offset;
-  });
-  const lang2 = j.language && ((j.language.detectedLanguage && j.language.detectedLanguage.name) || j.language.name);
-  return { language: lang2 || 'unknown', issues: all.length, matches, corrected: fixed !== text ? fixed : undefined, note: 'Checked by the public LanguageTool service (the text was sent to it). Suggestions are automatic: read them before accepting.' };
-}
-
-async function photos(query, count) {
-  const key = need('unsplash', 'Unsplash'); query = clip(query, 120).trim(); if (!query) throw new Error('Say what photo to search for.');
-  const n = Math.max(1, Math.min(10, Number(count) || 5));
-  const j = await jget('https://api.unsplash.com/search/photos?' + new URLSearchParams({ query, per_page: String(n), content_filter: 'high' }), { headers: { Authorization: 'Client-ID ' + key, 'Accept-Version': 'v1' } });
-  return {
-    total: j.total, photos: (j.results || []).map(p => ({ description: clip(p.description || p.alt_description, 140), photographer: p.user && p.user.name, photographer_page: p.user && p.user.links && p.user.links.html, page: p.links && p.links.html, small: p.urls && p.urls.small, regular: p.urls && p.urls.regular })),
-    note: 'Credit the photographer and Unsplash when you show these. A demo key allows about 50 requests an hour.'
-  };
-}
-
-async function whois(domain) {
-  const key = need('whoisjson', 'WhoisJSON');
-  const d = clip(domain, 253).trim().toLowerCase().replace(/^https?:\/\//, '').replace(/[/?#].*$/, '');
-  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d)) throw new Error('That does not look like a domain name.');
-  const j = await jget('https://whoisjson.com/api/v1/whois?domain=' + encodeURIComponent(d), { headers: { Authorization: 'TOKEN=' + key } });
-  const s = JSON.stringify(j);
-  return s.length <= 4000 ? { domain: d, whois: j } : { domain: d, truncated: true, whois: s.slice(0, 4000) };
-}
-
-async function word(w) {
-  const key = need('wordsapi', 'WordsAPI'); w = clip(w, 40).trim().toLowerCase();
-  if (!/^[a-z][a-z' -]*$/.test(w)) throw new Error('Give me one English word.');
-  const j = await jget('https://wordsapiv1.p.rapidapi.com/words/' + encodeURIComponent(w), { headers: { 'X-RapidAPI-Key': key, 'X-RapidAPI-Host': 'wordsapiv1.p.rapidapi.com' } });
-  const lst = a => Array.isArray(a) ? a.slice(0, 8) : undefined;
-  return {
-    word: j.word, pronunciation: j.pronunciation, syllables: j.syllables && j.syllables.list,
-    senses: (j.results || []).slice(0, 8).map(r => ({ definition: r.definition, partOfSpeech: r.partOfSpeech, synonyms: lst(r.synonyms), antonyms: lst(r.antonyms), typeOf: lst(r.typeOf), examples: Array.isArray(r.examples) ? r.examples.slice(0, 2) : undefined }))
-  };
-}
-
-// ChartLyrics: endpoint written from memory, not checked live. It is plain http; the app allows cleartext.
 async function lyrics(artist, song) {
   artist = clip(artist, 100).trim(); song = clip(song, 100).trim(); if (!artist || !song) throw new Error('I need both the artist and the song title.');
   const t = await http('http://api.chartlyrics.com/apiv1.asmx/SearchLyricDirect?' + new URLSearchParams({ artist, song }), {}, 25000);
@@ -103,40 +57,21 @@ async function lyrics(artist, song) {
 // ---------- agent tools ----------
 const TOOL_DEFS = [
   { id: null, name: 'get_public_ip', description: 'Returns this phone\'s public IP address (ipify). Use when he asks what his IP is.', parameters: {} },
-  { id: null, name: 'check_grammar', description: 'Checks spelling and grammar of text he gave you with LanguageTool (the text is sent to that public service). Returns issues, suggestions and a corrected version. language is optional (en-US, de-DE ... default auto).', parameters: { text: 'string', language: 'string?' } },
-  { id: 'unsplash', name: 'search_photos', description: 'Searches Unsplash for free photos. Returns links, photographer names and pages. Always credit the photographer and Unsplash.', parameters: { query: 'string', count: 'number?' } },
-  { id: 'whoisjson', name: 'get_whois', description: 'Looks up domain registration (whois) data for a domain he names, through WhoisJSON.', parameters: { domain: 'string' } },
-  { id: 'wordsapi', name: 'get_word_info', description: 'Looks up one English word: definitions, part of speech, synonyms, antonyms, examples (WordsAPI).', parameters: { word: 'string' } },
   { id: null, name: 'get_lyrics', description: 'Fetches song lyrics from ChartLyrics for an artist and song he names. The app prints the full text itself, so never retype it; write one or two sentences and say where it came from. Never write lyrics from memory. Report any failure exactly.', parameters: { artist: 'string', song: 'string' } }
 ];
-const tools = () => !enabled() ? [] : TOOL_DEFS.filter(t => (!t.id || hasKey(t.id)) && !(t.name === 'get_lyrics' && W.EmberMusicBrain && W.EmberMusicBrain.isOn())).map(t => ({ name: t.name, description: t.description, parameters: t.parameters }));
+const tools = () => !enabled() ? [] : TOOL_DEFS.filter(t => !removed.has(t.name) && (!t.id || hasKey(t.id)) && !(t.name === 'get_lyrics' && W.EmberMusicBrain && W.EmberMusicBrain.isOn())).map(t => ({ name: t.name, description: t.description, parameters: t.parameters }));
 const handlers = {
   get_public_ip: () => ip(),
-  check_grammar: a => grammar(a.text, a.language),
-  search_photos: a => photos(a.query, a.count),
-  get_whois: a => whois(a.domain),
-  get_word_info: a => word(a.word),
   get_lyrics: async a => { const r = await lyrics(a.artist, a.song); return Object.assign({}, r, { delivered_in_full_by_app: true, _verbatim: { title: 'Lyrics - ' + String(r.artist + ' - ' + r.song).replace(/[\\/:*?"<>|]/g, '').slice(0, 90) + '.md', type: 'markdown', text: '# ' + r.song + '\n**' + r.artist + '**\n\n*Source: ' + r.source + '*\n\n---\n\n' + r.lyrics.replace(/\n/g, '  \n'), when: 'always', short: true } }); }
 };
 const promptLine = () => 'FREE API TOOLS ON: ' + tools().map(t => t.name).join(', ') + '. They call small public services; say which one answered and report any failure exactly. Never invent results. Missing keys are added by him in + > Free APIs.';
 
 // ---------- key map entries (names and status only) ----------
-function inventory() {
-  const row = (id, name, kind, use) => ({ id, name, kind, saved: hasKey(id) ? 1 : 0, usable: hasKey(id) ? 1 : 0, use, where: '+ > Free APIs' });
-  return [
-    row('unsplash', 'Unsplash', 'free photos', 'search_photos tool. Needs the master switch in + > Free APIs.'),
-    row('whoisjson', 'WhoisJSON', 'domain whois', 'get_whois tool. Needs the master switch in + > Free APIs.'),
-    row('wordsapi', 'WordsAPI (RapidAPI)', 'dictionary', 'get_word_info tool. Needs the master switch in + > Free APIs.')
-  ];
-}
+function inventory() { return []; }
 
 // ---------- panel ----------
 const SERVICES = [
   { id: 'ipify', name: 'ipify', desc: 'Your public IP address. No key.', test: async () => (await ip()).ip },
-  { id: 'lt', name: 'LanguageTool', desc: 'Grammar and spelling. No key. Text is sent to the public service.', test: async () => { const r = await grammar('Ths is a tset of the gramar checker.'); return r.issues + ' issue(s) found'; } },
-  { id: 'unsplash', name: 'Unsplash', desc: 'Free photos. Key = your Access Key from unsplash.com/developers.', key: true, test: async () => (await photos('mountain', 3)).photos.length + ' photo(s) found' },
-  { id: 'whoisjson', name: 'WhoisJSON', desc: 'Domain whois. Key = your API token from whoisjson.com.', key: true, test: async () => { const r = await whois('example.com'); return 'Answered for ' + r.domain; } },
-  { id: 'wordsapi', name: 'WordsAPI', desc: 'Dictionary. Key = your RapidAPI key with WordsAPI subscribed.', key: true, test: async () => { const r = await word('ember'); return (r.senses || []).length + ' sense(s) for "ember"'; } },
   { id: 'chartlyrics', name: 'ChartLyrics', desc: 'Lyrics. No key. Not verified live: the test tells you if it works.', test: async () => { const r = await lyrics('Queen', 'Bohemian Rhapsody'); return 'Answered (' + r.lyrics.length + ' characters, not shown)'; } }
 ];
 const CSS = '#emberApis{position:fixed;inset:0;z-index:9500;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.72)}#emberApis.open{display:flex}' +
@@ -161,7 +96,7 @@ function mount() {
   const sp = D.createElement('span'); sp.textContent = 'Let Ember use these in chat. Off = nothing is ever sent to them.';
   sw.append(cb, sp); cb.onchange = () => setOn(cb.checked);
   card.append(head, sw);
-  SERVICES.forEach(s => {
+  SERVICES.filter(s => !['lt','unsplash','whoisjson','wordsapi'].includes(s.id)).forEach(s => {
     const row = D.createElement('div'); row.className = 'ea-row';
     const nm = D.createElement('b'); nm.textContent = s.name; const ds = D.createElement('small'); ds.textContent = s.desc;
     const line = D.createElement('div'); line.className = 'ea-line'; const status = D.createElement('div'); status.className = 'ea-st';
@@ -192,5 +127,6 @@ function mount() {
 }
 if (D.body) mount(); else D.addEventListener('DOMContentLoaded', mount);
 
-W.EmberApis = { enabled, setOn, hasKey, setKey, tools, handlers, promptLine, inventory, ip, grammar, photos, whois, word, lyrics };
+for (const name of removed) delete handlers[name];
+W.EmberApis = { enabled, setOn, hasKey, setKey, tools, handlers, promptLine, inventory, ip, lyrics };
 })();

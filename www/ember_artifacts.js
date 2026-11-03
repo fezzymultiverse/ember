@@ -167,7 +167,7 @@
   }
   async function nativeSave(blob, name) {
     const dev = devicePlugin(); if (!dev || typeof dev.saveFile !== 'function') return { ok: false, why: 'The phone side of Save is missing. Rebuild the APK with the latest EmberDevicePlugin.kt.' };
-    try { const r = await dev.saveFile({ name, mime: blob.type || 'application/octet-stream', data: await blobB64(blob) }); return { ok: true, path: (r && r.path) || 'Downloads/Ember/' + name }; }
+    try { const r = await dev.saveFile({ name, mime: blob.type || 'application/octet-stream', data: await blobB64(blob) }); if(r && r.cancelled)return {ok:false,cancelled:true}; if(!r || r.ok !== true || !r.path) return {ok:false,why:'The phone did not confirm that the file was written.'}; return { ok: true, path: r.path }; }
     catch (e) { const m = String(e && e.message || e || 'failed'); return { ok: false, why: /not implemented|not available/i.test(m) ? 'This APK has no direct Save yet. Rebuild it with the latest EmberDevicePlugin.kt.' : m.slice(0, 120) }; }
   }
   async function saveBlob(blob, name) {
@@ -175,7 +175,7 @@
     if (!blob || !blob.size) { T('Nothing to save: the file is empty'); return false; }
     const cap = window.Capacitor, native = !!(cap && cap.isNativePlatform && cap.isNativePlatform());
     let note = '';
-    if (native) { const r = await nativeSave(blob, name); if (r.ok) { T('Saved to ' + r.path); return true; } note = r.why; }
+    if (native) { const r = await nativeSave(blob, name); if (r.cancelled) { T('Save cancelled'); return false; } if (r.ok) { T('Saved ' + name); return true; } note = r.why; }
     let file = null; try { file = new File([blob], name, { type: blob.type }); } catch (_) { /* old WebView */ }
     const share = async () => {
       if (file && navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
@@ -184,13 +184,11 @@
       return false;
     };
     if (native && await share()) { T('Pick where to save ' + name); return true; }
-    if (native) { // the WebView ignores blob downloads: show the file in a viewer tab instead
-      try { const u = URL.createObjectURL(blob), w = window.open(u, '_blank'); setTimeout(() => URL.revokeObjectURL(u), 60000); if (w) { T('Opened ' + name + '. Use the viewer to save it.' + (note ? ' ' + note : '')); return true; } } catch (_) { /* blocked */ }
-    }
+    if (native) { T('Could not save ' + name + '. ' + (note || 'Use an APK built with the included Android save handler.')); return false; }
     try {
       const url = URL.createObjectURL(blob), link = document.createElement('a');
       link.href = url; link.download = name; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
-      T(native ? 'Download started for ' + name + (note ? '. ' + note : '') : 'Saved ' + name); return true;
+      T('Download started: ' + name); return true;
     } catch (_) { /* fall through */ }
     if (!native && await share()) return true;
     if (/^text\/|json|xml|svg/i.test(blob.type || '')) { try { if (await copyContent(await blob.text())) { T('Could not save the file, so its text was copied instead'); return true; } } catch (_) { /* no clipboard */ } }
@@ -294,17 +292,16 @@
   async function exportPdf(a) {
     const D = window.EmberDeliverables, name = baseName(a.title);
     if (pdfBusy) { T('A PDF is already being built. One moment.'); return; }
-    if (!D || !D.pdf) { T('The PDF engine did not load. Opening the print view instead.'); printArtifact(a); return; }
+    if (!D || !D.pdf) { T('The bundled PDF engine did not load. Restart Ember and try again.'); return false; }
     pdfBusy = true;
     try {
       T('Building the PDF...');
       const src = await pdfSource(a), pics = /!\[[^\]]*\]\((?!artifact:)[^)]+\)/.test(src.md);
       if (pics) T('Building the PDF and loading its pictures. This can take a minute.');
       const o = Object.assign({}, src.o, { onStep: m => T(m) });
-      await saveBlob(await D.pdf(src.md, name, o), name + '.pdf');
+      return await saveBlob(await D.pdf(src.md, name, o), name + '.pdf');
     } catch (e) {
-      T('PDF engine failed: ' + String(e && e.message || e).slice(0, 110) + '. Opening the print view so you can still save a PDF.');
-      try { printArtifact(a); } catch (_) { /* no print view */ }
+      T('PDF export failed: ' + String(e && e.message || e).slice(0, 160)); return false;
     } finally { pdfBusy = false; }
   }
   function cleanSvg(src) {
@@ -342,14 +339,14 @@
     await saveBlob(new Blob(['\ufeff', wordDoc(a)], { type: 'application/msword' }), baseName(a.title) + '.doc');
   }
   function download(a) {
-    if (a.type === 'pdf') { exportPdf(a); return; }
+    if (a.type === 'pdf') return exportPdf(a);
     if (a.type === 'image') { saveImage(a); return; }
     const ext = a.title.split('.').pop().toLowerCase();
     const mime = ext === 'html' || ext === 'htm' ? 'text/html' : ext === 'md' ? 'text/markdown' : ext === 'json' ? 'application/json' : ext === 'csv' ? 'text/csv' : ext === 'svg' ? 'image/svg+xml' : ext === 'py' ? 'text/x-python' : ext === 'js' ? 'text/javascript' : 'text/plain';
     let name = a.title, data = a.content;
     if (a.type === 'document' && !/\.md$/i.test(name)) name = baseName(name) + '.md';
     if (a.type === 'svg') data = cleanSvg(a.content) || a.content;
-    saveBlob(new Blob([data], { type: mime + ';charset=utf-8' }), name);
+    return saveBlob(new Blob([data], { type: mime + ';charset=utf-8' }), name);
   }
   function printArtifact(a) {
     let content='';

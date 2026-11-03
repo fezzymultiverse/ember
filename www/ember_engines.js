@@ -183,8 +183,8 @@
 
   // ---------- Media engines sheet ----------
   const sheet = document.createElement('section'); sheet.id = 'xengines'; sheet.className = 'sheet';
-  sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-label', 'Media engines');
-  sheet.innerHTML = '<div class="sh"><b>Media engines</b><button class="hb" id="egX" aria-label="Close">✕</button></div><div class="sb eg" id="egBody"></div>';
+  sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-label', 'Built-in engines');
+  sheet.innerHTML = '<div class="sh"><b>Built-in engines</b><button class="hb" id="egX" aria-label="Close">✕</button></div><div class="sb eg" id="egBody"></div>';
   const mount = $('app') ? $('app').parentNode : document.body; mount.appendChild(sheet);
   const dot = (e, alt) => { const l = lastOf(e) || (alt && lastOf(alt)); return l ? (l.ok ? 'ok' : 'bad') : 'idle'; };
   const ago = t => { const s = Math.max(1, Math.round((Date.now() - t) / 1000)); return s < 90 ? s + 's ago' : s < 5400 ? Math.round(s / 60) + 'm ago' : Math.round(s / 3600) + 'h ago'; };
@@ -192,6 +192,7 @@
   const eng = (name, tag, line, e, alt) => { const l = lastOf(e) || (alt && lastOf(alt)); return '<div class="eg-eng"><i class="eg-dot ' + dot(e, alt) + '" aria-hidden="true"></i><div><b>' + name + ' <em>' + tag + '</em></b><small>' + line + '</small>' + (l ? '<small class="eg-last">' + (l.ok ? 'Last: worked' : 'Last: failed') + ' · ' + esc(l.d) + ' · ' + ago(l.t) + '</small>' : '<small class="eg-last">Not used yet</small>') + '</div></div>'; };
   function paint() {
     const c = cfg(), b = $('egBody'); if (!b) return;
+    if (window.EmberBuiltins) { b.innerHTML = window.EmberBuiltins.html(); return; }
     const hasStab = !!(window.Prov && Prov.keys && (Prov.keys().stability || []).some(x => x && !x.bad));
     b.innerHTML =
       '<div class="eg-hero"><span class="eg-brand">S.O.I × BOJACK · 999</span><h2>Built-in engines</h2><p>Everything here runs on this device. No third-party keyless APIs.</p></div>' +

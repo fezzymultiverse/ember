@@ -9,11 +9,9 @@
  const live = id => { try { return ((W.Prov.keys()[id]) || []).filter(e => e && !e.bad).length; } catch (_) { return 0; } };
  function paint(card) {
   const KL = W.EmberKeyless, tools = (KL && KL.tools ? KL.tools() : []);
-  let h = '<div class="ct">Engines &amp; media menu</div><div class="ef-content"><p class="hint">Every engine and tool has its own switch. Chat engines need your key; media tools are keyless and never ask for one.</p><div class="em-g">Chat AI engines</div>';
+  let h = '<div class="ct">Chat engine routing</div><div class="ef-content"><p class="hint">Chat providers need your saved key. Built-in artifact capabilities work automatically, without plugin switches.</p><div class="em-g">Chat AI engines</div>';
   CHAT.forEach(([id, name]) => { const n = live(id); h += row('chat:' + id, name, n ? n + ' live key' + (n > 1 ? 's' : '') : 'no live key — skipped', chatOn(id)); });
-  const groups = {}; tools.forEach(t => (groups[t.group] = groups[t.group] || []).push(t));
-  ['Images', 'Audio', 'Documents', 'Code & Data', 'Local'].forEach(g => { if (!groups[g]) return; h += '<div class="em-g">Media · ' + esc(g) + ' (keyless)</div>'; groups[g].forEach(t => { h += row('tool:' + t.id, t.name, t.best, t.on); }); });
-  h += '<p class="hint em-note">Stability AI makes audio and video and needs your own key (optional: images fall back to the keyless tools). Add it in Plugins &gt; Media &amp; Music.</p></div>';
+  h += '<p class="hint">Artifact formats, charts, colours, layouts and SVG are intrinsic to Ember. See Built-in engines for the complete inventory. Optional media connections live under +.</p></div>';
   card.innerHTML = h;
  }
  function init() {
