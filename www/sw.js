@@ -1,6 +1,6 @@
 // Ember V1.8.3 service worker: app files only. Network first so updates arrive, cache as the offline fallback. API calls are never touched.
 // Generated from index.html plus the documented lazy/static asset closure.
-const V = 'ember-v1.10.51-provider-repair', FILES = [
+const V = 'ember-v1.10.54-file-direct', FILES = [
   "ember_repair.js", "ember_repair.css",
   "ember_builds.js",
   "ember_image_lookup.js",
@@ -47,6 +47,7 @@ const V = 'ember-v1.10.51-provider-repair', FILES = [
   "ember_context.js",
   "ember_create.js",
   "ember_deliverables.js",
+  "ember_wait.js",
   "ember_device.js",
   "ember_docs_lib.js",
   "ember_downloads.js",

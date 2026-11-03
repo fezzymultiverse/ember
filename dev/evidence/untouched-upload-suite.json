@@ -1,0 +1,483 @@
+{
+  "timeoutMs": 18000,
+  "total": 68,
+  "completed": 68,
+  "results": [
+    {
+      "test": "agent-test.js",
+      "status": "TIMEOUT",
+      "exit": null,
+      "signal": "SIGKILL",
+      "ms": 18019
+    },
+    {
+      "test": "app-test.js",
+      "status": "TIMEOUT",
+      "exit": null,
+      "signal": "SIGKILL",
+      "ms": 18027
+    },
+    {
+      "test": "artifact-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 394
+    },
+    {
+      "test": "cockpit-browser-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 400
+    },
+    {
+      "test": "command-center-browser-test.js",
+      "status": "TIMEOUT",
+      "exit": null,
+      "signal": "SIGKILL",
+      "ms": 18008
+    },
+    {
+      "test": "command-center-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 361
+    },
+    {
+      "test": "context-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 1887
+    },
+    {
+      "test": "download94-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 666
+    },
+    {
+      "test": "handoff-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 334
+    },
+    {
+      "test": "keyless-browser-test.cjs",
+      "status": "TIMEOUT",
+      "exit": null,
+      "signal": "SIGKILL",
+      "ms": 18014
+    },
+    {
+      "test": "keyscan-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 417
+    },
+    {
+      "test": "knowledge-brain-browser-test.js",
+      "status": "TIMEOUT",
+      "exit": null,
+      "signal": "SIGKILL",
+      "ms": 18015
+    },
+    {
+      "test": "knowledge-brain-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 412
+    },
+    {
+      "test": "lyrics-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 1791
+    },
+    {
+      "test": "music-test.js",
+      "status": "TIMEOUT",
+      "exit": null,
+      "signal": "SIGKILL",
+      "ms": 18013
+    },
+    {
+      "test": "panel-browser-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 1771
+    },
+    {
+      "test": "router-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 354
+    },
+    {
+      "test": "routing-fallback-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 363
+    },
+    {
+      "test": "routing94-browser-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 1233
+    },
+    {
+      "test": "routing94-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 393
+    },
+    {
+      "test": "safety-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 326
+    },
+    {
+      "test": "scrape-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 433
+    },
+    {
+      "test": "settings-right-panel-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 347
+    },
+    {
+      "test": "speaker-test.js",
+      "status": "TIMEOUT",
+      "exit": null,
+      "signal": "SIGKILL",
+      "ms": 18009
+    },
+    {
+      "test": "streaming-routing-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 362
+    },
+    {
+      "test": "term-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 12649
+    },
+    {
+      "test": "tool-followup-routing-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 337
+    },
+    {
+      "test": "v1105-browser-test.js",
+      "status": "TIMEOUT",
+      "exit": null,
+      "signal": "SIGKILL",
+      "ms": 18024
+    },
+    {
+      "test": "v168-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 460
+    },
+    {
+      "test": "v183-test.js",
+      "status": "TIMEOUT",
+      "exit": null,
+      "signal": "SIGKILL",
+      "ms": 18007
+    },
+    {
+      "test": "v1915-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 383
+    },
+    {
+      "test": "v1924-test.js",
+      "status": "TIMEOUT",
+      "exit": null,
+      "signal": "SIGKILL",
+      "ms": 18016
+    },
+    {
+      "test": "v1925-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 1480
+    },
+    {
+      "test": "v1927-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 1666
+    },
+    {
+      "test": "v1927b-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 2237
+    },
+    {
+      "test": "v1928-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 388
+    },
+    {
+      "test": "v1929-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 358
+    },
+    {
+      "test": "v1930-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 392
+    },
+    {
+      "test": "v1932-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 375
+    },
+    {
+      "test": "v1933-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 353
+    },
+    {
+      "test": "v1940-ui-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 366
+    },
+    {
+      "test": "v1941-thought-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 357
+    },
+    {
+      "test": "v1942-thought-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 355
+    },
+    {
+      "test": "v1945-motion-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 356
+    },
+    {
+      "test": "v1950-ui-stability-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 1549
+    },
+    {
+      "test": "v1951-api-audit-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 376
+    },
+    {
+      "test": "v1955-api-profile-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 349
+    },
+    {
+      "test": "v1957-newpipe-direct-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 366
+    },
+    {
+      "test": "v1973-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 384
+    },
+    {
+      "test": "v1974-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 375
+    },
+    {
+      "test": "v1978-steps-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 357
+    },
+    {
+      "test": "v198-test.js",
+      "status": "TIMEOUT",
+      "exit": null,
+      "signal": "SIGKILL",
+      "ms": 18021
+    },
+    {
+      "test": "v1980-puter-key-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 357
+    },
+    {
+      "test": "v1987-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 406
+    },
+    {
+      "test": "v1988-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 402
+    },
+    {
+      "test": "v1989-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 338
+    },
+    {
+      "test": "v1991-browser-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 1317
+    },
+    {
+      "test": "v1991-deliverables-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 390
+    },
+    {
+      "test": "v1992-repo-runner-browser-test.js",
+      "status": "TIMEOUT",
+      "exit": null,
+      "signal": "SIGKILL",
+      "ms": 18012
+    },
+    {
+      "test": "v1992-repo-runner-test.js",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null,
+      "ms": 2276
+    },
+    {
+      "test": "v1996-memgroups-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 339
+    },
+    {
+      "test": "v1999-ui-refinement-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 352
+    },
+    {
+      "test": "voice-cloud-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 9788
+    },
+    {
+      "test": "voice-native-test.js",
+      "status": "SKIP",
+      "exit": 0,
+      "signal": null,
+      "ms": 334
+    },
+    {
+      "test": "wired-browser-test.cjs",
+      "status": "TIMEOUT",
+      "exit": null,
+      "signal": "SIGKILL",
+      "ms": 18028
+    },
+    {
+      "test": "wiring-test.cjs",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 1056
+    },
+    {
+      "test": "workspace95-browser-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 1131
+    },
+    {
+      "test": "workspace95-test.js",
+      "status": "FAIL",
+      "exit": 1,
+      "signal": null,
+      "ms": 406
+    }
+  ]
+}

@@ -46,3 +46,6 @@ Six deliberately unloaded Settings controllers moved intact to `archive/www/`; t
 ## Release evidence
 
 `docs/FILE_RECEIPTS.json` accounts for every original archive member; original documentation content is preserved under `docs/history/baseline-v1.10.16/`. `FILE_INTEGRITY_1_10_17.json` contains SHA-256 values for delivered files (excluding itself). Protected hashes are in `tests/wired-protected-hashes.json`. Screenshots and raw diffs live under `tests/results/wired/`; test summaries report limitations rather than claiming untested services work.
+
+## Repository layout
+The app lives in `www/`. Native Android pieces live in `android_patch/` and are applied by `scripts/apply_android_patch.py`. Tests are in `tests/`. Old verification output, receipts, screenshots and sandbox leftovers are in `dev/` (see `dev/README.md`). Release notes for every version are in `CHANGELOG.md`.

@@ -794,10 +794,12 @@ async function runInner(lane, o, tok) {
   for (const id of routeIds) {
     halted(); if (Date.now() >= routeDeadline) break;
     providerDeadline = Math.min(routeDeadline, Date.now() + (o.documentMode ? 100000 : 40000));
+    // V1.10.53: a document request used to stay on one engine for up to 100 s, walking every model on every key. After 2 failed or timed-out attempts on the same engine it now moves on to the next engine. A pinned engine stays strict.
+    let provFails = 0; const docGiveUp = () => !!o.documentMode && provFails >= 2 && !o.routeProvider && !onlyPinned(lane);
     if (!o.routeProvider && onlyPinned(lane) && id != pinnedEngine) break; // V1.9.15: strict pin
     const soft = id === 'openrouter' && pinnedEngine !== id;
     for (const e of rotation(id, lane)) {
-      if (Date.now() >= providerDeadline) break;
+      if (Date.now() >= providerDeadline || docGiveUp()) break;
       if (e.bad || isCool(e.key)) { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-skip', { detail: { id, why: e.bad ? 'key rejected' : 'resting after a rate limit' } })); } catch (_) { /* no listener */ } } continue; } // V1.9.78: a skipped engine is a real step
       halted();
       let models;
@@ -814,13 +816,13 @@ async function runInner(lane, o, tok) {
       let pool = routeModel ? [routeModel] : (pm ? [pm] : models), cap = routeModel || pm ? 1 : (soft ? 5 : (id === 'gemini' && gemTier(e) === 'free' ? GEM_FREE_TRIES : 3));
       for (let mi = 0; mi < pool.length && mi < cap; mi++) {
         const m = pool[mi];
-        halted(); if (Date.now() >= providerDeadline) break;
+        halted(); if (Date.now() >= providerDeadline || docGiveUp()) break;
         if (modelResting(id,e.key,m)) continue;
         trying(CFG[id].name, m); try { const r = await call(id, e.key, m, Object.assign(withFacts(o, lane, id, m, failed), { _providerDeadline: providerDeadline })); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); if (id === 'gemini') gemClear(e, m); record(id,m,true,r.ms,200,r.usage); save(); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
         catch (er) {
           if (er.code === 'cancelled' || routeCancelled) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' });
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
-          record(id,m,false,0,er.status); e.st = Object.assign({},e.st || {},{at:Date.now(),code:er.status || 0,msg:String(er.message || '').slice(0,160),model:m});
+          record(id,m,false,0,er.status); provFails++; e.st = Object.assign({},e.st || {},{at:Date.now(),code:er.status || 0,msg:String(er.message || '').slice(0,160),model:m});
           if (id === 'gemini' && gemNote(e, m, er) && !routeModel && !pm) { pool = gemAdjust(e, pool); cap = Math.max(cap, GEM_FREE_TRIES); } // V1.10.46: this key just showed it is free: paid-only models to the back, Gemma becomes reachable in this same route
           if (er.partial || (o._emitted && o._emitted.value)) { save(); throw Object.assign(er,{code:'partial_stream',message:'Stream interrupted after partial output. Retry explicitly to avoid mixing providers.'}); }
           if (er.status === 404 && !pm && !routeModel) { const c = LS.get('ember_models', {}); delete c[id]; LS.set('ember_models', c); }

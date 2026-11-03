@@ -1,0 +1,69 @@
+PROVIDER FREE-TIER GUIDE — RESEARCHED 2026-11-03
+These are service offerings, not a report of your actual account balance. Provider dashboards
+and live API errors remain authoritative. Listed allowances can change; no free guarantee is
+inferred merely from a model name or a successful model-list call.
+
+AI PROVIDERS
+Gemini: free generation on eligible Flash/Flash-Lite and other listed models. Availability,
+quotas and paid-only variants vary; generation and Google Search grounding have separate rules.
+https://ai.google.dev/gemini-api/docs/pricing
+https://ai.google.dev/gemini-api/docs/rate-limits
+Groq: free-plan/model allowances; organization-wide rate limits. Extra keys are not extra quota.
+https://console.groq.com/docs/rate-limits
+Mistral: Free mode includes limited monthly API usage. Exact allowances are on your Limits page.
+https://docs.mistral.ai/admin/billing-usage/usage-limits
+Cohere: evaluation API keys are free but limited. The documented trial cap is 1,000 calls/month;
+listed chat models generally have a 20 requests/minute trial limit. Production may be paid.
+https://docs.cohere.com/docs/rate-limits
+https://cohere.com/pricing
+OpenRouter: free variants/zero-price text models available with account/model rate limits.
+Auto uses verified zero-price text candidates. Explicit paid-model pins retain paid behavior.
+Check /api/v1/key and provider dashboard for account counters; do not infer balance from errors.
+https://openrouter.ai/docs/api_reference/limits
+https://openrouter.ai/docs/guides/routing/routers/free-router
+Plugsky: official free plan includes plugsky-micro and plugsky-lite. Plan/fair-use limits apply.
+https://plugsky.com/articles/ai-api-for-professional-services-use-cases-security-and-deployment-options
+https://plugsky.com/articles/free-ai-api
+LongCat: account/model quota is not uniformly free. Current LongCat-2.5 pay-as-you-go and token
+packs are paid products. Promotional/initial quota, when granted, is account-dependent.
+https://longcat.chat/platform/docs/APIPayAsYouGo.html
+https://longcat.chat/platform/docs/change-log
+Claude/Anthropic: metered API. Trial or subscriber/API credits are conditional and account-linked,
+not a blanket unlimited free API entitlement. Ember retains explicit pin-only usage.
+https://platform.claude.com/docs/en/about-claude/api-credits-for-subscribers
+Stability: image/media API, not a chat model provider. Limited new-account credits are advertised;
+after they are consumed, generation requires credits. No recurring unlimited free inference.
+https://docs.stability.ai/pricing
+
+SEARCH / SCRAPING PROVIDERS ALREADY WIRED IN YOUR PROJECT
+Firecrawl: official free plan currently advertises recurring free credits. Check billing dashboard.
+https://www.firecrawl.dev/pricing
+Browserless: official free plan advertises limited monthly browser units, not unlimited scraping.
+https://www.browserless.io/pricing
+ScraperAPI: official FAQ documents a free monthly credit plan; signup trial credits are separate.
+https://docs.scraperapi.com/resources/faq/plans-and-billing
+ScrapingBee: signup trial credits; do not treat a trial as recurring free monthly capacity.
+https://www.scrapingbee.com/pricing/
+ZenRows: official current pricing advertises a recurring free-credit plan; feature multipliers apply.
+https://docs.zenrows.com/first-steps/pricing
+Tavily: free Researcher allowance, documented as 1,000 API credits/month; endpoints consume
+credits differently. Tavily search and extract use the existing shared key in this project.
+https://www.tavily.com/pricing
+https://docs.tavily.com/documentation/api-credits
+SerpApi: free search plan available; monthly search allowance and throughput limits apply.
+https://serpapi.com/pricing
+Bright Data: official free-tier documentation describes credits usable across supported APIs.
+Products can also require the correct zone/product setup; having a key alone is insufficient.
+https://docs.brightdata.com/general/account/billing-and-pricing/free-tier
+Sting: this app treats Sting as a configurable HTTPS endpoint, not a verified specific vendor.
+No independent free tier was established. Supply the endpoint and follow that vendor's terms.
+Octoparse: the app reads a configured task's data via API, not arbitrary page scraping. This
+research did not establish free API entitlement; check the task/account plan before use.
+Free reader routes: direct fetch, r.jina.ai and allorigins are keyless fallbacks, not guaranteed
+services. Browser CORS, origin blocking, third-party uptime and site access rules still apply.
+
+STATUS HONESTY
+Catalog reachable = a model list was retrieved. It does not prove authentication on a public
+catalog, generation permission, remaining credit or remaining quota. A successful user chat
+is stronger evidence. This release does not probe arbitrary third-party keys or send private
+credentials to lookup websites. All provider guides link only to public documentation.
