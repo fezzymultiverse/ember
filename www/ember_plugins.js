@@ -68,7 +68,7 @@
   const engBusy = {};
   function enginesGroup() {
     const K = window.EmberKeyless; if (!K) return '';
-    const E = [['pollinations', '🌸', 'Pollinations', 'Free · flux · fast'], ['forge', '🔥', 'Forge', 'Free · AI Horde · queue 30 s+'], ['stability', '🎨', 'Stability AI', 'Your key · billed by Stability']];
+    const E = [['stability', '🎨', 'Stability AI', 'Your key · billed by Stability']]; // V1.10.29: built-in only, no keyless picture APIs
     let h = '<h4 class="epl-h">Picture engines</h4><div class="epl-grp">';
     E.forEach(([id, ic, nm, sub]) => {
       const on = K.enabled(id), ok = K.healthy(id), b = engBusy[id];

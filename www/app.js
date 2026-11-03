@@ -142,7 +142,7 @@ function bub(x, last, i) {
   const artifact = x.r == 'a' && window.EmberArtifacts ? window.EmberArtifacts.render(x.t, i) : null;
   const eng = x.eng ? ' · ' + Prov.label(x.eng.p) + (S.showEng && x.eng.m ? ' ' + esc(String(x.eng.m).replace(/^.*\//, '').slice(0, 34)) : '') + (S.showEng && x.eng.ms ? ' ' + x.eng.ms + 'ms' : '') + (x.eng.pm ? ' · ' + Prov.label(x.eng.pm) + ' pin failed' : '') : '';
   const regen = last && x.r == 'a' ? '<button data-act="regen">↻ again</button>' : '';
-  const say = x.r == 'a' ? '<button data-act="say" data-i="' + i + '" aria-label="Read aloud" title="Read aloud"' + (sayIdx === i ? ' class="talking"' : '') + '>' + (sayIdx === i ? '■ Stop' : '🔊') + '</button>' : '';
+  const say = x.r == 'a' ? '<button data-act="say" data-i="' + i + '" aria-label="Read aloud" title="Read aloud"' + (sayIdx === i ? ' class="talking"' : '') + '>' + (sayIdx === i ? 'Stop' : '🔊') + '</button>' : '';
   const cp = '<button data-act="copy" data-i="' + i + '" aria-label="Copy message" title="Copy this message">⧉ Copy</button>';
   const context = x.ctx ? '<span class="context-chip" title="This message includes extra context">'+(/image|photo|vision/i.test(x.ctx)?'Image context':/document|file|attachment/i.test(x.ctx)?'Document context':'Extra context')+'</span>' : '';
   const proof = x.r == 'a' && x.ghRead && x.ghRead.files && x.ghRead.files.length ? x.ghRead : null;
@@ -446,7 +446,7 @@ async function resolveAddonCalls(text, L, route) {
 const REPLY_MS = 100000;
 async function reply(o) {
   o = o || {}; if (busy) return;
-  busy = true; cancelRequested = false; streamText = ''; lastErr = null; $('bSend').disabled = true; $('bStop').classList.remove('hidden'); $('bStop').disabled = false; $('bStop').textContent = '■'; $('bSend').classList.add('hidden'); typing(true);
+  busy = true; cancelRequested = false; streamText = ''; lastErr = null; $('bSend').disabled = true; $('bStop').classList.remove('hidden'); $('bStop').disabled = false; $('bStop').textContent = ''; $('bSend').classList.add('hidden'); typing(true);
   const turnId = conv.id + ':' + conv.msgs.length; curTurn = turnId;
   const cancelledTurn = new Promise((_, reject) => { rejectTurn = reject; }); cancelledTurn.catch(() => {});
   const withinTurn = promise => Promise.race([promise, cancelledTurn]);
@@ -739,6 +739,8 @@ $('bNew').onclick = () => {
   try { sessionStorage.removeItem(SS_CONV_KEY); sessionStorage.removeItem(SS_SCROLL_KEY); sessionStorage.removeItem(SS_INPUT_KEY); } catch (e) {}
   renderLog(); drawer(false); $('inp').focus();
 };
+// V1.10.30: the header + starts a fresh chat exactly like "+ New chat" in the menu.
+$('bNewTop').onclick = () => { if (busy) { toast('Wait for the current reply to finish'); return; } $('bNew').onclick(); };
 $('hlist').addEventListener('click', async e => {
   const card = e.target.closest('.hi'); if (!card) return;
   const id = card.dataset.id, act = e.target.dataset.a;
@@ -865,7 +867,7 @@ function setSay(i) {
 function paintSay() {
   document.querySelectorAll('#log [data-act="say"]').forEach(b => {
     const on = +b.dataset.i === sayIdx;
-    b.classList.toggle('talking', on); b.textContent = on ? '■ Stop' : '🔊';
+    b.classList.toggle('talking', on); b.textContent = on ? 'Stop' : '🔊';
     b.setAttribute('aria-label', on ? 'Stop reading' : 'Read aloud'); b.title = on ? 'Stop reading' : 'Read aloud';
   });
 }
@@ -1003,7 +1005,7 @@ $('kList').addEventListener('toggle', e => {
 window.emberKeysReset = () => { if (keyDetailId !== null) { keyDetailId = null; renderKeys(); } };
 
 // ---------- V1.6.1: Get Key buttons ----------
-const KEY_LINKS = { openrouter:'https://openrouter.ai/settings/keys', plugsky:'https://plugsky.com/dashboard', groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', anthropic: 'https://console.anthropic.com/settings/keys' };
+const KEY_LINKS = { openrouter:'https://openrouter.ai/settings/keys', plugsky:'https://plugsky.com/dashboard', together:'https://api.together.ai/settings/api-keys', fireworks:'https://fireworks.ai/account/api-keys', groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', anthropic: 'https://console.anthropic.com/settings/keys' };
 const SCRAPE_LINKS = { firecrawl: 'https://www.firecrawl.dev/app/api-keys', browserless: 'https://www.browserless.io/', scraperapi: 'https://www.scraperapi.com/', scraperbee: 'https://app.scrapingbee.com/account/manage', zenrows: 'https://app.zenrows.com/builder', tavily: 'https://app.tavily.com/home', serpapi: 'https://serpapi.com/manage-api-key', brightdata: 'https://brightdata.com/cp', sting: '', octoparse: 'https://www.octoparse.com/' };
 function paintGetKeyRow(el, links) { if (!el) return; el.innerHTML = Object.keys(links).filter(k => links[k]).map(k => '<button class="btn g" data-link="' + esc(links[k]) + '" style="width:auto;padding:7px 12px;font-size:12px">' + (Prov.CFG[k] ? Prov.CFG[k].name : (window.EmberScraper && window.EmberScraper.LABEL[k]) || k) + ' ↗</button>').join(''); }
 document.addEventListener('click', e => { const b = e.target.closest('[data-link]'); if (b) window.open(b.dataset.link, '_blank', 'noopener'); });
@@ -1087,18 +1089,10 @@ $('swExtract') && ($('swExtract').onclick = async () => {
 
 // ---------- V1.6.1: notepad (Keys tab) — save, and Extract pulls keys out the same way the notes box above does ----------
 const PAD_KEY = 'ember_pad';
-function paintPad() { const v = LS.get(PAD_KEY, ''); if ($('padText')) $('padText').value = v; }
-$('padSave') && ($('padSave').onclick = () => { LS.set(PAD_KEY, $('padText').value); toast('Note saved'); });
-$('padClear') && ($('padClear').onclick = () => { $('padText').value = ''; LS.set(PAD_KEY, ''); $('padStatus').textContent = ''; toast('Note cleared'); });
-$('padExtract') && ($('padExtract').onclick = async () => {
-  const t = $('padText').value; if (!t.trim()) { toast('Nothing to extract from'); return; }
-  const b = $('padExtract'); b.disabled = true; b.textContent = 'Extracting…';
-  try {
-    const r = await runIngestAll(t);
-    $('padStatus').innerHTML = keyRepHtml(r);
-  } catch (e) { $('padStatus').textContent = 'Failed: ' + e.message; }
-  b.disabled = false; b.textContent = 'Extract keys'; renderKeys(); renderTop(); if (window.EmberScrapeUI) window.EmberScrapeUI.repaint();
-});
+// V1.10.25: the Notepad and the Paste keys card are one card now. The shared box is #pkBox; Detect (ember_pastekeys.js) does the key extraction.
+function paintPad() { const v = LS.get(PAD_KEY, ''); if ($('pkBox') && v && !$('pkBox').value) $('pkBox').value = v; }
+$('padSave') && ($('padSave').onclick = () => { LS.set(PAD_KEY, $('pkBox').value); toast('Note saved'); });
+$('padClear') && ($('padClear').onclick = () => { $('pkBox').value = ''; LS.set(PAD_KEY, ''); if ($('pkOut')) $('pkOut').innerHTML = ''; toast('Note cleared'); });
 
 // ---------- V1.6.1: Ask Termux — a side-channel question, never touches the open chat ----------
 $('txAsk') && ($('txAsk').onclick = async () => {

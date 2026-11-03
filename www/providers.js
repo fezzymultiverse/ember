@@ -7,6 +7,9 @@ const { LS } = U;
 const CFG = {
   openrouter: { name: 'OpenRouter', base: 'https://openrouter.ai/api/v1', kind: 'oai', color: '#93c5fd', optIn: true },
   plugsky: { name: 'Plugsky AI', base: 'https://plugsky.com/v1', kind: 'oai', color: '#7dd3fc', optIn: true },
+  // V1.10.31: Together AI and Fireworks AI. Your own key, OpenAI-style, opt-in (never in Auto unless switched on or pinned) because they spend your credits.
+  together: { name: 'Together AI', base: 'https://api.together.xyz/v1', kind: 'oai', color: '#6ee7b7', optIn: true, credits: true },
+  fireworks: { name: 'Fireworks AI', base: 'https://api.fireworks.ai/inference/v1', kind: 'oai', color: '#fca5a5', optIn: true, credits: true },
   stability: { name: 'Stability AI', base: 'https://api.stability.ai', kind: 'media', color: '#b4a3ff' },
   groq: { name: 'Groq', base: 'https://api.groq.com/openai/v1', kind: 'oai', color: '#ff6a00' },
   mistral: { name: 'Mistral', base: 'https://api.mistral.ai/v1', kind: 'oai', color: '#ffb020' },
@@ -55,7 +58,7 @@ function setPinnedModel(id, model) { pinnedModel = (id && CFG[id] && model) ? { 
 let strictPin = LS.get('ember_pin_strict', true) !== false;
 function setStrict(v) { strictPin = !!v; LS.set('ember_pin_strict', strictPin); }
 const onlyPinned = lane => !!(strictPin && pinnedEngine && lane != 'util');
-function orderFor(lane) { const enabled = LS.get('ember_route_enabled', {}); let base = (ORDER[lane] || ORDER.fast).concat(['openrouter', 'plugsky'].filter(id => enabled[id] === true)).filter(id => CFG[id].kind !== 'media' && enabled[id] !== false); const liveIds = base.filter(id => keys[id] && keys[id].some(e => !e.bad)); if (liveIds.length) base = liveIds; /* V1.10.21: only engines that hold a live key; per-provider OFF switch */ if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
+function orderFor(lane) { const enabled = LS.get('ember_route_enabled', {}); let base = (ORDER[lane] || ORDER.fast).concat(['openrouter', 'plugsky', 'together', 'fireworks'].filter(id => enabled[id] === true)).filter(id => CFG[id].kind !== 'media' && enabled[id] !== false); const liveIds = base.filter(id => keys[id] && keys[id].some(e => !e.bad)); if (liveIds.length) base = liveIds; /* V1.10.21: only engines that hold a live key; per-provider OFF switch */ if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
     const lg = lane == 'fast' ? LS.get('ember_last_good', null) : null;
     if (lg && base.includes(lg) && keys[lg] && keys[lg].some(e => !e.bad)) return [lg].concat(base.filter(x => x != lg));
     return base; } return [pinnedEngine].concat(base.filter(id => id != pinnedEngine)); }
@@ -209,6 +212,9 @@ async function listModels(id, key) {
   if (c.kind === 'media') { await jfetch(c.base + '/v1/user/account', { headers: { Authorization: 'Bearer ' + key } }, 15000); return []; }
   if (c.kind == 'oai') {
     const j = await jfetch(c.base + '/models', { headers: { Authorization: 'Bearer ' + key } }, 15000);
+    // V1.10.31: Together answers with a bare array and tags each model with a type; Fireworks marks chat models with supports_chat. Other providers are untouched.
+    if (id === 'together') return (Array.isArray(j) ? j : (j.data || [])).filter(m => m && m.id && (!m.type || /^(chat|language|code)$/i.test(m.type))).map(m => m.id);
+    if (id === 'fireworks') return (j.data || []).filter(m => m && m.id && m.supports_chat !== false).map(m => m.id);
     return (j.data || []).map(m => m.id).filter(Boolean);
   }
   if (c.kind == 'claude') {
@@ -227,6 +233,13 @@ function rank(id, list, lane) {
   if (id === 'stability') return [];
   if (id === 'openrouter' || id === 'plugsky') return list.filter(m => !/embed|rerank|whisper|tts|audio|video|flux|stable-diffusion|imagen|veo|sora|moderation/i.test(m)).sort((a,b) => Number(/:free$|^plugsky-(micro|lite)$/.test(b)) - Number(/:free$|^plugsky-(micro|lite)$/.test(a)));
   const deep = lane == 'deep';
+  if (id === 'together' || id === 'fireworks') { // V1.10.31: chat models only, strong open instruct models first
+    const ok = list.filter(m => !/embed|rerank|whisper|guard|safety|tts|audio|image|flux|stable-diffusion|moderation|transcri|vision|-vl\b|-vl-|\bvl\b/i.test(m));
+    const pref = deep ? [/deepseek-?v3|deepseek-?r1/i, /llama-?v?(?:3\.3|3p3).*70b/i, /qwen.*(?:235b|72b|max)/i, /llama.*70b/i, /gpt-oss-120b/i] : [/llama-?v?(?:3\.3|3p3).*70b/i, /llama-?v?(?:3\.1|3p1).*8b/i, /qwen.*(?:32b|72b|7b)/i, /gpt-oss-20b/i, /llama/i];
+    const out = []; pref.forEach(p => ok.filter(m => p.test(m)).forEach(m => { if (!out.includes(m)) out.push(m); }));
+    ok.forEach(m => { if (!out.includes(m)) out.push(m); });
+    return out;
+  }
   if (id == 'groq') {
     const ok = list.filter(m => !/whisper|guard|tts|embed|playai|distil/i.test(m));
     const pref = [/llama-3\.3-70b/, /llama.*70b/, /llama-4/, /llama/, /gpt-oss/, /qwen/];

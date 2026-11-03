@@ -1,0 +1,17 @@
+EMBER V1.10.28 - PDF FOR EVERY ARTIFACT + STRUCTURED LAYOUTS + UI FIXES
+PDF      Every artifact now has a PDF button (card, shelf, picture row and full-screen viewer): markdown, document, pdf, html, code, json, csv, svg, image.
+         Built on the device by pdfmake. Saves through the same Save plugin / share sheet as before. HTML now builds a real PDF too; "Print view" stays as its own button.
+         Code    -> cover-style header, stat cards (language, lines, size), language chip, line numbers.
+         JSON    -> stat cards, a Records table (array of objects) or Top-level fields table, then the full pretty JSON with line numbers.
+         CSV     -> stat cards and a real table (landscape when wide), bar chart for plain numeric tables.
+         SVG / image -> the picture, scaled to the page, with a format/size card.
+LAYOUT   Structured exports get: coloured top bar on every page, kind label in the header (CODE - PYTHON, CSV...), cover page + contents page on long documents
+         (cover shows words / sections / reading time), h1 rule, language chips on code.
+         New Markdown the AI (and you) can write: ```stats  > [!NOTE|TIP|WARNING|IMPORTANT|SUCCESS]  ```chart (bar|hbar|line|pie|donut)  ```steps
+         <!-- columns --> ... <!-- col --> ... <!-- endcolumns -->  <!-- pagebreak -->. A plain label + number table gets an automatic bar chart.
+         Artifact tag attributes: theme, accent, cover, toc, orientation, subtitle, author. Ember's prompts (persona.js, PDF mode) now teach these.
+UI       Blue light by "Ember": always flashes, also when Android "remove animations" is on (reduced-motion now blinks instead of freezing).
+         Stop (bottom, while a reply runs): the word Stop only, no square/block glyph. Reply read-aloud button says Stop, no block.
+         Top-right blocks (Browser, Actions): same size and shape as the menu block on the left (44px rounded squares, caret is a corner badge).
+FILES    www/ember_deliverables.js, www/ember_artifacts.js, www/ember_v128.css (new, loaded last), www/app.js, www/persona.js, www/ember_plus.js, www/index.html, www/sw.js, package.json.
+NOT TESTED  Android device, APK rebuild. Checked in headless Chromium at 412x915: PDFs for all 9 types render, header/Stop/dot computed styles.

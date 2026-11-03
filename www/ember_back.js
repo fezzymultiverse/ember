@@ -7,6 +7,7 @@
   const DEFS = [
     { id: 'rightPanel', open: () => !!W.EmberRightPanel?.isOpen(), close: () => W.EmberRightPanel?.close() },
     { id: 'drawer', open: () => has('drawer', 'show'), close: () => { const b = $('bDx'); if (b) b.click(); } },
+    { id: 'artbox', open: () => has('emberArtSheet', 'show'), close: () => { if (W.EmberArtBox) W.EmberArtBox.close(); } },
     { id: 'settings', open: () => has('settings', 'show'), close: () => { const b = $('bSx'); if (b) b.click(); } },
     { id: 'commandCenter', open: () => has('emberCommandCenter', 'ecc-open'), close: () => W.EmberCommandCenter?.close() },
     { id: 'hub', open: () => D.body.classList.contains('ehub-on'), close: () => { if (W.EmberHub && W.EmberHub.close) W.EmberHub.close(); } },
@@ -45,7 +46,7 @@
 
   function watch() {
     const mo = new MutationObserver(sync);
-    ['drawer', 'settings', 'plusMenu', 'emberApis', 'emberCommandCenter'].forEach(id => { const e = $(id); if (e) mo.observe(e, { attributes: true, attributeFilter: ['class'] }); });
+    ['drawer', 'settings', 'plusMenu', 'emberApis', 'emberCommandCenter', 'emberArtSheet'].forEach(id => { const e = $(id); if (e) mo.observe(e, { attributes: true, attributeFilter: ['class'] }); });
     mo.observe(D.body, { attributes: true, attributeFilter: ['class'] });
   }
   if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', watch); else watch();

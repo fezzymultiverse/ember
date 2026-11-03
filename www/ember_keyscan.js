@@ -27,6 +27,8 @@ const GENERIC = /^[A-Za-z0-9_-]{16,128}$/;
 const CAT = {
   openrouter: { kind:'chat', label:'OpenRouter', rx:'open[\\s_-]?router', prefixed:true },
   plugsky: { kind:'chat', label:'Plugsky AI', rx:'plug[\\s_-]?sky', prefixed:true },
+  together: { kind:'chat', label:'Together AI', rx:'together[\\s_-]?ai|together\\.(?:ai|xyz)', prefixed:true },
+  fireworks: { kind:'chat', label:'Fireworks AI', rx:'fireworks(?:[\\s_-]?ai)?', prefixed:true },
   stability: { kind:'chat', label:'Stability AI', rx:'stability(?:[\\s_-]?ai)?', prefixed:true },
   groq:        { kind: 'chat',   label: 'Groq',         rx: 'groq', prefixed: true },
   gemini:      { kind: 'chat',   label: 'Gemini',       rx: 'gemini|genai|ai[\\s_-]?studio|generativelanguage', weak: 'google', prefixed: true },
@@ -49,7 +51,7 @@ const CAT = {
 const IDS = Object.keys(CAT);
 const CHAT_IDS = IDS.filter(id => CAT[id].kind == 'chat'), SCRAPE_IDS = IDS.filter(id => CAT[id].kind == 'scrape');
 // services Ember has no slot for: their NAME is still a boundary, so a key under "OpenAI" is not handed to the provider above it
-const OTHER_RX = 'open[\\s_-]?ai|chat[\\s_-]?gpt|deep[\\s_-]?seek|anthropic|claude|together[\\s_-]?ai|x[\\s_-]?ai|perplexity|cerebras|samba[\\s_-]?nova|nvidia|replicate|github|gitlab|aws|azure|stripe|twilio|eleven[\\s_-]?labs|deepgram|assembly[\\s_-]?ai|bing|serper|search[\\s_-]?api|data[\\s_-]?for[\\s_-]?seo|crawlbase|apify|scraping[\\s_-]?dog|scrapfly|oxylabs|smartproxy|decodo|zyte|scraping[\\s_-]?ant|jina|exa[\\s_-]?ai|brave';
+const OTHER_RX = 'open[\\s_-]?ai|chat[\\s_-]?gpt|deep[\\s_-]?seek|anthropic|claude|x[\\s_-]?ai|perplexity|cerebras|samba[\\s_-]?nova|nvidia|replicate|github|gitlab|aws|azure|stripe|twilio|eleven[\\s_-]?labs|deepgram|assembly[\\s_-]?ai|bing|serper|search[\\s_-]?api|data[\\s_-]?for[\\s_-]?seo|crawlbase|apify|scraping[\\s_-]?dog|scrapfly|oxylabs|smartproxy|decodo|zyte|scraping[\\s_-]?ant|jina|exa[\\s_-]?ai|brave';
 const NAME_RX = {}; IDS.forEach(id => { NAME_RX[id] = [[new RegExp(CAT[id].rx, 'ig'), false]]; if (CAT[id].weak) NAME_RX[id].push([new RegExp(CAT[id].weak, 'ig'), true]); });
 const OTHER_RE = new RegExp(OTHER_RX, 'ig');
 
@@ -58,6 +60,8 @@ const B = '(?<![A-Za-z0-9_-])';
 const STRONG = [
   ['openrouter', new RegExp(B + 'sk-or-v1-[A-Za-z0-9_-]{16,}', 'g')],
   ['plugsky', new RegExp(B + 'sk-live-[A-Za-z0-9_-]{16,}', 'g')],
+  ['together', new RegExp(B + 'tgp_v1_[A-Za-z0-9_-]{16,}', 'g')],
+  ['fireworks', new RegExp(B + 'fw_[A-Za-z0-9]{16,}', 'g')],
   ['groq', new RegExp(B + 'gsk_[A-Za-z0-9]{20,}', 'g')],
   ['gemini', new RegExp(B + 'AIza[0-9A-Za-z_-]{30,}', 'g')],
   ['gemini', new RegExp(B + 'AQ\\.[0-9A-Za-z_.-]{20,}', 'g')],

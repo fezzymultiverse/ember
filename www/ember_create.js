@@ -184,6 +184,7 @@ async function route(prompt, hk) {
   const step = (ic, text, key) => { try { if (hk.step) hk.step(ic, text, key); } catch (e) { /* the card is a view only */ } };
   const raw = String(prompt || '').trim().slice(0, 600), ask = cleanAsk(raw).slice(0, 400);
   if (!ask) return { ok: false, error: 'Describe the picture first.' };
+  return { ok: false, error: 'Built-in only: Ember no longer calls Pollinations. Add a Stability key in Plugins > Media & Music for pictures, or ask for an SVG.' }; // V1.10.29
   const t0 = Date.now(), steps = [], lap = () => ((Date.now() - t0) / 1000).toFixed(1) + 's';
   const words = (ask.match(/\S+/g) || []).length;
   step('msg', 'Reading your picture request · ' + words + ' word' + (words == 1 ? '' : 's'), 'im1'); steps.push(['Read your request (' + words + ' word' + (words == 1 ? '' : 's') + ')', lap()]);

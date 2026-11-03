@@ -1080,18 +1080,10 @@ $('swExtract') && ($('swExtract').onclick = async () => {
 
 // ---------- V1.6.1: notepad (Keys tab) — save, and Extract pulls keys out the same way the notes box above does ----------
 const PAD_KEY = 'ember_pad';
-function paintPad() { const v = LS.get(PAD_KEY, ''); if ($('padText')) $('padText').value = v; }
-$('padSave') && ($('padSave').onclick = () => { LS.set(PAD_KEY, $('padText').value); toast('Note saved'); });
-$('padClear') && ($('padClear').onclick = () => { $('padText').value = ''; LS.set(PAD_KEY, ''); $('padStatus').textContent = ''; toast('Note cleared'); });
-$('padExtract') && ($('padExtract').onclick = async () => {
-  const t = $('padText').value; if (!t.trim()) { toast('Nothing to extract from'); return; }
-  const b = $('padExtract'); b.disabled = true; b.textContent = 'Extracting…';
-  try {
-    const r = await runIngestAll(t);
-    $('padStatus').innerHTML = keyRepHtml(r);
-  } catch (e) { $('padStatus').textContent = 'Failed: ' + e.message; }
-  b.disabled = false; b.textContent = 'Extract keys'; renderKeys(); renderTop(); if (window.EmberScrapeUI) window.EmberScrapeUI.repaint();
-});
+// V1.10.25: the Notepad and the Paste keys card are one card now. The shared box is #pkBox; Detect (ember_pastekeys.js) does the key extraction.
+function paintPad() { const v = LS.get(PAD_KEY, ''); if ($('pkBox') && v && !$('pkBox').value) $('pkBox').value = v; }
+$('padSave') && ($('padSave').onclick = () => { LS.set(PAD_KEY, $('pkBox').value); toast('Note saved'); });
+$('padClear') && ($('padClear').onclick = () => { $('pkBox').value = ''; LS.set(PAD_KEY, ''); if ($('pkOut')) $('pkOut').innerHTML = ''; toast('Note cleared'); });
 
 // ---------- V1.6.1: Ask Termux — a side-channel question, never touches the open chat ----------
 $('txAsk') && ($('txAsk').onclick = async () => {

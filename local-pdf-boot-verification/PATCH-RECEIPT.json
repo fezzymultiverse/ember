@@ -13,7 +13,7 @@
     {
       "file": "ember_deliverables.js",
       "beforeSHA256": "95f619b7e2330872cfc56f16a63b67df061d611c58d09b864e3fdec8b44af698",
-      "afterSHA256": "703d5759b0c47f4350ab67bc1235b046e5f71020afada90715cfb97ab9159cca"
+      "afterSHA256": "409ad9f30ef3c5de69853497611dcc820d89b098b8c0a497ec4d5b97630e3e06"
     },
     {
       "file": "ember_engines.js",
@@ -23,12 +23,12 @@
     {
       "file": "index.html",
       "beforeSHA256": "4f9647ecc29c89caf33a32053e30b01dd073172bd3b2caaad201a1349977c0ab",
-      "afterSHA256": "919117f88aa7657203704caa9d66d7ccce1416969db55437ea8805834f13aa07"
+      "afterSHA256": "34ddce90e8cd7b8631f27250877d6cc1f7e07d127e856e7db3d391f7e9fa6fca"
     },
     {
       "file": "sw.js",
       "beforeSHA256": "f59dcb00095b5421c843e115566923b71732a935efdea032598640f45b67eb3a",
-      "afterSHA256": "29974b76a132a985ff1ede64bddd0d32a0220fd3b4e026d98b6f63d3f9e00962"
+      "afterSHA256": "4074bb9cb2dc2ca5e1a8295397d854bd5473d40452cac06343bfe24f5d48481f"
     },
     {
       "file": "www/ember_artifacts.js",
@@ -38,7 +38,7 @@
     {
       "file": "www/ember_deliverables.js",
       "beforeSHA256": "7ecb3c0b68d57f1f09435c5d7cb0f94240a79993673355876b4c946f4be22376",
-      "afterSHA256": "703d5759b0c47f4350ab67bc1235b046e5f71020afada90715cfb97ab9159cca"
+      "afterSHA256": "409ad9f30ef3c5de69853497611dcc820d89b098b8c0a497ec4d5b97630e3e06"
     },
     {
       "file": "www/ember_engines.js",
@@ -48,12 +48,12 @@
     {
       "file": "www/index.html",
       "beforeSHA256": "1c3ef6e0f90a34c2e9cd00cc8777e34a2f1a3f5f688d55dd226ad987f2e080f8",
-      "afterSHA256": "49ff5a9b99998ba17cdbfdc1bb3106b9dee445d9b2fdd62665ae941445b2f58c"
+      "afterSHA256": "d0c1c76cf06c15f90764729bdf8ae2edefa7d02e238cdcfcc76cae2f71581974"
     },
     {
       "file": "www/sw.js",
       "beforeSHA256": "299a3b3c5c0210d06055f82dac9f109c627200862f1ca9cd7b0991cd953c4032",
-      "afterSHA256": "606004ada46df5fa6a86214a88df0d9e075d53f3c7019e46d77eac71cefaf82b"
+      "afterSHA256": "96a0f9e7683d4f7a025599e0840658ff344b7f64e3752be942677e9b8429ea4c"
     }
   ],
   "verification": {
@@ -5192,5 +5192,6 @@
       "original": "009e509bbd25a0f7572b184781707263f5df9e89d2ed751c46e0f6edf0c5d42e",
       "updated": "009e509bbd25a0f7572b184781707263f5df9e89d2ed751c46e0f6edf0c5d42e"
     }
-  }
+  },
+  "postPatchNote": "ember_deliverables.js and sw.js revised after original receipt (widow/orphan control, cover pages, colour themes; cache boot3). ember_keyless.js (root and www) also edited to pass cover/colour wording to the PDF tool; it is not part of the original ten-file receipt. v6: index.html (both), sw.js (both: cache boot4), www/app.js, app.js, www/ember_boot.js also edited (merged paste card, longer boot)."
 }

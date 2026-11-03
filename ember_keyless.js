@@ -78,7 +78,7 @@
   }
   // V1.10.20: what Ember is told every turn. One line per tool: what it does and the exact way to trigger it. Ember cannot call these as tools
   // (they start from the words in HIS message, see classify), so she is told to hand him the phrase instead of claiming she ran one.
-  const HOW = { pdf:'say "make a PDF of <text>"', word:'say "make a Word document of <text>"', markdown:'say "save this as markdown"', grammar:'say "proofread this: <text>"',
+  const HOW = { pdf:'say "make a PDF of <text>" (optional: "with a cover page", "with a table of contents", a colour such as "blue theme"; text covers Latin, Greek and Cyrillic, not emoji or CJK)', word:'say "make a Word document of <text>"', markdown:'say "save this as markdown"', grammar:'say "proofread this: <text>"',
     image:'say "draw / generate an image of <idea>" (or + > Create image)', avatar:'say "make an avatar for <name>"', placeholder:'say "get a placeholder photo"', qr:'say "make a QR code for <text or link>"',
     speech:'say "read aloud: <text>"', listen:'say "start dictation"', lyrics:'say "find lyrics for <song> by <artist>"', music:'say "search songs by <artist or title>"',
     code:'send "run this python/javascript" with the code in a code block', mock:'say "make sample products JSON"', scrape:'send "read / summarise <https link>"',
@@ -233,6 +233,18 @@
     if(r?.truncated||r?.finish_reason==='length'||!draft&&result.length<text.length*0.55)throw new Error('Text structuring was incomplete; original preserved');
     return result;
   }
+  // PDF options from plain wording in his message: "with a cover page", "table of contents", "blue theme" or a #hex accent.
+  function pdfOptions(p) {
+    const t = String(p || ''), o = {}, C = 'blue|green|purple|violet|red|crimson|grey|gray|slate|teal|orange|ember|ocean|forest';
+    if (/\b(?:cover\s*(?:page|sheet)|title\s*page|front\s*page)\b|\bwith\s+an?\s+cover\b/i.test(t)) o.cover = true;
+    if (/\b(?:table\s+of\s+contents|contents\s+page|toc)\b/i.test(t)) o.toc = true;
+    const hex = /#[0-9a-f]{6}\b/i.exec(t);
+    const named = new RegExp('\\b(' + C + ')\\s+(?:theme|colou?r(?:s|\\s+scheme)?|accent|style|cover|design)\\b', 'i').exec(t)
+      || new RegExp('\\b(?:theme|colou?rs?|accent)\\s*(?:of|in|to|is|:)?\\s*(?:an?\\s+|the\\s+)?(' + C + ')\\b', 'i').exec(t)
+      || new RegExp('\\bin\\s+(?:an?\\s+|the\\s+)?(' + C + ')\\s+(?:pdf|document)\\b', 'i').exec(t);
+    if (hex) o.accent = hex[0]; else if (named) o.theme = named[1].toLowerCase();
+    return o;
+  }
   async function documentResult(id,p,opt,signal) {
     let text=bodyText(p,opt);if(!text.trim())throw new Error('Provide the document text');
     const draft=opt.text===undefined&&text===p&&!p.includes('\n');
@@ -251,7 +263,7 @@
     const ext={pdf:'pdf',word:'docx',markdown:'md'}[id],title='Ember - '+String(opt.title||'essay').replace(/[^\w -]/g,'').slice(0,70)+'.'+ext;
     const type=id==='word'?'document':id;
     let blob;
-    if(id==='pdf'){line('[pdfmake] Generating local PDF...');blob=await limited(()=>W.EmberDeliverables.pdf(text,title),signal);}
+    if(id==='pdf'){line('[pdfmake] Generating local PDF...');blob=await limited(()=>W.EmberDeliverables.pdf(text,title,pdfOptions(p)),signal);}
     else if(id==='word'){line('[docx] Generating local Word document...');blob=await limited(()=>W.EmberDeliverables.word(text,title),signal);}
     else{W.EmberArtifacts.markdownHtml(text);blob=new Blob([text],{type:'text/markdown;charset=utf-8'});}
     const a={type,title,content:text};remember(a,blob);return {text:artifact(type,title,text),title,blob};

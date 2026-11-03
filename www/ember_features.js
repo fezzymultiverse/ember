@@ -4,10 +4,10 @@
  const W=window,$=id=>document.getElementById(id),esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const get=(k,d)=>{try{return JSON.parse(localStorage.getItem(k)||'null')??d;}catch(_){return d;}};
  const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
- const initials={groq:'G',gemini:'G✦',mistral:'M',cohere:'C',anthropic:'A',openrouter:'OR',plugsky:'PS',stability:'S'};
- const full={gemini:'Google Gemini',mistral:'Mistral AI',anthropic:'Anthropic Claude',cohere:'Cohere',groq:'Groq',openrouter:'OpenRouter',plugsky:'Plugsky AI',stability:'Stability AI'};
+ const initials={groq:'G',gemini:'G✦',mistral:'M',cohere:'C',anthropic:'A',openrouter:'OR',plugsky:'PS',together:'T',fireworks:'F',stability:'S'};
+ const full={gemini:'Google Gemini',mistral:'Mistral AI',anthropic:'Anthropic Claude',cohere:'Cohere',groq:'Groq',openrouter:'OpenRouter',plugsky:'Plugsky AI',together:'Together AI',fireworks:'Fireworks AI',stability:'Stability AI'};
  // Embedded service monograms, no tracking requests or unlicensed external logo assets.
- const PROVIDER_LOGOS={groq:'groq.svg',mistral:'mistral.svg',gemini:'gemini.svg',cohere:'cohere.svg',anthropic:'anthropic.svg',openrouter:'openrouter.svg',stability:'stability.svg',plugsky:'plugsky.ico'};
+ const PROVIDER_LOGOS={groq:'groq.svg',mistral:'mistral.svg',gemini:'gemini.svg',cohere:'cohere.svg',anthropic:'anthropic.svg',openrouter:'openrouter.svg',stability:'stability.svg',plugsky:'plugsky.ico',together:'together.svg',fireworks:'fireworks.svg'};
  W.EmberProviderBadge=id=>{const f=PROVIDER_LOGOS[id];return f?'<span class="ef-badge ef-logo" aria-hidden="true"><img src="provider-icons/'+f+'" alt="" loading="lazy"></span>':'<span class="ef-badge" aria-hidden="true">'+esc(initials[id]||id.slice(0,2).toUpperCase())+'</span>';};
  function open(){ $('bSet')?.click();document.querySelector('#stabs [data-st="features"]')?.click();setTimeout(()=>($('efMenu')||$('efRouting'))?.scrollIntoView({block:'start',behavior:'smooth'}),100);}
  function switchHTML(id,label,on){return'<div class="ef-switch-row"><span>'+esc(label)+'</span><button type="button" class="ef-switch '+(on?'on':'')+'" id="'+id+'" role="switch" aria-checked="'+!!on+'">'+(on?'ON':'OFF')+'</button></div>';}
@@ -20,7 +20,7 @@
   card.innerHTML='<div class="ct">AI routing · media · downloads</div><div class="ef-content">'+
    '<h3>Provider routing</h3><p class="hint">Model + key cooldowns are independent. Keys rotate on each request; automatic chat fallback follows your pin policy. New paid-capable platforms join Auto only when enabled here. Pinning a platform is an explicit choice.</p>'+
    switchHTML('efStrict','Strict provider pin — no cross-provider fallback',Prov.getStrict())+
-   switchHTML('efOpenrouter','Allow OpenRouter in automatic fallback',enabled.openrouter===true)+switchHTML('efPlugsky','Allow Plugsky AI in automatic fallback',enabled.plugsky===true)+
+   switchHTML('efOpenrouter','Allow OpenRouter in automatic fallback',enabled.openrouter===true)+switchHTML('efPlugsky','Allow Plugsky AI in automatic fallback',enabled.plugsky===true)+switchHTML('efTogether','Allow Together AI in automatic fallback (uses your credits)',enabled.together===true)+switchHTML('efFireworks','Allow Fireworks AI in automatic fallback (uses your credits)',enabled.fireworks===true)+
    '<div id="efStats" aria-live="polite"></div><p class="hint">Counters are actual attempts, not account balances. Tokens are shown only when reported. Cooldowns are session-local. Refresh checks catalog access; it does not spend chat tokens or clear cooldowns.</p><button class="btn g" id="efRefresh">Refresh provider access</button>'+
    '<h3>Ember media artifacts</h3>'+switchHTML('efMediaOn','Enable media generation',mc.enabled===true)+
    '<p class="hint">Separate from chat. Stability AI: images, music/sound audio, and video. Video is composed on your phone from several Stability images plus a Stability audio track (Stability retired its hosted video API), so it uses several billed calls and plays out in real time. Provider charges may apply.</p>'+
@@ -38,7 +38,7 @@
    '<p class="hint">Start the included bridge with <code>npm run downloads</code> after installing yt-dlp and ffmpeg. Paste the token it prints above. In Music → Get, paste a link then choose Save one, List playlist, or Save whole playlist. Only download material you may legally keep. NewPipe video uses available combined streams; use yt-dlp for separate high-resolution video/audio merging.</p><div id="efDownloadFiles"></div></div>';
   ($('acc_b_features')||body).prepend(card);$('efDlEngine').value=dc.engine;$('efDlMode').value=dc.mode;
   $('efStrict').onclick=e=>{Prov.setStrict(!Prov.getStrict());setSwitch(e.currentTarget,Prov.getStrict());};
-  for(const[id,button]of[['openrouter','efOpenrouter'],['plugsky','efPlugsky']])$(button).onclick=e=>{const on=e.currentTarget.getAttribute('aria-checked')!=='true';Prov.setEnabled(id,on);setSwitch(e.currentTarget,on);};
+  for(const[id,button]of[['openrouter','efOpenrouter'],['plugsky','efPlugsky'],['together','efTogether'],['fireworks','efFireworks']])$(button).onclick=e=>{const on=e.currentTarget.getAttribute('aria-checked')!=='true';Prov.setEnabled(id,on);setSwitch(e.currentTarget,on);};
   $('efRefresh').onclick=async e=>{e.currentTarget.disabled=true;try{await Prov.pingAll();}finally{$('efRefresh').disabled=false;paintStats();}};
   $('efMediaOn').onclick=e=>{const on=!EmberMedia.cfg().enabled;save('ember_media_cfg',{...EmberMedia.cfg(),enabled:on});setSwitch(e.currentTarget,on);};
   $('efMediaProvider').onchange=mediaKinds;$('efMediaKind').onchange=mediaFields;mediaKinds();

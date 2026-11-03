@@ -69,7 +69,7 @@
       'Files & deliverables': () => invoke(W.EmberBrowser, 'open', 'docs'),
       'Device controls': () => settings('device'),
       'Terminal': () => settings('hacking', 'cockpitTermuxPanel'),
-      'GitHub & integrations': () => invoke(W.EmberWorkspace, 'open', 'connect'),
+      'GitHub & integrations': () => invoke(W.EmberGitBrain, 'open'),
       'AI providers & API keys': () => settings('engine'),
       'Permissions & background': () => settings('permissions'),
       'App settings': () => W.EmberCockpit.open()
@@ -125,6 +125,10 @@
         if (term) setGroup(g, visible > 0);
       });
       $('erpNoResults').hidden = matches > 0;
+      // 1.10.27: any word can also be searched across the real Settings.
+      let sb = $('erpSettingsSearch');
+      if (!sb) { sb = D.createElement('button'); sb.type = 'button'; sb.id = 'erpSettingsSearch'; sb.className = 'erp-item'; sb.hidden = true; $('erpGroups').append(sb); sb.addEventListener('click', () => { const t = search.value.trim(); close(false); if (W.EmberCockpit && W.EmberCockpit.search) W.EmberCockpit.search(t); }); }
+      sb.hidden = !term; sb.textContent = 'Search Settings for \u201c' + search.value.trim() + '\u201d \u203a';
     });
     D.addEventListener('keydown', e => {
       const taskOpen = !$('erpTasks').hidden;

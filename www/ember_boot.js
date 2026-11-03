@@ -12,10 +12,10 @@
  function keys(){try{var o=JSON.parse(localStorage.getItem('ember_keys')||'{}'),c=0;for(var p in o)if(Array.isArray(o[p]))c+=o[p].length;return c}catch(e){return 0}}
  var steps=['Waking the flame','Loading engines','Counting keys'+(keys()?': '+keys():''),'Warming the free models','Ready'];
  var tick=setInterval(function(){if(gone){clearInterval(tick);return}var el=Date.now()-t0;
-  if(k<steps.length-1&&el>(k+1)*650)k++;
+  if(k<steps.length-1&&el>(k+1)*1100)k++;
   if(st)st.textContent=steps[k]+(k<steps.length-1?'\u2026':'');
-  if(loaded&&el>2800){if(st)st.textContent='Ready';clearInterval(tick);setTimeout(end,350)}
-  if(el>6000){clearInterval(tick);end()}},120);
+  if(loaded&&el>5000){if(st)st.textContent='Ready';clearInterval(tick);setTimeout(end,350)}
+  if(el>9500){clearInterval(tick);end()}},120);
  window.addEventListener('load',function(){loaded=true});
  b.addEventListener('click',end); /* tap to skip */
 })();

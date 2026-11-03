@@ -1,0 +1,8 @@
+EMBER V1.10.29 - BUILT-IN ONLY (KEYLESS APIs REMOVED)
+REMOVED  The keyless router's third-party tools: Pollinations, Forge (AI Horde), DiceBear, Picsum, QRServer, Robohash, StreamElements TTS, JioSaavn, iTunes, LRCLIB, Piston, DummyJSON, Jina Reader, Microlink, IPify, LanguageTool.
+         Also gone: Pollinations/Forge picture routing (+ > Create image, Media engines sheet), Pollinations pictures inside PDFs (img: lines), the Jina/Microlink/weserv calls used to find page pictures for PDFs.
+KEPT     Built-in tools that run on the device: PDF (pdfmake), Word (docx), Markdown, dictation (device speech), text structuring (your existing chat engines).
+         Stability AI stays only because it uses YOUR saved key (Plugins > Media & Music). Ember still draws SVG itself.
+UI       Media engines sheet is now "Built-in engines". Engines & media menu, Plugins panel and the router chooser say Built-in. Ember's tool list tells the AI only the built-in tools exist.
+NOT TOUCHED  Chat Free Mode and your keyed chat providers, web search (Tavily / DuckDuckGo), Music Brain and the lyrics/music modules, and the player's own sources. Say the word if those should go too.
+NOT TESTED  Android device, APK rebuild. Headless Chromium at 412x915: router lists only built-in tools, PDFs still build, zero external requests on load.

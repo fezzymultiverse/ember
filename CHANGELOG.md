@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.10.31 - Together AI + Fireworks AI
+- Two new keyed, opt-in chat engines (off in Auto until switched on or pinned). See RELEASE_1_10_31.txt.
+
+## 1.10.30 - New chat button + Artifacts box
+- Header ＋ starts a fresh chat like the menu's New chat.
+- Left panel: Artifacts (N) row, searchable and filterable list across all chats, opens the existing viewer, "new" dot. See RELEASE_1_10_30.txt.
+
 ## 1.10.17 — 2026-10-29 — safe wiring release candidate
 
 Source was the supplied V1.10.16 Keyless Router archive. Added AST-backed inventory, event/storage/global registries, complete original-file receipts, explicit load-order and static/lazy precache closure. Archived six unloaded nested-Settings controllers without deleting them. Preserved all active stylesheet and patch ordering. Added small no-payload event adapters and documented unmatched incoming legacy events. Bumped package version and service-worker cache. Corrected three specified legacy tests to the current contracts and replaced nonportable test dependency paths. Added whole-suite discovery with non-short-circuiting real failure/timeout reporting and new structural/browser gates. Reconciled the Android manifest reference with the existing patcher. Rewrote current documents and retained earlier originals/history. Protected backend and vendor file hashes remain unchanged.
