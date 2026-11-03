@@ -50,7 +50,7 @@ window.addEventListener('load',loaded,{once:true});window.addEventListener('page
 <link rel="stylesheet" href="ember_right_panel.css?v=1.10.18-p7">
 <link rel="stylesheet" href="ember_gitbrain.css?v=1.10.27">
 <link rel="stylesheet" href="ember_boot.css?v=1.10.25">
-<link rel="stylesheet" href="ember_v128.css?v=1.10.28"><link rel="stylesheet" href="ember_artbox.css?v=1.10.30"></head><body><script src="ember_boot.js?v=1.10.25"></script>
+<link rel="stylesheet" href="ember_v128.css?v=1.10.28"><link rel="stylesheet" href="ember_artbox.css?v=1.10.30"><link rel="stylesheet" href="ember_v129.css?v=1.10.32"></head><body><script src="ember_boot.js?v=1.10.25"></script>
 <section id="emberBootScreen" aria-label="Ember is starting" aria-busy="true">
   <div class="eb-top">EMBER / YOUR WORKSPACE</div>
   <div class="eb-content"><div class="eb-mark"><img src="ember-icon.svg" alt="" width="100" height="100"></div><h1>Ember<span style="color:#ff9045">.</span></h1><p class="eb-tag">A spark. A thought. Something more.</p><div class="eb-track" aria-hidden="true"><span></span></div><div id="emberBootStatus" role="status" aria-live="polite">Starting Ember</div></div>
@@ -243,7 +243,7 @@ window.addEventListener('load',loaded,{once:true});window.addEventListener('page
 <div id="kList"></div>
 <div class="btnrow"><button class="btn g" id="bCheckAll">Check all</button></div>
 <div class="ct" style="margin-top:14px">Add one by hand</div>
-<div class="btnrow"><select id="kProv"><option value="groq">Groq</option><option value="mistral">Mistral</option><option value="gemini">Gemini</option><option value="cohere">Cohere (Prototype)</option><option value="anthropic">Claude (paid · pin to use)</option><option value="openrouter">OpenRouter</option><option value="plugsky">Plugsky AI</option><option value="together">Together AI (opt-in · your credits)</option><option value="fireworks">Fireworks AI (opt-in · your credits)</option></select><input type="password" id="kIn" placeholder="Paste a key" autocomplete="off" spellcheck="false"><button class="btn" id="bKAdd" style="width:auto;padding:0 16px">Add</button></div>
+<div class="btnrow"><select id="kProv"><option value="groq">Groq</option><option value="mistral">Mistral</option><option value="gemini">Gemini</option><option value="cohere">Cohere (Prototype)</option><option value="anthropic">Claude (paid · pin to use)</option><option value="openrouter">OpenRouter</option><option value="plugsky">Plugsky AI</option><option value="together">Together AI (opt-in · your credits)</option><option value="fireworks">Fireworks AI (opt-in · your credits)</option><option value="longcat">LongCat AI (opt-in · daily quota)</option></select><input type="password" id="kIn" placeholder="Paste a key" autocomplete="off" spellcheck="false"><button class="btn" id="bKAdd" style="width:auto;padding:0 16px">Add</button></div>
 <p class="hint">More than one key per engine is fine. When one is rate-limited, the next one takes over, then the next engine.</p></div>
 
 
@@ -401,7 +401,7 @@ window.addEventListener('load',loaded,{once:true});window.addEventListener('page
 <div class="btnrow"><button class="btn" id="bExp">Export backup</button><button class="btn g" id="bImp">Import backup</button></div>
 <input type="file" id="fImp" accept="application/json,.json" hidden>
 <button class="btn g danger" id="bWipe" style="margin-top:10px">Delete everything</button>
-<p class="hint" id="ver">Ember V1.10.31 · Built-in tools only · no keyless third-party APIs</p></div>
+<p class="hint" id="ver">Ember V1.10.32 · Built-in tools only · no keyless third-party APIs</p></div>
 </div></section>
 
 <section id="react" class="sheet"><div class="sh"><b>Reasoning</b><button class="hb" id="bRx" aria-label="Close reasoning">✕</button></div>
@@ -702,6 +702,6 @@ window.addEventListener('load',loaded,{once:true});window.addEventListener('page
 <footer class="erp-bottom"><section class="erp-cc" id="erpCc"><button type="button" class="erp-cc-head" id="erpCcToggle" aria-expanded="false"><span class="erp-cc-icon">◫</span><span class="erp-cc-title"><b>Command Centre</b><small>Workspace status · activity · routing</small></span><span class="erp-live"><i class="erp-dot"></i> CONNECTED</span><span class="erp-cc-arrow">⌃</span></button><div class="erp-cc-body"><div class="erp-metrics"><div class="erp-metric"><small>WORKSPACE</small><strong>Network available</strong></div><div class="erp-metric"><small>ACTIVE ENGINE</small><strong id="erpActiveEngine">Auto route</strong></div></div><div class="erp-log" id="erpActivityLog"><em>●</em> App status<br><span style="color:#71869e">Awaiting app status</span></div><div class="erp-cc-actions"><button type="button" data-cc="activity">Activity log</button><button type="button" data-cc="routing">Engine routing</button><button type="button" data-cc="status">Status</button></div></div></section><div class="erp-footnote">Tap a category to browse · Tap Command Centre to expand</div></footer></aside>
 <section id="erpTasks" role="dialog" aria-modal="true" aria-labelledby="erpTasksTitle" hidden inert><header><h2 id="erpTasksTitle">Tasks &amp; timers</h2><button type="button" id="erpTasksClose">Close</button></header><p>Timers run while Ember is open; overdue timers fire when the app reopens.</p><div id="erpTasksList"></div></section>
 <script src="ember_right_panel.js?v=1.10.20-nopanel"></script>
-<script src="ember_artbox.js?v=1.10.30"></script>
+<script src="ember_artbox.js?v=1.10.30"></script><script src="ember_v129.js?v=1.10.32"></script>
 <script src="ember_wiring.js"></script>
 </body></html>

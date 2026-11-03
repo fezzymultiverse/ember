@@ -10,6 +10,8 @@ const CFG = {
   // V1.10.31: Together AI and Fireworks AI. Your own key, OpenAI-style, opt-in (never in Auto unless switched on or pinned) because they spend your credits.
   together: { name: 'Together AI', base: 'https://api.together.xyz/v1', kind: 'oai', color: '#6ee7b7', optIn: true, credits: true },
   fireworks: { name: 'Fireworks AI', base: 'https://api.fireworks.ai/inference/v1', kind: 'oai', color: '#fca5a5', optIn: true, credits: true },
+  // V1.10.32: LongCat AI (Meituan). OpenAI-style, your own key, opt-in (never in Auto unless switched on or pinned) so the daily quota is not used behind your back.
+  longcat: { name: 'LongCat AI', base: 'https://api.longcat.chat/openai/v1', kind: 'oai', color: '#ffb347', optIn: true, credits: true },
   stability: { name: 'Stability AI', base: 'https://api.stability.ai', kind: 'media', color: '#b4a3ff' },
   groq: { name: 'Groq', base: 'https://api.groq.com/openai/v1', kind: 'oai', color: '#ff6a00' },
   mistral: { name: 'Mistral', base: 'https://api.mistral.ai/v1', kind: 'oai', color: '#ffb020' },
@@ -21,6 +23,8 @@ const CFG = {
 const IDS = Object.keys(CFG);
 // Automatic profile for this installation. Mistral stays active because it is working for him.
 const ACTIVE_IDS = IDS.filter(id => CFG[id].kind !== 'media');
+// V1.10.32: LongCat may not publish a /models list; these names are used when it does not answer one (a rejected key still fails).
+const LONGCAT_MODELS = ['LongCat-2.5-Preview', 'LongCat-2.0-Preview', 'LongCat-Flash-Thinking', 'LongCat-Flash-Chat'];
 // fast = quick everyday replies. deep = slow, careful turns. util = background jobs (memory, titles).
 const ORDER = { fast: ['groq', 'mistral', 'gemini', 'cohere'], deep: ['mistral', 'groq', 'gemini', 'cohere'], util: ['groq', 'mistral', 'gemini', 'cohere'] }; // V1.10.21: Groq and Mistral first, Cohere only as the last resort
 
@@ -58,7 +62,7 @@ function setPinnedModel(id, model) { pinnedModel = (id && CFG[id] && model) ? { 
 let strictPin = LS.get('ember_pin_strict', true) !== false;
 function setStrict(v) { strictPin = !!v; LS.set('ember_pin_strict', strictPin); }
 const onlyPinned = lane => !!(strictPin && pinnedEngine && lane != 'util');
-function orderFor(lane) { const enabled = LS.get('ember_route_enabled', {}); let base = (ORDER[lane] || ORDER.fast).concat(['openrouter', 'plugsky', 'together', 'fireworks'].filter(id => enabled[id] === true)).filter(id => CFG[id].kind !== 'media' && enabled[id] !== false); const liveIds = base.filter(id => keys[id] && keys[id].some(e => !e.bad)); if (liveIds.length) base = liveIds; /* V1.10.21: only engines that hold a live key; per-provider OFF switch */ if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
+function orderFor(lane) { const enabled = LS.get('ember_route_enabled', {}); let base = (ORDER[lane] || ORDER.fast).concat(['openrouter', 'plugsky', 'together', 'fireworks', 'longcat'].filter(id => enabled[id] === true)).filter(id => CFG[id].kind !== 'media' && enabled[id] !== false); const liveIds = base.filter(id => keys[id] && keys[id].some(e => !e.bad)); if (liveIds.length) base = liveIds; /* V1.10.21: only engines that hold a live key; per-provider OFF switch */ if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
     const lg = lane == 'fast' ? LS.get('ember_last_good', null) : null;
     if (lg && base.includes(lg) && keys[lg] && keys[lg].some(e => !e.bad)) return [lg].concat(base.filter(x => x != lg));
     return base; } return [pinnedEngine].concat(base.filter(id => id != pinnedEngine)); }
@@ -211,6 +215,11 @@ async function listModels(id, key) {
   const c = CFG[id];
   if (c.kind === 'media') { await jfetch(c.base + '/v1/user/account', { headers: { Authorization: 'Bearer ' + key } }, 15000); return []; }
   if (c.kind == 'oai') {
+    // V1.10.32: LongCat. Use its live list when it has one; if the route is missing (404/405) fall back to the known names. 401/403 still reject the key.
+    if (id === 'longcat') {
+      try { const jl = await jfetch(c.base + '/models', { headers: { Authorization: 'Bearer ' + key } }, 15000); const ids = (Array.isArray(jl) ? jl : (jl.data || [])).map(m => m && m.id).filter(Boolean); return ids.length ? ids : LONGCAT_MODELS.slice(); }
+      catch (er) { if (er && (er.status === 404 || er.status === 405)) return LONGCAT_MODELS.slice(); throw er; }
+    }
     const j = await jfetch(c.base + '/models', { headers: { Authorization: 'Bearer ' + key } }, 15000);
     // V1.10.31: Together answers with a bare array and tags each model with a type; Fireworks marks chat models with supports_chat. Other providers are untouched.
     if (id === 'together') return (Array.isArray(j) ? j : (j.data || [])).filter(m => m && m.id && (!m.type || /^(chat|language|code)$/i.test(m.type))).map(m => m.id);
@@ -233,6 +242,13 @@ function rank(id, list, lane) {
   if (id === 'stability') return [];
   if (id === 'openrouter' || id === 'plugsky') return list.filter(m => !/embed|rerank|whisper|tts|audio|video|flux|stable-diffusion|imagen|veo|sora|moderation/i.test(m)).sort((a,b) => Number(/:free$|^plugsky-(micro|lite)$/.test(b)) - Number(/:free$|^plugsky-(micro|lite)$/.test(a)));
   const deep = lane == 'deep';
+  if (id === 'longcat') { // V1.10.32: newest preview first, then the free-quota 2.0 preview, thinking, flash
+    const ok = list.filter(m => !/embed|rerank|whisper|guard|tts|audio|image|moderation|transcri/i.test(m));
+    const pref = deep ? [/2\.5/i, /thinking/i, /2\.0/i, /flash/i] : [/2\.5/i, /2\.0/i, /flash-chat/i, /flash/i];
+    const out = []; pref.forEach(p => ok.filter(m => p.test(m)).forEach(m => { if (!out.includes(m)) out.push(m); }));
+    ok.forEach(m => { if (!out.includes(m)) out.push(m); });
+    return out;
+  }
   if (id === 'together' || id === 'fireworks') { // V1.10.31: chat models only, strong open instruct models first
     const ok = list.filter(m => !/embed|rerank|whisper|guard|safety|tts|audio|image|flux|stable-diffusion|moderation|transcri|vision|-vl\b|-vl-|\bvl\b/i.test(m));
     const pref = deep ? [/deepseek-?v3|deepseek-?r1/i, /llama-?v?(?:3\.3|3p3).*70b/i, /qwen.*(?:235b|72b|max)/i, /llama.*70b/i, /gpt-oss-120b/i] : [/llama-?v?(?:3\.3|3p3).*70b/i, /llama-?v?(?:3\.1|3p1).*8b/i, /qwen.*(?:32b|72b|7b)/i, /gpt-oss-20b/i, /llama/i];

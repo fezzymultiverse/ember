@@ -1,6 +1,6 @@
 // Ember V1.8.3 service worker: app files only. Network first so updates arrive, cache as the offline fallback. API calls are never touched.
 // Generated from index.html plus the documented lazy/static asset closure.
-const V = 'ember-v1.10.31-together-fireworks', FILES = [
+const V = 'ember-v1.10.32-longcat-permissions', FILES = [
   "ember_artbox.js",
   "ember_artbox.css",
   "ember_right_panel.js",
@@ -50,6 +50,8 @@ const V = 'ember-v1.10.31-together-fireworks', FILES = [
   "ember_icons.js",
   "ember_boot.css",
   "ember_v128.css",
+  "ember_v129.css",
+  "ember_v129.js",
   "ember_boot.js",
   "ember_menu.js",
   "ember_keyless.css",
@@ -122,6 +124,7 @@ const V = 'ember-v1.10.31-together-fireworks', FILES = [
   "provider-icons/plugsky.ico",
   "provider-icons/together.svg",
   "provider-icons/fireworks.svg",
+  "provider-icons/longcat.svg",
   "provider-icons/stability.svg",
   "providers.js",
   "repo-runner-template.cjs",

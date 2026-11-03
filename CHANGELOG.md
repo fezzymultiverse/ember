@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.10.32 - LongCat AI + Permissions & background redesign
+- LongCat AI: keyed, opt-in chat engine (off in Auto until switched on or pinned).
+- Permissions & background: summary banner, card rows, orange call-to-action buttons, new switches. See RELEASE_1_10_32.txt.
+
 ## 1.10.31 - Together AI + Fireworks AI
 - Two new keyed, opt-in chat engines (off in Auto until switched on or pinned). See RELEASE_1_10_31.txt.
 
