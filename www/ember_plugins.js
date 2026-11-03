@@ -86,7 +86,7 @@
   }
   function mediaView() {
     const p = P(), is = id => !!(p && p.isOn(id)), ok = songOk();
-    return stabilityCard() + (window.EmberKeylessMedia ? window.EmberKeylessMedia.panel() : '') + '<h4 class="epl-h">Optional music &amp; video services</h4><div class="epl-grp">' +
+    return '<h4 class="epl-h">Media keys &amp; engines</h4><div class="epl-grp">' + go('data-sec="music"', '🔑', 'Stability key &amp; music/video APIs', 'Moved to Settings › Media', '') + '</div><h4 class="epl-h">Optional music &amp; video services</h4><div class="epl-grp">' +
       sw('data-flip="audio_gen"', '🎵', 'Create audio', 'Use a configured keyless API — not a built-in music model', is('audio_gen')) +
       sw('data-flip="video_gen"', '🎬', 'Create video', 'Use a configured keyless API — not a built-in video model', is('video_gen')) +
       sw('data-flip="stab"', '🎨', 'Stability images', 'Optional images using your saved Stability key', is('stab')) +

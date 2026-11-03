@@ -1,0 +1,117 @@
+{
+  "count": 22,
+  "checks": [
+    {
+      "name": "new document engine loads in real mobile app",
+      "status": "PASS"
+    },
+    {
+      "name": "existing settings survive app boot",
+      "status": "PASS"
+    },
+    {
+      "name": "mobile app fits phone width",
+      "status": "PASS"
+    },
+    {
+      "name": "bundled PDF engine generates a real embedded-font file",
+      "status": "PASS"
+    },
+    {
+      "name": "Word exporter generates a real ZIP-based DOCX",
+      "status": "PASS"
+    },
+    {
+      "name": "PDF/Word rendering makes no external request",
+      "status": "PASS"
+    },
+    {
+      "name": "mobile preview uses multiple actual A4 sheets",
+      "status": "PASS"
+    },
+    {
+      "name": "preview labels every page",
+      "status": "PASS"
+    },
+    {
+      "name": "existing Save PDF action still downloads the intended file",
+      "status": "PASS"
+    },
+    {
+      "name": "markdown download preserves original content",
+      "status": "PASS"
+    },
+    {
+      "name": "html download preserves original content",
+      "status": "PASS"
+    },
+    {
+      "name": "native Save contract retains name, MIME and full payload",
+      "status": "PASS"
+    },
+    {
+      "name": "native Save cancellation remains cancellation",
+      "status": "PASS"
+    },
+    {
+      "name": "typewriter stays gradual and retains complete final text",
+      "status": "PASS"
+    },
+    {
+      "name": "artifact markup remains hidden during typing",
+      "status": "PASS"
+    },
+    {
+      "name": "typewriter Stop clears pending work",
+      "status": "PASS"
+    },
+    {
+      "name": "preloaded PDF export works offline",
+      "status": "PASS"
+    },
+    {
+      "name": "desktop app has no horizontal page overflow",
+      "status": "PASS"
+    },
+    {
+      "name": "document work adds no browser runtime errors",
+      "status": "PASS"
+    },
+    {
+      "name": "settings still preserved after reload and all exports",
+      "status": "PASS"
+    },
+    {
+      "name": "new engine survives a cold offline app reload",
+      "status": "PASS"
+    },
+    {
+      "name": "cold offline PDF export loads cached renderer",
+      "status": "PASS"
+    }
+  ],
+  "initialRuntimeErrors": [],
+  "allRuntimeErrors": [],
+  "a4Geometry": [
+    {
+      "w": 794,
+      "h": 1123,
+      "label": "Page 1 of 4"
+    },
+    {
+      "w": 794,
+      "h": 1123,
+      "label": "Page 2 of 4"
+    },
+    {
+      "w": 794,
+      "h": 1123,
+      "label": "Page 3 of 4"
+    },
+    {
+      "w": 794,
+      "h": 1123,
+      "label": "Page 4 of 4"
+    }
+  ]
+}

@@ -367,6 +367,53 @@
     w.document.open();w.document.write(content);w.document.close();setTimeout(()=>{try{w.focus();w.print();}catch(_){}},350);
   }
 
+
+  // V1.10.39: documents and PDFs are previewed on real A4 sheets (210 x 297 mm, same margins and type size as the exported PDF), page by page,
+  // not as one long screen-width scroll. Blocks are never cut: a block that does not fit moves to the next sheet, a heading never ends a sheet.
+  const A4W = 794, A4H = 1123, A4PAD = 64;
+  function a4Paginate(root) {
+    const wrap = root.querySelector('.artifact-paper-wrap'), paper = wrap && wrap.querySelector('.artifact-paper'), art = paper && paper.querySelector('.artifact-markdown');
+    if (!wrap || !art) return;
+    const blocks = Array.from(art.children), isBreak = n => /^<!--\s*pagebreak\s*-->$/i.test((n.textContent || '').trim());
+    const holder = document.createElement('div'); holder.className = 'a4-holder'; const stack = document.createElement('div'); stack.className = 'a4-stack'; holder.append(stack);
+    paper.replaceWith(holder);
+    const usable = A4H - 2 * A4PAD;
+    const newPage = () => { const pg = document.createElement('div'); pg.className = 'artifact-paper a4-page'; const c = document.createElement('article'); c.className = 'artifact-markdown'; pg.append(c); stack.append(pg); return { pg, c }; };
+    const isHead = n => n && /^H[1-6]$/.test(n.tagName);
+    function build() {
+      stack.replaceChildren(); let cur = newPage();
+      const fits = () => cur.c.offsetHeight <= usable + 1;
+      for (let i = 0; i < blocks.length; i++) {
+        const b = blocks[i];
+        if (isBreak(b)) { if (cur.c.children.length) cur = newPage(); continue; }
+        cur.c.append(b);
+        if (fits() || cur.c.children.length === 1) continue;
+        // lists and tables taller than a sheet continue on the next sheet instead of leaving a blank gap
+        const prev = cur.c.children.length > 1 ? cur.c.children[cur.c.children.length - 2] : null;
+        cur.c.removeChild(b);
+        const carry = isHead(prev) ? prev : null; if (carry) cur.c.removeChild(carry);
+        if (!cur.c.children.length && carry) { cur.c.append(carry); }
+        else if (cur.c.children.length || !carry) { if (cur.c.children.length) cur = newPage(); }
+        if (carry && !cur.c.contains(carry)) cur.c.append(carry);
+        cur.c.append(b);
+        if (!fits() && /^(UL|OL)$/.test(b.tagName) && b.children.length > 1) {
+          const items = Array.from(b.children); b.replaceChildren();
+          let list = b; items.forEach(li => { list.append(li); if (!fits() && list.children.length > 1) { list.removeChild(li); cur = newPage(); const nl = document.createElement(b.tagName.toLowerCase()); cur.c.append(nl); nl.append(li); list = nl; } });
+        }
+      }
+      const pages = stack.children, n = pages.length; Array.from(pages).forEach((pg, k) => pg.setAttribute('data-n', 'Page ' + (k + 1) + ' of ' + n));
+      scale();
+    }
+    function scale() {
+      const avail = Math.max(240, wrap.clientWidth - 20), k = Math.min(1, avail / A4W);
+      stack.style.transform = 'scale(' + k + ')'; holder.style.width = Math.round(A4W * k) + 'px'; holder.style.height = Math.ceil(stack.offsetHeight * k) + 'px';
+    }
+    build();
+    let t = 0; const again = () => { clearTimeout(t); t = setTimeout(build, 120); };
+    stack.addEventListener('load', again, true); // pictures loading later change block heights
+    window.addEventListener('resize', () => { if (holder.isConnected) scale(); });
+    setTimeout(() => { if (holder.isConnected) build(); }, 600);
+  }
   // ---- viewer ----
   function close() { const old=document.getElementById('artifactOverlay'); if(old) old.remove(); }
   function view(a) {
@@ -377,11 +424,11 @@
     if (html) { body = '<iframe class="artifact-frame" title="Preview of '+esc(a.title)+'" sandbox="allow-scripts allow-downloads" referrerpolicy="no-referrer"></iframe>'; sub = 'Sandboxed preview'; foot = fb('pdf', 'Save PDF') + fb('print', 'Print view', 'secondary') + fb('download', 'Download', 'secondary'); }
     else if (svg) { const s = cleanSvg(a.content); body = s ? '<div class="artifact-svg" id="artSvg"><img alt="' + esc(a.title) + '" src="' + svgUrl(s) + '"></div>' : '<pre class="artifact-text">' + esc(a.content) + '</pre>'; sub = s ? 'SVG image' : 'Not a valid SVG - showing source'; foot = fb('png', 'Save PNG') + fb('pdf', 'PDF', 'secondary') + fb('download', 'Save SVG', 'secondary') + fb('bg', 'Background', 'secondary') + fb('copy', 'Copy code', 'secondary'); }
     else if (a.type === 'image') { const r = imgRef(a.content); body = r ? '<div class="artifact-svg" id="artSvg">' + (r.media ? '<img alt="' + esc(a.title) + '" data-ember-media="' + esc(r.media) + '" src="' + (mediaCache.get(r.media) || BLANK) + '">' : '<img alt="' + esc(a.title) + '" referrerpolicy="no-referrer" src="' + esc(r.url) + '">') + '</div>' : '<pre class="artifact-text">' + esc(a.content) + '</pre>'; sub = 'Picture'; foot = fb('download', 'Save image') + fb('pdf', 'PDF', 'secondary') + fb('bg', 'Background', 'secondary'); }
-    else if (paper) { body = '<div class="artifact-paper-wrap"><div class="artifact-paper">' + markdownHtml(mdOf(a)) + '</div></div>'; sub = a.type === 'pdf' ? 'PDF preview - Save PDF builds the real file' : 'Document preview'; foot = fb('pdf', 'Save PDF') + (a.type === 'document' ? fb('doc', 'Word .docx', 'secondary') : '') + fb('copy', 'Copy', 'secondary') + (a.type === 'document' ? fb('download', 'Markdown', 'secondary') : ''); }
+    else if (paper) { body = '<div class="artifact-paper-wrap"><div class="artifact-paper">' + markdownHtml(mdOf(a)) + '</div></div>'; sub = a.type === 'pdf' ? 'A4 preview - Save PDF builds the real file' : 'A4 document preview'; foot = fb('pdf', 'Save PDF') + (a.type === 'document' ? fb('doc', 'Word .docx', 'secondary') : '') + fb('copy', 'Copy', 'secondary') + (a.type === 'document' ? fb('download', 'Markdown', 'secondary') : ''); }
     else if (isMd(a.type)) { body = '<div class="artifact-dark">' + markdownHtml(a.content) + '</div>'; sub = 'Markdown'; foot = fb('pdf', 'Save PDF') + fb('download', 'Download .md', 'secondary') + fb('copy', 'Copy', 'secondary'); }
     else { body = '<pre class="artifact-text'+(a.type==='code'?' artifact-code':'')+'">'+(a.type==='code'?highlightCode(a.content):esc(a.content))+'</pre>'; sub = 'Artifact preview'; foot = fb('copy', 'Copy') + fb('pdf', 'PDF', 'secondary') + fb('download', 'Download', 'secondary'); }
     overlay.innerHTML='<div class="artifact-viewer" role="dialog" aria-modal="true" aria-label="'+esc(a.title)+'"><header class="artifact-viewer-head"><div><b>'+esc(a.title)+'</b><small>'+sub+'</small></div><button type="button" class="artifact-close" aria-label="Close preview">×</button></header><div class="artifact-viewer-body'+(html?' is-html':'')+'">'+body+'</div>'+(foot?'<footer class="artifact-viewer-foot">'+foot+'</footer>':'')+'</div>';
-    document.body.appendChild(overlay); hydrate(overlay);
+    document.body.appendChild(overlay); hydrate(overlay); if(paper) a4Paginate(overlay);
     overlay.querySelector('.artifact-close').onclick=close;
     overlay.addEventListener('click',e=>{
       if(e.target===overlay){close();return;}

@@ -17,8 +17,15 @@
     const t = String(prompt || '');
     if (W.EmberPlus && W.EmberPlus.isOn && W.EmberPlus.isOn('pdf') && t.trim()) return { type: 'pdf', title: 'Ember document.pdf' };
     if (/^\s*(how|why|what|explain|does|is|can (?:i|ember))\b/i.test(t) || /\b(?:do not|don't|never)\s+(?:make|create|generate|write|export)\b/i.test(t)) return null;
-    if (!/\b(make|create|generate|write|draft|build|export|save|prepare|produce)\b/i.test(t)) return null;
-    const type = /\bpdf\b/i.test(t) ? 'pdf' : /\b(docx|word|document|report|proposal|resume|cv|letter|brief)\b/i.test(t) ? 'document' : /\bcsv\b/i.test(t) ? 'csv' : /\bjson\b/i.test(t) ? 'json' : /\b(?:markdown|\.md)\b/i.test(t) ? 'markdown' : null;
+    // V1.10.39: Ember decides by itself. A named document (CV, cover letter, report, essay, invoice, doc, Word...) with any asking phrase is a document;
+    // "as a PDF", "into a Word doc" or a page count ("a 2 page ...") also count, so the person does not need the magic words.
+    const DOCN = /\b(docx?|word\s+(?:doc(?:ument)?|file)|documents?|reports?|proposals?|r[eé]sum[eé]s?|cvs?|curriculum vitae|cover letters?|letters?|briefs?|essays?|assignments?|invoices?|quotations?|contracts?|agreements?|lesson plans?|study guides?|handbooks?|newsletters?|meeting minutes|meal plans?|itinerar(?:y|ies)|business plans?|case stud(?:y|ies)|research papers?|term papers?|worksheets?|certificates?|memos?|polic(?:y|ies)|manuals?|whitepapers?|e-?books?|booklets?|one[- ]pagers?|fact ?sheets?|cheat ?sheets?|templates?)\b/i;
+    const ASK = /\b(make|create|generate|write|draft|build|export|save|prepare|produce|put together|compile|type up|turn (?:this|that|it) into|convert|format|give me|i (?:need|want)|need an?|can you do|do me|set up)\b/i;
+    const AS = /\b(?:as|in|into|to)\s+(?:an?\s+)?(?:pdf|word|docx?)\b/i;
+    const pages = /\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)\s*[- ]?\s*(?:full\s+)?(?:a4\s+)?pages?\b/i.test(t);
+    const asked = ASK.test(t) || AS.test(t);
+    if (!asked) return null;
+    const type = /\bpdf\b/i.test(t) ? 'pdf' : (DOCN.test(t) || AS.test(t) || (pages && /\b(write|draft|make|create|prepare|produce)\b/i.test(t))) ? 'document' : /\bcsv\b/i.test(t) ? 'csv' : /\bjson\b/i.test(t) ? 'json' : /\b(?:markdown|\.md)\b/i.test(t) ? 'markdown' : null;
     return type ? { type, title: 'Ember document' + ({ pdf: '.pdf', document: '.md', csv: '.csv', json: '.json', markdown: '.md' })[type] } : null;
   }
   // Ember 1.10.34: a short go-ahead ("Create", "yes", "do it") inherits the file request from the last few messages.
@@ -43,7 +50,7 @@
   const NUMW = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10, eleven:11, twelve:12, fifteen:15, twenty:20 };
   const WORDS_PER_PAGE = 480; // measured against PDF_SETTINGS: A4, 10.5pt, 1.3 line height, headings and spacing included
   function pageTarget(prompt, msgs) {
-    const scan = t => { const m = /\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)\s*[- ]?\s*(?:full\s+)?pages?\b/i.exec(String(t || '')); if (!m) return 0; const n = /^\d/.test(m[1]) ? +m[1] : NUMW[m[1].toLowerCase()]; return n >= 1 && n <= 40 ? n : 0; };
+    const scan = t => { const m = /\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)\s*[- ]?\s*(?:full\s+)?(?:a4\s+)?pages?\b/i.exec(String(t || '')); if (!m) return 0; const n = /^\d/.test(m[1]) ? +m[1] : NUMW[m[1].toLowerCase()]; return n >= 1 && n <= 40 ? n : 0; };
     let n = scan(prompt); if (n) return n;
     const t = String(prompt || '').trim(); if (!t || t.length > 40 || !GO_AHEAD.test(t)) return 0;
     const list = Array.isArray(msgs) ? msgs : [];
@@ -682,7 +689,7 @@
       if (b.kind === 'table') return new D.Table({ width: { size: 100, type: D.WidthType.PERCENTAGE }, rows: b.rows.map((r, i) => new D.TableRow({ tableHeader: i === 0, children: r.map(text => new D.TableCell({ children: [new D.Paragraph({ children: runs(text) })] })) })) });
       return new D.Paragraph({ children: runs(b.text), heading: b.kind === 'heading' ? D.HeadingLevel['HEADING_' + Math.min(6, b.level)] : undefined, bullet: b.kind === 'bullet' ? { level: 0 } : undefined, numbering: b.kind === 'ordered' ? { reference: 'ember-numbered', level: 0 } : undefined, spacing: { after: 150 } });
     });
-    const doc = new D.Document({ creator: 'Ember', title: safeTitle(title), numbering: { config: [{ reference: 'ember-numbered', levels: [{ level: 0, format: D.LevelFormat.DECIMAL, text: '%1.', alignment: D.AlignmentType.START }] }] }, sections: [{ children }] });
+    const doc = new D.Document({ creator: 'Ember', title: safeTitle(title), numbering: { config: [{ reference: 'ember-numbered', levels: [{ level: 0, format: D.LevelFormat.DECIMAL, text: '%1.', alignment: D.AlignmentType.START }] }] }, sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1280, right: 960, bottom: 1160, left: 960 } } }, children }] });
     return D.Packer.toBlob(doc);
   }
   W.EmberDeliverables = { intent, intentCtx, pageTarget, pageNote, hasOpenArtifact, continueArtifact, joinParts, answerHasCode, normalize, urls, prepare, blocks, inline, parse: parseBlocks, htmlToMarkdown, resolveImages, PDF_SETTINGS, pageImages, pdfDefinition, validatePdf, pdf, word, providers: () => [

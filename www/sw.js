@@ -1,6 +1,8 @@
 // Ember V1.8.3 service worker: app files only. Network first so updates arrive, cache as the offline fallback. API calls are never touched.
 // Generated from index.html plus the documented lazy/static asset closure.
-const V = 'ember-v1.10.36-pdf-wire', FILES = [
+const V = 'ember-v1.10.40-document-engine', FILES = [
+  "ember_document_engine.js",
+  "ember_document_engine.css",
   "ember_typewriter.js", "ember_builtins.js", "ember_keyless_media.js",
   "ember_artbox.js",
   "ember_artbox.css",
@@ -123,8 +125,6 @@ const V = 'ember-v1.10.36-pdf-wire', FILES = [
   "provider-icons/mistral.svg",
   "provider-icons/openrouter.svg",
   "provider-icons/plugsky.ico",
-  "provider-icons/together.svg",
-  "provider-icons/fireworks.svg",
   "provider-icons/longcat.svg",
   "provider-icons/stability.svg",
   "providers.js",

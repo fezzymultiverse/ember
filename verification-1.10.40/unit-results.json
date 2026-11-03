@@ -1,0 +1,169 @@
+{
+  "count": 41,
+  "results": [
+    {
+      "name": "two passes contain 16 authoring + 16 preflight standards",
+      "status": "PASS"
+    },
+    {
+      "name": "ordinary chat is returned unchanged",
+      "status": "PASS"
+    },
+    {
+      "name": "questions do not become document generation",
+      "status": "PASS"
+    },
+    {
+      "name": "negative document requests remain negative",
+      "status": "PASS"
+    },
+    {
+      "name": "document contract applied: Create a PDF report",
+      "status": "PASS"
+    },
+    {
+      "name": "document contract applied: Draft a Word document",
+      "status": "PASS"
+    },
+    {
+      "name": "document contract applied: Write a markdown file",
+      "status": "PASS"
+    },
+    {
+      "name": "document contract applied: Make a printable HTML document",
+      "status": "PASS"
+    },
+    {
+      "name": "document contract applied: Create a 2 A4 page report",
+      "status": "PASS"
+    },
+    {
+      "name": "caller request is not mutated",
+      "status": "PASS"
+    },
+    {
+      "name": "standards injection is idempotent",
+      "status": "PASS"
+    },
+    {
+      "name": "existing safety instructions preserved",
+      "status": "PASS"
+    },
+    {
+      "name": "background jobs and JSON are untouched",
+      "status": "PASS"
+    },
+    {
+      "name": "short go-ahead inherits earlier file request",
+      "status": "PASS"
+    },
+    {
+      "name": "same-engine continuation gets document standards",
+      "status": "PASS"
+    },
+    {
+      "name": "A4 qualifier accepted in page target",
+      "status": "PASS"
+    },
+    {
+      "name": "inspection warns but never changes content",
+      "status": "PASS"
+    },
+    {
+      "name": "page estimate is explicitly not exact",
+      "status": "PASS"
+    },
+    {
+      "name": "loading preserves pin, switches and custom settings",
+      "status": "PASS"
+    },
+    {
+      "name": "all zero-price text variants discovered including names without :free",
+      "status": "PASS"
+    },
+    {
+      "name": "paid, image-only, unknown-price, per-request and conditional-price models excluded",
+      "status": "PASS"
+    },
+    {
+      "name": "auto OpenRouter uses a verified free model",
+      "status": "PASS"
+    },
+    {
+      "name": "max output clamped to catalog ceiling",
+      "status": "PASS"
+    },
+    {
+      "name": "unsupported native tools disabled without changing caller",
+      "status": "PASS"
+    },
+    {
+      "name": "zero token prices cannot disguise paid mixed-media models",
+      "status": "PASS"
+    },
+    {
+      "name": "document contract reaches provider request path",
+      "status": "PASS"
+    },
+    {
+      "name": "unsupported temperature parameter is omitted",
+      "status": "PASS"
+    },
+    {
+      "name": "unsupported response_format uses JSON instructions instead",
+      "status": "PASS"
+    },
+    {
+      "name": "explicit Free Mode preference persists",
+      "status": "PASS"
+    },
+    {
+      "name": "catalog can be refreshed without an API key",
+      "status": "PASS"
+    },
+    {
+      "name": "Cohere catalog follows all pages and deduplicates",
+      "status": "PASS"
+    },
+    {
+      "name": "document tasks prefer stronger Cohere model without changing provider pin",
+      "status": "PASS"
+    },
+    {
+      "name": "Cohere receives larger document budget and full contract",
+      "status": "PASS"
+    },
+    {
+      "name": "malformed pagination cannot loop forever",
+      "status": "PASS"
+    },
+    {
+      "name": "Gemini follows catalog pagination",
+      "status": "PASS"
+    },
+    {
+      "name": "Free Mode OFF never calls keyless fallback",
+      "status": "PASS"
+    },
+    {
+      "name": "strict pin and authentication failure never silently switch providers",
+      "status": "PASS"
+    },
+    {
+      "name": "native background route also excludes paid OpenRouter models",
+      "status": "PASS"
+    },
+    {
+      "name": "free model 429 advances to another free model without paid leakage",
+      "status": "PASS"
+    },
+    {
+      "name": "model rate limit preserves healthy key and cooldown",
+      "status": "PASS"
+    },
+    {
+      "name": "partial stream failure never mixes output from another provider",
+      "status": "PASS"
+    }
+  ]
+}

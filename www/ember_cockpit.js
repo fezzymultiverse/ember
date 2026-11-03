@@ -15,15 +15,16 @@
     const cards = Array.from(settings.querySelectorAll('.card[data-tab]'));
     const root = D.createElement('div'); root.id = 'cockpitSettings';
     const sections = {};
+    let paintMedia = () => {};
     const groups = [
       ['features','Free Mode','Chat with no key needed, and the optional AI capabilities'],
-      ['engine','Engine keys & media engines','Which engine answers, API keys, Puter token and vision'],
-      ['providers','Routing & providers','Provider routing, live model catalogs, key rotation and fallback, media artifacts'],
+      ['engine','AI keys','Which engine answers, every AI API key, and vision'],
+      ['providers','AI providers & routing','Provider routing, live model catalogs, key rotation and fallback'],
       ['general','Memory & persona','Your name, persona, tone, read aloud and voice, memory, look, backup'],
       ['device','Device tools','Wi-Fi, storage and RAM, battery, local diagnostics and document reading'],
-      ['scraping','Web scraping & search','Scraper keys, the free reader, web search, health checks and tests'],
+      ['scraping','Web scraping & search','Every scraper and search key, the free reader, health checks and tests'],
       ['hacking','Termux & terminal','Termux mode, pen-test persona and the built-in terminal'],
-      ['music','Music & downloads','Player, song identification, music control, YouTube and yt-dlp downloads'],
+      ['music','Media','Picture and PDF engines, Stability key, music and video APIs, song ID, player, downloads'],
       ['permissions','Permissions & background','Notifications, mic, battery, keep-alive, pings and background replies']
     ];
     root.innerHTML = '<div class="cockpit-intro"><span class="cockpit-kicker">V1.10.15 / COCKPIT</span><p>One screen. Every control.</p><button type="button" class="btn g" id="cockpitCommand">Open Command Centre →</button></div>';
@@ -36,11 +37,11 @@
     // 1.10.18 Part 7: Settings is ONE panel. Eight rows, one job each; tap a row to open its sub menu.
     const ROWS = [
       {id:'general', title:'Memory & persona', desc:'Your name, persona, tone, read aloud and voice, memory, look, backup', sections:['general']},
-      {id:'keys', title:'Engines, keys & routing', desc:'Free Mode, which engine answers, API keys and provider routing', sections:['features','engine','providers']},
-      {id:'scraping', title:'Web scraping & search', desc:'Scraper keys, the free reader, web search, health checks and tests', sections:['scraping']},
+      {id:'keys', title:'AI keys & providers', desc:'Every AI chat key and provider in one place: Free Mode, which engine answers, routing and fallback', sections:['features','engine','providers']},
+      {id:'scraping', title:'Web scraping & search', desc:'Every scraper and search key, the free reader, health checks and tests', sections:['scraping']},
       {id:'hacking', title:'Termux & terminal', desc:'Termux mode, pen-test persona and the built-in terminal', sections:['hacking']},
       {id:'device', title:'Device tools', desc:'Wi-Fi, storage and RAM, battery, diagnostics and document reading', sections:['device']},
-      {id:'music', title:'Music & downloads', desc:'Player, song identification, music control, YouTube and yt-dlp downloads', sections:['music']},
+      {id:'music', title:'Media', desc:'All media in one: picture and PDF engines, Stability key, music and video APIs, song ID, player, downloads', sections:['music']},
       {id:'permissions', title:'Permissions & background', desc:'Notifications, mic, battery, keep-alive, pings and background replies', sections:['permissions']}
     ];
     const menu = D.createElement('div'); menu.id = 'cockpitMenu';
@@ -146,6 +147,45 @@
       rename('swMusic', 'Music control');
       rename('swLyr', 'Lyrics & music widget');
     })();
+    // V1.10.37: the Stability key and the keyless music/video endpoints moved here from + > Media & Music, so ALL media settings live on the Media page.
+    (() => {
+      const host = D.createElement('div'); host.id = 'cockpitMediaKeys'; host.className = 'card';
+      sections.music.prepend(host);
+      let busy = false, msg = '';
+      const Pv = () => W.Prov;
+      const stState = () => { try { return Pv().stateOf('stability'); } catch (_) { return 'none'; } };
+      const html = () => {
+        const P = Pv(); let h = '<div class="ct">Media keys &amp; engines</div><p class="hint">Picture and PDF engines that need no key are built in. Add your own Stability AI key for optional images, and connect keyless music or video APIs. Keys stay on this phone.</p>';
+        if (P && P.CFG && P.CFG.stability) {
+          const list = P.entries('stability') || [], st = stState(), n = list.length;
+          const dot = busy ? '' : st === 'ok' ? 'ok' : (st === 'limited' || st === 'unknown') ? 'warn' : '';
+          const line = busy ? 'Checking the key\u2026' : st === 'none' ? 'No key saved' : st === 'ok' ? 'Key authenticated \u00b7 image access depends on your account' : st === 'limited' ? 'Key is valid but resting (rate limited)' : st === 'bad' ? 'Key rejected or unreachable' : 'Key saved \u00b7 not checked yet';
+          h += '<h4 class="epl-h">Stability AI \u00b7 optional image engine</h4><div class="epl-grp"><div class="epl-row epl-static"><span class="epl-dot ' + dot + '"></span><span class="epl-ic">\uD83C\uDFA8</span><span class="epl-tx"><b>Stability AI</b><small>' + esc(msg || line) + (n ? ' \u00b7 ' + n + ' key' + (n === 1 ? '' : 's') : '') + '</small></span></div>';
+          list.forEach(e => { h += '<div class="epl-row epl-static"><span class="epl-ic">\uD83D\uDD11</span><span class="epl-tx"><b>' + esc(P.mask(e.key)) + '</b><small>' + esc(!e.st ? 'not checked yet' : e.st.ok ? (e.st.limited ? 'valid \u00b7 resting' : 'authenticated') : String(e.st.msg || 'rejected').slice(0, 60)) + '</small></span><button type="button" class="epl-mini" data-ms-rm="' + esc(e.key) + '" aria-label="Remove this key">\u2715</button></div>'; });
+          h += '<div class="epl-row epl-static epl-keyrow"><input type="password" id="cmStabKey" class="epl-in" placeholder="Paste a Stability API key (sk-\u2026)" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Stability API key"><button type="button" class="epl-mini hot" data-ms-add>Add</button></div></div>' +
+            '<div class="epl-btns epl-btns2"><button type="button" class="epl-btn" data-ms-check' + (n && !busy ? '' : ' disabled') + '>' + (busy ? 'Checking\u2026' : 'Check key') + '</button><a class="epl-btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none;color:inherit" href="https://platform.stability.ai/dashboard/api-keys" target="_blank" rel="noopener noreferrer">Get a key \u2197</a></div>';
+        }
+        return h + '<div id="cmKeyless">' + (W.EmberKeylessMedia ? W.EmberKeylessMedia.panel() : '') + '</div>';
+      };
+      paintMedia = () => {
+        const a = D.activeElement; if (a && host.contains(a) && /^(INPUT|TEXTAREA)$/.test(a.tagName)) return;
+        const keep = sb.scrollTop, typed = $('cmStabKey') ? $('cmStabKey').value : '';
+        host.innerHTML = html(); if ($('cmStabKey')) $('cmStabKey').value = typed; sb.scrollTop = keep;
+      };
+      const names = () => { try { W.dispatchEvent(new Event('ember-names')); } catch (_) {} };
+      host.addEventListener('click', async e => {
+        const t = e.target, P = Pv(); if (!P) return;
+        if (t.closest('[data-ms-add]')) {
+          const i = $('cmStabKey'), v = i ? i.value.trim() : ''; if (!v) { msg = 'Paste a key first'; return paintMedia(); }
+          busy = true; msg = ''; paintMedia(); let r; try { r = await P.addKey('stability', v); } catch (_) { r = {ok: false, why: 'failed'}; }
+          busy = false; msg = r && r.ok ? '' : r && r.why === 'already added' ? 'That key is already saved' : 'That key could not be saved'; if (r && r.ok && $('cmStabKey')) $('cmStabKey').value = ''; names(); return paintMedia();
+        }
+        if (t.closest('[data-ms-check]')) { if (busy) return; busy = true; msg = ''; paintMedia(); try { await P.ping('stability'); } catch (_) { msg = 'Could not reach Stability'; } busy = false; names(); return paintMedia(); }
+        const rm = t.closest('[data-ms-rm]'); if (rm) { try { P.removeKey('stability', rm.dataset.msRm); } catch (_) {} msg = ''; names(); return paintMedia(); }
+      });
+      ['ember-provider-stats', 'ember-names', 'ember-plus-change'].forEach(n => W.addEventListener(n, () => { if (settings.classList.contains('show')) paintMedia(); }));
+      paintMedia();
+    })();
     // Scraping health/test are adjacent controls, not another nested menu.
     sections.scraping.querySelector('.wtabs')?.remove();
     sections.scraping.querySelectorAll('.wpane').forEach(p => { p.classList.remove('hidden'); p.classList.add('cockpit-scrape-pane'); });
@@ -195,6 +235,7 @@
       lastFocus = D.activeElement;
       originalOpen('general');
       D.body.classList.add('cockpit-settings-open'); $('app').inert = true;
+      paintMedia();
       const hit = rowFor(section, target);
       if (hit) showRow(hit.row, hit.target); else showMenu();
       requestAnimationFrame(() => $('bSx').focus({preventScroll:true}));

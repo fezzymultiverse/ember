@@ -27,8 +27,6 @@ const GENERIC = /^[A-Za-z0-9_-]{16,128}$/;
 const CAT = {
   openrouter: { kind:'chat', label:'OpenRouter', rx:'open[\\s_-]?router', prefixed:true },
   plugsky: { kind:'chat', label:'Plugsky AI', rx:'plug[\\s_-]?sky', prefixed:true },
-  together: { kind:'chat', label:'Together AI', rx:'together[\\s_-]?ai|together\\.(?:ai|xyz)', prefixed:true },
-  fireworks: { kind:'chat', label:'Fireworks AI', rx:'fireworks(?:[\\s_-]?ai)?', prefixed:true },
   longcat: { kind:'chat', label:'LongCat AI', rx:'long[\\s_-]?cat', prefixed:true },
   stability: { kind:'chat', label:'Stability AI', rx:'stability(?:[\\s_-]?ai)?', prefixed:true },
   groq:        { kind: 'chat',   label: 'Groq',         rx: 'groq', prefixed: true },
@@ -61,8 +59,6 @@ const B = '(?<![A-Za-z0-9_-])';
 const STRONG = [
   ['openrouter', new RegExp(B + 'sk-or-v1-[A-Za-z0-9_-]{16,}', 'g')],
   ['plugsky', new RegExp(B + 'sk-live-[A-Za-z0-9_-]{16,}', 'g')],
-  ['together', new RegExp(B + 'tgp_v1_[A-Za-z0-9_-]{16,}', 'g')],
-  ['fireworks', new RegExp(B + 'fw_[A-Za-z0-9]{16,}', 'g')],
   ['groq', new RegExp(B + 'gsk_[A-Za-z0-9]{20,}', 'g')],
   ['gemini', new RegExp(B + 'AIza[0-9A-Za-z_-]{30,}', 'g')],
   ['gemini', new RegExp(B + 'AQ\\.[0-9A-Za-z_.-]{20,}', 'g')],

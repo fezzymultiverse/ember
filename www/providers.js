@@ -7,9 +7,6 @@ const { LS } = U;
 const CFG = {
   openrouter: { name: 'OpenRouter', base: 'https://openrouter.ai/api/v1', kind: 'oai', color: '#93c5fd', optIn: true },
   plugsky: { name: 'Plugsky AI', base: 'https://plugsky.com/v1', kind: 'oai', color: '#7dd3fc', optIn: true },
-  // V1.10.31: Together AI and Fireworks AI. Your own key, OpenAI-style, opt-in (never in Auto unless switched on or pinned) because they spend your credits.
-  together: { name: 'Together AI', base: 'https://api.together.xyz/v1', kind: 'oai', color: '#6ee7b7', optIn: true, credits: true },
-  fireworks: { name: 'Fireworks AI', base: 'https://api.fireworks.ai/inference/v1', kind: 'oai', color: '#fca5a5', optIn: true, credits: true },
   // V1.10.32: LongCat AI (Meituan). OpenAI-style, your own key, opt-in (never in Auto unless switched on or pinned) so the daily quota is not used behind your back.
   longcat: { name: 'LongCat AI', base: 'https://api.longcat.chat/openai/v1', kind: 'oai', color: '#ffb347', optIn: true, credits: true },
   stability: { name: 'Stability AI', base: 'https://api.stability.ai', kind: 'media', color: '#b4a3ff' },
@@ -45,11 +42,15 @@ function load() {
   if (LS.get('ember_pin', null) === 'puter') LS.del('ember_pin');
   const pm = LS.get('ember_pin_model', null); if (pm && pm.id === 'puter') LS.del('ember_pin_model');
   const lg = LS.get('ember_last_good', null); if (lg === 'puter' || lg === 'cohere') LS.del('ember_last_good');
+  // V1.10.37: Together AI and Fireworks AI removed. Any saved key, pin or switch for them is erased once so nothing for a removed service stays on the phone.
+  ['together','fireworks'].forEach(x => { if (k && Object.prototype.hasOwnProperty.call(k, x)) { delete k[x]; LS.set('ember_keys', k); }
+    if (LS.get('ember_pin', null) === x) LS.del('ember_pin'); const pm2 = LS.get('ember_pin_model', null); if (pm2 && pm2.id === x) LS.del('ember_pin_model');
+    if (LS.get('ember_last_good', null) === x) LS.del('ember_last_good'); const en = LS.get('ember_route_enabled', null); if (en && x in en) { delete en[x]; LS.set('ember_route_enabled', en); } });
   IDS.forEach(id => { o[id] = (Array.isArray(k[id]) ? k[id] : []).filter(e => e && typeof e.key === 'string' && e.key).map(e => { e.key = clean(e.key); return e; }).filter(e => e.key); });
   return o;
 }
 let keys = load();
-let freePref = null; // null = auto (Free Mode on only while the user has no keys); true/false = the user's own choice
+let freePref = LS.get('ember_free_pref', null); // null = auto (Free Mode on only while the user has no keys); true/false = the user's own choice
 // V1.6.1: engine pin. null/'auto' = router decides (Groq first in fast/util since it's near-instant). Any CFG id = try that engine's keys first, every lane.
 let pinnedEngine = LS.get('ember_pin', null); if (pinnedEngine && !CFG[pinnedEngine]) pinnedEngine = null;
 function setPinned(id) { pinnedEngine = (id && CFG[id] && CFG[id].kind !== 'media') ? id : null; LS.set('ember_pin', pinnedEngine); }
@@ -62,7 +63,7 @@ function setPinnedModel(id, model) { pinnedModel = (id && CFG[id] && model) ? { 
 let strictPin = LS.get('ember_pin_strict', true) !== false;
 function setStrict(v) { strictPin = !!v; LS.set('ember_pin_strict', strictPin); }
 const onlyPinned = lane => !!(strictPin && pinnedEngine && lane != 'util');
-function orderFor(lane) { const enabled = LS.get('ember_route_enabled', {}); let base = (ORDER[lane] || ORDER.fast).concat(['openrouter', 'plugsky', 'together', 'fireworks', 'longcat'].filter(id => enabled[id] === true)).filter(id => CFG[id].kind !== 'media' && enabled[id] !== false); const liveIds = base.filter(id => keys[id] && keys[id].some(e => !e.bad)); if (liveIds.length) base = liveIds; /* V1.10.21: only engines that hold a live key; per-provider OFF switch */ if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
+function orderFor(lane) { const enabled = LS.get('ember_route_enabled', {}); let base = (ORDER[lane] || ORDER.fast).concat(['openrouter', 'plugsky', 'longcat'].filter(id => enabled[id] === true)).filter(id => CFG[id].kind !== 'media' && enabled[id] !== false); const liveIds = base.filter(id => keys[id] && keys[id].some(e => !e.bad)); if (liveIds.length) base = liveIds; /* V1.10.21: only engines that hold a live key; per-provider OFF switch */ if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
     const lg = lane == 'fast' ? LS.get('ember_last_good', null) : null;
     if (lg && base.includes(lg) && keys[lg] && keys[lg].some(e => !e.bad)) return [lg].concat(base.filter(x => x != lg));
     return base; } return [pinnedEngine].concat(base.filter(id => id != pinnedEngine)); }
@@ -211,6 +212,43 @@ async function streamClaude(url, body, key, o, timeout) {
 }
 
 // ---------- models ----------
+// 1.10.40: live catalog metadata, free text variants, bounded pagination.
+function rememberModels(id, rows) {
+  const all = LS.get('ember_model_metadata', {}), by = {};
+  (rows || []).forEach(m => { const name = m && (m.id || m.name); if (!name) return;
+    const pricing = m.pricing || {}, output = m.architecture && m.architecture.output_modalities;
+    const zero = v => v !== undefined && v !== null && String(v).trim() !== '' && Number(v) === 0;
+    const tokenFree = zero(pricing.prompt) && zero(pricing.completion);
+    const extraCharges = Object.entries(pricing).some(([k,v]) => k !== 'overrides' && v != null && String(v).trim() !== '' && Number(v) !== 0);
+    const overrides = Array.isArray(pricing.overrides) && pricing.overrides.length > 0;
+    by[name] = { free: (tokenFree || /:free$/.test(name) || name === 'openrouter/free') && !extraCharges && !overrides,
+      // Text-only output prevents zero token prices from disguising per-song/image generation fees.
+      text: !Array.isArray(output) || (output.length === 1 && output[0] === 'text'),
+      maxOutput: Number(m.top_provider && m.top_provider.max_completion_tokens || m.max_output_tokens) || 0,
+      parameters: Array.isArray(m.supported_parameters) ? m.supported_parameters : null };
+  }); all[id] = by; LS.set('ember_model_metadata', all);
+}
+function isFreeModel(id, model) {
+  const md = LS.get('ember_model_metadata', {}), e = md[id] && md[id][model];
+  return e ? e.free && e.text : /:free$/.test(model) || model === 'openrouter/free';
+}
+function routeModels(id, list) {
+  // Auto may use OpenRouter only through free variants. Explicit provider/model pins retain their old behavior.
+  return id === 'openrouter' && pinnedEngine !== id && !(pinnedModel && pinnedModel.id === id)
+    ? list.filter(m => isFreeModel(id,m)) : list;
+}
+async function freeModelsOf(id, fresh) {
+  id = id || 'openrouter';
+  if (id !== 'openrouter') throw new Error('Zero-price catalog is supported for OpenRouter; other providers have account-specific free quotas.');
+  const cache = LS.get('ember_models', {});
+  let list = !fresh && cache[id] && Date.now() - cache[id].at < MC ? cache[id].list : null;
+  if (!Array.isArray(list) || !list.length) {
+    const e = (keys[id] || []).find(x => !x.bad);
+    list = await listModels(id, e ? e.key : '');
+    cache[id] = { at: Date.now(), list }; LS.set('ember_models', cache);
+  }
+  return Array.from(new Set(list.filter(m => isFreeModel(id,m) && !/content[-_]safety|guard|moderation|embed|rerank/i.test(m)))).sort();
+}
 async function listModels(id, key) {
   const c = CFG[id];
   if (c.kind === 'media') { await jfetch(c.base + '/v1/user/account', { headers: { Authorization: 'Bearer ' + key } }, 15000); return []; }
@@ -220,38 +258,41 @@ async function listModels(id, key) {
       try { const jl = await jfetch(c.base + '/models', { headers: { Authorization: 'Bearer ' + key } }, 15000); const ids = (Array.isArray(jl) ? jl : (jl.data || [])).map(m => m && m.id).filter(Boolean); return ids.length ? ids : LONGCAT_MODELS.slice(); }
       catch (er) { if (er && (er.status === 404 || er.status === 405)) return LONGCAT_MODELS.slice(); throw er; }
     }
-    const j = await jfetch(c.base + '/models', { headers: { Authorization: 'Bearer ' + key } }, 15000);
-    // V1.10.31: Together answers with a bare array and tags each model with a type; Fireworks marks chat models with supports_chat. Other providers are untouched.
-    if (id === 'together') return (Array.isArray(j) ? j : (j.data || [])).filter(m => m && m.id && (!m.type || /^(chat|language|code)$/i.test(m.type))).map(m => m.id);
-    if (id === 'fireworks') return (j.data || []).filter(m => m && m.id && m.supports_chat !== false).map(m => m.id);
-    return (j.data || []).map(m => m.id).filter(Boolean);
+    const j = await jfetch(c.base + '/models', { headers: key ? { Authorization: 'Bearer ' + key } : {} }, 15000);
+    const rows = Array.isArray(j.data) ? j.data : []; rememberModels(id, rows);
+    return Array.from(new Set(rows.map(m => m && m.id).filter(m => typeof m === 'string' && m)));
   }
   if (c.kind == 'claude') {
     const j = await jfetch(c.base + '/models?limit=100', { headers: claudeHeaders(key) }, 15000);
     return (j.data || []).map(m => m.id).filter(Boolean);
   }
   if (c.kind == 'cohere') {
-    const j = await jfetch(c.base + '/v1/models?endpoint=chat&page_size=100', { headers: { Authorization: 'Bearer ' + key, Accept: 'application/json' } }, 15000);
-    return (j.models || []).map(m => m.name).filter(Boolean);
+    const rows = [], seen = new Set(); let token = '';
+    do {
+      if (seen.has(token) || seen.size >= 20) throw new Error('Cohere model catalog pagination did not terminate safely.');
+      seen.add(token);
+      const j = await jfetch(c.base + '/v1/models?endpoint=chat&page_size=100' + (token ? '&page_token=' + encodeURIComponent(token) : ''), { headers: { Authorization: 'Bearer ' + key, Accept: 'application/json' } }, 15000);
+      rows.push(...(Array.isArray(j.models) ? j.models : [])); token = j.next_page_token || '';
+    } while (token);
+    rememberModels(id,rows); return Array.from(new Set(rows.map(m => m && m.name).filter(m => typeof m === 'string' && m)));
   }
-  const j = await gemFetch(c.base + '/models?pageSize=200', key, {}, 15000);
-  return (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => String(m.name).replace(/^models\//, ''));
+  const rows = [], seen = new Set(); let token = '';
+  do {
+    if (seen.has(token) || seen.size >= 20) throw new Error('Gemini model catalog pagination did not terminate safely.');
+    seen.add(token);
+    const j = await gemFetch(c.base + '/models?pageSize=200' + (token ? '&pageToken=' + encodeURIComponent(token) : ''), key, {}, 15000);
+    rows.push(...(Array.isArray(j.models) ? j.models : [])); token = j.nextPageToken || '';
+  } while (token);
+  return Array.from(new Set(rows.filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => String(m.name).replace(/^models\//, ''))));
 }
 const ver = m => { const x = /(\d+(?:\.\d+)?)/.exec(m); return x ? parseFloat(x[1]) : 0; };
 function rank(id, list, lane) {
   if (id === 'stability') return [];
-  if (id === 'openrouter' || id === 'plugsky') return list.filter(m => !/embed|rerank|whisper|tts|audio|video|flux|stable-diffusion|imagen|veo|sora|moderation/i.test(m)).sort((a,b) => Number(/:free$|^plugsky-(micro|lite)$/.test(b)) - Number(/:free$|^plugsky-(micro|lite)$/.test(a)));
+  if (id === 'openrouter' || id === 'plugsky') return list.filter(m => !/embed|rerank|whisper|tts|audio|video|flux|stable-diffusion|imagen|veo|sora|moderation|content[-_]safety|guard/i.test(m)).sort((a,b) => Number(isFreeModel(id,b) || /^plugsky-(micro|lite)$/.test(b)) - Number(isFreeModel(id,a) || /^plugsky-(micro|lite)$/.test(a)));
   const deep = lane == 'deep';
   if (id === 'longcat') { // V1.10.32: newest preview first, then the free-quota 2.0 preview, thinking, flash
     const ok = list.filter(m => !/embed|rerank|whisper|guard|tts|audio|image|moderation|transcri/i.test(m));
     const pref = deep ? [/2\.5/i, /thinking/i, /2\.0/i, /flash/i] : [/2\.5/i, /2\.0/i, /flash-chat/i, /flash/i];
-    const out = []; pref.forEach(p => ok.filter(m => p.test(m)).forEach(m => { if (!out.includes(m)) out.push(m); }));
-    ok.forEach(m => { if (!out.includes(m)) out.push(m); });
-    return out;
-  }
-  if (id === 'together' || id === 'fireworks') { // V1.10.31: chat models only, strong open instruct models first
-    const ok = list.filter(m => !/embed|rerank|whisper|guard|safety|tts|audio|image|flux|stable-diffusion|moderation|transcri|vision|-vl\b|-vl-|\bvl\b/i.test(m));
-    const pref = deep ? [/deepseek-?v3|deepseek-?r1/i, /llama-?v?(?:3\.3|3p3).*70b/i, /qwen.*(?:235b|72b|max)/i, /llama.*70b/i, /gpt-oss-120b/i] : [/llama-?v?(?:3\.3|3p3).*70b/i, /llama-?v?(?:3\.1|3p1).*8b/i, /qwen.*(?:32b|72b|7b)/i, /gpt-oss-20b/i, /llama/i];
     const out = []; pref.forEach(p => ok.filter(m => p.test(m)).forEach(m => { if (!out.includes(m)) out.push(m); }));
     ok.forEach(m => { if (!out.includes(m)) out.push(m); });
     return out;
@@ -389,18 +430,27 @@ async function streamOAI(url, key, body, o, timeout) {
 }
 async function call(id, key, model, o) {
   const c = CFG[id], t0 = performance.now();
+  o = Object.assign({}, o);
+  const md = LS.get('ember_model_metadata', {}), info = md[id] && md[id][model];
+  if (info && info.maxOutput) o.max = Math.min(o.max || 400, info.maxOutput);
+  if (info && info.parameters && !info.parameters.includes('tools')) o.tools = null;
+  const requestTimeout = o.documentMode ? 90000 : 40000;
   let text = '';
   if (c.kind == 'oai') {
     const body = { model, messages: [{ role: 'system', content: o.system }].concat(o.messages), temperature: o.temp == null ? 0.8 : o.temp, max_tokens: o.max || 400 };
-    if (o.json) body.response_format = { type: 'json_object' };
+    if (o.json) {
+      if (!info || !info.parameters || info.parameters.includes('response_format')) body.response_format = { type: 'json_object' };
+      else body.messages[0].content = String(body.messages[0].content || '') + '\nReturn one valid JSON object and nothing else.';
+    }
+    if (info && info.parameters && !info.parameters.includes('temperature')) delete body.temperature;
     const decl = (!o.json && o.tools && o.tools.length) ? toolDecls(o.tools, false) : [];
-    if (decl.length) { body.tools = decl.map(f => ({ type: 'function', function: f })); body.tool_choice = 'auto'; }
+    if (decl.length) { body.tools = decl.map(f => ({ type: 'function', function: f })); if (!info || !info.parameters || info.parameters.includes('tool_choice')) body.tool_choice = 'auto'; }
     let j;
     if (typeof o.onToken === 'function' && !decl.length && !o.json) {
-      try { text = await streamOAI(c.base + '/chat/completions', key, body, o, 40000); }
+      try { text = await streamOAI(c.base + '/chat/completions', key, body, o, requestTimeout); }
       catch (er) { if (er.code === 'cancelled') throw er; if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
     } else {
-      try { j = await jfetch(c.base + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, 40000); }
+      try { j = await jfetch(c.base + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, requestTimeout); }
       catch (er) { if (er.code === 'cancelled') throw er; if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
       o._usage = j.usage || null;
       text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content || '';
@@ -434,7 +484,7 @@ async function call(id, key, model, o) {
     const decl = (!o.json && o.tools && o.tools.length) ? toolDecls(o.tools, false) : [];
     if (decl.length) body.tools = decl.map(f => ({ type: 'function', function: f }));
     let j;
-    try { j = await jfetch(c.base + '/v2/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, 40000); }
+    try { j = await jfetch(c.base + '/v2/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, requestTimeout); }
     catch (er) { if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
     text = j.message && Array.isArray(j.message.content) ? j.message.content.map(p => p.text || '').join('') : '';
     const tc = decl.length && j.message && Array.isArray(j.message.tool_calls) && j.message.tool_calls[0], tf = tc && tc.function;
@@ -570,7 +620,7 @@ async function callPollinations(prompt, o) {
 }
 const flat = o => String(o.system || '') + '\n\n' + o.messages.map(m => (m.role == 'assistant' ? 'Ember' : 'Him') + ': ' + m.content).join('\n') + '\n\nEmber:';
 const freeOn = () => freePref == null ? !hasKeys() : freePref;
-const setFree = v => { freePref = v == null ? null : !!v; };
+const setFree = v => { freePref = v == null ? null : !!v; LS.set('ember_free_pref', freePref); };
 const label = id => CFG[id] ? CFG[id].name : id == 'pollinations' ? 'Free' : id;
 
 // ---------- V1.6.8: one source of truth for "who answers" ----------
@@ -655,12 +705,12 @@ async function runInner(lane, o, tok) {
   const routeIds = o.routeProvider && CFG[o.routeProvider] ? [o.routeProvider] : orderFor(lane);
   for (const id of routeIds) {
     if (!o.routeProvider && onlyPinned(lane) && id != pinnedEngine) break; // V1.9.15: strict pin
-    const soft = false;
+    const soft = id === 'openrouter' && pinnedEngine !== id;
     for (const e of rotation(id, lane)) {
       if (e.bad || isCool(e.key)) { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-skip', { detail: { id, why: e.bad ? 'key rejected' : 'resting after a rate limit' } })); } catch (_) { /* no listener */ } } continue; } // V1.9.78: a skipped engine is a real step
       halted();
       let models;
-      try { models = await modelsFor(id, e.key, lane); }
+      try { models = routeModels(id, await modelsFor(id, e.key, o.documentMode && id === 'cohere' ? 'deep' : lane)); }
       catch (er) {
         if (er.code === 'cancelled' || routeCancelled) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' });
         if (authFailure(er)) { e.bad = true; save(); } else if (er.status == 429) coolKey(e.key, er.retryAfter);
@@ -676,7 +726,6 @@ async function runInner(lane, o, tok) {
         catch (er) {
           if (er.code === 'cancelled' || routeCancelled) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' });
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
-          if (soft && (er.status == 400 || er.status == 402 || er.status == 403 || er.status == 422) && !pm) continue; // V1.9.15: try the next model, keep the key, the reason stays in failed[]
           record(id,m,false,0,er.status); e.st = Object.assign({},e.st || {},{at:Date.now(),code:er.status || 0,msg:String(er.message || '').slice(0,160),model:m});
           if (er.partial || (o._emitted && o._emitted.value)) { save(); throw Object.assign(er,{code:'partial_stream',message:'Stream interrupted after partial output. Retry explicitly to avoid mixing providers.'}); }
           if (authFailure(er)) { e.bad=true; e.st.ok=false; save(); break; }
@@ -694,9 +743,11 @@ async function runInner(lane, o, tok) {
     throw Object.assign(new Error(nm + ' failed (' + (er.status || 'error') + '): ' + String(er.message || 'request failed')), { code: 'fail', status: er.status });
   }
   if (pl && !o.routeProvider && !tried && !onlyPinned(lane)) {
+    if (freePref !== false) {
     halted();
     try { trying('Free Mode', 'openai'); const o2 = withFacts(o, lane, 'pollinations', 'openai', failed); const r = await callPollinations(flat(o2), o2); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
     catch (er) { errs.push('Free Mode: ' + er.message); failed.push({ id: 'pollinations', status: er.status, why: er.message }); }
+  }
   }
   if (o.routeProvider && CFG[o.routeProvider]) {
     const nm = CFG[o.routeProvider].name;
@@ -714,7 +765,9 @@ async function runInner(lane, o, tok) {
 // V1.5.9: remember the chat request that is in flight so app.js can hand it to the native background task if the app is backgrounded.
 let inflight = null;
 async function run(lane, o) {
-  o = Object.assign({},o); if (typeof o.onToken === 'function') { const cb=o.onToken; o._emitted={value:false}; o.onToken=(piece,all)=>{ if(piece) o._emitted.value=true; cb(piece,all); }; }
+  o = Object.assign({},o);
+  if (window.EmberDocumentEngine) o = window.EmberDocumentEngine.apply(o, lane);
+  if (typeof o.onToken === 'function') { const cb=o.onToken; o._emitted={value:false}; o.onToken=(piece,all)=>{ if(piece) o._emitted.value=true; cb(piece,all); }; }
   try { if (lane !== 'util' && window.EmberCommandCenter) window.EmberCommandCenter.observeRequest(o); } catch (_) { /* passive inspector */ }
   if (lane !== 'util') routeCancelled = false;
   const tok = { lane, o };
@@ -738,7 +791,7 @@ function nativePlan(lane) {
     for (const e of rotation(id, lane)) {
       if (e.bad || isCool(e.key)) continue;
       const c = cache[id]; if (!c || !c.list || !c.list.length) continue;
-      const models = pinnedModel && pinnedModel.id == id ? [pinnedModel.model] : rank(id,c.list,lane).slice(0,3); for(const m of models)if(m && !modelResting(id,e.key,m))out.push({id,base:CFG[id].base,key:e.key,model:m});
+      const models = pinnedModel && pinnedModel.id == id ? [pinnedModel.model] : routeModels(id,rank(id,c.list,lane)).slice(0,3); for(const m of models)if(m && !modelResting(id,e.key,m))out.push({id,base:CFG[id].base,key:e.key,model:m});
     }
   }
   return out.slice(0, 18);
@@ -788,5 +841,5 @@ function detail(id) {
 }
 async function pingAll() { await Promise.all(ACTIVE_IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); } // AI engines only (Stability: Prov.ping('stability') from its own card)
 function status() { const o = {}; IDS.forEach(id => { o[id] = stateOf(id); }); return o; }
-window.Prov = { stats, setEnabled, record, rotation, peek, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels };
+window.Prov = { stats, setEnabled, record, rotation, peek, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels, freeModelsOf, isFreeModel };
 })();
