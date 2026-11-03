@@ -21,6 +21,71 @@
     const type = /\bpdf\b/i.test(t) ? 'pdf' : /\b(docx|word|document|report|proposal|resume|cv|letter|brief)\b/i.test(t) ? 'document' : /\bcsv\b/i.test(t) ? 'csv' : /\bjson\b/i.test(t) ? 'json' : /\b(?:markdown|\.md)\b/i.test(t) ? 'markdown' : null;
     return type ? { type, title: 'Ember document' + ({ pdf: '.pdf', document: '.md', csv: '.csv', json: '.json', markdown: '.md' })[type] } : null;
   }
+  // Ember 1.10.34: a short go-ahead ("Create", "yes", "do it") inherits the file request from the last few messages.
+  // Without this, "Create" got a normal 650-token chat budget and the PDF was cut off mid-artifact.
+  const GO_AHEAD = /^\s*(?:(?:ok(?:ay)?|yes|yeah|yep|sure|please|alright|go|now)[\s,.!]*)*(?:go ahead|go on|do it|create(?: it| that| this| now| the pdf| the document| the file)?|make it|make the pdf|generate(?: it| that| the pdf)?|build it|write it|start|proceed|continue|finish|redo|again)?[\s.!]*$/i;
+  function intentCtx(prompt, msgs) {
+    const direct = intent(prompt); if (direct) return direct;
+    const t = String(prompt || '').trim();
+    if (!t || t.length > 40 || !GO_AHEAD.test(t) || /^(?:no|nope|stop|cancel)\b/i.test(t)) return null;
+    const list = Array.isArray(msgs) ? msgs : [];
+    let seen = 0;
+    for (let i = list.length - 1; i >= 0 && seen < 5; i--) {
+      const m = list[i]; if (!m || typeof m.t !== 'string') continue;
+      if (m.t.trim() === t && m.r === 'u' && seen === 0) continue; // the go-ahead itself
+      seen++;
+      const hit = m.r === 'u' ? intent(m.t) : (/\bpdf\b/i.test(m.t) ? { type: 'pdf', title: 'Ember document.pdf' } : /\b(?:docx|word document|word file)\b/i.test(m.t) ? { type: 'document', title: 'Ember document.md' } : null);
+      if (hit) return hit;
+    }
+    return null;
+  }
+  // Ember 1.10.35: page targets and automatic continuation, so a 10-page file is not capped by one reply's token limit.
+  const NUMW = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10, eleven:11, twelve:12, fifteen:15, twenty:20 };
+  const WORDS_PER_PAGE = 480; // measured against PDF_SETTINGS: A4, 10.5pt, 1.3 line height, headings and spacing included
+  function pageTarget(prompt, msgs) {
+    const scan = t => { const m = /\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)\s*[- ]?\s*(?:full\s+)?pages?\b/i.exec(String(t || '')); if (!m) return 0; const n = /^\d/.test(m[1]) ? +m[1] : NUMW[m[1].toLowerCase()]; return n >= 1 && n <= 40 ? n : 0; };
+    let n = scan(prompt); if (n) return n;
+    const t = String(prompt || '').trim(); if (!t || t.length > 40 || !GO_AHEAD.test(t)) return 0;
+    const list = Array.isArray(msgs) ? msgs : [];
+    for (let i = list.length - 1, seen = 0; i >= 0 && seen < 5; i--) { const m = list[i]; if (!m || typeof m.t !== 'string' || m.r !== 'u') continue; seen++; n = scan(m.t); if (n) return n; }
+    return 0;
+  }
+  function pageNote(pages) {
+    if (!pages) return '';
+    const body = pages >= 4 ? pages - 2 : pages, words = body * WORDS_PER_PAGE;
+    return '\nPAGE TARGET: he wants about ' + pages + ' pages when exported. ' + (pages >= 4 ? 'Use cover="true" toc="true" in the artifact tag (they take 2 pages) and write ' : 'Write ') + 'about ' + words + ' words of body text (about ' + WORDS_PER_PAGE + ' words per page), in clear ## sections with a table or list where it helps. Do not summarise or stop early. If a reply runs out of room Ember asks you to continue, so keep writing until the document is complete, then close the artifact.';
+  }
+  const hasOpenArtifact = text => { const s = String(text || ''); return (s.match(/<artifact\b/gi) || []).length > (s.match(/<\/artifact\s*>/gi) || []).length; };
+  // Join a continuation onto the text so far: strip a repeated tag/fence, then any repeated overlap.
+  function joinParts(base, more) {
+    let c = String(more || '').replace(/^\s*```[A-Za-z]*\s*\n/, '').replace(/^\s*<artifact\b[^>]*>\s*/i, '');
+    const tail = base.slice(-300), top = Math.min(tail.length, c.length);
+    for (let k = top; k >= 40; k--) { if (tail.endsWith(c.slice(0, k))) { c = c.slice(k); break; } }
+    return base + c;
+  }
+  async function continueArtifact(text, run, opt) {
+    opt = opt || {}; let out = String(text || '');
+    for (let i = 0; i < (opt.maxParts || 4) && hasOpenArtifact(out); i++) {
+      if (opt.cancelled && opt.cancelled()) break;
+      // Cut back to the last complete line so the join never lands mid-word; the model rewrites the unfinished line.
+      const cut = out.lastIndexOf('\n'), base = cut > 0 ? out.slice(0, cut + 1) : out, frag = out.slice(base.length).slice(-300);
+      if (opt.note) { try { opt.note(i + 1); } catch (_) { /* progress note is optional */ } }
+      let more = '';
+      try {
+        more = await run({
+          system: 'You are Ember, finishing a document you already started. Output ONLY the continuation text, with no introduction, no apology and no new <artifact> opening tag. Match the same Markdown style. When the whole document is complete, end with </artifact>.',
+          messages: [
+            { role: 'user', content: 'ORIGINAL REQUEST: ' + String(opt.request || '').slice(0, 1500) + (opt.target || '') },
+            { role: 'assistant', content: base },
+            { role: 'user', content: 'Your reply was cut off' + (frag ? ' in the middle of this line: "' + frag.replace(/\s+/g, ' ').trim() + '"' : '') + '. Continue the document from that line (write the line in full, then keep going) without repeating earlier sections. Finish every section and end with </artifact>.' }
+          ]
+        });
+      } catch (e) { break; }
+      if (!more || String(more).trim().length < 20) break;
+      out = joinParts(base, more);
+    }
+    return out;
+  }
   function answerHasCode(reply) {
     const text = String(reply || '');
     return /<artifact\b[^>]*\btype\s*=\s*["'](?:code|html)["']/i.test(text) || /```\s*(?:javascript|typescript|js|ts|python|py|bash|sh|java|kotlin|rust|sql|html|css|cpp|csharp)\b/i.test(text) || /\b(?:function\s+[A-Za-z_$][\w$]*\s*\(|def\s+\w+\s*\(|class\s+\w+\s*[{:(]|(?:const|let|var)\s+\w+\s*=)/.test(text);
@@ -620,7 +685,7 @@
     const doc = new D.Document({ creator: 'Ember', title: safeTitle(title), numbering: { config: [{ reference: 'ember-numbered', levels: [{ level: 0, format: D.LevelFormat.DECIMAL, text: '%1.', alignment: D.AlignmentType.START }] }] }, sections: [{ children }] });
     return D.Packer.toBlob(doc);
   }
-  W.EmberDeliverables = { intent, answerHasCode, normalize, urls, prepare, blocks, inline, parse: parseBlocks, htmlToMarkdown, resolveImages, PDF_SETTINGS, pageImages, pdfDefinition, validatePdf, pdf, word, providers: () => [
+  W.EmberDeliverables = { intent, intentCtx, pageTarget, pageNote, hasOpenArtifact, continueArtifact, joinParts, answerHasCode, normalize, urls, prepare, blocks, inline, parse: parseBlocks, htmlToMarkdown, resolveImages, PDF_SETTINGS, pageImages, pdfDefinition, validatePdf, pdf, word, providers: () => [
     { id: 'pdfmake', formats: ['pdf'], account: false, network: false, license: 'MIT' },
     { id: 'docx', formats: ['docx'], account: false, network: false, license: 'MIT' },
     { id: 'ember', formats: ['markdown', 'html', 'csv', 'json', 'svg', 'code'], account: false, network: false }

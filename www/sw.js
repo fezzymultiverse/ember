@@ -1,6 +1,6 @@
 // Ember V1.8.3 service worker: app files only. Network first so updates arrive, cache as the offline fallback. API calls are never touched.
 // Generated from index.html plus the documented lazy/static asset closure.
-const V = 'ember-v1.10.33-output-save', FILES = [
+const V = 'ember-v1.10.36-pdf-wire', FILES = [
   "ember_typewriter.js", "ember_builtins.js", "ember_keyless_media.js",
   "ember_artbox.js",
   "ember_artbox.css",

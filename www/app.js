@@ -410,7 +410,7 @@ async function resolveAddonCalls(text, L, route) {
   if (msgs.length && msgs[0].role == 'assistant') msgs.unshift({ role: 'user', content: '(we are picking the conversation back up)' });
   if (route && route.webEvidence) msgs.push({ role: 'user', content: route.webEvidence });
   const request = [...conv.msgs].reverse().find(m => m.r == 'u');
-  const artifactBudget = request && window.EmberDeliverables && window.EmberDeliverables.intent(request.t) ? 12000 : 450;
+  const artifactBudget = request && window.EmberDeliverables && (window.EmberDeliverables.intentCtx ? window.EmberDeliverables.intentCtx(request.t, conv.msgs) : window.EmberDeliverables.intent(request.t)) ? 12000 : 450;
   const rounds = []; // V1.9.19: every tool call made this turn, oldest first — feeds the RECENT ACTIONS block below
   const seenKeys = new Set();
   for (let round = 0; round < 4 && calls.length; round++) {
@@ -496,7 +496,8 @@ async function reply(o) {
     if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });
     const call = Persona.respond(conv, { S, mem, webEvidence: web.context, directive: o.directive, lane: L.lane, deep: L.deep, uiState: uiStateBlock(), planHint: !o.directive && lastU ? planHint(lastU.t) : '', shouldCancel: () => cancelRequested || curTurn !== turnId, onToken: (piece, full) => { try { if (window.EmberCommandCenter) window.EmberCommandCenter.inspect(full); } catch (_) {} try { window.dispatchEvent(new CustomEvent('ember-token', { detail: { piece, text: full } })); } catch (_) {} } });
     // V1.9.33: no reply may hang the screen. After REPLY_MS the page stops trying engines and shows an error with Resend.
-    let dl; const guard = new Promise((_, no) => { dl = setTimeout(() => { try { if (Prov.abortInflight) Prov.abortInflight(); } catch (e) { /* ignore */ } no(Object.assign(new Error('No reply after ' + Math.round(REPLY_MS / 1000) + ' seconds. An engine is stuck or very slow. Tap resend, or pin a different engine in Settings.'), { code: 'timeout' })); }, REPLY_MS); });
+    const bigFile = !!(window.EmberDeliverables && window.EmberDeliverables.intentCtx && window.EmberDeliverables.intentCtx(latest, conv.msgs)), replyMs = bigFile ? REPLY_MS * 2 : REPLY_MS; // V1.10.35: file replies are long
+    let dl; const guard = new Promise((_, no) => { dl = setTimeout(() => { try { if (Prov.abortInflight) Prov.abortInflight(); } catch (e) { /* ignore */ } no(Object.assign(new Error('No reply after ' + Math.round(replyMs / 1000) + ' seconds. An engine is stuck or very slow. Tap resend, or pin a different engine in Settings.'), { code: 'timeout' })); }, replyMs); });
     call.catch(() => {}); // the race below reports it; a late failure after the deadline must not surface as an unhandled rejection
     let r; try { r = await Promise.race([window.EmberNative ? window.EmberNative.holdDuringReply(call) : call, guard, cancelledTurn]); } finally { clearTimeout(dl); }
     if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });
@@ -504,6 +505,16 @@ async function reply(o) {
     if (TLn && r) TLn.note('Got a reply from ' + (r.provider || 'an engine') + (r.model ? ' (' + r.model + ')' : '') + (r.ms ? ' in ' + (r.ms / 1000).toFixed(1) + 's' : ''), 'got');
     let finalText = r.text;
     const bgWon = () => conv.msgs.some(m => m.turn === turnId); // the background task already delivered this turn's reply
+    // V1.10.35: a long file (10 pages) can outrun one reply's token limit. If the artifact was left open, ask the same engine to continue it.
+    if (finalText && !bgWon() && window.EmberDeliverables && window.EmberDeliverables.continueArtifact && window.EmberDeliverables.hasOpenArtifact(finalText) && Safety.lastLevel() < 3) {
+      const pages = window.EmberDeliverables.pageTarget ? window.EmberDeliverables.pageTarget(latest, conv.msgs) : 0;
+      const sys2 = Safety.lastLevel();
+      finalText = await withinTurn(window.EmberDeliverables.continueArtifact(finalText, async o2 => {
+        const base2 = { system: Safety.wrapSystem(o2.system, sys2), messages: o2.messages, temp: 0.5, max: 4096 };
+        let r2; try { r2 = await Prov.run(L.lane, Object.assign(base2, r.provider ? { routeProvider: r.provider, routeModel: r.model } : {})); } catch (_) { r2 = await Prov.run(L.lane, base2); }
+        return r2 && r2.text;
+      }, { request: latest, target: window.EmberDeliverables.pageNote ? window.EmberDeliverables.pageNote(pages) : '', maxParts: 4, cancelled: () => cancelRequested || curTurn !== turnId, note: n => { if (TLn && TLn.note) TLn.note('Continuing the document (part ' + (n + 1) + ')', 'cont' + n); } }));
+    }
     if (bgWon()) finalText = '';
     else if (finalText) finalText = await withinTurn(resolveAddonCalls(finalText, L, { provider: r.provider, model: r.model, webRead: web.results.some(x => x.result && x.result.markdown && !x.result.error), webEvidence: web.context }));
     if (cancelRequested || curTurn !== turnId) throw Object.assign(new Error('Reply stopped'), { code: 'cancelled' });

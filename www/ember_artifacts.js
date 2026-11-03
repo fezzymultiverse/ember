@@ -28,6 +28,13 @@
       items.push({ type, language, title, opts, content:m[2].replace(/^\r?\n|\r?\n$/g, '') });
       last = re.lastIndex;
     }
+    // Ember 1.10.34: a reply cut off before </artifact> (token limit, dropped stream) used to show the raw tag in chat.
+    // The unfinished tail is now rescued as a normal artifact so Save PDF still works.
+    const tail = src.slice(last), open = /<artifact\b([^>]*)>([\s\S]*)$/i.exec(tail);
+    if (open && !/<\/artifact\s*>/i.test(open[2]) && open[2].trim().length > 20) {
+      const whole = parse(tail.slice(open.index) + '\n</artifact>');
+      if (whole.items.length) { clean += tail.slice(0, open.index); items.push(whole.items[0]); last = src.length; }
+    }
     clean += src.slice(last);
     return { text:clean.trim(), items };
   }
