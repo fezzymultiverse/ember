@@ -3,9 +3,9 @@
 (() => {
  const W = window, $ = id => document.getElementById(id);
  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const CHAT = [['groq','Groq'],['mistral','Mistral AI'],['gemini','Google Gemini'],['cohere','Cohere'],['openrouter','OpenRouter (opt-in)'],['plugsky','Plugsky AI (opt-in)'],['longcat','LongCat AI (opt-in)']];
+ const CHAT = [['groq','Groq'],['mistral','Mistral AI'],['gemini','Google Gemini'],['cohere','Cohere'],['openrouter','OpenRouter'],['plugsky','Plugsky AI (opt-in)']];
  const row = (id, label, sub, on) => '<div class="ef-switch-row"><span>' + esc(label) + (sub ? '<small class="em-sub">' + esc(sub) + '</small>' : '') + '</span><button type="button" class="ef-switch ' + (on ? 'on' : '') + '" data-em="' + esc(id) + '" role="switch" aria-checked="' + !!on + '">' + (on ? 'ON' : 'OFF') + '</button></div>';
- const chatOn = id => { let e = {}; try { e = JSON.parse(localStorage.getItem('ember_route_enabled') || '{}') || {}; } catch (_) {} return (id === 'openrouter' || id === 'plugsky' || id === 'longcat') ? e[id] === true : e[id] !== false; };
+ const chatOn = id => { let e = {}; try { e = JSON.parse(localStorage.getItem('ember_route_enabled') || '{}') || {}; } catch (_) {} return id === 'plugsky' ? e[id] === true : e[id] !== false; };
  const live = id => { try { return ((W.Prov.keys()[id]) || []).filter(e => e && !e.bad).length; } catch (_) { return 0; } };
  function paint(card) {
   const KL = W.EmberKeyless, tools = (KL && KL.tools ? KL.tools() : []);

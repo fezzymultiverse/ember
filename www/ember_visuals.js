@@ -6,7 +6,7 @@
 (() => {
   const D = document;
   const ICONS = { // local files already shipped in provider-icons/
-    'OpenRouter': 'openrouter.svg', 'Plugsky AI': 'plugsky.ico', 'LongCat AI': 'longcat.svg', 'Stability AI': 'stability.svg',
+    'OpenRouter': 'openrouter.svg', 'Plugsky AI': 'plugsky.ico', 'Stability AI': 'stability.svg',
     'Groq': 'groq.svg', 'Mistral': 'mistral.svg', 'Gemini': 'gemini.svg', 'Cohere': 'cohere.svg', 'Claude': 'anthropic.svg'
   };
   const NAMES = Object.keys(ICONS).concat(['Free']);

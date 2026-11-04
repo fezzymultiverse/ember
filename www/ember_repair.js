@@ -11,7 +11,6 @@
     cohere: ['Evaluation keys: 1,000 calls/month; listed chat models typically 20 requests/minute. Production keys may be paid.', 'https://docs.cohere.com/docs/rate-limits'],
     openrouter: ['Auto routing uses zero-price text variants only. Account-wide free limits and model availability still apply; an explicit paid-model pin can cost money.', 'https://openrouter.ai/docs/api_reference/limits'],
     plugsky: ['Free plan includes plugsky-micro / plugsky-lite; availability and fair-use limits depend on your plan. Auto use remains opt-in.', 'https://plugsky.com/articles/ai-api-for-professional-services-use-cases-security-and-deployment-options'],
-    longcat: ['Quotas depend on model and account. Token packs and pay-as-you-go are paid; do not assume every LongCat model is free. Auto use remains opt-in.', 'https://longcat.chat/platform/docs/APIPayAsYouGo.html'],
     anthropic: ['Claude API is metered; any trial/subscriber credits are account-dependent. Explicit provider pin required by Ember’s existing policy.', 'https://platform.claude.com/docs/en/about-claude/api-credits-for-subscribers'],
     stability: ['Image/media API, not a chat engine. New-account credits are limited; later generations use the account’s credit balance.', 'https://docs.stability.ai/pricing']
   };

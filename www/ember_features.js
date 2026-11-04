@@ -4,10 +4,10 @@
  const W=window,$=id=>document.getElementById(id),esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const get=(k,d)=>{try{return JSON.parse(localStorage.getItem(k)||'null')??d;}catch(_){return d;}};
  const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
- const initials={groq:'G',gemini:'G✦',mistral:'M',cohere:'C',anthropic:'A',openrouter:'OR',plugsky:'PS',longcat:'LC',stability:'S'};
- const full={gemini:'Google Gemini',mistral:'Mistral AI',anthropic:'Anthropic Claude',cohere:'Cohere',groq:'Groq',openrouter:'OpenRouter',plugsky:'Plugsky AI',longcat:'LongCat AI',stability:'Stability AI'};
+ const initials={groq:'G',gemini:'G✦',mistral:'M',cohere:'C',anthropic:'A',openrouter:'OR',plugsky:'PS',stability:'S'};
+ const full={gemini:'Google Gemini',mistral:'Mistral AI',anthropic:'Anthropic Claude',cohere:'Cohere',groq:'Groq',openrouter:'OpenRouter',plugsky:'Plugsky AI',stability:'Stability AI'};
  // Embedded service monograms, no tracking requests or unlicensed external logo assets.
- const PROVIDER_LOGOS={groq:'groq.svg',mistral:'mistral.svg',gemini:'gemini.svg',cohere:'cohere.svg',anthropic:'anthropic.svg',openrouter:'openrouter.svg',stability:'stability.svg',plugsky:'plugsky.ico',longcat:'longcat.svg'};
+ const PROVIDER_LOGOS={groq:'groq.svg',mistral:'mistral.svg',gemini:'gemini.svg',cohere:'cohere.svg',anthropic:'anthropic.svg',openrouter:'openrouter.svg',stability:'stability.svg',plugsky:'plugsky.ico'};
  W.EmberProviderBadge=id=>{const f=PROVIDER_LOGOS[id];return f?'<span class="ef-badge ef-logo" aria-hidden="true"><img src="provider-icons/'+f+'" alt="" loading="lazy"></span>':'<span class="ef-badge" aria-hidden="true">'+esc(initials[id]||id.slice(0,2).toUpperCase())+'</span>';};
  function open(){ $('bSet')?.click();document.querySelector('#stabs [data-st="features"]')?.click();setTimeout(()=>($('efMenu')||$('efRouting'))?.scrollIntoView({block:'start',behavior:'smooth'}),100);}
  function switchHTML(id,label,on){return'<div class="ef-switch-row"><span>'+esc(label)+'</span><button type="button" class="ef-switch '+(on?'on':'')+'" id="'+id+'" role="switch" aria-checked="'+!!on+'">'+(on?'ON':'OFF')+'</button></div>';}
@@ -20,7 +20,7 @@
   card.innerHTML='<div class="ct">AI routing · media · downloads</div><div class="ef-content">'+
    '<h3>Provider routing</h3><p class="hint">Model + key cooldowns are independent. Keys rotate on each request; automatic chat fallback follows your pin policy. New paid-capable platforms join Auto only when enabled here. Pinning a platform is an explicit choice.</p>'+
    switchHTML('efStrict','Strict provider pin — no cross-provider fallback',Prov.getStrict())+
-   switchHTML('efOpenrouter','Allow OpenRouter in automatic fallback',enabled.openrouter===true)+switchHTML('efPlugsky','Allow Plugsky AI in automatic fallback',enabled.plugsky===true)+switchHTML('efLongcat','Allow LongCat AI in automatic fallback (uses your quota)',enabled.longcat===true)+
+   switchHTML('efOpenrouter','Allow OpenRouter in automatic fallback (free models only)',enabled.openrouter!==false)+switchHTML('efPlugsky','Allow Plugsky AI in automatic fallback',enabled.plugsky===true)+
    '<div id="efStats" aria-live="polite"></div><p class="hint">Counters are actual attempts, not account balances. Tokens are shown only when reported. Cooldowns are session-local. Refresh checks catalog access; it does not spend chat tokens or clear cooldowns.</p><button class="btn g" id="efRefresh">Refresh provider access</button>'+
    '<h3>Audio, video &amp; playlist downloads</h3><p class="hint">NewPipe runs inside the APK. yt-dlp is the independent alternative for both browser and Android using your local bridge. Downloads go to the device running the bridge; use Save to this device to copy them into your browser. No public proxy or API keys are sent to the bridge.</p>'+ 
    '<div class="ef-form"><label>Download engine<select id="efDlEngine"><option value="auto">Auto — NewPipe if installed, otherwise local yt-dlp</option><option value="newpipe">NewPipe — Android only</option><option value="ytdlp">yt-dlp — local bridge</option></select></label>'+ 
@@ -31,7 +31,7 @@
    '<p class="hint">Start the included bridge with <code>npm run downloads</code> after installing yt-dlp and ffmpeg. Paste the token it prints above. In Music → Get, paste a link then choose Save one, List playlist, or Save whole playlist. Only download material you may legally keep. NewPipe video uses available combined streams; use yt-dlp for separate high-resolution video/audio merging.</p><div id="efDownloadFiles"></div></div>';
   ($('acc_b_features')||body).prepend(card);$('efDlEngine').value=dc.engine;$('efDlMode').value=dc.mode;
   $('efStrict').onclick=e=>{Prov.setStrict(!Prov.getStrict());setSwitch(e.currentTarget,Prov.getStrict());};
-  for(const[id,button]of[['openrouter','efOpenrouter'],['plugsky','efPlugsky'],['longcat','efLongcat']])$(button).onclick=e=>{const on=e.currentTarget.getAttribute('aria-checked')!=='true';Prov.setEnabled(id,on);setSwitch(e.currentTarget,on);};
+  for(const[id,button]of[['openrouter','efOpenrouter'],['plugsky','efPlugsky']])$(button).onclick=e=>{const on=e.currentTarget.getAttribute('aria-checked')!=='true';Prov.setEnabled(id,on);setSwitch(e.currentTarget,on);};
   $('efRefresh').onclick=async e=>{e.currentTarget.disabled=true;try{await Prov.pingAll();}finally{$('efRefresh').disabled=false;paintStats();}};
   $('efDlFallback').onclick=e=>setSwitch(e.currentTarget,e.currentTarget.getAttribute('aria-checked')!=='true');
   $('efDlSave').onclick=()=>{save('ember_download_cfg',{engine:$('efDlEngine').value,mode:$('efDlMode').value,base:$('efDlBase').value.trim(),token:$('efDlToken').value.trim(),fallback:$('efDlFallback').getAttribute('aria-checked')==='true'});$('efDlStatus').textContent='Saved. Chat and Music → Get use these options.';if($('gtNote'))$('gtNote').textContent='Engine: '+$('efDlEngine').value+' · Format: '+$('efDlMode').value+'. Configure in Features → AI routing · media · downloads.';};

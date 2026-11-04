@@ -7,8 +7,6 @@ const { LS } = U;
 const CFG = {
   openrouter: { name: 'OpenRouter', base: 'https://openrouter.ai/api/v1', kind: 'oai', color: '#93c5fd', optIn: true },
   plugsky: { name: 'Plugsky AI', base: 'https://plugsky.com/v1', kind: 'oai', color: '#7dd3fc', optIn: true },
-  // V1.10.32: LongCat AI (Meituan). OpenAI-style, your own key, opt-in (never in Auto unless switched on or pinned) so the daily quota is not used behind your back.
-  longcat: { name: 'LongCat AI', base: 'https://api.longcat.chat/openai/v1', kind: 'oai', color: '#ffb347', optIn: true, credits: true },
   stability: { name: 'Stability AI', base: 'https://api.stability.ai', kind: 'media', color: '#b4a3ff' },
   groq: { name: 'Groq', base: 'https://api.groq.com/openai/v1', kind: 'oai', color: '#ff6a00' },
   mistral: { name: 'Mistral', base: 'https://api.mistral.ai/v1', kind: 'oai', color: '#ffb020' },
@@ -20,10 +18,8 @@ const CFG = {
 const IDS = Object.keys(CFG);
 // Automatic profile for this installation. Mistral stays active because it is working for him.
 const ACTIVE_IDS = IDS.filter(id => CFG[id].kind !== 'media');
-// V1.10.32: LongCat may not publish a /models list; these names are used when it does not answer one (a rejected key still fails).
-const LONGCAT_MODELS = ['LongCat-2.5-Preview', 'LongCat-2.0-Preview', 'LongCat-Flash-Thinking', 'LongCat-Flash-Chat'];
 // fast = quick everyday replies. deep = slow, careful turns. util = background jobs (memory, titles).
-const ORDER = { fast: ['groq', 'mistral', 'gemini', 'cohere'], deep: ['mistral', 'groq', 'gemini', 'cohere'], util: ['groq', 'mistral', 'gemini', 'cohere'] }; // V1.10.21: Groq and Mistral first, Cohere only as the last resort
+const ORDER = { fast: ['groq', 'mistral', 'gemini', 'cohere'], deep: ['mistral', 'groq', 'gemini', 'cohere'], util: ['mistral', 'gemini', 'groq', 'cohere'] }; // V1.10.55: background jobs (summaries, memory, titles) start on Mistral/Gemini so they stop eating Groq's small per-minute token pool // V1.10.21: Groq and Mistral first, Cohere only as the last resort
 
 // V1.5.6: pasted keys often carry invisible junk (zero-width chars, quotes, "Bearer ", "key=", a trailing comma). Any of it makes
 // the provider answer 401/403 even though the key itself is fine, so every key is cleaned before it is stored or sent.
@@ -43,7 +39,7 @@ function load() {
   const pm = LS.get('ember_pin_model', null); if (pm && pm.id === 'puter') LS.del('ember_pin_model');
   const lg = LS.get('ember_last_good', null); if (lg === 'puter' || lg === 'cohere') LS.del('ember_last_good');
   // V1.10.37: Together AI and Fireworks AI removed. Any saved key, pin or switch for them is erased once so nothing for a removed service stays on the phone.
-  ['together','fireworks'].forEach(x => { if (k && Object.prototype.hasOwnProperty.call(k, x)) { delete k[x]; LS.set('ember_keys', k); }
+  ['together','fireworks','longcat'].forEach(x => { if (k && Object.prototype.hasOwnProperty.call(k, x)) { delete k[x]; LS.set('ember_keys', k); }
     if (LS.get('ember_pin', null) === x) LS.del('ember_pin'); const pm2 = LS.get('ember_pin_model', null); if (pm2 && pm2.id === x) LS.del('ember_pin_model');
     if (LS.get('ember_last_good', null) === x) LS.del('ember_last_good'); const en = LS.get('ember_route_enabled', null); if (en && x in en) { delete en[x]; LS.set('ember_route_enabled', en); } });
   IDS.forEach(id => { o[id] = (Array.isArray(k[id]) ? k[id] : []).filter(e => e && typeof e.key === 'string' && e.key).map(e => { e.key = clean(e.key); return e; }).filter(e => e.key); });
@@ -63,7 +59,7 @@ function setPinnedModel(id, model) { pinnedModel = (id && CFG[id] && model) ? { 
 let strictPin = LS.get('ember_pin_strict', true) !== false;
 function setStrict(v) { strictPin = !!v; LS.set('ember_pin_strict', strictPin); }
 const onlyPinned = lane => !!(strictPin && pinnedEngine && lane != 'util');
-function orderFor(lane) { const enabled = LS.get('ember_route_enabled', {}); let base = (ORDER[lane] || ORDER.fast).concat(['openrouter', 'plugsky', 'longcat'].filter(id => enabled[id] === true)).filter(id => CFG[id].kind !== 'media' && enabled[id] !== false); const liveIds = base.filter(id => keys[id] && keys[id].some(e => !e.bad)); if (liveIds.length) base = liveIds; /* V1.10.21: only engines that hold a live key; per-provider OFF switch */ if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
+function orderFor(lane) { const enabled = LS.get('ember_route_enabled', {}); let base = (ORDER[lane] || ORDER.fast).concat(['openrouter', 'plugsky'].filter(id => id === 'openrouter' ? enabled[id] !== false : enabled[id] === true)).filter(id => CFG[id].kind !== 'media' && enabled[id] !== false); const liveIds = base.filter(id => keys[id] && keys[id].some(e => !e.bad)); if (liveIds.length) base = liveIds; /* V1.10.21: only engines that hold a live key; per-provider OFF switch */ if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
     const lg = lane == 'fast' ? LS.get('ember_last_good', null) : null;
     if (lg && base.includes(lg) && keys[lg] && keys[lg].some(e => !e.bad)) return [lg].concat(base.filter(x => x != lg));
     return base; } return [pinnedEngine].concat(base.filter(id => id != pinnedEngine)); }
@@ -315,11 +311,6 @@ async function listModels(id, key) {
   const catalogTimeout = () => { const ms = deadline - Date.now(); if (ms <= 0) throw Object.assign(new Error('Model catalog timed out.'), {code:'timeout',status:0}); return ms; };
   if (c.kind === 'media') { await jfetch(c.base + '/v1/user/account', { headers: { Authorization: 'Bearer ' + key } }, catalogTimeout()); return []; }
   if (c.kind == 'oai') {
-    // V1.10.32: LongCat. Use its live list when it has one; if the route is missing (404/405) fall back to the known names. 401/403 still reject the key.
-    if (id === 'longcat') {
-      try { const jl = await jfetch(c.base + '/models', { headers: { Authorization: 'Bearer ' + key } }, catalogTimeout()); const ids = (Array.isArray(jl) ? jl : (jl.data || [])).map(m => m && m.id).filter(Boolean); return ids.length ? ids : LONGCAT_MODELS.slice(); }
-      catch (er) { if (er && (er.status === 404 || er.status === 405)) return LONGCAT_MODELS.slice(); throw er; }
-    }
     const j = await jfetch(c.base + '/models', { headers: key ? { Authorization: 'Bearer ' + key } : {} }, catalogTimeout());
     const rows = Array.isArray(j.data) ? j.data : []; rememberModels(id, rows);
     return Array.from(new Set(rows.map(m => m && m.id).filter(m => typeof m === 'string' && m)));
@@ -352,13 +343,6 @@ function rank(id, list, lane) {
   if (id === 'stability') return [];
   if (id === 'openrouter' || id === 'plugsky') return list.filter(m => !/embed|rerank|whisper|tts|audio|video|flux|stable-diffusion|imagen|veo|sora|moderation|content[-_]safety|guard/i.test(m)).sort((a,b) => Number(isFreeModel(id,b) || /^plugsky-(micro|lite)$/.test(b)) - Number(isFreeModel(id,a) || /^plugsky-(micro|lite)$/.test(a)));
   const deep = lane == 'deep';
-  if (id === 'longcat') { // V1.10.32: newest preview first, then the free-quota 2.0 preview, thinking, flash
-    const ok = list.filter(m => !/embed|rerank|whisper|guard|tts|audio|image|moderation|transcri/i.test(m));
-    const pref = deep ? [/2\.5/i, /thinking/i, /2\.0/i, /flash/i] : [/2\.5/i, /2\.0/i, /flash-chat/i, /flash/i];
-    const out = []; pref.forEach(p => ok.filter(m => p.test(m)).forEach(m => { if (!out.includes(m)) out.push(m); }));
-    ok.forEach(m => { if (!out.includes(m)) out.push(m); });
-    return out;
-  }
   if (id == 'groq') {
     const ok = list.filter(m => !/whisper|guard|tts|embed|playai|distil|orpheus/i.test(m)); // V1.10.45: orpheus = text-to-speech
     const pref = [/llama-3\.3-70b/, /llama.*70b/, /llama-4/, /llama/, /gpt-oss-120b/, /gpt-oss/, /qwen/];
@@ -467,7 +451,7 @@ async function streamOAI(url, key, body, o, timeout) {
         let parsed = null, msg = ''; try { parsed = JSON.parse(raw); if (parsed && typeof parsed == 'object') msg = (parsed.error && (parsed.error.message || parsed.error)) || parsed.message || ''; } catch (_) {}
     const h = r.headers && r.headers.get && r.headers.get('retry-after'); let retryAfter = Number(h) || 0;
     if (h && !retryAfter) { const at = Date.parse(h); if (Number.isFinite(at)) retryAfter = Math.max(0, Math.ceil((at-Date.now())/1000)); }
-    throw Object.assign(new Error(String(msg || raw || ('HTTP '+r.status)).slice(0,200)), {status:r.status,retryAfter,metadata:parsed && parsed.error && parsed.error.metadata});
+    throw Object.assign(new Error(String(msg || raw || ('HTTP '+r.status)).slice(0,200)), {status:r.status,retryAfter,metadata:parsed && parsed.error && parsed.error.metadata,raw:String(raw || '').slice(0,4000)});
   }
   if (!r.body || !r.body.getReader) { const j = await r.json(); return (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || ''; }
   const reader = r.body.getReader(), decoder = new TextDecoder(); activeReaders.add(reader); let buffer = '', out = '';
@@ -496,6 +480,34 @@ async function streamOAI(url, key, body, o, timeout) {
   if (routeCancelled) throw Object.assign(new Error('Stopped by user.'), {code:'cancelled'});
   return out;
 }
+// V1.10.55: per-engine token budget. Groq counts input + max_tokens against a small per-minute pool (8000 on gpt-oss), so a big system prompt,
+// long history or a 4096-token document request used to come back 413 on every Groq model. The body is now fitted before it is sent, and a 413 teaches
+// the real limit (parsed from "Limit N") for that engine/model, then retries once on the same model. Works for every OpenAI-style engine (Groq, Mistral, OpenRouter).
+const TPM_DEFAULT = { groq: 7000, openrouter: 16000 };
+const estTok = v => Math.ceil(String(typeof v === 'string' ? v : JSON.stringify(v == null ? '' : v)).length / 3.2);
+function tpmBudget(id, model) { const m = LS.get('ember_tpm', {}) || {}; return Number(m[id + '|' + model]) || TPM_DEFAULT[id] || 0; }
+function learnTpm(id, model, er) {
+  const hit = /limit\s*:?\s*(\d{3,7})/i.exec(String(er && er.message || '') + ' ' + String(er && er.raw || ''));
+  let lim = hit ? Number(hit[1]) : Math.floor((tpmBudget(id, model) || 8000) * 0.6);
+  const t = LS.get('ember_tpm', {}) || {}; t[id + '|' + model] = Math.max(1500, Math.floor(lim * 0.92)); LS.set('ember_tpm', t); return true;
+}
+function fitBody(id, model, body) {
+  const bud = tpmBudget(id, model); if (!bud || !body || !Array.isArray(body.messages)) return body;
+  body.messages = body.messages.map(m => Object.assign({}, m)); // never trim the caller's own chat history
+  const txt = m => !!m && typeof m.content === 'string';
+  const size = () => estTok(body.messages) + (body.tools ? estTok(body.tools) : 0);
+  const want = Math.min(body.max_tokens || 400, bud), minOut = Math.min(want, 700);
+  const over = () => size() + minOut > bud;
+  const cut = (s, keep) => { s = String(s); if (s.length <= keep) return s; const h = Math.floor(keep * 0.6); return s.slice(0, h) + '\n[...trimmed to fit the engine token limit...]\n' + s.slice(s.length - (keep - h)); };
+  if (over() && body.tools) { delete body.tools; delete body.tool_choice; }
+  for (let i = 1; over() && i < body.messages.length - 1; i++) if (txt(body.messages[i]) && body.messages[i].content.length > 1500) body.messages[i].content = cut(body.messages[i].content, 1500);
+  while (over() && body.messages.length > 2) { body.messages.splice(1, 1); while (body.messages.length > 2 && body.messages[1].role === 'tool') body.messages.splice(1, 1); }
+  if (over() && txt(body.messages[0])) { const rest = size() - estTok(body.messages[0].content); body.messages[0].content = cut(body.messages[0].content, Math.max(1500, Math.floor((bud - minOut - rest) * 3.2))); }
+  const last = body.messages[body.messages.length - 1];
+  if (over() && txt(last)) { const rest = size() - estTok(last.content); last.content = cut(last.content, Math.max(800, Math.floor((bud - minOut - rest) * 3.2))); }
+  body.max_tokens = Math.max(256, Math.min(body.max_tokens || 400, bud - size()));
+  return body;
+}
 async function call(id, key, model, o) {
   const c = CFG[id], t0 = performance.now();
   o = Object.assign({}, o);
@@ -515,13 +527,14 @@ async function call(id, key, model, o) {
     if (info && info.parameters && !info.parameters.includes('temperature')) delete body.temperature;
     const decl = (!o.json && o.tools && o.tools.length) ? toolDecls(o.tools, false) : [];
     if (decl.length) { body.tools = decl.map(f => ({ type: 'function', function: f })); if (!info || !info.parameters || info.parameters.includes('tool_choice')) body.tool_choice = 'auto'; }
+    fitBody(id, model, body);
     let j;
     if (typeof o.onToken === 'function' && !decl.length && !o.json) {
       try { text = await streamOAI(c.base + '/chat/completions', key, body, o, requestTimeout); }
-      catch (er) { if (er.code === 'cancelled') throw er; if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
+      catch (er) { if (er.code === 'cancelled') throw er; if (er.status == 413 && !o._refit && learnTpm(id, model, er)) return call(id, key, model, Object.assign({}, o, { _refit: true })); if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
     } else {
       try { j = await jfetch(c.base + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) }, requestTimeout); }
-      catch (er) { if (er.code === 'cancelled') throw er; if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
+      catch (er) { if (er.code === 'cancelled') throw er; if (er.status == 413 && !o._refit && learnTpm(id, model, er)) return call(id, key, model, Object.assign({}, o, { _refit: true })); if (decl.length && (er.status == 400 || er.status == 422)) return call(id, key, model, Object.assign({}, o, { tools: null })); throw er; }
       o._usage = j.usage || null;
       text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content || '';
       const nc = decl.length ? oaiNative(j) : null; if (nc) text = joinCall(text, nc.tool, nc.args);
@@ -776,6 +789,8 @@ const cachedModels = id => { const c = LS.get('ember_models', {}); return c[id] 
 const HANDOFF = () => Object.assign(new Error('The background task has this reply.'), { code: 'handoff' });
 async function runInner(lane, o, tok) {
   const pl = lane != 'util', errs = [], failed = [];
+  // V1.10.55: a pinned engine stays strict for real faults (bad key, wrong model), but when it only ran out of capacity (413 too large, 429, 402, 5xx, timeout) the router now carries on to the next engine instead of dead-ending.
+  let capFail = false; const pinStrict = ln => onlyPinned(ln) && !capFail;
   const halted = () => { if (tok && tok.stop) throw HANDOFF(); if (routeCancelled || (tok && tok.abort)) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' }); };
   const trying = (name, model) => { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-try', { detail: { name, model } })); } catch (e) { /* no listener */ } } }; // V1.8.3: once the native worker took the request, the page makes no further paid calls
   // when an engine failed and a different one answered, tell the UI (ai.js shows a toast). Background jobs stay silent.
@@ -790,13 +805,16 @@ async function runInner(lane, o, tok) {
     try { trying('Free Mode', 'openai'); const o2 = withFacts(o, lane, 'pollinations', 'openai', failed); const r = await callPollinations(flat(o2), o2); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
     catch (er) { errs.push('Free Mode: ' + er.message); failed.push({ id: 'pollinations', status: er.status, why: er.message }); }
   }
-  const routeIds = o.routeProvider && CFG[o.routeProvider] ? [o.routeProvider] : orderFor(lane);
+  let routeIds = o.routeProvider && CFG[o.routeProvider] ? [o.routeProvider] : orderFor(lane);
+  // V1.10.55: document requests are big, so Groq (smallest per-minute pool) goes last unless it is pinned.
+  if (o.documentMode && !o.routeProvider && !pinStrict(lane) && routeIds.includes('groq')) routeIds = routeIds.filter(x => x !== 'groq').concat(['groq']);
   for (const id of routeIds) {
     halted(); if (Date.now() >= routeDeadline) break;
+    if (pinnedEngine && failed.some(x => x.id == pinnedEngine && [0, 402, 413, 429, 500, 502, 503, 504].includes(Number(x.status) || 0))) capFail = true;
     providerDeadline = Math.min(routeDeadline, Date.now() + (o.documentMode ? 100000 : 40000));
     // V1.10.53: a document request used to stay on one engine for up to 100 s, walking every model on every key. After 2 failed or timed-out attempts on the same engine it now moves on to the next engine. A pinned engine stays strict.
-    let provFails = 0; const docGiveUp = () => !!o.documentMode && provFails >= 2 && !o.routeProvider && !onlyPinned(lane);
-    if (!o.routeProvider && onlyPinned(lane) && id != pinnedEngine) break; // V1.9.15: strict pin
+    let provFails = 0; const docGiveUp = () => !!o.documentMode && provFails >= 2 && !o.routeProvider && !pinStrict(lane);
+    if (!o.routeProvider && pinStrict(lane) && id != pinnedEngine) break; // V1.9.15: strict pin
     const soft = id === 'openrouter' && pinnedEngine !== id;
     for (const e of rotation(id, lane)) {
       if (Date.now() >= providerDeadline || docGiveUp()) break;
@@ -836,11 +854,11 @@ async function runInner(lane, o, tok) {
     }
     if (routeStop && !transient(routeStop.error) && Number(routeStop.error.status) != 429) break;
   }
-  if (routeStop && !transient(routeStop.error) && Number(routeStop.error.status) != 429 && !o.routeProvider && !onlyPinned(lane)) {
+  if (routeStop && !transient(routeStop.error) && Number(routeStop.error.status) != 429 && !o.routeProvider && !pinStrict(lane)) {
     const nm = CFG[routeStop.id].name, er = routeStop.error;
     throw Object.assign(new Error(nm + ' failed (' + (er.status || 'error') + '): ' + String(er.message || 'request failed')), { code: 'fail', status: er.status });
   }
-  if (pl && !o.routeProvider && !tried && !onlyPinned(lane)) {
+  if (pl && !o.routeProvider && !tried && !pinStrict(lane)) {
     if (freePref !== false) {
     halted();
     try { trying('Free Mode', 'openai'); const o2 = withFacts(o, lane, 'pollinations', 'openai', failed); const r = await callPollinations(flat(o2), o2); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
@@ -851,7 +869,7 @@ async function runInner(lane, o, tok) {
     const nm = CFG[o.routeProvider].name;
     throw Object.assign(new Error('The original ' + nm + ' engine could not continue the tool result. No other engine was called for this follow-up.'), { code: 'fail' });
   }
-  if (onlyPinned(lane)) { // V1.9.15: say what really happened instead of answering from someone else
+  if (pinStrict(lane)) { // V1.9.15: say what really happened instead of answering from someone else
     const nm = CFG[pinnedEngine].name, w = failed.filter(f => f.id == pinnedEngine).slice(-1)[0];
     const why = w ? String(w.why || 'failed').slice(0, 170) + (w.status ? ' (' + w.status + ')' : '') : (keys[pinnedEngine].length ? 'every ' + nm + ' key is resting or rejected' : 'no ' + nm + ' key is saved');
     throw Object.assign(new Error(nm + ' is pinned and did not answer: ' + why + '. Not switching engines because it is pinned. Fix it in Settings > Keys, or set the engine to Auto.'), { code: 'fail' });

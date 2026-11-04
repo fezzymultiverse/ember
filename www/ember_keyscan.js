@@ -27,7 +27,6 @@ const GENERIC = /^[A-Za-z0-9_-]{16,128}$/;
 const CAT = {
   openrouter: { kind:'chat', label:'OpenRouter', rx:'open[\\s_-]?router', prefixed:true },
   plugsky: { kind:'chat', label:'Plugsky AI', rx:'plug[\\s_-]?sky', prefixed:true },
-  longcat: { kind:'chat', label:'LongCat AI', rx:'long[\\s_-]?cat', prefixed:true },
   stability: { kind:'chat', label:'Stability AI', rx:'stability(?:[\\s_-]?ai)?', prefixed:true },
   groq:        { kind: 'chat',   label: 'Groq',         rx: 'groq', prefixed: true },
   gemini:      { kind: 'chat',   label: 'Gemini',       rx: 'gemini|genai|ai[\\s_-]?studio|generativelanguage', weak: 'google', prefixed: true },

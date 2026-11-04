@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.10.55 - Groq 413 fix, engines no longer dead-end, LongCat removed, docs in one file
+- Fixed: Groq answered "Request too large ... TPM Limit 8000 (413)" on every model. Cause: the per-minute pool counts input + max_tokens, and file requests forced 4096 output plus a long system prompt. The request is now fitted to the engine budget before sending (Groq 7000, OpenRouter 16000), and a 413 teaches the real limit and retries once on the same model.
+- Fixed: a pinned engine that only ran out of capacity (413 / 429 / 402 / 5xx / timeout) now fails over to the next engine instead of ending the reply. Bad key or wrong model on the pinned engine is still shown plainly.
+- Changed: file requests try Groq last; background jobs (summary, memory, titles) start on Mistral then Gemini so they stop draining Groq.
+- Changed: OpenRouter joins Auto fallback by default (free models only); switch it off in AI Features.
+- Removed: LongCat AI everywhere (config, models, ranking, key scan, menus, icon, cache list). Any saved LongCat key, pin or switch is erased once on start.
+- Docs: all documentation consolidated into DOCS.md (Part 1 explains what eats the API). Originals moved to docs/history/pre-1.10.55/; README.md is now a short pointer.
+- Tested: node --check on every www/*.js; tests/token-fit-11055-test.cjs (no network). Not tested live against any provider and not installed on a phone. Legacy tests that name LongCat or hash providers.js were not updated.
+- Files changed: www/providers.js, app.js, ember_features.js, ember_finish.js, ember_keys.js, ember_keyscan.js, ember_menu.js, ember_repair.js, ember_visuals.js, index.html, sw.js, package.json, DOCS.md, README.md, CHANGELOG.md, tests/token-fit-11055-test.cjs, provider-icons.
+
 ## 1.10.54 - File requests are written directly (fix: "I tried, but the add-on came back empty")
 - Fixed: a file request (PDF / Word / essay) no longer offers the tool catalog to the first model call. Engines such as Cohere and Mistral were answering with a tool call instead of the essay, the tool loop then ended empty, and Ember showed "I tried, but the add-on came back empty."
 - Fixed: if an engine still answers a file request with a tool call, Ember skips the tool loop and asks the same engine to write the file directly (tools off, evidence already in the prompt).

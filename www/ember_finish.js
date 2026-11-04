@@ -19,7 +19,7 @@
     if (!eng?.p) return '<span class="ef-answer-provider ef-answer-provider-unknown" title="No answering-provider metadata was stored for this reply">'+svg('DOC')+'<span>Provider not recorded</span></span>';
     const cfg = W.Prov?.CFG?.[eng.p], label = cfg?.name || (W.Prov?.label ? W.Prov.label(eng.p) : eng.p);
     // Read only the provider actually stored on this message, never the active provider or attempted fallback.
-    const text = String(label), logos = {openrouter:'openrouter.svg',plugsky:'plugsky.ico',longcat:'longcat.svg',stability:'stability.svg',groq:'groq.svg',mistral:'mistral.svg',gemini:'gemini.svg',cohere:'cohere.svg',anthropic:'anthropic.svg'}, logo = logos[eng.p];
+    const text = String(label), logos = {openrouter:'openrouter.svg',plugsky:'plugsky.ico',stability:'stability.svg',groq:'groq.svg',mistral:'mistral.svg',gemini:'gemini.svg',cohere:'cohere.svg',anthropic:'anthropic.svg'}, logo = logos[eng.p];
     const fallback = '<span class="ef-answer-provider-letter" aria-hidden="true">'+esc(text.slice(0,2).toUpperCase())+'</span>';
     return '<span class="ef-answer-provider" data-provider="'+esc(eng.p)+'" title="Answered by '+esc(text)+(eng.m?' · '+esc(eng.m):' · model not disclosed')+'">'+fallback+(logo?'<img src="provider-icons/'+logo+'" alt="" loading="lazy" decoding="async">':'')+'<span>'+esc(text)+'</span></span>';
   }
