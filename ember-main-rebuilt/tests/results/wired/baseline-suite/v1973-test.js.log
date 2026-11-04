@@ -1,0 +1,31 @@
+FAIL no OpenRouter reference left in www/
+FAIL provider router has no openrouter
+FAIL Settings dropdown has no OpenRouter option
+PASS Bojack egg gone from app, persona and nine_nine
+PASS Sting appends ?url= to a plain endpoint and still honours old placeholders
+PASS Sting field asks for a generic https URL
+PASS console has an artwork image and a placeholder
+PASS console artwork css exists
+PASS promptBlock is empty with no project open
+PASS repo link is validated and normalised
+PASS project needs a name
+PASS bad repo is rejected and nothing is saved
+PASS create saves to localStorage and opens it
+PASS system block carries name, goal and repo, angle brackets stripped
+PASS update works
+PASS opening another switches the active project
+PASS close leaves no project context
+PASS delete removes it and clears active
+PASS corrupt storage does not crash
+PASS persona injects the project block, skipped during crisis
+PASS drawer has the Projects tab and form
+PASS index and sw load the new scripts
+PASS thought is cut to one clean sentence
+PASS AI boilerplate is rejected
+PASS synced lyrics: uses the current line
+PASS plain lyrics: picks a long enough line
+PASS no lyrics or instrumental gives no line
+PASS renderLog places bubbles and app exposes chat state
+PASS bubble is not stored in the chat (no conv.msgs push in the module)
+
+26 passed, 3 failed

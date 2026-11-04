@@ -1,0 +1,13 @@
+PASS module loads and exposes EmberPlus 
+PASS nothing on at start: empty line, no deep lane, chips hidden 
+PASS Reasoning toggle: deep lane + prompt line + chip shown 
+PASS all four lines present when all on 
+PASS state persisted to storage 
+PASS chip x turns the feature off 
+PASS + opens the menu 
+PASS tap outside closes it 
+FAIL menu markup has 4 toggles and 3 do-it-now items undefined
+PASS app.js: prompt line, lane and docs switch hooked 
+FAIL sw.js lists ember_plus.js and cache is a 1.9.x build undefined
+PASS index.html loads ember_plus.js after the markup 
+10 passed, 2 failed

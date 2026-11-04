@@ -1,0 +1,46 @@
+PASS old settings: Web Search and YouTube switched on once 
+PASS turning Web Search off by hand is kept after a reload 
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+page.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('#bPasteIn')
+    - locator resolved to <button id="bPasteIn" aria-label="Paste into the message box">📋 Paste</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is not visible
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is not visible
+    - retrying click action
+      - waiting 100ms
+    56 × waiting for element to be visible, enabled and stable
+       - element is not visible
+     - retrying click action
+       - waiting 500ms
+
+    at /home/user/ember_work/source/tests/v1924-test.js:22:12 {
+  log: [
+    "  - waiting for locator('#bPasteIn')",
+    '    - locator resolved to <button id="bPasteIn" aria-label="Paste into the message box">📋 Paste</button>',
+    '  - attempting click action',
+    '    2 × waiting for element to be visible, enabled and stable',
+    '      - element is not visible',
+    '    - retrying click action',
+    '    - waiting 20ms',
+    '    2 × waiting for element to be visible, enabled and stable',
+    '      - element is not visible',
+    '    - retrying click action',
+    '      - waiting 100ms',
+    '    56 × waiting for element to be visible, enabled and stable',
+    '       - element is not visible',
+    '     - retrying click action',
+    '       - waiting 500ms'
+  ],
+  name: 'TimeoutError'
+}
+
+Node.js v22.23.4

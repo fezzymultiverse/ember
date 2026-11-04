@@ -1,0 +1,89 @@
+PASS chunker: many chunks for a 94 KB document 
+PASS chunker: every chunk is within the size cap 
+PASS chunker: no text is lost between chunks (only blank space may sit between them) 
+PASS chunker: offsets increase 
+PASS chunker: finds the 40 markdown headings plus the CAPS heading 
+PASS chunker: empty and tiny text do not crash 
+PASS chunker: a single 20 KB line is split 
+PASS search: phrase hit ranks first and names the right chunk 
+PASS search: hit carries chunk number, total and heading 
+PASS search: all-words level when it is not an exact phrase 
+PASS search: falls back to most words when one word is missing 
+PASS search: no hit says so with advice, never crashes 
+PASS search: omitting fileId searches every document, paged 
+PASS search: page 2 differs from page 1 
+PASS search: result fits one ReAct observation (3000 chars) 
+PASS search: stop-word-only query still works 
+PASS search: unknown fileId is an error, not a crash 
+PASS read chunk: returns the needle text with next and prev 
+PASS read chunk: never exceeds the read cap 
+PASS read chunk: out-of-range chunk is a clear error 
+PASS outline: headings with chunk numbers 
+PASS outline: heading-less document gets landmarks 
+PASS chunks of a read stitch back to the original text 
+PASS ai_docs: the three Local Context tools are in the document tool set 
+PASS ai_docs: dispatch routes to Local Context 
+PASS ai_docs: read_document on a long file says truncated and points to the new tools 
+PASS ai_docs: summarize_document on a long file says partial 
+PASS ai_docs: a short file is not flagged 
+PASS safety: level 2 pauses every Local Context tool 
+PASS safety: level 1 does not 
+PASS schema: coerces "3" to 3 and trims 
+PASS schema: clamps limit and page 
+PASS schema: missing required argument is a structured error 
+PASS schema: unknown argument is refused 
+PASS schema: a word where a number belongs is refused 
+PASS schema: number to string and integer rounding 
+PASS schema: over-long string is refused with the length 
+PASS schema: __proto__ never reaches a tool 
+PASS schema: a legacy tool is only coerced, nothing rejected or dropped 
+PASS schema: bind never throws on junk 
+PASS graph: every edge points at a real state 
+PASS graph: every non-final state can reach a final one 
+PASS graph: final states have no exits 
+PASS graph: an illegal move throws instead of jumping 
+PASS doc mode: reaches the right answer from the right chunk 
+PASS doc mode: the model is offered only the document tools 
+PASS doc mode: the evidence ledger reaches the model after the first hits 
+PASS doc mode: the whole trail used only legal edges and ended in DONE 
+PASS doc mode: a tool outside the document set is reported, not run 
+PASS breaker: an exact repeat of a failed call is not run again 
+PASS breaker: three failures in a row force a Final 
+PASS breaker: the bad-args error reached the model as data 
+PASS format recovery: plain prose is taken as the answer 
+PASS format recovery: gives up cleanly after the allowed retries 
+PASS doc mode: with no document tools it says what to switch on 
+TEST CRASH browserType.launch: Target page, context or browser has been closed
+Browser logs:
+
+<launching> /home/user/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,AvoidCorsURLLoaderRestartOnRedirect,Translate,AutoDeElevate,OptimizationHints,NetworkTimeServiceQuerying,AimEnabled,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --disable-updater-scheduler --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --user-data-dir=/tmp/playwright_chromiumdev_profile-tn0u1g --remote-debugging-pipe --no-startup-window
+<launched> pid=429
+[pid=429][err] /home/user/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell: error while loading shared libraries: libatk-1.0.so.0: cannot open shared object file: No such file or directory
+Call log:
+  - <launching> /home/user/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,AvoidCorsURLLoaderRestartOnRedirect,Translate,AutoDeElevate,OptimizationHints,NetworkTimeServiceQuerying,AimEnabled,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --disable-updater-scheduler --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --user-data-dir=/tmp/playwright_chromiumdev_profile-tn0u1g --remote-debugging-pipe --no-startup-window
+  - <launched> pid=429
+  - [pid=429][err] /home/user/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell: error while loading shared libraries: libatk-1.0.so.0: cannot open shared object file: No such file or directory
+  - [pid=429] <gracefully close start>
+  - [pid=429] <kill>
+  - [pid=429] <will force kill>
+  - [pid=429] exception while trying to kill process: Error: kill ESRCH
+  - [pid=429] <process did exit: exitCode=127, signal=null>
+  - [pid=429] starting temporary directories cleanup
+  - [pid=429] finished temporary directories cleanup
+  - [pid=429] <gracefully close end>
+
+    at /home/user/ember_work/source/tests/context-test.js:175:30 {
+  log: [
+    '  - <launching> /home/user/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,AvoidCorsURLLoaderRestartOnRedirect,Translate,AutoDeElevate,OptimizationHints,NetworkTimeServiceQuerying,AimEnabled,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --disable-updater-scheduler --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --user-data-dir=/tmp/playwright_chromiumdev_profile-tn0u1g --remote-debugging-pipe --no-startup-window',
+    '  - <launched> pid=429',
+    '  - [pid=429][err] /home/user/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell: error while loading shared libraries: libatk-1.0.so.0: cannot open shared object file: No such file or directory',
+    '  - [pid=429] <gracefully close start>',
+    '  - [pid=429] <kill>',
+    '  - [pid=429] <will force kill>',
+    '  - [pid=429] exception while trying to kill process: Error: kill ESRCH',
+    '  - [pid=429] <process did exit: exitCode=127, signal=null>',
+    '  - [pid=429] starting temporary directories cleanup',
+    '  - [pid=429] finished temporary directories cleanup',
+    '  - [pid=429] <gracefully close end>'
+  ]
+}

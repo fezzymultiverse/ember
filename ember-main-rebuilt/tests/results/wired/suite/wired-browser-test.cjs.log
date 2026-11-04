@@ -1,0 +1,175 @@
+{
+  "results": [
+    {
+      "width": 412,
+      "height": 915,
+      "name": "chat",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "width": 412,
+      "height": 915,
+      "name": "settings",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "width": 412,
+      "height": 915,
+      "name": "command-centre",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "width": 412,
+      "height": 915,
+      "name": "browser",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "width": 412,
+      "height": 915,
+      "name": "plugins",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "width": 412,
+      "height": 915,
+      "name": "chooser",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "width": 412,
+      "height": 915,
+      "name": "terminal",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "width": 1280,
+      "height": 900,
+      "name": "chat",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "width": 1280,
+      "height": 900,
+      "name": "settings",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "width": 1280,
+      "height": 900,
+      "name": "command-centre",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "width": 1280,
+      "height": 900,
+      "name": "browser",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "width": 1280,
+      "height": 900,
+      "name": "plugins",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "width": 1280,
+      "height": 900,
+      "name": "chooser",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "width": 1280,
+      "height": 900,
+      "name": "terminal",
+      "errors": [],
+      "overflow": false
+    }
+  ],
+  "diffs": [
+    {
+      "file": "browser-1280x900.png",
+      "changedPixels": 0,
+      "totalPixels": 1152000
+    },
+    {
+      "file": "browser-412x915.png",
+      "changedPixels": 0,
+      "totalPixels": 376980
+    },
+    {
+      "file": "chat-1280x900.png",
+      "changedPixels": 0,
+      "totalPixels": 1152000
+    },
+    {
+      "file": "chat-412x915.png",
+      "changedPixels": 0,
+      "totalPixels": 376980
+    },
+    {
+      "file": "chooser-1280x900.png",
+      "changedPixels": 0,
+      "totalPixels": 1152000
+    },
+    {
+      "file": "chooser-412x915.png",
+      "changedPixels": 0,
+      "totalPixels": 376980
+    },
+    {
+      "file": "command-centre-1280x900.png",
+      "changedPixels": 0,
+      "totalPixels": 1152000
+    },
+    {
+      "file": "command-centre-412x915.png",
+      "changedPixels": 0,
+      "totalPixels": 376980
+    },
+    {
+      "file": "plugins-1280x900.png",
+      "changedPixels": 31,
+      "totalPixels": 1152000
+    },
+    {
+      "file": "plugins-412x915.png",
+      "changedPixels": 0,
+      "totalPixels": 376980
+    },
+    {
+      "file": "settings-1280x900.png",
+      "changedPixels": 0,
+      "totalPixels": 1152000
+    },
+    {
+      "file": "settings-412x915.png",
+      "changedPixels": 0,
+      "totalPixels": 376980
+    },
+    {
+      "file": "terminal-1280x900.png",
+      "changedPixels": 0,
+      "totalPixels": 1152000
+    },
+    {
+      "file": "terminal-412x915.png",
+      "changedPixels": 0,
+      "totalPixels": 376980
+    }
+  ],
+  "adapters": "PASS"
+}

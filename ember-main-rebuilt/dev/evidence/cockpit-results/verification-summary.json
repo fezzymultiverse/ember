@@ -1,0 +1,47 @@
+{
+  "cockpit": {
+    "status": "passed",
+    "assertions": 72,
+    "viewport": "412x915",
+    "additionalViewport": "1280x900"
+  },
+  "targeted_regressions": {
+    "routing-fallback-test": {
+      "status": "passed",
+      "assertions": 10
+    },
+    "streaming-routing-test": {
+      "status": "passed",
+      "assertions": 3
+    },
+    "routing94-test": {
+      "status": "passed",
+      "assertions": 23
+    },
+    "artifact-test": {
+      "status": "passed",
+      "assertions": 22
+    },
+    "keyscan-test": {
+      "status": "passed",
+      "assertions": 44
+    }
+  },
+  "targeted_assertions": 102,
+  "legacy_failures_reproduced_on_original": {
+    "term-test": {
+      "status": "fails on original and updated",
+      "reason": "Legacy browser harness clicks hidden #bTermux without opening its action menu; 26 terminal-core checks pass before the timeout."
+    },
+    "v1992-repo-runner-test": {
+      "status": "fails on original and updated",
+      "reason": "Unchanged backend runner integration asserts a missing expected exception at tests/v1992-repo-runner-test.js:77."
+    },
+    "knowledge-brain-test": {
+      "status": "fails on original and updated",
+      "reason": "Stale markup assertion expects data-tab=\"advanced\" id=\"ghRunnerCard\"; original V1.10.13 already moved this to Command Centre."
+    }
+  },
+  "full_npm_test": "Not green. Stops at the inherited term-test browser timeout. Tests after that point were not executed by npm test.",
+  "limitations": "Browser network uses deterministic GitHub fixtures; Run & Push dispatch is stubbed. No live account, SSH session, real repository write or cloud build was exercised. Android native shell was not built or tested."
+}

@@ -1,0 +1,16 @@
+copied DownloadWorker.kt, EmberAiPlugin.kt, EmberAiWorker.kt, EmberDevicePlugin.kt, EmberKeepAliveService.kt, EmberMediaPlugin.kt, EmberMediaSession.kt, EmberNotifyPlugin.kt, EmberPingWorker.kt, EmberRouteHealth.kt, EmberWebPlugin.kt, EmberYoutubePlugin.kt, EmberYtCore.kt, MainActivity.kt, ReplyReceiver.kt
+manifest merged
+network security config added (loopback cleartext for the Termux bridge)
+launcher icon resources copied
+NewPipeExtractor v0.26.5
+gradle patched: kotlin + signing + workmanager + newpipe/okhttp/desugaring/jitpack
+app version set: versionCode 11017 versionName 1.10.17
+copied DownloadWorker.kt, EmberAiPlugin.kt, EmberAiWorker.kt, EmberDevicePlugin.kt, EmberKeepAliveService.kt, EmberMediaPlugin.kt, EmberMediaSession.kt, EmberNotifyPlugin.kt, EmberPingWorker.kt, EmberRouteHealth.kt, EmberWebPlugin.kt, EmberYoutubePlugin.kt, EmberYtCore.kt, MainActivity.kt, ReplyReceiver.kt
+manifest merged
+network security config added (loopback cleartext for the Termux bridge)
+launcher icon resources copied
+NewPipeExtractor v0.26.5
+gradle patched: kotlin + signing + workmanager + newpipe/okhttp/desugaring/jitpack
+app version set: versionCode 11017 versionName 1.10.17
+PASS native patcher applies twice identically to disposable fixture; 15 Kotlin sources, manifest service and package version checked.
+NOT TESTED: Kotlin compilation, Gradle dependency resolution, real permissions or Android device behavior.

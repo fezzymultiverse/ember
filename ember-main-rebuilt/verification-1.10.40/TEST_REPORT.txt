@@ -1,0 +1,130 @@
+EMBER 1.10.40 - ADDITIVE A4 DOCUMENT ENGINE / ROUTING PATCH
+
+WHAT CHANGED
+Added a document-only authoring contract with 16 authoring standards plus 16
+preflight standards. This is a two-pass quality specification, not a claim that
+Cohere's underlying model intelligence is doubled. Normal chat, utility tasks
+and JSON jobs keep their prior instructions and budgets. Document requests and
+same-engine continuations gain A4 print-first instructions and a minimum 4096
+output-token request budget; metadata can lower it to a provider's supported
+ceiling. Existing larger document budgets remain intact.
+
+When Cohere is already the selected provider, unpinned document model selection
+uses its deeper model ranking rather than preferring r7b for speed. Explicit
+provider/model pins are honored. No paid provider is newly enabled.
+
+Word export now declares A4 (11906 x 16838 twips) and explicit margins matching
+the PDF margins. PDF rendering and saving are NOT replaced. Page targets now
+understand phrases such as '2 A4 pages'.
+
+A small document-only stylesheet contains collapsed first/last child margins
+so the existing preview paginator measures complete blocks. The tested A4
+sheets now measure 794 x 1123 CSS pixels, not an expanded screen-height page.
+It also wraps long code/tokens and constrains document images. No app-wide
+layout, save-handler or typing code was rewritten.
+
+ROUTING / FREE MODELS
+Live discovery retains model pricing, output capabilities, supported parameters
+and output ceilings. Every matching free conversational text model in the live
+OpenRouter catalog is discovered dynamically; no brittle hard-coded roster.
+At verification, the live public catalog returned 451 models and
+14 eligible free conversational text routes (including openrouter/free).
+This count will change as providers add or retire models.
+
+Automatic OpenRouter routing uses free variants only. Mixed-media generation
+models, guardrails, positive auxiliary prices and conditional-price entries
+are excluded from the free chat selection. A live check caught music models
+advertising zero token prices but per-song fees; these are excluded by output
+capability checks. Explicit provider/model pins retain their existing behavior,
+including paid pins the user already chose. OpenRouter's Auto opt-in remains
+required. No saved engine is enabled behind the user's back. The existing
+Groq/Mistral/Gemini/Cohere/LongCat/etc. definitions remain as supplied; no removed
+service is reinstated. Other providers' free quotas depend on the user's plan.
+
+Cohere and Gemini model catalogs now follow bounded, deduplicated pagination.
+OpenRouter public discovery works without a key, but generation still needs a
+valid personal key and is subject to provider quotas and model availability.
+Unsupported tool/temperature/response-format options are omitted or fall back
+to JSON instructions. Model output ceilings are respected. Free Mode OFF is
+persisted and cannot silently trigger the final keyless fallback. Partial
+streams cannot silently mix replies from another provider. Retries and cooldowns
+remain bounded by the existing routing behavior.
+
+PRESERVATION
+Only FOUR previously existing files changed:
+  www/providers.js          routing integration / discovery
+  www/ember_deliverables.js A4 Word section and A4 page-target qualifier only
+  www/index.html            load additive JS/CSS and cache-bust provider script
+  www/sw.js                 cache additive assets under a new cache version
+Two new runtime files were added: ember_document_engine.js and .css.
+All 1333 other original files remain byte-for-byte identical. No original file
+was deleted. PDF rendering functions inside ember_deliverables.js are identical.
+The full ember_artifacts.js (including all Save PDF / native Save As logic),
+the archived ember_pdf.js shim, ember_typewriter.js, app.js, document library, persona, safety,
+settings schema, dependencies, package/lockfile and all 21 supplied Android patch
+files are unchanged. Hash evidence is in PATCH_MANIFEST.json.
+
+TEST RESULTS
+New deterministic unit/integration checks: 41 PASS
+New real Chromium browser checks:          22 PASS
+Export/source/cache validation checks:     27 PASS
+Live unauthenticated OpenRouter catalog:   PASS
+Browser page errors during new tests:      0
+
+Real PDF files were generated, reopened and checked for A4 MediaBoxes,
+selectable/searchable text and the complete final marker. Real DOCX ZIP/XML was
+checked for A4 size, margins, all 12 sections and the final marker. The actual
+Save PDF button produced a downloadable file. Exact Markdown/HTML downloads,
+the native Save bridge contract and cancellation, gradual typing, hidden
+artifact markup, Stop, settings preservation, mobile/desktop layout, warm
+offline export and cold service-worker offline reload all passed.
+
+Legacy tests compared on original AND patched source: 16
+  Passing on both: 6
+  Failing on both: 9
+  Timing out on both: 1
+  Newly failing compared with original: 0
+The old test suite is NOT fully green. Existing failures include outdated
+provider-profile assertions, stale fixed UI/source expectations and incomplete
+DOM stubs; the old app-test also timed out on both versions. They were NOT
+silenced, rewritten or labeled as passes. See baseline-/patched-*.log and
+existing-regression-comparison.json for exact evidence. npm test still includes
+those legacy failures. Only the focused tests listed above are certified here.
+
+HOW TO USE
+Back up the current project, then use this complete source ZIP as the updated
+project. The active application is www/ (as specified by Capacitor and serve.js).
+The old duplicate root-level app sources are archival and intentionally unchanged.
+Run your normal same-origin web update or normal Capacitor build/sync flow;
+no uninstall, storage clearing, key reset or document database migration is
+required. Keep the same origin/app ID so browser/device storage is retained.
+If an old app view is still open, close and reopen it to load the new assets.
+Do NOT clear app data to update. An already-installed APK needs its normal
+web-asset rebuild/sync; this ZIP is source, not a signed APK.
+
+REPRODUCE THE FOCUSED CHECKS
+  npm ci
+  npx playwright install chromium
+  node tests/document-engine-11040-test.cjs
+  node tests/document-engine-11040-browser-test.cjs
+Optional public read-only live check:
+  node scripts/verify-live-free-catalog-11040.cjs
+Linux browser tests may require Playwright system libraries. No real key is
+bundled or required for deterministic fixture checks.
+
+LIMITS / HONEST TEST SCOPE
+No authenticated live Cohere or other provider generation was exercised; routing
+was tested with fixtures. The live public catalog GET was actually exercised.
+No Android hardware, OS picker, Android background worker, APK signing/build,
+iOS, Word desktop pagination or non-Chromium browser was tested. The native save
+contract was mocked, not run on a real phone. A stronger authoring contract is
+not a new trained model and cannot guarantee compliance or an exact page count.
+The preview and PDF/DOCX use different renderers; their page counts can differ.
+The original paginator still does not split an individual oversized paragraph,
+image, code block or table row into exact preview sheets. Such a block may
+exceed preview page height; it is not silently clipped by this patch. PDF
+pagination remains the original local renderer. Uploaded PDF/DOCX ingestion,
+OCR, font coverage and existing library input limitations are not expanded here.
+No universal 'all free models on every provider' guarantee is made: discovery
+covers the existing provider integrations, with verified zero-price filtering
+for OpenRouter only; other providers' quotas and prices are account-specific.

@@ -1,0 +1,13 @@
+{
+  "originalMembersAccounted": 370,
+  "originalReceiptStates": {
+    "WIRED": 319,
+    "RETIRED": 51
+  },
+  "protectedBackendsByteIdentical": 8,
+  "all25CssByteIdentical": true,
+  "vendorFilesByteIdentical": true,
+  "javascriptSyntaxChecks": 165,
+  "syntaxFailures": [],
+  "releaseAcceptance": "INCOMPLETE; see TESTING and NEEDS_APPROVAL"
+}

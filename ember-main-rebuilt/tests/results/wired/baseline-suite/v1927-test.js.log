@@ -1,0 +1,12 @@
+PASS shorthand params become JSON schema with required 
+PASS groq: tools sent in OpenAI format 
+PASS groq: native call comes back as a tool_call tag 
+PASS cohere: v2 tools sent 
+PASS cohere: tool_calls become a tag (empty content is fine) 
+PASS gemini: functionDeclarations with upper-case types, no empty properties 
+PASS gemini: functionCall becomes a tag, text kept 
+PASS no tools given: nothing extra is sent 
+PASS json mode never carries tools 
+PASS engine rejects tools (400): retried once without them and still answers 
+PASS no page errors 
+11 passed, 0 failed

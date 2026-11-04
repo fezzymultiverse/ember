@@ -1,0 +1,8 @@
+PASS search result shows its thumbnail 
+PASS downloadVideo gets artist and thumb 
+PASS saved cover is found by the cleaned title the phone will use 
+PASS whole playlist asks for up to 100 tracks 
+PASS playlist tracks save thumb and the playlist name as album 
+PASS button label says whole playlist 
+PASS no page errors 
+7 passed, 0 failed

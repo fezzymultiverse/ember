@@ -1,0 +1,22 @@
+PASS whole default Brain is always the first source
+PASS Ember URL canonicalizes once for every runner surface
+PASS Apply Brain changes live reader and runner atomically
+PASS source duplicates are deduplicated case-insensitively
+AssertionError [ERR_ASSERTION]: output cannot be applied as Brain
+    at check (/home/user/ember_work/release/tests/workspace95-test.js:7:31)
+    at /home/user/ember_work/release/tests/workspace95-test.js:32:2
+    at Object.<anonymous> (/home/user/ember_work/release/tests/workspace95-test.js:58:3)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

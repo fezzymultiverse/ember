@@ -1,0 +1,40 @@
+PASS pinned Groq answers 
+PASS Free Mode not tried when an engine is pinned 
+PASS no "Switched to" event when the pinned engine answers 
+PASS strict pin without a key says so 
+PASS background (util) jobs still fail over 
+PASS identity line says always Ember 
+PASS Groq note pushes against terse replies 
+PASS Gemini note pushes against assistant prose 
+PASS old "You are only the model" line is gone 
+PASS strict flag is exposed 
+PASS pin note promises no silent swap 
+PASS autoBlock finds the vault chunk 
+PASS autoBlock is labelled data, not instructions 
+PASS autoBlock leaves the unrelated recipe out 
+PASS autoBlock is empty for a greeting 
+PASS autoBlock is empty when nothing matches 
+PASS autoBlock is silent at safety level 2+ 
+PASS self-knowledge names run_react, run_plan and the long-document tools 
+PASS self-knowledge limits match the code 
+PASS code limits are what the block says 
+PASS model is shown get_document_outline(fileId) 
+PASS model is shown search_in_document(query, fileId?) 
+PASS model is shown read_document_chunk(fileId, chunk) 
+PASS dispatcher runs search_in_document for real 
+PASS dispatcher runs read_document_chunk for real 
+PASS dispatcher runs get_document_outline for real 
+PASS persona carries the document hard rule, gated on a non-empty library 
+PASS pinned Gemini: the answer comes from Gemini 
+PASS pinned Gemini: only the Gemini API was called, Groq never 
+PASS pinned Gemini rejected by Google: shows Gemini's error, no Groq call 
+PASS ReAct: each Action went through the host dispatcher in order 
+PASS ReAct: the model saw the real search result as an Observation 
+PASS ReAct: run ends with the final answer 
+PASS scrape_url is in the scraper tool list 
+FAIL persona shows scraper tools when scraping is on 
+PASS persona injects the ready scrapers (from saved keys) and orders scrape_url 
+PASS app.js dispatches scrape_url and the document tools 
+PASS app.js hands the ReAct loop the same dispatcher (host.run = runTool) 
+
+37 passed, 1 failed

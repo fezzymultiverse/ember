@@ -1,0 +1,114 @@
+[
+  {
+    "file": "Ember-Local-PDF-Sample.pdf",
+    "pages": 6,
+    "bytes": 69929,
+    "embeddedFonts": true,
+    "outOfBoundsWords": [],
+    "textCharacters": 10868,
+    "size": [
+      595.280029296875,
+      841.8900146484375
+    ],
+    "unicodePreserved": true,
+    "clickableLinks": 71
+  },
+  {
+    "file": "artifact-export.pdf",
+    "pages": 1,
+    "bytes": 15867,
+    "embeddedFonts": true,
+    "outOfBoundsWords": [],
+    "textCharacters": 109,
+    "size": [
+      595.280029296875,
+      841.8900146484375
+    ]
+  },
+  {
+    "file": "empty-document.pdf",
+    "pages": 1,
+    "bytes": 14021,
+    "embeddedFonts": true,
+    "outOfBoundsWords": [],
+    "textCharacters": 66,
+    "size": [
+      595.280029296875,
+      841.8900146484375
+    ]
+  },
+  {
+    "file": "large-row.pdf",
+    "pages": 6,
+    "bytes": 37510,
+    "embeddedFonts": true,
+    "outOfBoundsWords": [],
+    "textCharacters": 12009,
+    "size": [
+      595.280029296875,
+      841.8900146484375
+    ],
+    "cellWordCounts": {
+      "Oversized": 180,
+      "row": 192,
+      "content": 180,
+      "must": 180,
+      "continue": 180,
+      "across": 180,
+      "pages": 180,
+      "without": 180,
+      "loss": 180
+    },
+    "completeCellPreserved": true
+  },
+  {
+    "file": "letter-landscape.pdf",
+    "pages": 1,
+    "bytes": 16343,
+    "embeddedFonts": true,
+    "outOfBoundsWords": [],
+    "textCharacters": 125,
+    "size": [
+      792.0,
+      612.0
+    ]
+  },
+  {
+    "file": "long-table.pdf",
+    "pages": 5,
+    "bytes": 32604,
+    "embeddedFonts": true,
+    "outOfBoundsWords": [],
+    "textCharacters": 6452,
+    "size": [
+      595.280029296875,
+      841.8900146484375
+    ],
+    "allRowsPreserved": true,
+    "headersRepeated": true
+  },
+  {
+    "file": "long-token.pdf",
+    "pages": 1,
+    "bytes": 15688,
+    "embeddedFonts": true,
+    "outOfBoundsWords": [],
+    "textCharacters": 3506,
+    "size": [
+      595.280029296875,
+      841.8900146484375
+    ]
+  },
+  {
+    "file": "offline.pdf",
+    "pages": 1,
+    "bytes": 15519,
+    "embeddedFonts": true,
+    "outOfBoundsWords": [],
+    "textCharacters": 114,
+    "size": [
+      595.280029296875,
+      841.8900146484375
+    ]
+  }
+]

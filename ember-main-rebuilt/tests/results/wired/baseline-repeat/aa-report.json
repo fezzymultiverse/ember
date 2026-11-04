@@ -1,0 +1,91 @@
+[
+  {
+    "file": "browser-1280x900.png",
+    "changedPixels": 0,
+    "maxChannelDelta": 0,
+    "bounds": null
+  },
+  {
+    "file": "browser-412x915.png",
+    "changedPixels": 0,
+    "maxChannelDelta": 0,
+    "bounds": null
+  },
+  {
+    "file": "chat-1280x900.png",
+    "changedPixels": 0,
+    "maxChannelDelta": 0,
+    "bounds": null
+  },
+  {
+    "file": "chat-412x915.png",
+    "changedPixels": 0,
+    "maxChannelDelta": 0,
+    "bounds": null
+  },
+  {
+    "file": "chooser-1280x900.png",
+    "changedPixels": 0,
+    "maxChannelDelta": 0,
+    "bounds": null
+  },
+  {
+    "file": "chooser-412x915.png",
+    "changedPixels": 0,
+    "maxChannelDelta": 0,
+    "bounds": null
+  },
+  {
+    "file": "command-centre-1280x900.png",
+    "changedPixels": 0,
+    "maxChannelDelta": 0,
+    "bounds": null
+  },
+  {
+    "file": "command-centre-412x915.png",
+    "changedPixels": 0,
+    "maxChannelDelta": 0,
+    "bounds": null
+  },
+  {
+    "file": "plugins-1280x900.png",
+    "changedPixels": 31,
+    "maxChannelDelta": 3,
+    "bounds": [
+      282,
+      767,
+      319,
+      840
+    ]
+  },
+  {
+    "file": "plugins-412x915.png",
+    "changedPixels": 0,
+    "maxChannelDelta": 0,
+    "bounds": null
+  },
+  {
+    "file": "settings-1280x900.png",
+    "changedPixels": 0,
+    "maxChannelDelta": 0,
+    "bounds": null
+  },
+  {
+    "file": "settings-412x915.png",
+    "changedPixels": 0,
+    "maxChannelDelta": 0,
+    "bounds": null
+  },
+  {
+    "file": "terminal-1280x900.png",
+    "changedPixels": 0,
+    "maxChannelDelta": 0,
+    "bounds": null
+  },
+  {
+    "file": "terminal-412x915.png",
+    "changedPixels": 0,
+    "maxChannelDelta": 0,
+    "bounds": null
+  }
+]

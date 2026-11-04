@@ -1,0 +1,14 @@
+PASS Providers chip is in the header 
+FAIL Ember name is centred {"x":152.53125,"y":23.40625,"width":53.921875,"height":19.1875}
+FAIL dictation button is gone 
+PASS Docs quick button replaced it 
+PASS dropdown opens 
+FAIL lists all six providers + Free Mode 
+PASS Groq (has a working key) is green 
+PASS Gemini (no key) is NOT green 
+PASS Gemini row says no key saved 
+PASS Prov.stateOf agrees 
+PASS an old unchecked key is grey, not green 
+PASS facts block names Gemini as having no key 
+PASS facts block forbids claiming to be Gemini in Free Mode 
+PASS Escape closes it 

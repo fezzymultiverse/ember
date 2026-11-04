@@ -1,0 +1,142 @@
+[
+  {
+    "suite": "term-test.js",
+    "tree": "original",
+    "exitCode": 1,
+    "pass": false,
+    "tail": "ken \nPASS keeps normal \nPASS danger rm -rf / \nPASS safe cmds \nPASS splitReply \nPASS genBase \nPASS command \nFAIL harness page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('#bTermux')\n    - locator resolved to <button id=\"bTermux\" role=\"menuitem\" class=\"action-item\" aria-label=\"Open the Termux tab\">\u2026</button>\n  - attempting click action\n    2 \u00d7 waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 \u00d7 waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    56 \u00d7 waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n\n    at /home/user/ember-work/baseline/tests/term-test.js:73:12 {\n  name: 'TimeoutError'\n}\n26 passed, 1 failed\n"
+  },
+  {
+    "suite": "term-test.js",
+    "tree": "updated",
+    "exitCode": 1,
+    "pass": false,
+    "tail": "token \nPASS keeps normal \nPASS danger rm -rf / \nPASS safe cmds \nPASS splitReply \nPASS genBase \nPASS command \nFAIL harness page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('#bTermux')\n    - locator resolved to <button id=\"bTermux\" role=\"menuitem\" class=\"action-item\" aria-label=\"Open the Termux tab\">\u2026</button>\n  - attempting click action\n    2 \u00d7 waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 \u00d7 waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    56 \u00d7 waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n\n    at /home/user/ember-work/source/tests/term-test.js:73:12 {\n  name: 'TimeoutError'\n}\n26 passed, 1 failed\n"
+  },
+  {
+    "suite": "v1992-repo-runner-test.js",
+    "tree": "original",
+    "exitCode": 1,
+    "pass": false,
+    "tail": "e/output:main\nBuild dispatched: https://github.com/me/output/actions/workflows/build.yml\nPASS later upstream additions and removals sync without file selection\nCloning entire source owner/brain\nPushed snapshots to me/output:main\nBuild dispatched: https://github.com/me/output/actions/workflows/build.yml\nPASS removed source only deletes its runner-owned snapshot\nAutomatic repo sync is disabled in ember-repos.json.\nPASS scheduled sync is opt-in\nAssertionError [ERR_ASSERTION]: Missing expected exception.\n    at integration (/home/user/ember-work/baseline/tests/v1992-repo-runner-test.js:77:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async /home/user/ember-work/baseline/tests/v1992-repo-runner-test.js:102:3 {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: undefined,\n  expected: undefined,\n  operator: 'throws',\n  diff: 'simple'\n}\n"
+  },
+  {
+    "suite": "v1992-repo-runner-test.js",
+    "tree": "updated",
+    "exitCode": 1,
+    "pass": false,
+    "tail": "to me/output:main\nBuild dispatched: https://github.com/me/output/actions/workflows/build.yml\nPASS later upstream additions and removals sync without file selection\nCloning entire source owner/brain\nPushed snapshots to me/output:main\nBuild dispatched: https://github.com/me/output/actions/workflows/build.yml\nPASS removed source only deletes its runner-owned snapshot\nAutomatic repo sync is disabled in ember-repos.json.\nPASS scheduled sync is opt-in\nAssertionError [ERR_ASSERTION]: Missing expected exception.\n    at integration (/home/user/ember-work/source/tests/v1992-repo-runner-test.js:77:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async /home/user/ember-work/source/tests/v1992-repo-runner-test.js:102:3 {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: undefined,\n  expected: undefined,\n  operator: 'throws',\n  diff: 'simple'\n}\n"
+  },
+  {
+    "suite": "knowledge-brain-test.js",
+    "tree": "original",
+    "exitCode": 1,
+    "pass": false,
+    "tail": " code before any network call\nPASS ordinary chat can continue without token\nPASS invalid replacement does not erase saved token\nPASS single setting persists, invalid values rejected and switching invalidates proof\nPASS no alternate repository was ever fetched\nPASS one labelled repository field and no repository slot UI\nAssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:\n\n  assert(index.includes('data-tab=\"advanced\" id=\"ghRunnerCard\"'))\n\n    at /home/user/ember-work/baseline/tests/knowledge-brain-test.js:87:65\n    at check (/home/user/ember-work/baseline/tests/knowledge-brain-test.js:7:28)\n    at /home/user/ember-work/baseline/tests/knowledge-brain-test.js:87:3\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: false,\n  expected: true,\n  operator: '==',\n  diff: 'simple'\n}\n"
+  },
+  {
+    "suite": "knowledge-brain-test.js",
+    "tree": "updated",
+    "exitCode": 1,
+    "pass": false,
+    "tail": "blocks code before any network call\nPASS ordinary chat can continue without token\nPASS invalid replacement does not erase saved token\nPASS single setting persists, invalid values rejected and switching invalidates proof\nPASS no alternate repository was ever fetched\nPASS one labelled repository field and no repository slot UI\nAssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:\n\n  assert(index.includes('data-tab=\"advanced\" id=\"ghRunnerCard\"'))\n\n    at /home/user/ember-work/source/tests/knowledge-brain-test.js:87:65\n    at check (/home/user/ember-work/source/tests/knowledge-brain-test.js:7:28)\n    at /home/user/ember-work/source/tests/knowledge-brain-test.js:87:3\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: false,\n  expected: true,\n  operator: '==',\n  diff: 'simple'\n}\n"
+  },
+  {
+    "suite": "artifact-test.js",
+    "tree": "updated",
+    "exitCode": 0,
+    "pass": true,
+    "tail": "PASS artifact parse/render tests (22 assertions)\n"
+  },
+  {
+    "suite": "routing-fallback-test.js",
+    "tree": "updated",
+    "exitCode": 0,
+    "pass": true,
+    "tail": "PASS 503 advances to next configured provider \nPASS fallback returns the successful response \nPASS both providers were attempted \nPASS 400 from Groq moves on to Mistral \nPASS 413 from Groq moves on to Mistral \nPASS 404 from Groq moves on to Mistral \nPASS all engines refusing returns the provider reason \nPASS both engines were tried before giving up \nPASS pinned engine still fails plainly \nPASS pinned engine does not call another engine \n\n10 passed, 0 failed\n"
+  },
+  {
+    "suite": "streaming-routing-test.js",
+    "tree": "updated",
+    "exitCode": 0,
+    "pass": true,
+    "tail": "PASS stream accumulates full answer \nPASS stream callback receives incremental chunks \nPASS cancel aborts the active stream without provider fallback \n\n3 passed, 0 failed\n"
+  },
+  {
+    "suite": "safety-test.js",
+    "tree": "updated",
+    "exitCode": 0,
+    "pass": true,
+    "tail": "\" \nPASS 1 \"I am done with everything\" \nPASS 1 \"having a panic attack\" \nPASS 2 \"I want to die\" \nPASS 2 \"i wanna die\" \nPASS 2 \"I\u2019m thinking about killing myself\" \nPASS 2 \"nobody would miss me\" \nPASS 2 \"I don\u2019t want to be here anymore\" \nPASS 2 \"wish I was dead\" \nPASS 2 \"I want to end my life\" \nPASS 2 \"dying laughing but honestly I want to die\" \nPASS 2 \"I am suicidal\" \nPASS 2 \"I want to kill myself\" \nPASS 2 \"I don\u2019t want to live\" \nPASS 3 \"I want to die and I have a plan\" \nPASS 3 \"I want to kill myself tonight\" \nPASS 3 \"I have pills and I want to die\" \nPASS 3 \"this is my last message\" \nPASS 3 \"goodbye forever\" \nPASS 0 \"\" \nPASS wrap level 0 unchanged\nPASS wrap level 1 presence, no hotline\nPASS wrap level 2 presence + ideation, no hotline\nPASS wrap level 3 crisis block with 112 and SADAG\nPASS killSwitch only 3+\nPASS crisis card has tel links, no scripts\nPASS mark/lastLevel\n\n44 passed, 0 failed\n"
+  },
+  {
+    "suite": "scrape-test.js",
+    "tree": "updated",
+    "exitCode": 0,
+    "pass": true,
+    "tail": "tor: url paths are never keys \nPASS extractor: a 160-character blob is ONE candidate and is rejected, not cut into 128 + 32 \nPASS extractor: exactly 128 characters is accepted, 129 is not \nPASS extractor: chat-engine keys next to a scraper name are not taken \nPASS extractor: the word \"testing\" is not the Sting provider \nPASS extractor: a Sting endpoint is found, its key becomes {key} and its url= value {url} \nPASS extractor: an http (not https) Sting endpoint is refused \nPASS ingest: saves each key once, the Sting endpoint, and Tavily in its shared home \nPASS ingest never overwrites a saved key: a different key becomes an extra, the first stays primary \nPASS the same keys pasted again are counted as already saved, nothing is added \nPASS self test: order, ten providers, mask, scrub and extractor checks pass \nPASS built-in self test: the new provider-plan check passes \n74 passed, 0 failed\n"
+  },
+  {
+    "suite": "keyscan-test.js",
+    "tree": "updated",
+    "exitCode": 0,
+    "pass": true,
+    "tail": " search backup \nPASS Bright SERP call: POST /request, Bearer key, zone serp_api1, brd_json=1, format raw \nPASS Bright SERP rows (organic: link, title, description) are mapped, non-http results dropped \nPASS with no Web Unlocker zone a page request returns snippets flagged degraded, never passed off as the page \nPASS with a Web Unlocker zone it becomes a page fetcher in the rotation \nPASS Web Unlocker call sends the unlocker zone and the page url, raw format \nPASS the saved SERP zone name is used for search \nPASS ingest saves the Bright key and both zones (only into empty slots) \nPASS an already saved zone is never overwritten by a later paste \nPASS ingestAll: chat key, two ZenRows, Bright, Audd.io and EasyVoice all filed in one go \nPASS ingestAll: the report lines are plain text, masked, no key value inside \nPASS ingestAll on text with no keys says so in plain words \n44 passed, 0 failed\n"
+  },
+  {
+    "suite": "workspace95-test.js",
+    "tree": "updated",
+    "exitCode": 1,
+    "pass": false,
+    "tail": "ed case-insensitively\nAssertionError [ERR_ASSERTION]: output cannot be applied as Brain\n    at check (/home/user/ember-work/source/tests/workspace95-test.js:7:31)\n    at /home/user/ember-work/source/tests/workspace95-test.js:32:2\n    at Object.<anonymous> (/home/user/ember-work/source/tests/workspace95-test.js:58:3)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: false,\n  expected: true,\n  operator: '==',\n  diff: 'simple'\n}\n"
+  },
+  {
+    "suite": "command-center-test.js",
+    "tree": "updated",
+    "exitCode": 1,
+    "pass": false,
+    "tail": "teps.js\nnode:internal/assert/utils:77\n    throw err;\n    ^\n\nAssertionError [ERR_ASSERTION]: unchanged uploaded V1.9.94 ai_agent.js\n    at check (/home/user/ember-work/source/tests/command-center-test.js:4:48)\n    at Object.<anonymous> (/home/user/ember-work/source/tests/command-center-test.js:24:2)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: false,\n  expected: true,\n  operator: '==',\n  diff: 'simple'\n}\n\nNode.js v22.23.4\n"
+  },
+  {
+    "suite": "routing94-test.js",
+    "tree": "updated",
+    "exitCode": 0,
+    "pass": true,
+    "tail": "tats never expose raw keys\nPASS opening provider health preserves cooldown\nPASS 401 rejects only affected key and rotates\nPASS model permission 403 does not poison valid key\nPASS strict pin does not leak to paid providers or free mode\nPASS new aggregators require automatic routing opt-in\nPASS OpenRouter appears in fallback after opt-in\nPASS Stability never joins chat routing\nPASS media provider cannot be pinned as chat\nPASS OpenRouter correct completion endpoint\nPASS Plugsky documented quickstart endpoint\nPASS mid-stream error is surfaced without mixing providers\nPASS paste scanner detects OpenRouter prefix\nPASS paste scanner detects Plugsky prefix\nPASS labelled Stability sk key never filed as OpenAI\nPASS download bridge accepts expected video and playlist links\nPASS download bridge blocks SSRF and disguised hosts\n\n23 routing/provider/security checks passed. All provider traffic mocked.\n"
+  },
+  {
+    "suite": "download94-test.js",
+    "tree": "updated",
+    "exitCode": 0,
+    "pass": true,
+    "tail": "PASS bridge launches on loopback and executable health works\nPASS unauthenticated clients refused\nPASS foreign web origins refused\nPASS arbitrary internal URLs refused\nPASS playlist metadata normalized to HTTPS video links\nPASS audio job saves a file and completes\nPASS audio playlist and format flags preserved\nPASS audio file can be downloaded with authentication\nPASS video job saves a file and completes\nPASS video playlist and format flags preserved\nPASS video file can be downloaded with authentication\nPASS path traversal file lookup refused\n\n12 bridge integration checks passed; no real media downloaded.\n"
+  },
+  {
+    "suite": "workspace95-test.js",
+    "tree": "original",
+    "exitCode": 1,
+    "pass": false,
+    "tail": "PASS whole default Brain is always the first source\nPASS Ember URL canonicalizes once for every runner surface\nPASS Apply Brain changes live reader and runner atomically\nPASS source duplicates are deduplicated case-insensitively\nAssertionError [ERR_ASSERTION]: output cannot be applied as Brain\n    at check (/home/user/ember-work/baseline/tests/workspace95-test.js:7:31)\n    at /home/user/ember-work/baseline/tests/workspace95-test.js:32:2\n    at Object.<anonymous> (/home/user/ember-work/baseline/tests/workspace95-test.js:58:3)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: false,\n  expected: true,\n  operator: '==',\n  diff: 'simple'\n}\n"
+  },
+  {
+    "suite": "command-center-test.js",
+    "tree": "original",
+    "exitCode": 1,
+    "pass": false,
+    "tail": " accessible\nPASS new assets included in offline shell\nPASS timeline event emitters remain present\nPASS requested in-row Stop added to ember_timeline.js\nPASS requested in-row Stop added to ember_think_inline.js\nPASS unchanged uploaded V1.9.94 ember_react.js\nPASS unchanged uploaded V1.9.94 ember_steps.js\nnode:internal/assert/utils:77\n    throw err;\n    ^\n\nAssertionError [ERR_ASSERTION]: unchanged uploaded V1.9.94 ai_agent.js\n    at check (/home/user/ember-work/baseline/tests/command-center-test.js:4:48)\n    at Object.<anonymous> (/home/user/ember-work/baseline/tests/command-center-test.js:24:2)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: false,\n  expected: true,\n  operator: '==',\n  diff: 'simple'\n}\n\nNode.js v22.23.4\n"
+  },
+  {
+    "suite": "app-test.js",
+    "tree": "original",
+    "exitCode": 2,
+    "pass": false,
+    "tail": "PASS first run shows the key card \nCRASH page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('#bSet')\n    - locator resolved to <button id=\"bSet\" role=\"menuitem\" class=\"action-item\" aria-label=\"Settings\">\u2026</button>\n  - attempting click action\n    2 \u00d7 waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 \u00d7 waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    56 \u00d7 waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n\n    at pg.click (/home/user/ember-work/baseline/tests/app-test.js:36:62)\n    at async /home/user/ember-work/baseline/tests/app-test.js:80:3 {\n  name: 'TimeoutError'\n}\n"
+  },
+  {
+    "suite": "app-test.js",
+    "tree": "updated",
+    "exitCode": 2,
+    "pass": false,
+    "tail": "PASS first run shows the key card \nCRASH page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('#bSet')\n    - locator resolved to <button id=\"bSet\" role=\"menuitem\" class=\"action-item\" aria-label=\"Settings\">\u2026</button>\n  - attempting click action\n    2 \u00d7 waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 \u00d7 waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    56 \u00d7 waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n\n    at pg.click (/home/user/ember-work/source/tests/app-test.js:36:62)\n    at async /home/user/ember-work/source/tests/app-test.js:80:3 {\n  name: 'TimeoutError'\n}\n"
+  }
+]

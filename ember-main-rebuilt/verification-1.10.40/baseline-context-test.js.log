@@ -1,0 +1,65 @@
+PASS chunker: many chunks for a 94 KB document 
+PASS chunker: every chunk is within the size cap 
+PASS chunker: no text is lost between chunks (only blank space may sit between them) 
+PASS chunker: offsets increase 
+PASS chunker: finds the 40 markdown headings plus the CAPS heading 
+PASS chunker: empty and tiny text do not crash 
+PASS chunker: a single 20 KB line is split 
+PASS search: phrase hit ranks first and names the right chunk 
+PASS search: hit carries chunk number, total and heading 
+PASS search: all-words level when it is not an exact phrase 
+PASS search: falls back to most words when one word is missing 
+PASS search: no hit says so with advice, never crashes 
+PASS search: omitting fileId searches every document, paged 
+PASS search: page 2 differs from page 1 
+PASS search: result fits one ReAct observation (3000 chars) 
+PASS search: stop-word-only query still works 
+PASS search: unknown fileId is an error, not a crash 
+PASS read chunk: returns the needle text with next and prev 
+PASS read chunk: never exceeds the read cap 
+PASS read chunk: out-of-range chunk is a clear error 
+PASS outline: headings with chunk numbers 
+PASS outline: heading-less document gets landmarks 
+PASS chunks of a read stitch back to the original text 
+PASS ai_docs: the three Local Context tools are in the document tool set 
+PASS ai_docs: dispatch routes to Local Context 
+PASS ai_docs: read_document on a long file says truncated and points to the new tools 
+PASS ai_docs: summarize_document on a long file says partial 
+PASS ai_docs: a short file is not flagged 
+PASS safety: level 2 pauses every Local Context tool 
+PASS safety: level 1 does not 
+PASS schema: coerces "3" to 3 and trims 
+PASS schema: clamps limit and page 
+PASS schema: missing required argument is a structured error 
+PASS schema: unknown argument is refused 
+PASS schema: a word where a number belongs is refused 
+PASS schema: number to string and integer rounding 
+PASS schema: over-long string is refused with the length 
+PASS schema: __proto__ never reaches a tool 
+PASS schema: a legacy tool is only coerced, nothing rejected or dropped 
+PASS schema: bind never throws on junk 
+PASS graph: every edge points at a real state 
+PASS graph: every non-final state can reach a final one 
+PASS graph: final states have no exits 
+PASS graph: an illegal move throws instead of jumping 
+PASS doc mode: reaches the right answer from the right chunk 
+PASS doc mode: the model is offered only the document tools 
+PASS doc mode: the evidence ledger reaches the model after the first hits 
+PASS doc mode: the whole trail used only legal edges and ended in DONE 
+PASS doc mode: a tool outside the document set is reported, not run 
+PASS breaker: an exact repeat of a failed call is not run again 
+PASS breaker: three failures in a row force a Final 
+PASS breaker: the bad-args error reached the model as data 
+PASS format recovery: plain prose is taken as the answer 
+PASS format recovery: gives up cleanly after the allowed retries 
+PASS doc mode: with no document tools it says what to switch on 
+PASS app: Local Context tools are in the live tool catalog once a document exists 
+PASS app: runTool binds strictly (limit "2" coerced, finds the needle) 
+PASS app: the snippet holds the answer 
+PASS app: runTool rejects an unknown argument with a structured error 
+PASS app: read chunk through the real app 
+PASS app: a bad chunk type is refused in the real app 
+PASS app: legacy read_document still works and now flags truncation 
+PASS app: no page errors while loading, adding a document and calling tools 
+
+63 passed, 0 failed

@@ -1,0 +1,161 @@
+node:assert:883
+    throw err;
+    ^
+
+AssertionError [ERR_ASSERTION]: provider key groups should open as detail pages
+    at Object.<anonymous> (/home/user/ember_work/source/tests/v1999-ui-refinement-test.js:20:8)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: '// Ember V1.6.0 - app.js: UI, state, persistent session restore, Termux Mode toggle.\n' +
+    "'use strict';\n" +
+    '(() => {\n' +
+    'const { $, esc, LS, uid } = U;\n' +
+    "const DEF = { name: '', about: '', pname: 'Ember', interests: 'how minds work, slang and language, music and how it gets made, strange history, ethics puzzles, space, why people do what they do, small design details', mode: 'sharp', learn: true, ctx: 'normal', summarize: true, persona: '', showEng: false, accent: '#FF6A00', warm: 'warm', direct: 'balanced', humor: 'dry', pace: 'normal', talk: '', musicAddon: false, docsAddon: false, agentAddon: false, youtubeAddon: false, visionAddon: false, autoRead: false, ttsRate: 1, ttsPitch: 1, ttsLively: true, termuxMode: false, wakeLock: false, keepAlive: false, proactivePings: false, pingHours: 4, musicWidget: true, bgReplies: true };\n" +
+    'const WINS = { short: 1, normal: 1, long: 1 };\n' +
+    "const ACCENTS = ['#FF6A00', '#FF9500', '#FFFFFF', '#FF3D00'];\n" +
+    "let S = Object.assign({}, DEF, LS.get('ember_set', {}));\n" +
+    "if (!S.engShownV1915) { S.showEng = true; S.engShownV1915 = true; LS.set('ember_set', S); } // V1.9.15: the engine and model that answered now show under every reply (he can still switch it off in Settings)\n" +
+    '// V1.6.6: the old default accent was pink. Anyone still on it moves to the new cyan once; a colour picked on purpose is kept.\n' +
+    "if (S.accentV !== 190) { if (!ACCENTS.includes(String(S.accent || '').toUpperCase())) S.accent = '#FF6A00'; S.accentV = 190; LS.set('ember_set', S); }\n" +
+    '// V1.9.24: Web Search and YouTube/SoundCloud download were OFF by default, so a name lookup never searched and downloads never started. Switched on once; he can turn them off again.\n' +
+    "if (!S.defaultsV1924) { S.agentAddon = true; S.youtubeAddon = true; S.defaultsV1924 = true; LS.set('ember_set', S); }\n" +
+    'const MEM_DEF = () => ({ facts: [], threads: [], callbacks: [], patterns: {}, moodLog: [], futureLetters: [], deck: [] });\n' +
+    'const migrateMem = m => {\n' +
+    '  const base = MEM_DEF();\n' +
+    "  if (!m || typeof m !== 'object') return base;\n" +
+    '  const arr = k => (Array.isArray(m[k]) ? m[k] : []);\n' +
+    "  return Object.assign(base, m, { facts: arr('facts'), threads: arr('threads'), callbacks: arr('callbacks'), patterns: (m.patterns && typeof m.patterns === 'object' && !Array.isArray(m.patterns)) ? m.patterns : {}, moodLog: arr('moodLog'), futureLetters: arr('futureLetters'), deck: arr('deck') });\n" +
+    '};\n' +
+    'let mem = MEM_DEF();\n' +
+    "let conv = null, busy = false, lastErr = null, backupKeys = false, curTurn = null, handedTurn = '';\n" +
+    "let streamText = '', cancelRequested = false, activityStatus = '', rejectTurn = null;\n" +
+    "function paintRouteStatus(name, model) { const b = $('engs'); if (!b) return; b.classList.add('working'); const sp = b.querySelector('span'); if (sp) sp.textContent = name ? ('Trying ' + name + (model ? ' · ' + model : '')) : 'Connecting…'; b.title = 'Live routing status: ' + (name || 'connecting') + (model ? ' · ' + model : ''); }\n" +
+    "window.addEventListener('ember-try', e => { streamText = ''; const d = e.detail || {}; paintRouteStatus(d.name, d.model); const p = $('streamPreview'); if (p) p.remove(); });\n" +
+    `window.addEventListener('ember-token', e => { streamText = String(e.detail && e.detail.text || ''); let p = $('streamPreview'); if (!p && streamText) { $('log').insertAdjacentHTML('beforeend', '<div class="msg a stream-preview" id="streamPreview"><div></div><small>Live response</small></div>'); p = $('streamPreview'); } if (p) { const d = p.querySelector('div'); if (d) d.innerHTML = fmt(streamText); down(); } });\n` +
+    "window.addEventListener('ember-switch', () => { streamText = ''; const p = $('streamPreview'); if (p) p.remove(); });\n" +
+    '// V1.9.19: spatial awareness — which sheet/tab he is actually looking at right now, so the AI is not guessing\n' +
+    "let curUI = 'Chat';\n" +
+    'const setUI = name => { curUI = name; };\n' +
+    "window.addEventListener('ember-ui-tab', e => { if (e.detail) setUI(e.detail); });\n" +
+    'function uiStateBlock() {\n' +
+    "  const prov = Prov.getPinned() ? Prov.label(Prov.getPinned()) + ' (pinned)' : (Prov.freeOn() ? 'Free Mode' : 'Auto');\n" +
+    "  return 'User is currently in the ' + curUI + ' tab. Active provider is ' + prov + '.' + (S.termuxMode ? ' Termux Mode is on.' : '') + (window.EmberPlus && window.EmberPlus.stateLine() ? ' ' + window.EmberPlus.stateLine() : '');\n" +
+    '}\n' +
+    "const saveS = () => LS.set('ember_set', S);\n" +
+    "const saveMem = () => Store.setKV('mem', mem);\n" +
+    `const SPARK = '[Start the conversation yourself. Bring something fresh: pull one of the open threads or one of your own curiosities, or pose a sharp thought experiment. No generic greeting, no "how can I help". One specific idea or question, kept short.]';\n` +
+    "const DEEPER = '[He wants you to go deeper on what we have been talking about. Give one genuine realisation that reframes it, tied to things he actually said, then one question that opens it further. Do not summarise or repeat his words.]';\n" +
+    '\n' +
+    '// ---------- Session persistence (Part 2) ----------\n' +
+    "const SS_CONV_KEY   = 'ember_session_conv';\n" +
+    "const SS_SCROLL_KEY = 'ember_session_scroll';\n" +
+    "const SS_INPUT_KEY  = 'ember_session_input';\n" +
+    '\n' +
+    'function saveSession() {\n' +
+    '  try {\n' +
+    '    if (conv) sessionStorage.setItem(SS_CONV_KEY, conv.id);\n' +
+    "    const l = $('log'); if (l) sessionStorage.setItem(SS_SCROLL_KEY, String(l.scrollTop));\n" +
+    "    const inp = $('inp'); if (inp) sessionStorage.setItem(SS_INPUT_KEY, inp.value);\n" +
+    '  } catch (e) { /* storage unavailable — not fatal */ }\n' +
+    '}\n' +
+    '\n' +
+    'async function restoreSession() {\n' +
+    '  try {\n' +
+    '    const convId = sessionStorage.getItem(SS_CONV_KEY);\n' +
+    "    const scrollPos = parseInt(sessionStorage.getItem(SS_SCROLL_KEY) || '0', 10);\n" +
+    "    const inputText = sessionStorage.getItem(SS_INPUT_KEY) || '';\n" +
+    '    if (convId) {\n' +
+    '      const saved = await Store.get(convId);\n' +
+    '      if (saved && saved.msgs && saved.msgs.length) {\n' +
+    '        conv = saved;\n' +
+    '        lastErr = null;\n' +
+    '        Safety.mark(0);\n' +
+    '        renderLog();\n' +
+    '        // restore scroll after render\n' +
+    '        requestAnimationFrame(() => {\n' +
+    "          const l = $('log');\n" +
+    '          if (l) l.scrollTop = scrollPos || l.scrollHeight;\n' +
+    '        });\n' +
+    '      }\n' +
+    '    }\n' +
+    '    if (inputText) {\n' +
+    "      const inp = $('inp');\n" +
+    '      if (inp) { inp.value = inputText; grow(); }\n' +
+    '    }\n' +
+    '  } catch (e) { /* session restore failed — start fresh */ }\n' +
+    '}\n' +
+    '\n' +
+    '// Auto-save every 5 seconds\n' +
+    'let _sessionTimer = setInterval(saveSession, 5000);\n' +
+    '\n' +
+    '// Save on visibility change (app switch, phone sleep)\n' +
+    "document.addEventListener('visibilitychange', () => {\n" +
+    '  saveSession();\n' +
+    '  // Clear the interval on hide to save battery; restart on show\n' +
+    "  if (document.visibilityState === 'hidden') {\n" +
+    '    clearInterval(_sessionTimer);\n' +
+    '  } else {\n' +
+    '    clearInterval(_sessionTimer);\n' +
+    '    _sessionTimer = setInterval(saveSession, 5000);\n' +
+    '  }\n' +
+    '});\n' +
+    '\n' +
+    '// Save on page unload\n' +
+    "window.addEventListener('pagehide', saveSession);\n" +
+    '\n' +
+    '// ---------- small helpers ----------\n' +
+    'let tt = 0;\n' +
+    "function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2400); }\n" +
+    "function fmtInline(t) { return esc(t).replace(/\\*\\*([^*\\n]+)\\*\\*/g, '<b>$1</b>').replace(/(^|[^*])\\*([^*\\n]+)\\*/g, '$1<i>$2</i>').replace(/\\n/g, '<br>'); }\n" +
+    '// V1.9.20: fenced code blocks get their own box with a Copy button; everything else renders exactly as before\n' +
+    'function fmt(t) {\n' +
+    "  const src = String(t == null ? '' : t); if (src.indexOf('```') < 0) return fmtInline(src);\n" +
+    '  const out = [], re = /```[^\\n`]*\\n?([\\s\\S]*?)```/g; let last = 0, m;\n' +
+    "  const text = a => { a = a.replace(/^\\n+|\\n+$/g, ''); if (a.trim()) out.push(fmtInline(a)); };\n" +
+    '  while ((m = re.exec(src))) {\n' +
+    '    text(src.slice(last, m.index));\n' +
+    `    out.push('<div class="cb"><div class="cbh"><button type="button" data-act="cpcode" aria-label="Copy code">⧉ Copy code</button></div><pre><code>' + esc(m[1].replace(/\\n$/, '')) + '</code></pre></div>');\n` +
+    '    last = m.index + m[0].length;\n' +
+    '  }\n' +
+    "  text(src.slice(last)); return out.join('');\n" +
+    '}\n' +
+    '// V1.9.20: copy to the clipboard, with a fallback for webviews that block navigator.clipboard\n' +
+    'function copyTxt(t, btn) {\n' +
+    "  t = String(t == null ? '' : t); if (!t) { toast('Nothing to copy'); return; }\n" +
+    "  const flash = () => { toast('Copied'); if (btn && btn.isConnected) { const o = btn.textContent; btn.textContent = '✓ Copied'; setTimeout(() => { if (btn.isConnected) btn.textContent = o; }, 1300); } };\n" +
+    "  const old = () => { try { const ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0'; document.body.appendChild(ta); ta.focus(); ta.select(); const ok = document.execCommand('copy'); ta.remove(); if (ok) flash(); else toast('Could not copy'); } catch (e) { toast('Could not copy'); } };\n" +
+    '  try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(flash, old); return; } } catch (e) { /* use the fallback */ }\n' +
+    '  old();\n' +
+    '}\n' +
+    'function dlg(o) {\n' +
+    '  return new Promise(res => {\n' +
+    "    $('dT').textContent = o.title || ''; $('dX').textContent = o.text || '';\n" +
+    "    const i = $('dI'); i.classList.toggle('hidden', o.input == null); i.value = o.input || '';\n" +
+    "    $('dOk').textContent = o.ok || 'OK'; $('dOk').classList.toggle('danger', !!o.danger);\n" +
+    "    $('dNo').classList.toggle('hidden', o.cancel === false);\n" +
+    "    $('dlg').classList.add('show'); if (o.input != null) setTimeout(() => i.focus(), 60);\n" +
+    "    const done = v => { $('dlg').classList.remove('show'); $('dOk').onclick = $('dNo').onclick = null; res(v); };\n" +
+    "    $('dOk').onclick = () => done(o.input != null ? i.value : true);\n" +
+    "    $('dNo').onclick = () => done(o.input != null ? null : false);\n" +
+    '  });\n' +
+    '}\n' +
+    "const sure = (title, text) => dlg({ title, text, ok: 'Yes', danger: true });\n" +
+    '\n' +
+    '// ---------- chat ----------\n' +
+    'let talkOn = false, talkWait = false, talkMiss = 0; // V1.9.20 Talk mode state (declared early: setSay and reply read it)\n' +
+    "function newConv(priv) { return { id: uid(), title: 'New chat', auto: true, created: Date.now(), updated: Date.now(), priv: !!priv, msgs: [], sum: '' }; }\n" +
+    'function ensure() { if (!conv) conv = newConv(false); }\n' +
+    'async function persist() { if (conv && conv.msgs.length) { conv.updated = Date.now(); const o'... 112957 more characters,
+  expected: /data-key-provider-open/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v22.23.4

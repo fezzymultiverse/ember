@@ -1,0 +1,13 @@
+PASS protected backend unchanged: providers.js
+PASS protected backend unchanged: ai.js
+PASS protected backend unchanged: ember_github.js
+PASS protected backend unchanged: ember_repo_runner.js
+PASS protected backend unchanged: repo-runner-template.cjs
+PASS protected backend unchanged: ember_command_center.js
+PASS protected backend unchanged: ai_scraper.js
+PASS protected backend unchanged: ember_downloads.js
+page.waitForFunction: Timeout 30000ms exceeded.
+    at /home/user/ember_work/release/tests/cockpit-browser-test.js:46:14 {
+  log: [],
+  name: 'TimeoutError'
+}

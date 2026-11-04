@@ -1,0 +1,33 @@
+PASS fresh install does not silently browse
+PASS saved first key enables automatic mode when no preference was set
+PASS settings accurately show automatic enabled state
+PASS explicit OFF remains OFF after adding another key
+PASS direct scraper respects OFF
+PASS PDF creation intent
+PASS Word creation intent
+PASS ordinary explanation is not file creation
+PASS negative file request is not creation
+PASS read URL intent is bounded to two pages
+PASS URL in a code request is not automatically opened
+PASS negative read request does not browse
+PASS plain completed file content becomes an artifact
+PASS missing-input response does not become a fake file
+PASS invalid JSON is not packaged as JSON
+PASS existing artifact is unchanged
+PASS incomplete artifact is not relabeled as ready
+PASS heading list table and code are structured
+PASS ragged tables are rectangular
+PASS rich PDFs declare embedded font and footer
+PASS all bundled artifact providers need no account
+PASS declined scraping consent makes no request
+PASS explicit consent enables scraping and runs named provider
+PASS actual page evidence is marked untrusted
+PASS cancelled read does not issue another request
+PASS old explicitly disabled install stays disabled
+PASS old keys-only install gains tool availability
+PASS ordinary report citations are not executable code
+PASS real executable artifacts still require code provenance
+PASS short valid JSON can still become an artifact
+PASS consecutive numbered PDF items share one sequence
+PASS unverified cloud PDF hosts are removed
+32 checks passed
