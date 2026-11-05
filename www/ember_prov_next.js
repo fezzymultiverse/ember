@@ -44,7 +44,7 @@
       const key = info.n > 1 ? ' · key ' + (info.at + 1) + '/' + info.n : '';
       text = (info.pinned ? 'Pinned ' : 'Next ') + info.name + key;
       cls = busy ? 'busy' : 'live';
-      title = 'Providers · ' + (info.pinned ? 'pinned engine: ' : 'next up: ') + info.name + (info.n > 1 ? ' (key ' + (info.at + 1) + ' of ' + info.n + ', rotates after each reply)' : '');
+      title = 'Providers · ' + (info.pinned ? 'pinned engine: ' : 'next up: ') + info.name + (info.n > 1 ? ' (key ' + (info.at + 1) + ' of ' + info.n + ', stays on this key until it fails)' : '');
     }
     el.className = 'pn ' + cls;
     if (busy && info) el.classList.add('busy');

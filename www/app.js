@@ -517,21 +517,19 @@ async function reply(o) {
   const L = o.force ? { lane: 'deep', deep: true } : laneFor();
   const TLn = window.EmberTimeline; // V1.9.35: richer steps in the thinking card
   try { window.dispatchEvent(new CustomEvent('ember-turn-start', { detail: { lane: L.lane } })); } catch (_) { /* no listener */ }
-  if (TLn && TLn.step) { // V1.9.78: every line below is read from the app's real state at send time, nothing is canned
+  if (TLn && TLn.step) { // V1.10.56: the opening lines come from ember_thoughts.js (built from this message; app-state lines only when they changed). The old fixed lines remain as the fallback.
     try {
-      const lu = [...conv.msgs].reverse().find(m => m.r == 'u'), wc = lu ? (String(lu.t || '').trim().match(/\S+/g) || []).length : 0;
-      TLn.step('msg', 'Reading your message · ' + wc + ' word' + (wc == 1 ? '' : 's'), 'r1');
-      TLn.step('bolt', L.deep ? 'Deep lane: careful engines first' : 'Quick lane: fast engines first', 'r2');
-      const nf = mem && Array.isArray(mem.facts) ? mem.facts.length : 0;
-      TLn.step('brain', 'Memory: ' + nf + ' saved fact' + (nf == 1 ? '' : 's') + ' · ' + conv.msgs.length + ' message' + (conv.msgs.length == 1 ? '' : 's') + ' in this chat', 'r3');
-      const lvl = Safety.lastLevel(); TLn.step('shield', lvl >= 2 ? 'Safety level in this chat: ' + lvl + ' (care mode)' : 'Safety level in this chat: calm', 'r3b');
       const chips = [...document.querySelectorAll('#plusChips > *')].map(x => x.textContent.replace(/[×✕]/g, '').trim()).filter(Boolean);
-      if (S.termuxMode) chips.push('Termux Mode');
-      TLn.step(chips.some(c => /device|termux/i.test(c)) ? 'termux' : chips.some(c => /web/i.test(c)) ? 'globe' : 'files', chips.length ? 'Switched on: ' + chips.join(', ') : 'No extra tools switched on', 'r4');
       let gh = 0; try { gh = window.EmberGithub && window.EmberGithub.token() ? 1 : 0; } catch (_) { gh = 0; }
-      if (gh) TLn.step('github', 'Knowledge Brain Repo connected', 'r4b');
       const pin = Prov.getPinned(), usable = Prov.route(L.lane).filter(id => (Prov.keys()[id] || []).some(e => !e.bad));
-      TLn.step('egg', pin ? 'Engine: ' + Prov.label(pin) + ' (pinned)' : usable.length ? 'Route: ' + usable.map(id => Prov.label(id)).join(' → ') : 'Route: Free Mode (no keys saved)', 'r5');
+      if (window.EmberThoughts && window.EmberThoughts.build) {
+        window.EmberThoughts.build({ msgs: conv.msgs, deep: !!L.deep, chips, termux: !!S.termuxMode, github: !!gh, memFacts: mem && Array.isArray(mem.facts) ? mem.facts.length : 0, safety: Safety.lastLevel(), taskGate: window.EmberTaskGate, pinned: pin ? Prov.label(pin) : '', route: usable.map(id => Prov.label(id)) })
+          .forEach(x => TLn.step(x.ic, x.text, x.key));
+      } else {
+        const lu = [...conv.msgs].reverse().find(m => m.r == 'u'), wc = lu ? (String(lu.t || '').trim().match(/\S+/g) || []).length : 0;
+        TLn.step('msg', 'Reading your message · ' + wc + ' word' + (wc == 1 ? '' : 's'), 'r1');
+        TLn.step('egg', pin ? 'Engine: ' + Prov.label(pin) + ' (pinned)' : usable.length ? 'Route: ' + usable.map(id => Prov.label(id)).join(' → ') : 'Route: Free Mode (no keys saved)', 'r5');
+      }
     } catch (_) { /* the card is a view; it never blocks the reply */ }
   }
   // Read-first is an actual gate inside the reply try/catch, before any model or streaming call.
