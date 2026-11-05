@@ -20,15 +20,15 @@
     // V1.10.39: Ember decides by itself. A named document (CV, cover letter, report, essay, invoice, doc, Word...) with any asking phrase is a document;
     // "as a PDF", "into a Word doc" or a page count ("a 2 page ...") also count, so the person does not need the magic words.
     const DOCN = /\b(docx?|word\s+(?:doc(?:ument)?|file)|documents?|reports?|proposals?|r[eé]sum[eé]s?|cvs?|curriculum vitae|cover letters?|letters?|briefs?|essays?|assignments?|invoices?|quotations?|contracts?|agreements?|lesson plans?|study guides?|handbooks?|newsletters?|meeting minutes|meal plans?|itinerar(?:y|ies)|business plans?|case stud(?:y|ies)|research papers?|term papers?|worksheets?|certificates?|memos?|polic(?:y|ies)|manuals?|whitepapers?|e-?books?|booklets?|one[- ]pagers?|fact ?sheets?|cheat ?sheets?|templates?)\b/i;
-    const ASK = /\b(make|create|generate|write|draft|build|export|save|prepare|produce|put together|compile|type up|turn (?:this|that|it) into|convert|format|give me|i (?:need|want)|need an?|can you do|do me|set up)\b/i;
+    const ASK = /\b(make|create|generate|write|draft|build|export|save|prepare|produce|improve|enhance|redesign|expand|revise|extend|put together|compile|type up|turn (?:this|that|it) into|convert|format|give me|i (?:need|want)|need an?|can you do|do me|set up)\b/i;
     const AS = /\b(?:as|in|into|to)\s+(?:an?\s+)?(?:pdf|word|docx?)\b/i;
-    const pages = /\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)\s*[- ]?\s*(?:full\s+)?(?:a4\s+)?pages?\b/i.test(t);
+    const pages = /\b(\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten)\s*[- ]?\s*(?:full\s+)?(?:a4\s+)?pages?\b/i.test(t);
     const asked = ASK.test(t) || AS.test(t);
     if (!asked) return null;
     // V1.10.54: "a pdf and a document" / "pdf and word" wants both files. A document artifact offers Save PDF and Word .docx from the same text.
     const BOTH = /\bpdf\b/i.test(t) && (/\b(?:word|docx)\b/i.test(t) || /\b(?:pdf|portable document)\b[^.!?\n]{0,30}\b(?:and|&|plus|with|\+)\s+(?:an?\s+|the\s+)?(?:editable\s+)?(?:document|doc)\b/i.test(t) || /\b(?:document|doc)\s*(?:and|&|plus|\+)\s*(?:an?\s+)?pdf\b/i.test(t));
-    const type = BOTH ? 'document' : /\bpdf\b/i.test(t) ? 'pdf' : (DOCN.test(t) || AS.test(t) || (pages && /\b(write|draft|make|create|prepare|produce)\b/i.test(t))) ? 'document' : /\bcsv\b/i.test(t) ? 'csv' : /\bjson\b/i.test(t) ? 'json' : /\b(?:markdown|\.md)\b/i.test(t) ? 'markdown' : null;
-    return type ? { type, title: 'Ember document' + ({ pdf: '.pdf', document: '.md', csv: '.csv', json: '.json', markdown: '.md' })[type] } : null;
+    const type = BOTH ? 'document' : /\bpdf\b/i.test(t) ? 'pdf' : /\b(?:html|web\s*(?:page|site)|landing\s*page)\b/i.test(t) ? 'html' : /\bmarkdown\b|\.md\b/i.test(t) ? 'markdown' : (DOCN.test(t) || AS.test(t) || (pages && /\b(write|draft|make|create|prepare|produce)\b/i.test(t))) ? 'document' : /\bcsv\b/i.test(t) ? 'csv' : /\bjson\b/i.test(t) ? 'json' : /\b(?:markdown|\.md)\b/i.test(t) ? 'markdown' : null;
+    return type ? { type, title: 'Ember document' + ({ pdf: '.pdf', document: '.md', csv: '.csv', json: '.json', markdown: '.md', html: '.html' })[type] } : null;
   }
   // Ember 1.10.34: a short go-ahead ("Create", "yes", "do it") inherits the file request from the last few messages.
   // Without this, "Create" got a normal 650-token chat budget and the PDF was cut off mid-artifact.
@@ -52,7 +52,7 @@
   const NUMW = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10, eleven:11, twelve:12, fifteen:15, twenty:20 };
   const WORDS_PER_PAGE = 480; // measured against PDF_SETTINGS: A4, 10.5pt, 1.3 line height, headings and spacing included
   function pageTarget(prompt, msgs) {
-    const scan = t => { const m = /\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)\s*[- ]?\s*(?:full\s+)?(?:a4\s+)?pages?\b/i.exec(String(t || '')); if (!m) return 0; const n = /^\d/.test(m[1]) ? +m[1] : NUMW[m[1].toLowerCase()]; return n >= 1 && n <= 40 ? n : 0; };
+    const scan = t => { const m = /\b(\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)\s*[- ]?\s*(?:full\s+)?(?:a4\s+)?pages?\b/i.exec(String(t || '')); if (!m) return 0; const n = /^\d/.test(m[1]) ? +m[1] : NUMW[m[1].toLowerCase()]; return n >= 1 && n <= 200 ? n : 0; };
     let n = scan(prompt); if (n) return n;
     const t = String(prompt || '').trim(); if (!t || t.length > 40 || !GO_AHEAD.test(t)) return 0;
     const list = Array.isArray(msgs) ? msgs : [];
@@ -62,7 +62,7 @@
   function pageNote(pages) {
     if (!pages) return '';
     const words = pages * WORDS_PER_PAGE; // V1.10.44: N pages means N content pages. No cover or contents page unless he asks for one.
-    return '\nPAGE TARGET: he wants exactly ' + pages + ' pages when exported. Put cover="false" toc="false" in the artifact tag (no cover or contents page, every page is content) and write ' + 'about ' + words + ' words of body text (about ' + WORDS_PER_PAGE + ' words per page), in clear ## sections with a table or list where it helps. Do not summarise or stop early. If a reply runs out of room Ember asks you to continue, so keep writing until the document is complete, then close the artifact.';
+    return '\nPAGE TARGET: he wants exactly ' + pages + ' pages when exported (a target, not a measured guarantee). Visuals and tables reduce text capacity; adjust prose accordingly and verify after rendering. Put cover="false" toc="false" in the artifact tag (no cover or contents page, every page is content) and write ' + 'about ' + words + ' words of body text (about ' + WORDS_PER_PAGE + ' words per page), in clear ## sections with a table or list where it helps. Do not summarise or stop early. If a reply runs out of room Ember asks you to continue, so keep writing until the document is complete, then close the artifact.';
   }
   const hasOpenArtifact = text => { const s = String(text || ''); return (s.match(/<artifact\b/gi) || []).length > (s.match(/<\/artifact\s*>/gi) || []).length; };
   // Join a continuation onto the text so far: strip a repeated tag/fence, then any repeated overlap.
@@ -74,7 +74,9 @@
   }
   async function continueArtifact(text, run, opt) {
     opt = opt || {}; let out = String(text || '');
-    for (let i = 0; i < (opt.maxParts || 4) && hasOpenArtifact(out); i++) {
+    const pages = pageTarget(opt.request || '', []);
+    const limit = Math.min(40, Math.max(1, opt.maxParts || 4, pages ? Math.ceil(pages / 2) : /\b(?:longer|extensive|comprehensive|detailed|in.depth)\b/i.test(opt.request || '') ? 8 : 4));
+    for (let i = 0; i < limit && hasOpenArtifact(out); i++) {
       if (opt.cancelled && opt.cancelled()) break;
       // Cut back to the last complete line so the join never lands mid-word; the model rewrites the unfinished line.
       const cut = out.lastIndexOf('\n'), base = cut > 0 ? out.slice(0, cut + 1) : out, frag = out.slice(base.length).slice(-300);
@@ -82,7 +84,7 @@
       let more = '';
       try {
         more = await run({
-          system: 'You are Ember, finishing a document you already started. Output ONLY the continuation text, with no introduction, no apology and no new <artifact> opening tag. Match the same Markdown style. When the whole document is complete, end with </artifact>.',
+          system: 'You are Ember, finishing a document you already started. Output ONLY the continuation text, with no introduction, no apology and no new <artifact> opening tag. Match the existing artifact format exactly: continue HTML as HTML with its CSS/JS intact, Markdown as Markdown, and PDF source as Markdown. Never switch formats. When the whole document is complete, end with </artifact>.',
           messages: [
             { role: 'user', content: 'ORIGINAL REQUEST: ' + String(opt.request || '').slice(0, 1500) + (opt.target || '') },
             { role: 'assistant', content: base },
@@ -91,7 +93,9 @@
         });
       } catch (e) { break; }
       if (!more || String(more).trim().length < 20) break;
-      out = joinParts(base, more);
+      const joined = joinParts(base, more);
+      if (joined === out || !String(more || '').trim()) break; // no-progress guard
+      out = joined;
     }
     return out;
   }
@@ -122,7 +126,7 @@
     return (noBlocks ? 'It has no stats, chart, steps, callout or column blocks. ' : '') + (short ? 'It has about ' + words + ' words but needs about ' + pages * WORDS_PER_PAGE + ' for ' + pages + ' pages. ' : '');
   }
   function visualPassPrompt(gap) {
-    return '[SYSTEM CHECK, not from him: your document is not finished. ' + gap + 'Write the COMPLETE document again now as ONE <artifact> block with the same type and title, keeping cover="false" toc="false" if the tag had them. Keep every sourced fact and add more real detail where it is thin. Do NOT invent awards, chart positions, dates, sales or personal details. Add visuals on every page: a ```stats fence (3-4 headline numbers you are sure of), a ```chart fence built only from figures you are sure of, a ```steps timeline, > [!TIP] or > [!NOTE] callouts, and <!-- pagebreak --> between pages. No tool_call, no talk about repositories or code.]';
+    return '[SYSTEM CHECK, not from him: your document is not finished. ' + gap + 'Write the COMPLETE document again now as ONE <artifact> block with the same type and title, keeping cover="false" toc="false" if the tag had them. Keep every sourced fact and add more real detail where it is thin. Do NOT invent awards, chart positions, dates, sales or personal details. Use varied relevant layouts: a ```stats fence only for sourced headline numbers, a ```chart fence only for comparable sourced quantities, a ```steps timeline, > [!TIP] or > [!NOTE] callouts, comparison columns and purposeful <!-- pagebreak --> boundaries. When numeric evidence is missing, use qualitative layouts instead of charts. Do not force every visual type onto every page. No tool_call, no talk about repositories or code.]';
   }
   function normalize(reply, prompt) {
     reply = pageFit(reply, prompt);
@@ -326,8 +330,8 @@
       const line = L[i];
       let m;
       if ((m = /^\s*(```+|~~~+)\s*([\w+-]*)/.exec(line))) {
-        flushPara(); const fence = m[1][0], code = []; i++;
-        while (i < L.length && !new RegExp('^\\s*' + fence + '{3,}\\s*$').test(L[i])) code.push(L[i++]);
+        flushPara(); const fence = m[1][0], fenceLength = m[1].length, code = []; i++;
+        while (i < L.length && !new RegExp('^\\s*' + fence + '{' + fenceLength + ',}\\s*$').test(L[i])) code.push(L[i++]);
         i++;
         { const lg = String(m[2] || '').toLowerCase();
           if (/^(chart|stats|kpi|steps|timeline)$/.test(lg)) B.push({ k: lg === 'kpi' ? 'stats' : lg === 'timeline' ? 'steps' : lg, lines: code });
@@ -337,6 +341,9 @@
       if ((m = /^\s*!\[([^\]]*)\]\(\s*(.+?)\s*\)\s*$/.exec(line))) { flushPara(); B.push(imgBlock(m[1], m[2])); i++; continue; }
       if ((m = /^\s*<!--\s*(pagebreak|columns|col|endcolumns)\s*-->\s*$/i.exec(line))) { flushPara(); B.push({ k: 'dir', d: m[1].toLowerCase() }); i++; continue; }
       if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) { flushPara(); B.push({ k: 'hr' }); i++; continue; }
+      if (line.trim() && i + 1 < L.length && /^\s*(?:=+|-+)\s*$/.test(L[i + 1]) && !/^\s*(?:[-*+]|\d+[.)])\s/.test(line)) {
+        flushPara(); B.push({k:'h',n:/=/.test(L[i + 1]) ? 1 : 2,t:line.trim()}); i += 2; continue;
+      }
       if ((m = /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line))) { flushPara(); B.push({ k: 'h', n: m[1].length, t: m[2] }); i++; continue; }
       if (line.includes('|') && i + 1 < L.length && isSep(L[i + 1]) && !isSep(line)) {
         flushPara(); const rows = [cells(line)]; i += 2;
@@ -549,8 +556,11 @@
     // ---- visual blocks: charts, stat cards, steps, callouts (all drawn with pdfmake canvas, no pictures needed) ----
     const card = (stack, fill, bar) => ({ table: { widths: bar ? [4, '*'] : ['*'], body: [bar ? [{ text: '', fillColor: bar, border: [false, false, false, false] }, { stack, fillColor: fill, margin: [10, 8, 10, 8], border: [false, false, false, false] }] : [{ stack, fillColor: fill, margin: [10, 8, 10, 8], border: [false, false, false, false] }]] }, layout: 'noBorders', margin: [0, 6, 0, 12], unbreakable: true });
     function chartNode(spec) {
-      const kind = String(spec.type || 'bar').toLowerCase(), pts = spec.items.filter(x => isFinite(x.v)).slice(0, 14), unit = spec.unit || '';
+      const kind = String(spec.type || 'bar').toLowerCase(), pts = spec.items.filter(x => isFinite(x.v)), unit = spec.unit || '';
       if (!pts.length) return null;
+      if (pts.length > 14) throw new Error('Chart has more than 14 points; split it or include a full data table. No values were silently discarded.');
+      if (!['bar','column','hbar','line','area','pie','donut'].includes(kind)) throw new Error('Unsupported chart type: ' + kind);
+      if ((kind === 'pie' || kind === 'donut') && (pts.some(x => x.v < 0) || !pts.some(x => x.v > 0))) throw new Error('Pie/donut requires non-negative parts with a positive total; use a signed bar chart instead.');
       const inner = [], W = paperW - 36;
       if (spec.title) inner.push({ text: rich(spec.title, true), fontSize: 10.5, color: '#19222e', margin: [0, 0, 0, 8] });
       const max = Math.max(...pts.map(x => x.v), 1e-9), min = Math.min(...pts.map(x => x.v), 0);
@@ -562,28 +572,38 @@
         if (kind === 'donut') cv.push({ type: 'ellipse', x: R, y: R, color: '#ffffff', r1: R * .52, r2: R * .52 });
         const legend = pts.map((x, ix) => ({ columns: [{ width: 14, canvas: [{ type: 'rect', x: 0, y: 2, w: 8, h: 8, color: PAL[ix % PAL.length] }] }, { width: '*', text: [{ text: uc(x.label) }, { text: '  ' + fmtN(x.v) + unit + '  (' + Math.round(Math.max(0, x.v) / tot * 100) + '%)', color: '#76808c' }], fontSize: 9 }], margin: [0, 0, 0, 3] }));
         inner.push({ columns: [{ width: R * 2 + 14, canvas: cv }, { width: '*', stack: legend, margin: [6, 4, 0, 0] }], columnGap: 8 });
-      } else if (kind === 'line') {
+      } else if (kind === 'line' || kind === 'area') {
         const H = 110, pad = 6, span = (max - Math.min(min, 0)) || 1, lo = Math.min(min, 0), n = pts.length, step = n > 1 ? (W - pad * 2) / (n - 1) : 0, cv = [];
         for (let g = 0; g <= 3; g++) cv.push({ type: 'line', x1: 0, y1: pad + (H - pad * 2) * g / 3, x2: W, y2: pad + (H - pad * 2) * g / 3, lineWidth: .4, lineColor: '#dfe3e8' });
         const xy = pts.map((x, ix) => ({ x: pad + step * ix, y: pad + (H - pad * 2) * (1 - (x.v - lo) / span) }));
-        cv.push({ type: 'polyline', points: xy, lineWidth: 2, lineColor: T.accent });
+        if (kind === 'area' && xy.length > 1) { const zeroY = pad + (H - pad * 2) * (1 + lo / span); cv.push({type:'polyline',points:[{x:xy[0].x,y:zeroY}].concat(xy.map(p => ({x:p.x,y:p.y})),[{x:xy[xy.length-1].x,y:zeroY}]),closePath:true,color:T.soft,lineWidth:0}); }
+        // pdfmake offsets canvas points in place: never share point objects across paths.
+        cv.push({ type: 'polyline', points: xy.map(p => ({x:p.x,y:p.y})), lineWidth: 2, lineColor: T.accent });
         xy.forEach(q => cv.push({ type: 'ellipse', x: q.x, y: q.y, r1: 3, r2: 3, color: T.accent }));
+        inner.push({text:'Range: ' + fmtN(lo) + unit + ' to ' + fmtN(max) + unit,fontSize:8,color:'#5c6470',margin:[0,0,0,4]});
         inner.push({ canvas: cv });
         inner.push({ columns: pts.map(x => ({ width: '*', text: [{ text: uc(x.label) + '\n', color: '#5c6470' }, { text: fmtN(x.v) + unit, bold: true }], alignment: 'center', fontSize: 8 })), margin: [0, 4, 0, 0] });
       } else if (kind === 'bar' || kind === 'column') {
-        const H = 120, slot = W / pts.length, bw = Math.min(46, slot * .6), cv = [{ type: 'line', x1: 0, y1: H, x2: W, y2: H, lineWidth: .7, lineColor: '#c9d0d8' }];
-        pts.forEach((x, ix) => { const h = Math.max(1.5, (Math.max(0, x.v) / max) * (H - 8)); cv.push({ type: 'rect', x: slot * ix + (slot - bw) / 2, y: H - h, w: bw, h, color: PAL[ix % PAL.length] }); });
+        const H = 120, slot = W / pts.length, bw = Math.min(46, slot * .6), span = max - min || 1, zeroY = 4 + (H - 8) * max / span;
+        const cv = [{ type: 'line', x1: 0, y1: zeroY, x2: W, y2: zeroY, lineWidth: .7, lineColor: '#5c6470' }];
+        pts.forEach((x, ix) => { const y = 4 + (H - 8) * (max - x.v) / span, h = Math.abs(zeroY - y); if (h > 0) cv.push({ type: 'rect', x: slot * ix + (slot - bw) / 2, y: Math.min(zeroY,y), w: bw, h, color: PAL[ix % PAL.length] }); });
         inner.push({ canvas: cv });
         inner.push({ columns: pts.map(x => ({ width: '*', text: [{ text: fmtN(x.v) + unit + '\n', bold: true }, { text: uc(x.label), color: '#5c6470' }], alignment: 'center', fontSize: 8 })), margin: [0, 4, 0, 0] });
       } else { // hbar (default for lists)
         const lw = Math.min(150, Math.max(70, Math.round(W * .3))), vw = 56, bw = Math.max(60, W - lw - vw - 12);
-        pts.forEach((x, ix) => inner.push({ columns: [{ width: lw, text: uc(x.label), fontSize: 9, color: '#2a313a' }, { width: bw, canvas: [{ type: 'rect', x: 0, y: 2, w: bw, h: 9, color: '#eef1f5' }, { type: 'rect', x: 0, y: 2, w: Math.max(2, (Math.max(0, x.v) / max) * bw), h: 9, color: PAL[ix % PAL.length] }] }, { width: vw, text: fmtN(x.v) + unit, fontSize: 9, bold: true, alignment: 'right' }], columnGap: 6, margin: [0, 0, 0, 4] }));
+        const span = max - min || 1, zeroX = (-min / span) * bw;
+        pts.forEach((x, ix) => { const endX = ((x.v - min) / span) * bw;
+          const cv = [{type:'rect',x:0,y:2,w:bw,h:9,color:'#eef1f5'}, {type:'line',x1:zeroX,y1:0,x2:zeroX,y2:13,lineWidth:.7,lineColor:'#5c6470'}];
+          if (x.v !== 0) cv.push({type:'rect',x:Math.min(zeroX,endX),y:2,w:Math.abs(endX-zeroX),h:9,color:PAL[ix % PAL.length]});
+          inner.push({columns:[{width:lw,text:uc(x.label),fontSize:9,color:'#2a313a'},{width:bw,canvas:cv},{width:vw,text:fmtN(x.v)+unit,fontSize:9,bold:true,alignment:'right'}],columnGap:6,margin:[0,0,0,4]});
+        });
       }
+      if (spec.source) inner.push({text:'Source: ' + uc(spec.source),fontSize:8,color:'#5c6470',margin:[0,8,0,0]});
       return card(inner, '#f7f8fa', T.bar);
     }
     function chartSpec(lines) {
       const spec = { type: 'bar', title: '', unit: '', items: [] };
-      lines.forEach(l => { const m = /^\s*(type|title|unit)\s*[:=]\s*(.*)$/i.exec(l); if (m) { spec[m[1].toLowerCase()] = m[2].trim(); return; }
+      lines.forEach(l => { const m = /^\s*(type|title|unit|source)\s*[:=]\s*(.*)$/i.exec(l); if (m) { spec[m[1].toLowerCase()] = m[2].trim(); return; }
         const q = /^\s*(.+?)\s*[:|=]\s*(-?[\d.,]+\s*[%$A-Za-z]{0,3})\s*$/.exec(l); if (q) { const v = numOf(q[2]); if (isFinite(v)) { spec.items.push({ label: q[1].trim(), v }); if (!spec.unit && /%\s*$/.test(q[2])) spec.unit = '%'; } } });
       return spec;
     }

@@ -1,6 +1,6 @@
 // Ember V1.8.3 service worker: app files only. Network first so updates arrive, cache as the offline fallback. API calls are never touched.
 // Generated from index.html plus the documented lazy/static asset closure.
-const V = 'ember-v1.10.57-readfirst-termux-ytdlp', FILES = [
+const V = 'ember-v1.10.58-document-skills-free-only', FILES = [
   "ember_ytdlp_bridge.txt",
   "ember_repair.js", "ember_repair.css",
   "ember_builds.js",

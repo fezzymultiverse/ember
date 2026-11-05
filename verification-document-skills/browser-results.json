@@ -1,0 +1,128 @@
+{
+  "count": 30,
+  "checks": [
+    {
+      "name": "actual mobile app boots with updated skills",
+      "status": "PASS"
+    },
+    {
+      "name": "no mobile shell horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "name": "existing pins and unrelated settings survive boot",
+      "status": "PASS"
+    },
+    {
+      "name": "long PDF is a real embedded-font PDF",
+      "status": "PASS"
+    },
+    {
+      "name": "long local PDF rendering makes no remote call",
+      "status": "PASS"
+    },
+    {
+      "name": "existing Word export remains functional",
+      "status": "PASS"
+    },
+    {
+      "name": "actual artifact PDF download works",
+      "status": "PASS"
+    },
+    {
+      "name": "inline HTML script executes in actual Ember preview",
+      "status": "PASS"
+    },
+    {
+      "name": "fixture interaction escapes untrusted input",
+      "status": "PASS"
+    },
+    {
+      "name": "HTML validation state works",
+      "status": "PASS"
+    },
+    {
+      "name": "sandbox protections remain intact",
+      "status": "PASS"
+    },
+    {
+      "name": "sandbox still blocks fetch",
+      "status": "PASS"
+    },
+    {
+      "name": "sandbox cannot access application localStorage",
+      "status": "PASS"
+    },
+    {
+      "name": "responsive HTML fits 360px",
+      "status": "PASS"
+    },
+    {
+      "name": "actual preview SVG chart fits 360px",
+      "status": "PASS"
+    },
+    {
+      "name": "responsive HTML fits 768px",
+      "status": "PASS"
+    },
+    {
+      "name": "actual preview SVG chart fits 768px",
+      "status": "PASS"
+    },
+    {
+      "name": "responsive HTML fits 1440px",
+      "status": "PASS"
+    },
+    {
+      "name": "actual preview SVG chart fits 1440px",
+      "status": "PASS"
+    },
+    {
+      "name": "html download is byte-preserving",
+      "status": "PASS"
+    },
+    {
+      "name": "markdown download is byte-preserving",
+      "status": "PASS"
+    },
+    {
+      "name": "existing scrape_url API can return requested web content",
+      "status": "PASS"
+    },
+    {
+      "name": "Ember runtime knows configured scraper is enabled",
+      "status": "PASS"
+    },
+    {
+      "name": "runtime does not expose scraper credential",
+      "status": "PASS"
+    },
+    {
+      "name": "loaded PDF export works offline",
+      "status": "PASS"
+    },
+    {
+      "name": "existing typewriter pacing preserved",
+      "status": "PASS"
+    },
+    {
+      "name": "exports retain unrelated settings",
+      "status": "PASS"
+    },
+    {
+      "name": "document and HTML tests add no runtime JavaScript errors",
+      "status": "PASS"
+    },
+    {
+      "name": "updated skills load after cold offline reload",
+      "status": "PASS"
+    },
+    {
+      "name": "cold offline PDF renderer loads from cache",
+      "status": "PASS"
+    }
+  ],
+  "initialErrors": [],
+  "errors": [],
+  "note": "Fixture-based browser validation; no production AI or scraping credentials were used. Android source guards were not device-tested."
+}

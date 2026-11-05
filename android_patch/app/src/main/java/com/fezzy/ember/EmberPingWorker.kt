@@ -43,12 +43,15 @@ class EmberPingWorker(appContext: Context, params: WorkerParameters) : Worker(ap
             var text = ""
             for (i in 0 until plan.length()) {
                 val p=plan.getJSONObject(i)
+                val verified = p.optLong("freeVerifiedAt", 0L)
+                val age = System.currentTimeMillis() - verified
+                if (p.optString("id") != "openrouter" || p.optString("base") != "https://openrouter.ai/api/v1" || verified <= 0L || age < 0L || age >= 3600000L) continue
                 if(!EmberRouteHealth.ready(ctx,p.optString("id"),p.optString("key"),p.optString("model")))continue
                 text=try { askGroq(p.getString("key"),p.getString("model"),topics,p.getString("base"),p.optString("id")) } catch (_:Exception) { "" }
                 if(text.isNotEmpty())break
             }
             // Older installs without a cached live model plan retain their previous Groq behavior.
-            if(plan.length()==0 && key.isNotEmpty()) text=askGroq(key,if(model.isEmpty()) "llama-3.1-8b-instant" else model,topics)
+            // Free-only policy: never revive the legacy unverified Groq inference fallback.
             if (text.isEmpty()) return if (runAttemptCount < 2) Result.retry() else Result.success()
 
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
@@ -80,6 +83,7 @@ class EmberPingWorker(appContext: Context, params: WorkerParameters) : Worker(ap
     }
 
     private fun askGroq(key: String, model: String, topics: String, base: String = "https://api.groq.com/openai/v1", provider: String = "groq"): String {
+        if (provider != "openrouter" || base != "https://openrouter.ai/api/v1") return ""
         val sys = "You are Ember, a warm, dry-witted companion. Write ONE short check-in message, 15 words or fewer, " +
             "that nudges the person toward a topic they were curious about. Light and curious only: never mention " +
             "health, feelings, crisis, or anything heavy, and never give advice. No quotes, no emoji, no preamble. Output only the message."
@@ -89,6 +93,7 @@ class EmberPingWorker(appContext: Context, params: WorkerParameters) : Worker(ap
             put("messages", JSONArray()
                 .put(JSONObject().put("role", "system").put("content", sys))
                 .put(JSONObject().put("role", "user").put("content", user)))
+            put("provider", JSONObject().put("max_price", JSONObject().put("prompt",0).put("completion",0).put("request",0).put("image",0)))
             put("max_tokens", 40)
             if(provider != "puter") put("temperature", 0.8)
         }.toString()
@@ -96,6 +101,7 @@ class EmberPingWorker(appContext: Context, params: WorkerParameters) : Worker(ap
         val started=System.currentTimeMillis()
         val conn = URL(base.trimEnd('/')+"/chat/completions").openConnection() as HttpURLConnection
         try {
+            conn.instanceFollowRedirects = false
             conn.requestMethod = "POST"
             conn.connectTimeout = 15000
             conn.readTimeout = 20000
