@@ -1,0 +1,98 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict'),http=require('node:http');
+const root=path.resolve(__dirname,'..'),www=path.join(root,'www'),out=process.env.EMBER_QUALITY_RESULTS || path.join(require('node:os').tmpdir(),'ember-quality-results');fs.mkdirSync(out,{recursive:true});
+let count=0;const results=[];
+function check(name,ok){assert(ok,name);count++;results.push({name,status:'PASS'});console.log('PASS '+name);}
+const text=f=>fs.readFileSync(path.join(www,f),'utf8');
+const w={};const ctx=vm.createContext({window:w});vm.runInContext(text('ember_authoring_quality.js'),ctx);const Q=w.EmberAuthoringQuality;
+const req=(q,extra={})=>({system:'Existing safety and personality.',messages:[{role:'user',content:q}],max:650,...extra});
+const html=Q.apply(req('Create a responsive HTML website'),'fast');
+check('HTML has build and review passes',html.system.includes('HTML AUTHORING PASS')&&html.system.includes('HTML REVIEW PASS'));
+check('HTML has doubled 4096 baseline budget',html.max===8192);
+const bash=Q.apply(req('Write a Bash script with an ASCII menu'),'fast');
+check('Bash has build and review passes',bash.system.includes('BASH/TERMUX AUTHORING PASS')&&bash.system.includes('BASH/TERMUX REVIEW PASS'));
+check('Bash has doubled 2048 baseline budget',bash.max===4096);
+check('explicit HTML budget is doubled',Q.apply(req('Build an HTML page',{max:8192}),'deep').max===16384);
+check('larger explicit budgets never get reduced',Q.apply(req('Build an HTML page',{max:40000}),'deep').max===40000);
+check('idempotence never doubles twice',Q.apply(html,'fast')===html);
+check('PDF budget increased',Q.apply(req('Create a PDF report'),'fast').max===8192);
+check('PDF has coverage and font safeguards',Q.apply(req('Create a PDF report'),'fast').system.includes('scanned text or missing pages'));
+check('ACII spelling gets shell/ASCII standards',Q.kind(req('Make ACII art'))==='bash');
+check('Termux panel gets script rules and sufficient budget',Q.apply(req('Write a script',{termuxAssistant:true,max:700}),'util').max===4096);
+check('Termux normal answer budget doubled',Q.apply(req('Why did this fail?',{termuxAssistant:true,max:700}),'util').max===1400);
+check('main Termux mode also recognizes implicit scripts',Q.kind(req('Make a menu',{system:'TERMUX MODE IS ACTIVE'}))==='bash');
+check('Termux commands are not auto-executed',bash.system.includes('Never automatically install or execute anything'));
+check('ASCII uses literal heredocs and TTY fallback',bash.system.includes('quoted heredocs')&&bash.system.includes('NO_COLOR'));
+check('Bash guards strict mode pitfalls',bash.system.includes('arithmetic exit status under set -e'));
+check('rootless permissions and noexec covered',bash.system.includes('noexec')&&bash.system.includes('companion app'));
+for(const q of ['Hello','How do I create HTML?','Do not create a Bash script'])check('non-authoring budget preserved: '+q,Q.apply(req(q),'fast').max===650);
+check('all main-chat answers receive evidence safeguards',Q.apply(req('Hello'),'fast').system.includes('GROUND 7'));
+check('ordinary chat does not acquire artifact requirements',!Q.apply(req('Hello'),'fast').system.includes('HTML AUTHORING PASS'));
+check('internal utility jobs retain object identity',(()=>{const o=req('Create a PDF');return Q.apply(o,'util')===o})());
+check('JSON utility schemas are untouched',(()=>{const o=req('Create HTML',{json:true});return Q.apply(o,'fast')===o})());
+check('negative requests do not enable artifact generation',Q.kind(req('Do not create HTML'))==='');
+check('follow-up inherits immediate HTML task',Q.kind({messages:[{role:'user',content:'Build an HTML page'},{role:'assistant',content:'Ready'},{role:'user',content:'do it'}]})==='html');
+check('unrelated intervening task stops inheritance',Q.kind({messages:[{role:'user',content:'Build an HTML page'},{role:'user',content:'Tell me a joke'},{role:'assistant',content:'Okay'},{role:'user',content:'do it'}]})==='');
+check('HTML continuation keeps correct format',Q.kind({system:'You are finishing a document you already started.',messages:[{role:'assistant',content:'<artifact type="html">partial'},{role:'user',content:'Continue'}]})==='html');
+check('printable HTML does not get conflicting PDF artifact instruction',!Q.apply(req('Make printable HTML',{documentMode:true,max:4096}),'fast').system.includes('PDF COMPLETENESS AND PREFLIGHT'));
+check('request is not mutated and callbacks survive',(()=>{const f=()=>{},o=req('Create HTML',{onToken:f}),before=JSON.stringify(o);const p=Q.apply(o,'fast');return JSON.stringify(o)===before&&p.onToken===f&&p.messages===o.messages})());
+check('safety and tool instructions remain prefix',html.system.startsWith('Existing safety and personality.'));
+check('grounding forbids fake execution and attachment claims',html.system.includes('partial work is not complete')&&html.system.includes('unreadable pages'));
+check('addon cannot access settings or issue requests',!/(?:localStorage|\.setItem\(|fetch\(|XMLHttpRequest|\.setPinned\()/.test(text('ember_authoring_quality.js')));
+
+async function providerTest(){
+ const mem={ember_pin:'cohere',ember_keys:{cohere:[{key:'fixture-not-real'}]},ember_models:{cohere:{at:Date.now(),list:['command-r']}}},seen=[];
+ const LS={get:(k,d)=>k in mem?structuredClone(mem[k]):d,set:(k,v)=>mem[k]=structuredClone(v),del:k=>delete mem[k]};
+ const window={dispatchEvent(){},addEventListener(){}};
+ const c=vm.createContext({window,document:{head:{appendChild(){}},createElement:()=>({})},U:{LS},console,URL,Blob,performance,AbortController,ReadableStream,TextDecoder,TextEncoder,setTimeout,clearTimeout,Event,CustomEvent:class{},fetch:async(url,opt)=>{seen.push(JSON.parse(opt.body));return {ok:true,status:200,headers:{get:()=>null},text:async()=>JSON.stringify({message:{content:[{type:'text',text:'Fixture response, not real AI output.'}]}}),json:async()=>({message:{content:[{type:'text',text:'Fixture response, not real AI output.'}]}})};}});
+ for(const f of ['ember_deliverables.js','ember_document_engine.js','ember_authoring_quality.js','providers.js'])vm.runInContext(text(f),c);
+ await window.Prov.run('fast',req('Build an HTML website'));
+ check('real provider path receives HTML contract',seen[0].messages[0].content.includes('HTML REVIEW PASS')&&seen[0].max_tokens===8192);
+ await window.Prov.run('util',req('Write an ASCII menu script',{termuxAssistant:true,max:700}));
+ check('real util panel path receives Bash contract',seen[1].messages[0].content.includes('BASH/TERMUX REVIEW PASS')&&seen[1].max_tokens===4096);
+ await window.Prov.run('util',req('Return memory JSON',{json:true}));
+ check('background util path remains free of quality prompt',!seen[2].messages[0].content.includes('[EMBER AUTHORING QUALITY'));
+ check('provider pin is unchanged',mem.ember_pin==='cohere');
+}
+async function browserTest(){
+ const {chromium}=require('playwright');const server=http.createServer((req,res)=>{let file=path.resolve(www,'.'+decodeURIComponent(req.url.split('?')[0]==='/'?'/index.html':req.url.split('?')[0]));if(!file.startsWith(www+path.sep)){res.writeHead(403);return res.end();}fs.readFile(file,(e,b)=>{if(e){res.writeHead(404);return res.end();}res.setHeader('Content-Type',({'.js':'text/javascript','.mjs':'text/javascript','.html':'text/html','.css':'text/css','.svg':'image/svg+xml','.webmanifest':'application/manifest+json'})[path.extname(file)]||'application/octet-stream');res.end(b);});});
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port;
+ const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+ try{
+  const context=await browser.newContext({viewport:{width:412,height:915},serviceWorkers:'block',reducedMotion:'no-preference'});await context.route('https://**/*',r=>r.abort());
+  await context.addInitScript(()=>{localStorage.setItem('quality-fixture-setting','keep-original');localStorage.setItem('ember_pin',JSON.stringify('cohere'));localStorage.setItem('ember_pin_strict','false');});
+  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(base);await page.waitForFunction(()=>window.EmberAuthoringQuality&&window.EmberTimeline&&window.EmberDeliverables&&window.Prov);await page.waitForFunction(()=>document.documentElement.classList.contains('ember-ready'));
+  check('addon loads in complete mobile application',await page.evaluate(()=>!!EmberAuthoringQuality));
+  check('existing pin and settings preserved on startup',await page.evaluate(()=>Prov.getPinned()==='cohere'&&Prov.getStrict()===false&&localStorage.getItem('quality-fixture-setting')==='keep-original'));
+  await page.evaluate(()=>{EmberTimeline.setStyle('claude');EmberTimeline.begin();EmberTimeline.note('Checking the requested document','quality-test');});
+  await page.waitForSelector('#typ .et-egg-arc');
+  const start=await page.locator('#typ .et-egg-arc').evaluate(e=>{window.qualityArc=e;return {offset:getComputedStyle(e).strokeDashoffset,name:getComputedStyle(e).animationName};});await page.waitForTimeout(280);
+  const after=await page.locator('#typ .et-egg-arc').evaluate(e=>({offset:getComputedStyle(e).strokeDashoffset,same:e===window.qualityArc}));
+  check('visible thinking circle actually advances',start.name==='emberActivityArc'&&after.offset!==start.offset);
+  await page.evaluate(()=>EmberTimeline.note('Still checking; same activity ring','quality-test'));await page.waitForTimeout(200);
+  check('status repaint does not recreate ring',await page.locator('#typ .et-egg-arc').evaluate(e=>e===window.qualityArc));
+  await page.screenshot({path:path.join(out,'thinking-mobile.png')});
+  await page.emulateMedia({reducedMotion:'reduce'});
+  check('reduced-motion accessibility is preserved',await page.locator('#typ .et-egg-arc').evaluate(e=>getComputedStyle(e).animationName==='none'));
+  await page.evaluate(()=>EmberTimeline.drop());check('spinner disappears on completion/stop',await page.locator('#typ').count()===0);
+  const doc='# PDF Export Check\n\nSupplied fixture content only.\n\n'+Array.from({length:14},(_,i)=>'## Section '+(i+1)+'\n\n'+('Readable selectable PDF text must preserve all source sections. '.repeat(30))).join('\n\n')+'\n\n| Name | Value |\n|---|---|\n| Final record | FINAL-RECORD-EMBER-QUALITY |\n';
+  const pdf=await page.evaluate(async(doc)=>{const blob=await EmberDeliverables.pdf(doc,'PDF Export Check');const bytes=new Uint8Array(await blob.arrayBuffer());const lib=await import('./vendor/pdfjs/pdf.mjs');lib.GlobalWorkerOptions.workerSrc='./vendor/pdfjs/pdf.worker.mjs';const p=await lib.getDocument({data:bytes.slice()}).promise;let full='';for(let n=1;n<=p.numPages;n++)full+=(await (await p.getPage(n)).getTextContent()).items.map(x=>x.str).join(' ')+'\n';const pages=p.numPages;await p.destroy();return {bytes:Array.from(bytes),pages,full};},doc);
+  fs.writeFileSync(path.join(out,'pdf-export-check.pdf'),Buffer.from(pdf.bytes));
+  fs.writeFileSync(path.join(out,'pdfjs-extracted.txt'),pdf.full);
+  check('real bundled PDF renderer still exports',pdf.bytes.length>10000&&Buffer.from(pdf.bytes).subarray(0,5).toString()==='%PDF-');
+  check('PDF extraction confirms all sections and final table record',Array.from({length:14},(_,i)=>'Section'+(i+1)).every(s=>pdf.full.replace(/\s+/g,'').includes(s))&&pdf.full.replace(/\s+/g,'').includes('FINAL-RECORD-EMBER-QUALITY'));
+  check('long document paginates into real PDF pages',pdf.pages>1);
+  check('PDF/export leaves unrelated settings intact',await page.evaluate(()=>Prov.getPinned()==='cohere'&&localStorage.getItem('quality-fixture-setting')==='keep-original'));
+  check('mobile layout still fits viewport',await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  check('complete app has no JavaScript runtime errors',errors.length===0);
+  await context.close();
+  const offline=await browser.newContext({serviceWorkers:'allow'});await offline.route('https://**/*',r=>r.abort());const op=await offline.newPage();await op.goto(base);
+  await op.evaluate(()=>navigator.serviceWorker.ready);
+  await op.waitForFunction(async()=>{const c=await caches.open('ember-v1.10.57-authoring-quality1');return !!(await c.match('ember_authoring_quality.js'))&&!!(await c.match('vendor/pdfmake-0.2.20-fonts.js'));},null,{timeout:30000});
+  await offline.setOffline(true);await op.reload();await op.waitForFunction(()=>window.EmberAuthoringQuality&&window.EmberDeliverables);
+  check('quality addon survives offline reload',await op.evaluate(()=>EmberAuthoringQuality.apply({messages:[{role:'user',content:'Create HTML'}],max:650},'fast').max===8192));
+  check('bundled PDF export still works offline',await op.evaluate(async()=>(await EmberDeliverables.pdf('# Offline PDF\\n\\nLocal export still works.','Offline Check')).size>10000));
+  await offline.close();
+ }finally{await browser.close();await new Promise(r=>server.close(r));}
+}
+(async()=>{await providerTest();await browserTest();fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({count,results},null,2));console.log(count+' checks passed');})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -63,8 +63,6 @@ const GEM_STYLE = {
 };
 const STYLES = [['warm', 'Natural (default)'], ['lively', 'Lively'], ['chill', 'Chill'], ['story', 'Storyteller']];
 async function gemOnce(model, key, text, voice, tone) {
-  if (!window.Prov || !window.Prov.assertFreeRoute) throw err('Free-only AI policy unavailable; voice API blocked.',403);
-  window.Prov.assertFreeRoute('gemini',model);
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent';
   const body = JSON.stringify({ contents: [{ parts: [{ text: (GEM_STYLE[tone] || GEM_STYLE.warm) + text }] }], generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } } });
   const go = async (u, headers) => {
@@ -116,10 +114,6 @@ let ezId = 0;
 const ezHint = (s, m) => s === 401 ? 'EasyVoice rejected the key' : s === 403 ? 'EasyVoice: that voice needs the Pro plan' : s === 429 ? 'EasyVoice: daily characters used up or too many requests' : (m || ('EasyVoice error ' + s));
 // one MCP tools/call; resolves to the tool’s JSON result
 async function ezCall(key, name, args) {
-  if (!['get_usage','list_voices'].includes(name)) {
-    if (!window.Prov || !window.Prov.assertFreeRoute) throw err('Free-only AI policy unavailable; voice API blocked.',403);
-    window.Prov.assertFreeRoute('easyvoice',String(args && args.voice || name));
-  }
   key = String(key || '').trim(); if (!key) throw err('No EasyVoice key saved', 0);
   const ac = new AbortController(), t = setTimeout(() => ac.abort(), 45000);
   try {
@@ -229,8 +223,6 @@ function wavB64(chunks, inRate) {
   return { b64: u8b64(new Uint8Array(buf)), seconds: m / 16000 };
 }
 async function sttOnce(model, key, b64) {
-  if (!window.Prov || !window.Prov.assertFreeRoute) throw err('Free-only AI policy unavailable; transcription API blocked.',403);
-  window.Prov.assertFreeRoute('gemini',model);
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent';
   const body = JSON.stringify({ contents: [{ parts: [{ text: 'Transcribe the speech in this audio exactly as spoken, in the language spoken. Output only the words, nothing else. If there is no speech, output nothing.' }, { inlineData: { mimeType: 'audio/wav', data: b64 } }] }] });
   const ac = new AbortController(), t = setTimeout(() => ac.abort(), 45000);

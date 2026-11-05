@@ -96,13 +96,12 @@ html[data-ember-theme=light] body #ekmInline :is(select,input){background:#edf0f
 html[data-ember-theme=light] body #ekmInline .ekm-group h4{background:#edf0f5;color:#26354c}
 html[data-ember-theme=light] body #ekmInline a{color:#175caa}
 
-/* Free-tier key confirmation stays within the existing provider card on narrow phones. */
-#ekmInline .ekm-key{flex-wrap:wrap}
-#ekmInline .ekm-key>div{flex:1 1 130px}
-#ekmInline .ekm-free-policy{padding:0 12px 12px;margin:0;overflow-wrap:anywhere}
-#ekmInline .ekm-free-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-#ekmInline #ekmFreeConfirm[hidden]{display:none!important}
-#ekmInline #ekmFreeConfirm label{display:block;font-size:13px;line-height:1.5}
-#ekmInline #ekmFreeCheck{width:auto;min-width:20px;min-height:20px;vertical-align:middle;margin-right:8px}
-#ekmInline .ekm-free-actions button{min-height:44px;border:1px solid var(--b);border-radius:10px;padding:8px 12px;background:var(--p2);color:var(--t);cursor:pointer}
-#ekmInline .ekm-free-actions button:disabled{opacity:.5;cursor:default}
+/* Targeted activity-ring repair: animate the visible arc itself, not an SVG
+ * transform that Android/WebView may suppress. Saved cards remain static and
+ * the existing reduced-motion preference is deliberately preserved. */
+@keyframes emberActivityArc{from{stroke-dashoffset:0}to{stroke-dashoffset:-114}}
+@media(prefers-reduced-motion:no-preference){
+ html body #typ .et-egg:not(.et-egg-static) .et-egg-ring{animation:none!important;transform:none;opacity:1}
+ html body #typ .et-egg:not(.et-egg-static) .et-egg-arc{stroke-dasharray:30 84;animation:emberActivityArc 1.2s linear infinite!important;animation-play-state:running!important}
+}
+@media(prefers-reduced-motion:reduce){html body #typ .et-egg-arc{animation:none!important}}

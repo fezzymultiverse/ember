@@ -771,7 +771,7 @@ async function ask(q) {
     const screen = cfg.share ? tc.getText(60).map(redact).join('\n').trim() : '';
     const msgs = hist.slice(-9, -1).map(m => ({ role: m.r === 'u' ? 'user' : 'assistant', content: m.t }));
     msgs.push({ role: 'user', content: q + (screen ? '\n\n[TERMINAL SCREEN, last lines, keys masked]\n' + screen : (cfg.share ? '\n\n[TERMINAL SCREEN: empty or not connected]' : '')) });
-    const r = await P.run('util', { system: SYS, messages: msgs, temp: 0.4, max: 700 });
+    const r = await P.run('util', { system: SYS, messages: msgs, temp: 0.4, max: 700, termuxAssistant: true });
     reply = (r && r.text) ? r.text.trim() : 'No answer came back. Try again.';
   } catch (e) { reply = 'Failed: ' + ((e && e.message) || 'no engine answered'); }
   busy = false; hist.push({ r: 'a', t: reply }); hist = hist.slice(-30); LSset(HKEY, hist); $('etSend').disabled = false; paintChat();
