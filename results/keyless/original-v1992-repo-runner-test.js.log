@@ -1,0 +1,53 @@
+PASS whole-repo grep is exposed to Ember without runner enablement
+PASS grep resumably scans more than a single batch
+PASS grep finds unranked vendor/new-extension text files with line evidence
+PASS grep discloses binary/protected/oversized coverage exclusions
+PASS truncated recursive tree is fully expanded through subtrees
+PASS failed subtree traversal cannot claim absence
+PASS blob read failure preserves a retry cursor and never reports complete
+PASS cursor query cannot be silently changed
+PASS repository manager rejects unconfigured repos
+PASS repository discovery is read-only and works
+PASS model cannot import repos without explicit user intent
+PASS explicit request adds a whole source without altering brain
+PASS repo-manager writes cannot touch the brain
+PASS token-accessible output repository discovery works
+PASS runner state contains no token
+Cloning entire source owner/brain
+Cloning entire source owner/addon
+Pushed snapshots to me/output:main
+Build dispatched: https://github.com/me/output/actions/workflows/build.yml
+PASS install clones whole sources, commits and pushes with real local git
+PASS original app code survives runner installation
+PASS brain and addon snapshots are separately included
+PASS forced tracked files remain included despite upstream gitignore
+PASS source package hooks are never executed
+PASS managed script, workflow and configuration are committed
+PASS build is actually dispatched after committing the sources
+PASS no token in generated configs, source scripts or git remote URL
+Cloning entire source owner/brain
+Cloning entire source owner/addon
+All whole-repo snapshots are already current.
+PASS unchanged sync is a no-op with no new commit/build
+Cloning entire source owner/brain
+Cloning entire source owner/addon
+Pushed snapshots to me/output:main
+Build dispatched: https://github.com/me/output/actions/workflows/build.yml
+PASS later upstream additions and removals sync without file selection
+Cloning entire source owner/brain
+Pushed snapshots to me/output:main
+Build dispatched: https://github.com/me/output/actions/workflows/build.yml
+PASS removed source only deletes its runner-owned snapshot
+Automatic repo sync is disabled in ember-repos.json.
+PASS scheduled sync is opt-in
+AssertionError [ERR_ASSERTION]: Missing expected exception.
+    at integration (/home/user/ember-work/baseline/tests/v1992-repo-runner-test.js:77:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /home/user/ember-work/baseline/tests/v1992-repo-runner-test.js:102:3 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: undefined,
+  expected: undefined,
+  operator: 'throws',
+  diff: 'simple'
+}

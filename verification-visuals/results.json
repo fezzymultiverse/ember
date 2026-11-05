@@ -1,0 +1,93 @@
+{
+ "count": 22,
+ "results": [
+  {
+   "name": "app boots with visuals loaded and no runtime errors",
+   "status": "PASS"
+  },
+  {
+   "name": "existing stored settings untouched",
+   "status": "PASS"
+  },
+  {
+   "name": "no horizontal overflow on phone",
+   "status": "PASS"
+  },
+  {
+   "name": "empty-state art inserted once, first child of #empty",
+   "status": "PASS"
+  },
+  {
+   "name": "empty-state art makes no external requests and is not interactive",
+   "status": "PASS"
+  },
+  {
+   "name": "Groq reply gets Groq logo from local provider-icons",
+   "status": "PASS"
+  },
+  {
+   "name": "Free reply gets the flame chip",
+   "status": "PASS"
+  },
+  {
+   "name": "pin-failed footer badges the engine that answered (Gemini), not the failed pin",
+   "status": "PASS"
+  },
+  {
+   "name": "Claude, OpenRouter, Cohere, Mistral, LongCat, Plugsky all badge from local files",
+   "status": "PASS"
+  },
+  {
+   "name": "unknown engine, bare time and user messages get no badge",
+   "status": "PASS"
+  },
+  {
+   "name": "no duplicate badges after more DOM changes",
+   "status": "PASS"
+  },
+  {
+   "name": "every referenced provider icon file exists in www/provider-icons",
+   "status": "PASS"
+  },
+  {
+   "name": "PDF, Doc/Markdown, SVG, Image, HTML, Code, JSON/CSV map to the right type",
+   "status": "PASS"
+  },
+  {
+   "name": "unknown artifact type keeps its original tile",
+   "status": "PASS"
+  },
+  {
+   "name": "PDF and Doc tiles have different colours",
+   "status": "PASS"
+  },
+  {
+   "name": "typing indicator uses the ember-flicker animation",
+   "status": "PASS"
+  },
+  {
+   "name": "reduced-motion turns the flicker and spark animations off",
+   "status": "PASS"
+  },
+  {
+   "name": "Permissions switch is blue when on",
+   "status": "PASS"
+  },
+  {
+   "name": "cockpit feature switch is blue when on",
+   "status": "PASS"
+  },
+  {
+   "name": "keyless switch is blue when on",
+   "status": "PASS"
+  },
+  {
+   "name": "Together AI and Fireworks are not offered as providers",
+   "status": "PASS"
+  },
+  {
+   "name": "visuals add no runtime errors",
+   "status": "PASS"
+  }
+ ]
+}

@@ -1,0 +1,192 @@
+{
+  "count": 27,
+  "checks": [
+    {
+      "name": "a4-regression.pdf has A4 MediaBoxes",
+      "status": "PASS",
+      "details": {
+        "pages": 4,
+        "sizes": [
+          [
+            595.280029296875,
+            841.8900146484375
+          ],
+          [
+            595.280029296875,
+            841.8900146484375
+          ],
+          [
+            595.280029296875,
+            841.8900146484375
+          ],
+          [
+            595.280029296875,
+            841.8900146484375
+          ]
+        ]
+      }
+    },
+    {
+      "name": "a4-regression.pdf retains complete final section and marker",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "a4-regression.pdf retains searchable/selectable text",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "a4-regression.pdf pages are not empty",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "save-button.pdf has A4 MediaBoxes",
+      "status": "PASS",
+      "details": {
+        "pages": 5,
+        "sizes": [
+          [
+            595.280029296875,
+            841.8900146484375
+          ],
+          [
+            595.280029296875,
+            841.8900146484375
+          ],
+          [
+            595.280029296875,
+            841.8900146484375
+          ],
+          [
+            595.280029296875,
+            841.8900146484375
+          ],
+          [
+            595.280029296875,
+            841.8900146484375
+          ]
+        ]
+      }
+    },
+    {
+      "name": "save-button.pdf retains complete final section and marker",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "save-button.pdf retains searchable/selectable text",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "save-button.pdf pages are not empty",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "DOCX declares explicit A4 size in WordprocessingML",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "DOCX declares the intended printable margins",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "DOCX retains final marker and complete sections",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "www/ember_artifacts.js preserved byte-for-byte",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "archive/www/ember_pdf.js preserved byte-for-byte",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "www/ember_typewriter.js preserved byte-for-byte",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "www/app.js preserved byte-for-byte",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "www/ember_native.js preserved byte-for-byte",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "www/ember_docs_lib.js preserved byte-for-byte",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "www/persona.js preserved byte-for-byte",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "www/store.js preserved byte-for-byte",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "www/safety.js preserved byte-for-byte",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "capacitor.config.json preserved byte-for-byte",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "package.json preserved byte-for-byte",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "package-lock.json preserved byte-for-byte",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "entire PDF renderer, validation and definitions preserved exactly",
+      "status": "PASS",
+      "details": null
+    },
+    {
+      "name": "every supplied Android patch file preserved byte-for-byte",
+      "status": "PASS",
+      "details": {
+        "files": 21
+      }
+    },
+    {
+      "name": "every active JavaScript file parses",
+      "status": "PASS",
+      "details": {
+        "files": "90",
+        "error": ""
+      }
+    },
+    {
+      "name": "service worker lists unique existing bundled assets",
+      "status": "PASS",
+      "details": {
+        "assets": "138",
+        "error": ""
+      }
+    }
+  ]
+}

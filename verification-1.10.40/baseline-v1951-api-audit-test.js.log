@@ -1,0 +1,5 @@
+PASS HTML provider failure becomes a readable fallback reason 
+PASS malformed provider failure does not crash the router 
+PASS stale model cache refreshes after twelve hours 
+
+3 passed, 0 failed

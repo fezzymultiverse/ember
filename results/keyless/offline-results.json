@@ -1,0 +1,14 @@
+{
+  "names": [
+    "ember-v1.10.16-keyless"
+  ],
+  "entries": 148,
+  "keylessJS": true,
+  "keylessCSS": true,
+  "health": true,
+  "external": 0,
+  "offlineRouter": true,
+  "offlinePDF": true,
+  "errors": [],
+  "pass": true
+}

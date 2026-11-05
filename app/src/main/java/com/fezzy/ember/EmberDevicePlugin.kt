@@ -1,0 +1,210 @@
+package com.fezzy.ember
+
+import android.Manifest
+import android.app.Activity
+import androidx.activity.result.ActivityResult
+import com.getcapacitor.annotation.ActivityCallback
+import android.app.ActivityManager
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.wifi.WifiManager
+import android.os.BatteryManager
+import android.os.Build
+import android.os.Environment
+import android.os.StatFs
+import android.os.SystemClock
+import com.getcapacitor.JSObject
+import com.getcapacitor.PermissionState
+import com.getcapacitor.Plugin
+import com.getcapacitor.PluginCall
+import com.getcapacitor.PluginMethod
+import com.getcapacitor.annotation.CapacitorPlugin
+import com.getcapacitor.annotation.Permission
+import com.getcapacitor.annotation.PermissionCallback
+
+// V1.6.6: read-only phone facts for the Device panel. Nothing here is sent anywhere; the page only shows it.
+// The Wi-Fi name is the one value Android hides behind the location permission, so it is requested only when the person taps
+// "Show Wi-Fi name". Ember never reads the phone's location.
+@CapacitorPlugin(
+    name = "EmberDevice",
+    permissions = [Permission(strings = [Manifest.permission.ACCESS_FINE_LOCATION], alias = "wifiname")]
+)
+class EmberDevicePlugin : Plugin() {
+
+    // Artifact Save As: works on scoped storage without WRITE_EXTERNAL_STORAGE.
+    @PluginMethod
+    fun saveFile(call: PluginCall) {
+        val data = call.getString("data")
+        if (data.isNullOrEmpty() || data.length > 90000000) { call.reject("Empty file or file exceeds the 64 MB save limit"); return }
+        val name = (call.getString("name") ?: "Ember-artifact").replace(Regex("[\\\\/:*?\"<>|\\x00-\\x1f]"), "_").take(120)
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = call.getString("mime") ?: "application/octet-stream"
+            putExtra(Intent.EXTRA_TITLE, name)
+        }
+        try { startActivityForResult(call, intent, "artifactSaveResult") }
+        catch (e: Exception) { call.reject("No system file picker available: " + (e.message ?: "unknown error")) }
+    }
+
+    @ActivityCallback
+    private fun artifactSaveResult(call: PluginCall?, result: ActivityResult) {
+        if (call == null) return
+        if (result.resultCode != Activity.RESULT_OK) { call.resolve(JSObject().put("cancelled", true)); return }
+        val uri = result.data?.data
+        if (uri == null) { call.reject("No save location returned"); return }
+        bridge.execute {
+            try {
+                val bytes = android.util.Base64.decode(call.getString("data") ?: "", android.util.Base64.DEFAULT)
+                val stream = context.contentResolver.openOutputStream(uri, "w") ?: throw Exception("Cannot open selected location")
+                stream.use { it.write(bytes); it.flush() }
+                call.resolve(JSObject().put("ok", true).put("path", uri.toString()).put("bytes", bytes.size))
+            } catch (e: Exception) { call.reject("File was not saved: " + (e.message ?: "write failed")) }
+        }
+    }
+
+    @PluginMethod
+    fun getInfo(call: PluginCall) {
+        val r = JSObject()
+        try { r.put("net", netInfo()) } catch (e: Exception) { r.put("netError", e.message ?: "network info unavailable") }
+        try { r.put("mem", memInfo()) } catch (e: Exception) { r.put("memError", e.message ?: "memory info unavailable") }
+        try { r.put("battery", batteryInfo()) } catch (e: Exception) { r.put("batteryError", e.message ?: "battery info unavailable") }
+        r.put("uptimeMs", SystemClock.elapsedRealtime())
+        r.put("model", (Build.MANUFACTURER ?: "") + " " + (Build.MODEL ?: ""))
+        r.put("android", Build.VERSION.RELEASE ?: "")
+        r.put("sdk", Build.VERSION.SDK_INT)
+        call.resolve(r)
+    }
+
+    // V1.6.7: one-tap "Open Termux" for the EMBER TERMUX panel. Launches the app's normal launcher activity; reads nothing from it.
+    // V1.10.57: three ways in, and an honest reason when all fail: launcher intent, then an explicit MAIN/LAUNCHER query, then Termux's own activity.
+    @PluginMethod
+    fun openApp(call: PluginCall) {
+        val pkg = call.getString("package") ?: "com.termux"
+        val r = JSObject()
+        val pm = context.packageManager
+        var installed = false
+        try { pm.getPackageInfo(pkg, 0); installed = true } catch (e: Exception) { installed = false }
+        var last = ""
+        val tries = ArrayList<Intent>()
+        try { pm.getLaunchIntentForPackage(pkg)?.let { tries.add(it) } } catch (e: Exception) { last = e.message ?: "" }
+        try {
+            val q = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setPackage(pkg)
+            @Suppress("DEPRECATION")
+            val ri = pm.queryIntentActivities(q, 0)
+            if (ri.isNotEmpty()) tries.add(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setClassName(pkg, ri[0].activityInfo.name))
+        } catch (e: Exception) { last = e.message ?: last }
+        if (pkg == "com.termux") tries.add(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setClassName("com.termux", "com.termux.app.TermuxActivity"))
+        for (i in tries) {
+            try {
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                context.startActivity(i)
+                r.put("ok", true); call.resolve(r); return
+            } catch (e: Exception) { last = e.message ?: "could not open" }
+        }
+        r.put("ok", false)
+        r.put("installed", installed)
+        r.put("error", if (!installed) "Termux is not installed or Android hides it from Ember (update the APK so the package-visibility entry is in the manifest)" else if (last.isNotEmpty()) last else "Android refused to open it")
+        call.resolve(r)
+    }
+
+    @PluginMethod
+    fun requestWifiName(call: PluginCall) {
+        if (getPermissionState("wifiname") == PermissionState.GRANTED) {
+            val r = JSObject(); r.put("granted", true); call.resolve(r); return
+        }
+        requestPermissionForAlias("wifiname", call, "wifiNameCallback")
+    }
+
+    @PermissionCallback
+    private fun wifiNameCallback(call: PluginCall) {
+        val r = JSObject()
+        r.put("granted", getPermissionState("wifiname") == PermissionState.GRANTED)
+        call.resolve(r)
+    }
+
+    private fun netInfo(): JSObject {
+        val o = JSObject()
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        var wifi = false; var cell = false; var vpn = false; var eth = false
+        @Suppress("DEPRECATION")
+        for (n in cm.allNetworks) {
+            val c = cm.getNetworkCapabilities(n) ?: continue
+            if (!c.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) continue
+            if (c.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) { vpn = true; continue }
+            if (c.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) wifi = true
+            if (c.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) cell = true
+            if (c.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) eth = true
+        }
+        o.put("wifi", wifi); o.put("cellular", cell); o.put("ethernet", eth); o.put("vpn", vpn)
+        val granted = getPermissionState("wifiname") == PermissionState.GRANTED
+        o.put("wifiNameAllowed", granted)
+        if (wifi && granted) {
+            try {
+                val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+                @Suppress("DEPRECATION")
+                val info = wm.connectionInfo
+                var s = info?.ssid ?: ""
+                if (s.length >= 2 && s.startsWith("\"") && s.endsWith("\"")) s = s.substring(1, s.length - 1)
+                if (s.isEmpty() || s == "<unknown ssid>") o.put("ssidHidden", true) else o.put("ssid", s)
+                if (info != null) {
+                    if (info.linkSpeed > 0) o.put("linkMbps", info.linkSpeed)
+                    o.put("rssi", info.rssi)
+                    if (info.rssi != 0) o.put("signalLevel", WifiManager.calculateSignalLevel(info.rssi, 5))
+                }
+            } catch (e: Exception) { o.put("ssidHidden", true) }
+        }
+        return o
+    }
+
+    private fun memInfo(): JSObject {
+        val o = JSObject()
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val mi = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(mi)
+        o.put("ramTotal", mi.totalMem); o.put("ramAvail", mi.availMem); o.put("ramLow", mi.lowMemory)
+        val st = StatFs(Environment.getDataDirectory().path)
+        o.put("storageTotal", st.totalBytes); o.put("storageFree", st.availableBytes)
+        return o
+    }
+
+    private fun batteryInfo(): JSObject {
+        val o = JSObject()
+        val i = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return o
+        val level = i.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val scale = i.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
+        if (level >= 0 && scale > 0) o.put("level", Math.round(level * 100f / scale))
+        val status = i.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+        o.put("charging", status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL)
+        o.put("full", status == BatteryManager.BATTERY_STATUS_FULL)
+        o.put("plugged", i.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0)
+        o.put("health", when (i.getIntExtra(BatteryManager.EXTRA_HEALTH, 0)) {
+            BatteryManager.BATTERY_HEALTH_GOOD -> "good"
+            BatteryManager.BATTERY_HEALTH_OVERHEAT -> "overheat"
+            BatteryManager.BATTERY_HEALTH_DEAD -> "dead"
+            BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE -> "over_voltage"
+            BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE -> "failure"
+            BatteryManager.BATTERY_HEALTH_COLD -> "cold"
+            else -> "unknown"
+        })
+        val t = i.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE)
+        if (t != Int.MIN_VALUE) o.put("tempC", t / 10.0)
+        val v = i.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0)
+        if (v > 0) o.put("voltageMv", v)
+        val tech = i.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY)
+        if (!tech.isNullOrEmpty()) o.put("technology", tech)
+        // Charge cycles: Android 14+ only, and many phones do not report it. The key is written out so this compiles on older SDKs too.
+        if (Build.VERSION.SDK_INT >= 34) {
+            val cyc = i.getIntExtra("android.os.extra.CYCLE_COUNT", -1)
+            if (cyc > 0) o.put("cycles", cyc)
+            try {
+                val bm = context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+                val soh = bm.getIntProperty(10) // BATTERY_PROPERTY_STATE_OF_HEALTH (API 34)
+                if (soh in 1..100) o.put("stateOfHealth", soh)
+            } catch (e: Exception) { /* not reported on this phone */ }
+        }
+        return o
+    }
+}

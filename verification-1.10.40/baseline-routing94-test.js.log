@@ -1,0 +1,22 @@
+PASS healthy keys round-robin across requests
+PASS successful stats persist immediately
+PASS usage tokens reflect provider-reported totals only
+PASS live provider status event emitted
+PASS model 429 proceeds to another model on same key
+PASS Retry-After longer than fifteen minutes respected
+PASS cooldown stats never expose raw keys
+PASS opening provider health preserves cooldown
+PASS 401 rejects only affected key and rotates
+PASS model permission 403 does not poison valid key
+PASS strict pin does not leak to paid providers or free mode
+PASS new aggregators require automatic routing opt-in
+AssertionError [ERR_ASSERTION]: OpenRouter appears in fallback after opt-in
+    at check (/home/user/ember/baseline/ember-main-rebuilt/tests/routing94-test.js:4:21)
+    at /home/user/ember/baseline/ember-main-rebuilt/tests/routing94-test.js:15:193 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
