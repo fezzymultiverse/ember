@@ -269,7 +269,10 @@ async function respond(conv, { S, mem, directive, lane, deep, uiState, planHint,
   if (msgs.length && msgs[0].role == 'assistant') msgs.unshift({ role: 'user', content: '(we are picking the conversation back up)' });
   if (!msgs.length) msgs.push({ role: 'user', content: '(hi)' });
   const TG = window.EmberTaskGate, taskTurn = !TG || !lastUser || !!directive || TG.isTask(lastUser.t, TG.ctxFrom(conv.msgs)); // V1.10.50: normal question = answer now, order = tools on
-  let sys = Safety.wrapSystem(buildSystem({ S, mem, conv, deep, lane, noTools: crisis, quiet: !taskTurn, noAmbient: crisis, termuxMode, lessonOfDay, moodSignal, nineNine, uiState: crisis ? '' : uiState, planHint: crisis ? '' : planHint }), safety.level);
+  // V1.10.54: a file request (PDF / Word / essay) is written straight away from the evidence already gathered. Offering tools here made some engines
+  // (Cohere, Mistral) answer with a tool_call instead of the document, which ended in "the add-on came back empty".
+  const fileAsk = !crisis && !directive && lastUser && window.EmberDeliverables && (window.EmberDeliverables.intentCtx ? window.EmberDeliverables.intentCtx(lastUser.t, conv.msgs) : window.EmberDeliverables.intent(lastUser.t));
+  let sys = Safety.wrapSystem(buildSystem({ S, mem, conv, deep, lane, noTools: crisis || !!fileAsk, quiet: !taskTurn, noAmbient: crisis, termuxMode, lessonOfDay, moodSignal, nineNine, uiState: crisis ? '' : uiState, planHint: crisis ? '' : planHint }), safety.level);
   // V1.9.15: his documents are searched here for every message, on every engine (not only when the model happens to call a tool)
   if (!crisis && !directive && lastUser && window.EmberContext && window.EmberContext.autoBlock) { try { sys += await window.EmberContext.autoBlock(lastUser.t); } catch (e) { /* no document context this turn */ } }
   // V1.9.15: when he asks for depth, code or length, the sentence limits and the 350 token cap no longer apply to that one reply
@@ -283,7 +286,7 @@ async function respond(conv, { S, mem, directive, lane, deep, uiState, planHint,
   if (typeof onToken === 'function') o.onToken = onToken;
   // V1.9.27: native function calling, only when the message looks like it needs a tool (the <tool_call> text route stays available either way)
   const TOOL_ASK = /\b(search|look ?up|find|google|download|save|grab|rip|get|fetch|pull|put|add|want|need|play|scrape|read|open|check|summari[sz]e|news|latest|current|today|price|who is|who's|info|tell me about|track|song|playlist|album|music|youtube|soundcloud|document|doc|note|saved|key|site|remind|task|device|termux)\b|https?:\/\//i;
-  if (!crisis && !directive && lastUser && window.EmberToolCatalog && (TG ? taskTurn : TOOL_ASK.test(lastUser.t))) { const tl = window.EmberToolCatalog(); if (tl.length) o.tools = tl; }
+  if (!crisis && !directive && !fileAsk && lastUser && window.EmberToolCatalog && (TG ? taskTurn : TOOL_ASK.test(lastUser.t))) { const tl = window.EmberToolCatalog(); if (tl.length) o.tools = tl; }
   let r = await Prov.run(lane, o), retried = false;
   if (!directive && lastUser && !crisis) {
     const op = openersOf(conv), bad = flaw(lastUser.t, r.text, op);

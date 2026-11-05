@@ -80,3 +80,18 @@ html[data-ember-theme=light] body.cockpit-ui #settings #gitWidget :is(.gw-head,.
 html[data-ember-theme=light] body.cockpit-ui #settings #gitWidget :is(.gw-t small,.gw-s,.gw-sub,.hint){color:#546174!important}
 html[data-ember-theme=light] body.cockpit-ui #settings #cockpitSettings .ember-legacy-key-card{display:none!important}
 html[data-ember-theme=light] body #app :is(#etDock,#etDock .et-bar,.comp .moderow,.mode-pill,#bMode){background:#edf0f5!important;color:#26354c!important;border-color:#c8d1df!important}
+
+/* 1.10.56: API keys live inside "AI providers & API keys" (no side panel, no per-key test or health bar). */
+#cockpitProviderList[hidden]{display:none!important}
+#ekmInline label{display:block;font-size:13px;font-weight:650;margin:10px 0 8px}
+#ekmInline select,#ekmInline input{width:100%;box-sizing:border-box;font:inherit;color:var(--t);background:var(--p2);border:1px solid var(--b);border-radius:10px;min-height:44px;padding:10px 12px}
+#ekmInline .ekm-entry{display:flex;gap:8px;align-items:stretch}
+#ekmInline .ekm-entry input{flex:1 1 auto;width:auto;min-width:0}
+#ekmInline #ekmAdd{flex:0 0 auto;width:auto;min-width:96px;padding:0 18px;min-height:44px}
+#ekmInline .ekm-hint{font-size:12px;line-height:1.55;color:var(--m);margin:10px 0 12px}
+#ekmInline a{color:#7cbcff}
+#ekmInline .ekm-key button{min-height:40px;background:var(--p2);border:1px solid var(--b);border-radius:10px;padding:0 12px;cursor:pointer;font:inherit}
+#ekmInline .ekm-group h4{margin:0}
+html[data-ember-theme=light] body #ekmInline :is(select,input){background:#edf0f5;color:#26354c;border-color:#c8d1df}
+html[data-ember-theme=light] body #ekmInline .ekm-group h4{background:#edf0f5;color:#26354c}
+html[data-ember-theme=light] body #ekmInline a{color:#175caa}

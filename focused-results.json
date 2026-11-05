@@ -1,0 +1,34 @@
+{
+  "version": "1.10.51",
+  "focusedChecks": 170,
+  "fullHistoricalSuiteRun": false,
+  "realDeviceOrPrivateKeyTested": false,
+  "runs": [
+    {
+      "test": "provider-repair-11051-test.cjs",
+      "status": "PASS",
+      "exitCode": 0
+    },
+    {
+      "test": "routing-fallback-test.js",
+      "status": "PASS",
+      "exitCode": 0
+    },
+    {
+      "test": "streaming-routing-test.js",
+      "status": "PASS",
+      "exitCode": 0
+    },
+    {
+      "test": "scrape-test.js",
+      "status": "PASS",
+      "exitCode": 0
+    },
+    {
+      "test": "document-engine-11040-test.cjs",
+      "status": "PASS",
+      "exitCode": 0
+    }
+  ],
+  "browserReport": "browser-results.json"
+}

@@ -36,7 +36,7 @@
         '<p class="gw-s" id="gwTokStatus" role="status"></p></div>' +
       '<div class="gw-pane" data-p="search">' +
         '<div id="gwSearchView"><label class="lb" for="gwQ">Search GitHub repositories</label>' +
-        '<div class="gw-row"><input type="search" id="gwQ" placeholder="topic, language or owner/repo" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="button" class="btn" data-gw="search">Search</button></div>' +
+        '<div class="gw-row"><input type="search" id="gwQ" placeholder="describe it, topic, or owner/repo" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="button" class="btn" data-gw="search">Search</button></div>' +
         '<p class="gw-s" id="gwSearchStatus" role="status">Search is read-only. View a repo, Add it, then Push.</p><div id="gwResults"></div>' +
         '<div class="gw-btns"><button type="button" class="btn g" data-gw="more" id="gwMore" hidden>More results</button></div></div>' +
         '<div id="gwDetail" hidden></div></div>' +
@@ -134,8 +134,8 @@
       found = { query: q, page: r.page, more: r.more, total: r.total, rows: page > 1 ? found.rows.concat(r.repositories) : r.repositories };
       shown = found.rows.map(x => ({ repo: x.repo, description: x.description }));
       paintResults();
-      $('gwSearchStatus').textContent = found.rows.length ? found.rows.length + ' of ' + r.total + ' repositories. View one, then Add.' : 'No repositories found.';
-      log('Found ' + r.total + ' repositories for "' + q + '" in ' + Math.round(performance.now() - t0) + 'ms (showing ' + found.rows.length + ').');
+      $('gwSearchStatus').textContent = found.rows.length ? 'Showing ' + found.rows.length + (r.total > found.rows.length ? ' of ' + r.total : '') + ' repositories. View one, then Add.' : 'No repositories found. Try fewer or different words, or an owner name.';
+      log('Found ' + r.total + ' repositories for "' + q + '" in ' + Math.round(performance.now() - t0) + 'ms (showing ' + found.rows.length + ')' + (r.queries && r.queries.length ? ' · searched: ' + r.queries.join(' | ') : '') + '.');
     } catch (e) { $('gwSearchStatus').textContent = e.message; log('Search failed: ' + e.message, 'stderr'); }
   }
   function showSearchList() { viewing = ''; $('gwDetail').hidden = true; $('gwSearchView').hidden = false; }

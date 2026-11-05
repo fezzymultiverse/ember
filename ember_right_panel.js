@@ -31,11 +31,6 @@
       $('erpActivityLog').textContent = W.EmberTasks.count() + ' active timers · ' + summary.lineCount + ' recent log lines\n' + ($('eccTerminalStatus')?.textContent || 'Idle') + '\nNetwork connectivity is not a provider health check.';
     }
     function open() {
-      // 1.10.20: the blue panel is gone. This button opens the black Settings (and closes it again if it is already open).
-      if ($('settings').classList.contains('show')) return W.EmberCockpit.close();
-      if ($('emberCommandCenter').classList.contains('ecc-open')) W.EmberCommandCenter.close();
-      $('headerActionsMenu').classList.add('hidden');
-      return W.EmberCockpit.open();
       if (!panel.hidden) return close();
       lastFocus = D.activeElement;
       if ($('settings').classList.contains('show')) W.EmberCockpit.close();
@@ -62,16 +57,17 @@
       'Web search': () => { W.EmberPlus.flip('web', true); $('inp').focus(); },
       'Open browser': () => invoke(W.EmberBrowser, 'open'),
       'Scrape a page': () => settings('scraping', 'tUrl'),
-      'Music player & search': () => { invoke(W.EmberMusicUI, 'open'); $('dzQ')?.focus(); },
-      'Downloads': () => settings('music', 'cockpitYouTube'),
+      'Music player': () => invoke(W.EmberMusicUI, 'open'),
+      'Find media': () => { invoke(W.EmberMusicUI, 'open'); $('dzQ')?.focus(); },
+      'Downloads': () => settings('hacking', 'cockpitYouTube'),
       'Projects': () => { click('bHist'); D.querySelector('.dtab[data-d="projects"]')?.click(); W.EmberProjects.render(); },
       'Tasks': () => showTasks(),
       'Files & deliverables': () => invoke(W.EmberBrowser, 'open', 'docs'),
       'Device controls': () => settings('device'),
       'Terminal': () => settings('hacking', 'cockpitTermuxPanel'),
-      'GitHub & integrations': () => invoke(W.EmberGitBrain, 'open'),
+      'GitHub & integrations': () => invoke(W.EmberWorkspace, 'open', 'connect'),
       'AI providers & API keys': () => settings('engine'),
-      'Permissions & background': () => settings('permissions'),
+      'Permissions & privacy': () => settings('permissions'),
       'App settings': () => W.EmberCockpit.open()
     };
     async function showTasks() {
@@ -98,16 +94,11 @@
       if (h) {
         const g = h.closest('.erp-group');
         if (panel.classList.contains('erp-searching')) { const value = !g.classList.contains('open'); setGroup(g, value); return; }
-        if (h.dataset.direct) { // 1.10.18 Part 8: this category IS the black Settings: one tap, no second menu in front of it.
-          close(false);
-          try { await actions[h.dataset.direct](); } catch (error) { const t = $('toast'); t.textContent = error.message; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 4000); }
-          return;
-        }
         setSub(g.classList.contains('open') ? null : g); return;
       }
       if (e.target.closest('#erpCcToggle')) { const value = !$('erpCc').classList.contains('expanded'); if (value) setSub(null); setCc(value); refresh(); return; }
       const cc = e.target.closest('[data-cc]');
-      if (cc) { close(false); if (cc.dataset.cc === 'routing' || cc.dataset.cc === 'status') { W.EmberCommandCenter.open(); W.EmberCockpit.dash(cc.dataset.cc === 'routing' ? 'routing' : 'overview'); } else { W.EmberWorkspace.open('build'); if (cc.dataset.cc === 'activity') { if ($('eccTerminalBody').hidden) click('eccTerminalToggle'); W.EmberCommandCenter.close(); } } return; }
+      if (cc) { close(false); if (cc.dataset.cc === 'routing') settings('providers'); else { W.EmberWorkspace.open('build'); if (cc.dataset.cc === 'activity') { if ($('eccTerminalBody').hidden) click('eccTerminalToggle'); W.EmberCommandCenter.close(); } } return; }
       const item = e.target.closest('[data-name]'); if (!item) return;
       const fn = actions[item.dataset.name]; close(false);
       try { if (!fn) throw new Error('This tool is not wired.'); if (item.dataset.name === 'Tasks') W.EmberTasks.setIntent('list timers'); await fn(); }
@@ -125,10 +116,6 @@
         if (term) setGroup(g, visible > 0);
       });
       $('erpNoResults').hidden = matches > 0;
-      // 1.10.27: any word can also be searched across the real Settings.
-      let sb = $('erpSettingsSearch');
-      if (!sb) { sb = D.createElement('button'); sb.type = 'button'; sb.id = 'erpSettingsSearch'; sb.className = 'erp-item'; sb.hidden = true; $('erpGroups').append(sb); sb.addEventListener('click', () => { const t = search.value.trim(); close(false); if (W.EmberCockpit && W.EmberCockpit.search) W.EmberCockpit.search(t); }); }
-      sb.hidden = !term; sb.textContent = 'Search Settings for \u201c' + search.value.trim() + '\u201d \u203a';
     });
     D.addEventListener('keydown', e => {
       const taskOpen = !$('erpTasks').hidden;

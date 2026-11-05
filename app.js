@@ -382,6 +382,40 @@ async function resolveAddonCalls(text, L, route) {
   }
   let cur = text, calls = parseCalls(cur);
   const verbatim = [], lastAsk = (() => { const u = [...conv.msgs].reverse().find(m => m.r == 'u'); return u ? String(u.t || '') : ''; })();
+  // V1.10.54: file requests (PDF / Word / essay) can never end in "the add-on came back empty". isFile = he asked for a file;
+  // localDoc() builds a real document straight from the Wikipedia + web evidence already fetched, used only when no engine wrote one.
+  const isFile = !!(window.EmberDeliverables && (window.EmberDeliverables.intentCtx ? window.EmberDeliverables.intentCtx(lastAsk, conv.msgs) : window.EmberDeliverables.intent(lastAsk)));
+  const hasArt = t => !!(window.EmberArtifacts && window.EmberArtifacts.parse(String(t || '')).items.length);
+  function localDoc() {
+    try {
+      if (!isFile || verbatim.length || Safety.lastLevel() >= 3) return '';
+      const ev = String((route && route.webEvidence) || '');
+      const wm = /WEB EVIDENCE FOR THIS TURN \(Wikipedia: ([^,]+), (https?:\/\/[^)\s]+)\)[^\n]*\n([\s\S]*?)(?=\n\nWEB SEARCH RESULTS|$)/.exec(ev);
+      const srcs = []; const sr = /\[(\d+)\]\s*([^\n(]*?)\s*\((https?:\/\/[^)\s]+)\):\s*([^\n]*)/g; let m2;
+      while ((m2 = sr.exec(ev)) !== null && srcs.length < 5) srcs.push({ t: m2[2].trim() || m2[3], u: m2[3], x: m2[4].trim() });
+      if (!wm && !srcs.length) return '';
+      const clip = (x, n) => String(x || '').replace(/[|\r\n]+/g, ' ').trim().slice(0, n);
+      const DL = window.EmberDeliverables, pg = DL && DL.pageTarget ? DL.pageTarget(lastAsk, conv.msgs) : 0, maxWords = (pg || 5) * 480;
+      const want = DL && DL.intentCtx ? DL.intentCtx(lastAsk, conv.msgs) : null, type = want && /^(pdf|document)$/.test(want.type) ? want.type : 'document';
+      const title = wm ? wm[1].trim() : (DL && DL.subjectOf ? DL.subjectOf(lastAsk) : '') || 'Ember document';
+      const out = ['# ' + title, '', '> [!NOTE]', '> Written directly from the sources listed at the end, because no AI engine returned the finished essay in time. Tap "again" and Ember will have an engine rewrite it in a fuller voice.', ''];
+      let words = 0, body = wm ? wm[3].split(/\n{2,}/).map(x => x.trim()).filter(Boolean) : [];
+      const isHead = x => x.length <= 60 && !/[.!?:;,]$/.test(x) && x.split(/\s+/).length <= 8 && !/\n/.test(x);
+      let first = true;
+      for (let i = 0; i < body.length && words < maxWords; i++) {
+        const b = body[i];
+        if (isHead(b) && i + 1 < body.length && !isHead(body[i + 1])) { out.push('## ' + b, ''); continue; }
+        if (isHead(b)) continue;
+        if (first) { out.push('## Overview', ''); first = false; }
+        out.push(b, ''); words += (b.match(/\S+/g) || []).length;
+      }
+      if (srcs.length) { out.push('## More from the web', ''); srcs.forEach(x => out.push('- **' + clip(x.t, 90) + '**: ' + clip(x.x, 300) + ' (' + x.u + ')')); out.push(''); }
+      out.push('## Sources', '', '| # | Source | Link |', '| --- | --- | --- |');
+      let n = 0; if (wm) out.push('| ' + (++n) + ' | Wikipedia: ' + clip(wm[1], 80) + ' | ' + wm[2] + ' |');
+      srcs.forEach(x => out.push('| ' + (++n) + ' | ' + clip(x.t, 80) + ' | ' + x.u + ' |'));
+      return 'Here it is. I built it straight from the sources because no engine returned the essay in time.\n<artifact type="' + type + '" title="' + clip(title, 70).replace(/"/g, '') + (type == 'pdf' ? '.pdf' : '.md') + '">\n' + out.join('\n') + '\n</artifact>';
+    } catch (e) { return ''; }
+  }
   // V1.10.18-p12 Music Brain: a lyrics request can never skip the tool (the model would write them from memory and get them wrong).
   const MB = window.EmberMusicBrain;
   if (MB && MB.isOn() && MB.looksLikeAsk(lastAsk) && !calls.some(c => /^(music_lyrics|get_lyrics)$/.test(c.tool))) {
@@ -391,6 +425,7 @@ async function resolveAddonCalls(text, L, route) {
   // V1.9.7: a reply that says it searched / browsed / downloaded when NO tool ran is a lie. Give the model one chance to do it for real, else say so honestly.
   const FAKE = /\b(?:i(?:'ve| have|'ll| will)?\s+(?:just\s+|now\s+)?(?:searched|looked(?: it| that| this)? up|googled|browsed|scraped|fetched|pulled up|went (?:on|to) the (?:web|internet)|visited|downloaded|queued|started (?:the |your )?download|saved (?:it|that|this|the (?:song|track|playlist)))|checked (?:the )?(?:web|internet|site|page|link)|(?:the )?download(?:ing)?(?: has| is| just)? (?:started|underway|queued|complete|done|finished)|(?:it'?s|they'?re) (?:now )?(?:downloading|saved to))/i;
   if (!calls.length) {
+    if (isFile && !stripTags(cur)) { const lf = localDoc(); if (lf) return lf; }
     if ((route && route.webRead) || !FAKE.test(stripTags(cur)) || Safety.lastLevel() >= 3) return stripTags(cur) || text;
     const base = Persona.sentMsgs(conv, S).map(x => ({ role: x.r == 'u' ? 'user' : 'assistant', content: Persona.body(x) }));
     if (base.length && base[0].role == 'assistant') base.unshift({ role: 'user', content: '(we are picking the conversation back up)' });
@@ -415,7 +450,7 @@ async function resolveAddonCalls(text, L, route) {
   const docRetry = async () => {
     if (artifactBudget <= 450 || verbatim.length || Safety.lastLevel() >= 3) return '';
     try {
-      if (window.EmberTimeline) window.EmberTimeline.note('The first try came back empty. Writing the file directly');
+      if (window.EmberTimeline) window.EmberTimeline.note('Writing the file directly, no tools needed');
       const base = Persona.sentMsgs(conv, S).map(x => ({ role: x.r == 'u' ? 'user' : 'assistant', content: Persona.body(x) }));
       if (base.length && base[0].role == 'assistant') base.unshift({ role: 'user', content: '(we are picking the conversation back up)' });
       base.push({ role: 'user', content: '[SYSTEM CHECK, not from him: no tools are available now. Write the complete requested file now as ONE <artifact type="..." title="..."> block, using only what you know and any web evidence already given. Do not reply with a tool_call block, and do not talk about repositories or code.]' });
@@ -424,6 +459,12 @@ async function resolveAddonCalls(text, L, route) {
       return stripTags(String(rr.text || ''));
     } catch (e) { return ''; }
   };
+  if (isFile && calls.length && !hasArt(cur) && !calls.some(c => /^(music_lyrics|get_lyrics)$/.test(c.tool))) {
+    // V1.10.54: the engine answered a file request with a tool call. The evidence is already in the prompt, so write the file now, no tool loop.
+    const direct = await docRetry();
+    if (direct && (hasArt(direct) || direct.length > 300)) return direct;
+    const lf = localDoc(); if (lf) return lf;
+  }
   const rounds = []; // V1.9.19: every tool call made this turn, oldest first — feeds the RECENT ACTIONS block below
   const seenKeys = new Set();
   for (let round = 0; round < 4 && calls.length; round++) {
@@ -461,10 +502,10 @@ async function resolveAddonCalls(text, L, route) {
       const sys = Safety.wrapSystem(Persona.buildSystem({ S, mem, conv, deep: L.deep, lane: L.lane, noTools: last, noAmbient: Safety.lastLevel() >= 3, uiState: uiStateBlock(), actionHistory: historyLines(rounds) }), Safety.lastLevel());
       const synth = await Prov.run(L.lane, Object.assign({ system: sys + (artifactBudget > 450 ? '\nDELIVERABLE OVERRIDE: the user requested a file. Ignore sentence limits; include complete artifact blocks with the requested content, not just a summary. The no-raw-data instruction means do not dump tool logs; it does not prohibit requested JSON/CSV/code artifacts.' : ''), messages: msgs, temp: 0.85, max: artifactBudget, tools: last ? null : toolCatalog() }, route ? { routeProvider: route.provider, routeModel: route.model } : {}));
       cur = String(synth.text || '');
-    } catch (e) { return withVerbatim(stripTags(cur) || await docRetry() || 'I tried, but the add-on came back empty.', verbatim); }
+    } catch (e) { return withVerbatim(stripTags(cur) || await docRetry() || localDoc() || 'I tried, but the add-on came back empty.', verbatim); }
     calls = last ? [] : parseCalls(cur);
   }
-  return withVerbatim(stripTags(cur) || (verbatim.length ? 'Here it is.' : (await docRetry() || 'I tried, but the add-on came back empty.')), verbatim);
+  return withVerbatim(stripTags(cur) || (verbatim.length ? 'Here it is.' : (await docRetry() || localDoc() || 'I tried, but the add-on came back empty.')), verbatim);
 }
 const REPLY_MS = 100000;
 async function reply(o) {
@@ -476,21 +517,19 @@ async function reply(o) {
   const L = o.force ? { lane: 'deep', deep: true } : laneFor();
   const TLn = window.EmberTimeline; // V1.9.35: richer steps in the thinking card
   try { window.dispatchEvent(new CustomEvent('ember-turn-start', { detail: { lane: L.lane } })); } catch (_) { /* no listener */ }
-  if (TLn && TLn.step) { // V1.9.78: every line below is read from the app's real state at send time, nothing is canned
+  if (TLn && TLn.step) { // V1.10.56: the opening lines come from ember_thoughts.js (built from this message; app-state lines only when they changed). The old fixed lines remain as the fallback.
     try {
-      const lu = [...conv.msgs].reverse().find(m => m.r == 'u'), wc = lu ? (String(lu.t || '').trim().match(/\S+/g) || []).length : 0;
-      TLn.step('msg', 'Reading your message · ' + wc + ' word' + (wc == 1 ? '' : 's'), 'r1');
-      TLn.step('bolt', L.deep ? 'Deep lane: careful engines first' : 'Quick lane: fast engines first', 'r2');
-      const nf = mem && Array.isArray(mem.facts) ? mem.facts.length : 0;
-      TLn.step('brain', 'Memory: ' + nf + ' saved fact' + (nf == 1 ? '' : 's') + ' · ' + conv.msgs.length + ' message' + (conv.msgs.length == 1 ? '' : 's') + ' in this chat', 'r3');
-      const lvl = Safety.lastLevel(); TLn.step('shield', lvl >= 2 ? 'Safety level in this chat: ' + lvl + ' (care mode)' : 'Safety level in this chat: calm', 'r3b');
       const chips = [...document.querySelectorAll('#plusChips > *')].map(x => x.textContent.replace(/[×✕]/g, '').trim()).filter(Boolean);
-      if (S.termuxMode) chips.push('Termux Mode');
-      TLn.step(chips.some(c => /device|termux/i.test(c)) ? 'termux' : chips.some(c => /web/i.test(c)) ? 'globe' : 'files', chips.length ? 'Switched on: ' + chips.join(', ') : 'No extra tools switched on', 'r4');
       let gh = 0; try { gh = window.EmberGithub && window.EmberGithub.token() ? 1 : 0; } catch (_) { gh = 0; }
-      if (gh) TLn.step('github', 'Knowledge Brain Repo connected', 'r4b');
       const pin = Prov.getPinned(), usable = Prov.route(L.lane).filter(id => (Prov.keys()[id] || []).some(e => !e.bad));
-      TLn.step('egg', pin ? 'Engine: ' + Prov.label(pin) + ' (pinned)' : usable.length ? 'Route: ' + usable.map(id => Prov.label(id)).join(' → ') : 'Route: Free Mode (no keys saved)', 'r5');
+      if (window.EmberThoughts && window.EmberThoughts.build) {
+        window.EmberThoughts.build({ msgs: conv.msgs, deep: !!L.deep, chips, termux: !!S.termuxMode, github: !!gh, memFacts: mem && Array.isArray(mem.facts) ? mem.facts.length : 0, safety: Safety.lastLevel(), taskGate: window.EmberTaskGate, pinned: pin ? Prov.label(pin) : '', route: usable.map(id => Prov.label(id)) })
+          .forEach(x => TLn.step(x.ic, x.text, x.key));
+      } else {
+        const lu = [...conv.msgs].reverse().find(m => m.r == 'u'), wc = lu ? (String(lu.t || '').trim().match(/\S+/g) || []).length : 0;
+        TLn.step('msg', 'Reading your message · ' + wc + ' word' + (wc == 1 ? '' : 's'), 'r1');
+        TLn.step('egg', pin ? 'Engine: ' + Prov.label(pin) + ' (pinned)' : usable.length ? 'Route: ' + usable.map(id => Prov.label(id)).join(' → ') : 'Route: Free Mode (no keys saved)', 'r5');
+      }
     } catch (_) { /* the card is a view; it never blocks the reply */ }
   }
   // Read-first is an actual gate inside the reply try/catch, before any model or streaming call.
@@ -1056,7 +1095,7 @@ $('kList').addEventListener('toggle', e => {
 window.emberKeysReset = () => { if (keyDetailId !== null) { keyDetailId = null; renderKeys(); } };
 
 // ---------- V1.6.1: Get Key buttons ----------
-const KEY_LINKS = { openrouter:'https://openrouter.ai/settings/keys', plugsky:'https://plugsky.com/dashboard', longcat:'https://longcat.chat/platform', groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', anthropic: 'https://console.anthropic.com/settings/keys' };
+const KEY_LINKS = { openrouter:'https://openrouter.ai/settings/keys', plugsky:'https://plugsky.com/dashboard', groq: 'https://console.groq.com/keys', mistral: 'https://console.mistral.ai/api-keys', gemini: 'https://aistudio.google.com/apikey', cohere: 'https://dashboard.cohere.com/api-keys', anthropic: 'https://console.anthropic.com/settings/keys' };
 const SCRAPE_LINKS = { firecrawl: 'https://www.firecrawl.dev/app/api-keys', browserless: 'https://www.browserless.io/', scraperapi: 'https://www.scraperapi.com/', scraperbee: 'https://app.scrapingbee.com/account/manage', zenrows: 'https://app.zenrows.com/builder', tavily: 'https://app.tavily.com/home', serpapi: 'https://serpapi.com/manage-api-key', brightdata: 'https://brightdata.com/cp', sting: '', octoparse: 'https://www.octoparse.com/' };
 function paintGetKeyRow(el, links) { if (!el) return; el.innerHTML = Object.keys(links).filter(k => links[k]).map(k => '<button class="btn g" data-link="' + esc(links[k]) + '" style="width:auto;padding:7px 12px;font-size:12px">' + (Prov.CFG[k] ? Prov.CFG[k].name : (window.EmberScraper && window.EmberScraper.LABEL[k]) || k) + ' ↗</button>').join(''); }
 document.addEventListener('click', e => { const b = e.target.closest('[data-link]'); if (b) window.open(b.dataset.link, '_blank', 'noopener'); });

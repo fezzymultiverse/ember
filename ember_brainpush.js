@@ -93,13 +93,47 @@
     } finally { busy = false; }
   }
   // Read-only repository search (GitHub /search/repositories). Never installs or runs what it finds.
-  async function search(query, page) {
-    const q = String(query || '').trim().slice(0, 200); if (!q) throw new Error('Search words are required.');
-    const pg = Math.max(1, Math.min(34, Number(page) || 1));
-    const r = await G.managerRequest('/search/repositories?per_page=20&page=' + pg + '&q=' + encodeURIComponent(q));
+  // 1.10.56: plain-language searches work. GitHub ANDs every word, so "termux script that downloads google results" matched nothing.
+  // The words are cleaned (filler dropped), then a short cascade runs: all words -> any of the words -> the strongest two -> the owner name.
+  // Results from every step are merged (best first, no duplicates). Pasting owner/repo or a GitHub qualifier (topic:, user:, language:) is passed through as typed.
+  const FILLER = new Set('a an the and or of for to in on at by with without from into onto about around over under is are was were be been being am do does did doing done i me my mine we us our you your it its this that these those there here can could would should will shall may might must please pls kindly just really very also still some any all every each more most much many lot lots want wants wanted need needs needed like likes looking look looks find finds finding search searches searching show shows give gives get gets got have has had having make makes made use uses using used help helps tell tells know knows think thinks something anything everything someone anyone best good great nice cool new old top repo repos repository repositories github gh project projects stuff thing things one ones way ways how what which who whom whose why when where then than so if but not no yes ok okay hey hi hello ember google'.split(' '));
+  const QUAL = /(?:^|\s)(?:user|org|owner|repo|topic|language|lang|stars|forks|size|pushed|created|license|is|in|fork|archived|mirror|template|followers|good-first-issues|help-wanted-issues):\S/i;
+  const words = q => (String(q).toLowerCase().match(/[a-z0-9][a-z0-9+#._-]*/g) || []).map(w => w.replace(/^[._-]+|[._-]+$/g, '')).filter(w => w.length > 1 && !FILLER.has(w));
+  function plan(raw) {
+    const q = String(raw || '').trim().slice(0, 200), out = [];
+    const add = (query, sort, label) => { if (query && !out.some(x => x.query === query)) out.push({ query, sort: sort || '', label }); };
+    if (/^[\w.-]+\/[\w.-]+$/.test(q)) { add('repo:' + q, '', 'exact repo'); add(q.replace('/', ' '), '', 'owner and name words'); return out; }
+    if (QUAL.test(q) || /["]/.test(q)) { add(q, '', 'as typed'); return out; }
+    let w = []; words(q).forEach(x => { if (!w.includes(x)) w.push(x); }); w = w.slice(0, 6);
+    if (!w.length) { add(q, '', 'as typed'); return out; }
+    add(w.join(' '), '', 'all words');
+    if (w.length > 1) add(w.slice(0, 5).join(' OR '), 'stars', 'any of the words');
+    if (w.length > 2) add(w.slice(0, 2).join(' '), '', 'first two words');
+    if (w.length === 1) add('user:' + w[0], '', 'owner name');
+    return out;
+  }
+  const mapRows = j => (j.items || []).map(x => ({ repo: x.full_name, description: x.description || '', url: x.html_url, stars: x.stargazers_count || 0, lang: x.language || '', private: !!x.private, license: x.license && x.license.spdx_id || '' }));
+  async function one(step, pg) {
+    const r = await G.managerRequest('/search/repositories?per_page=30&page=' + pg + (step.sort ? '&sort=' + step.sort + '&order=desc' : '') + '&q=' + encodeURIComponent(step.query));
     if (!r.ok) throw new Error(r.error || 'Search failed.');
-    const j = r.json || {};
-    return { total: j.total_count || 0, page: pg, more: pg * 20 < Math.min(1000, j.total_count || 0), repositories: (j.items || []).map(x => ({ repo: x.full_name, description: x.description || '', url: x.html_url, stars: x.stargazers_count || 0, lang: x.language || '', private: !!x.private, license: x.license && x.license.spdx_id || '' })) };
+    const j = r.json || {}; return { total: j.total_count || 0, rows: mapRows(j) };
+  }
+  let lastPlan = { raw: '', steps: [] };
+  async function search(query, page) {
+    const raw = String(query || '').trim().slice(0, 200); if (!raw) throw new Error('Search words are required.');
+    const pg = Math.max(1, Math.min(34, Number(page) || 1));
+    let steps;
+    if (pg > 1 && lastPlan.raw === raw && lastPlan.steps.length) steps = lastPlan.steps; else steps = plan(raw);
+    const seen = new Set(), rows = []; let total = 0, more = false, firstErr = null, used = [], tried = 0;
+    for (const st of steps) {
+      if (pg === 1 && rows.length >= 15) break;
+      let r; try { r = await one(st, pg); tried++; } catch (e) { if (!firstErr) firstErr = e; continue; }
+      used.push(st); total = Math.max(total, r.total); if (pg * 30 < Math.min(1000, r.total)) more = true;
+      r.rows.forEach(x => { const k = x.repo.toLowerCase(); if (!seen.has(k)) { seen.add(k); rows.push(x); } });
+    }
+    if (!tried && firstErr) throw firstErr;
+    lastPlan = { raw, steps: used.length ? used : steps };
+    return { total: Math.max(total, rows.length), page: pg, more, repositories: rows, queries: used.map(x => x.query) };
   }
   async function find(query, n) { const r = await search(query, 1); return r.repositories.slice(0, Math.max(1, Math.min(MAX_REPOS, n || 5))); }
 

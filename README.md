@@ -1,7 +1,5 @@
-# Ember 1.10.55
+# Documentation index — 1.10.17
 
-Companion app (PWA, Android via Capacitor). All documentation is in one file: **[DOCS.md](DOCS.md)**. Release notes: [CHANGELOG.md](CHANGELOG.md).
+Start with ../README.md, then FEATURES.md for UI/chat entry points, ARCHITECTURE.md for module ownership, DATA_FLOW.md for event/result flow, MEMORY.md for storage, ANDROID_PERMISSIONS.md for native registration, TESTING.md for actual evidence and NEEDS_APPROVAL.md for blockers. WIRING_MAP.md and the adjacent JSON registries are the exhaustive file/site inventory.
 
-Run locally: Node 20+, `npm ci --legacy-peer-deps`, `npm run serve`, open the shown address. The app lives in `www/`; native Android pieces in `android_patch/`; tests in `tests/`; old evidence in `dev/` and `docs/history/`.
-
-Status: release candidate, not all-green. See DOCS.md Part 12 and Part 13.
+Current release status is **candidate / acceptance incomplete**. Historical plans and release claims in history/ are preserved evidence only and may describe deliberately removed behavior; they do not override the current feature catalogue. Some untouched specialist guides still use older version names: follow FEATURES.md for current entry points and verify against the named implementation.

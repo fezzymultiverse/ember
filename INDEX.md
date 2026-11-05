@@ -58,3 +58,5 @@ These files are retained verbatim or copied from supplied V1.10.16. Their featur
 - [baseline-v1.10.16/docs/TESTING.md](baseline-v1.10.16/docs/TESTING.md)
 - [docs-CHANGELOG.md](docs-CHANGELOG.md)
 - [docs-V1_9_0_PLAN.md](docs-V1_9_0_PLAN.md)
+
+Note: the individual RELEASE_*.txt, CHANGELOG_V*.md and similar release-note files that used to be listed here are now merged into the root CHANGELOG.md (Release notes archive).

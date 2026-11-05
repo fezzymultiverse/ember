@@ -2,69 +2,25 @@
 <html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <title>Ember</title>
-<style id="emberBoot">
-html:not(.ember-ready){background:#08090c}html:not(.ember-ready) #app{visibility:hidden}
-#emberBootScreen{position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,#29190f 0%,#101014 36%,#08090c 70%);color:#f7f2ec;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;transition:opacity .32s ease,visibility .32s ease}
-#emberBootScreen::before{content:"";position:absolute;inset:22px;border:1px solid #ffffff0b;border-radius:24px;pointer-events:none}
-#emberBootScreen .eb-top{position:absolute;top:max(48px,env(safe-area-inset-top));left:48px;font-size:10px;font-weight:600;letter-spacing:3px;color:#a69c91}
-#emberBootScreen .eb-content{text-align:center;width:min(340px,80vw);position:relative}
-#emberBootScreen .eb-mark{position:relative;display:grid;place-items:center;margin:0 auto 34px;width:118px;height:118px}
-#emberBootScreen .eb-mark::before{content:"";position:absolute;inset:-16px;border-radius:50%;border:1px solid #ff9b3829;box-shadow:0 0 70px #ff6a0025;animation:emberBootBreathe 2.8s ease-in-out infinite}
-#emberBootScreen img{width:100px;height:100px;border-radius:24px;filter:drop-shadow(0 12px 26px #0008)}
-#emberBootScreen h1{margin:0;font-weight:500;font-size:48px;line-height:1.15;letter-spacing:-2px}
-#emberBootScreen .eb-tag{margin:14px 0 38px;color:#b8aaa0;font-size:13px;letter-spacing:.5px}
-#emberBootScreen .eb-track{height:2px;margin:0 25px 18px;background:#ffffff12;overflow:hidden;border-radius:4px}
-#emberBootScreen .eb-track span{display:block;width:38%;height:100%;background:linear-gradient(90deg,transparent,#ff8535,#ffd3a0);animation:emberBootSweep 1.5s ease-in-out infinite}
-#emberBootStatus{font-size:11px;letter-spacing:.8px;color:#b5a89c;min-height:18px}
-#emberBootScreen .eb-bottom{position:absolute;bottom:max(48px,env(safe-area-inset-bottom));left:30px;right:30px;display:flex;align-items:center;justify-content:space-between;font-size:9px;letter-spacing:2px;color:#8c8179}
-#emberBootScreen .eb-dot{display:inline-block;width:5px;height:5px;margin-right:9px;background:#f28b42;border-radius:50%;box-shadow:0 0 12px #f28b4266}
-#emberBootSkip{border:1px solid #ffffff18;border-radius:20px;padding:8px 12px;background:transparent;color:#c6bbb2;font:inherit;letter-spacing:1px;cursor:pointer}
-#emberBootSkip:focus-visible{outline:2px solid #ff9b55;outline-offset:4px}
-html.ember-ready #emberBootScreen{opacity:0;visibility:hidden;pointer-events:none}
-@keyframes emberBootSweep{from{transform:translateX(-120%)}to{transform:translateX(370%)}}
-@keyframes emberBootBreathe{50%{transform:scale(1.07);opacity:.5}}
-@media(max-width:480px){#emberBootScreen .eb-top{top:46px;left:40px}#emberBootScreen::before{inset:16px}#emberBootScreen h1{font-size:44px}}
-@media(prefers-reduced-motion:reduce){#emberBootScreen,#emberBootScreen *{animation:none!important;transition:none!important}#emberBootScreen .eb-track span{width:100%}}
-</style>
-<noscript><style>#emberBootScreen{display:none}html:not(.ember-ready) #app{visibility:visible}</style></noscript>
-<script>(function(){
-var d=document,started=Date.now(),done=false,fallback,finishTimer;
-function status(text){var el=d.getElementById('emberBootStatus');if(el)el.textContent=text;}
-function finish(){if(done)return;done=true;clearTimeout(fallback);clearTimeout(finishTimer);d.documentElement.classList.add('ember-ready');var screen=d.getElementById('emberBootScreen');if(screen){screen.setAttribute('aria-hidden','true');screen.setAttribute('aria-busy','false');screen.inert=true;}window.dispatchEvent(new Event('ember-boot-ready'));}
-var MIN=5000,MAX=9000,ready=false,msgs=['Starting Ember','Loading engines','Checking your keys','Warming the free models','Opening your workspace'];
-var stage=setInterval(function(){if(done||ready){clearInterval(stage);return;}status(msgs[Math.min(msgs.length-1,Math.floor((Date.now()-started)/1100))]);},250);
-function loaded(){finishTimer=setTimeout(function(){ready=true;status('Workspace ready');setTimeout(finish,500);},Math.max(0,MIN-(Date.now()-started)));}
-d.addEventListener('click',function(e){if(e.target && e.target.id==='emberBootSkip')finish();});
-window.addEventListener('load',loaded,{once:true});window.addEventListener('pageshow',function(e){if(e.persisted)finish();});fallback=setTimeout(finish,MAX);
-})();</script>
+<style id="emberBoot">html:not(.ember-ready){background:#000}html:not(.ember-ready) body{visibility:hidden}</style>
+<script>(function(){var d=document,r=function(){d.documentElement.classList.add("ember-ready")};window.addEventListener("load",function(){requestAnimationFrame(function(){requestAnimationFrame(r)})});setTimeout(r,2000);})();</script>
 <meta name="theme-color" content="#000000">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="ember-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="ember_v79.css"><link rel="stylesheet" href="ember_v80.css"><link rel="stylesheet" href="ember_v81.css"><link rel="stylesheet" href="ember_v82.css"><link rel="stylesheet" href="ember_v83.css"><link rel="stylesheet" href="ember_acc.css"><link rel="stylesheet" href="ember_engines.css">
-<link rel="stylesheet" href="ember_cc_widget.css?v=1.10.5"><link rel="stylesheet" href="ember_blue.css"><link rel="stylesheet" href="ember_v89.css"><link rel="stylesheet" href="ember_command_center.css"><link rel="stylesheet" href="ember_routing.css"><link rel="stylesheet" href="ember_workspace.css?v=repo-console-1"><link rel="stylesheet" href="ember_v96.css?v=1.9.101"><link rel="stylesheet" href="ember_v96_ui.css?v=1.10.7"><link rel="stylesheet" href="ember_hub.css?v=1.10.12-panel1"><link rel="stylesheet" href="ember_v104.css?v=1.10.8"><link rel="stylesheet" href="ember_v108.css?v=1.10.9"><link rel="stylesheet" href="ember_v110.css?v=1.10.10"><link rel="stylesheet" href="ember_menu.css?v=1.10.25">
-<link rel="stylesheet" href="ember_plugins.css?v=1.10.18-p11">
-<link rel="stylesheet" href="ember_panel.css?v=1.10.20-nopanel">
-<link rel="stylesheet" href="ember_cockpit.css?v=1.10.18-p10">
+<link rel="stylesheet" href="ember_cc_widget.css?v=1.10.5"><link rel="stylesheet" href="ember_blue.css"><link rel="stylesheet" href="ember_v89.css"><link rel="stylesheet" href="ember_command_center.css"><link rel="stylesheet" href="ember_routing.css"><link rel="stylesheet" href="ember_workspace.css?v=repo-console-1"><link rel="stylesheet" href="ember_v96.css?v=1.9.101"><link rel="stylesheet" href="ember_v96_ui.css?v=1.10.7"><link rel="stylesheet" href="ember_hub.css?v=1.10.12-panel1"><link rel="stylesheet" href="ember_v104.css?v=1.10.8"><link rel="stylesheet" href="ember_v108.css?v=1.10.9"><link rel="stylesheet" href="ember_v110.css?v=1.10.10"><link rel="stylesheet" href="ember_menu.css?v=1.10.11">
+<link rel="stylesheet" href="ember_plugins.css">
+<link rel="stylesheet" href="ember_panel.css?v=1.10.12-panel1">
+<link rel="stylesheet" href="ember_cockpit.css?v=1.10.15">
 <link rel="stylesheet" href="ember_keyless.css?v=1.10.16">
-<link rel="stylesheet" href="ember_right_panel.css?v=1.10.18-p7">
-<link rel="stylesheet" href="ember_gitbrain.css?v=1.10.27">
-<link rel="stylesheet" href="ember_boot.css?v=1.10.25">
-<link rel="stylesheet" href="ember_v128.css?v=1.10.28"><link rel="stylesheet" href="ember_artbox.css?v=1.10.30"><link rel="stylesheet" href="ember_v129.css?v=1.10.32"><link rel="stylesheet" href="ember_document_engine.css?v=1.10.40">
-<link rel="stylesheet" href="ember_chat_polish.css?v=1.10.41"><link rel="stylesheet" href="ember_visuals.css?v=1.10.42">
-<link rel="stylesheet" href="ember_finish.css?v=1.10.51">
-</head><body><script src="ember_boot.js?v=1.10.25"></script>
-<section id="emberBootScreen" aria-label="Ember is starting" aria-busy="true">
-  <div class="eb-top">EMBER / YOUR WORKSPACE</div>
-  <div class="eb-content"><div class="eb-mark"><img src="ember-icon.svg" alt="" width="100" height="100"></div><h1>Ember<span style="color:#ff9045">.</span></h1><p class="eb-tag">A spark. A thought. Something more.</p><div class="eb-track" aria-hidden="true"><span></span></div><div id="emberBootStatus" role="status" aria-live="polite">Starting Ember</div></div>
-  <div class="eb-bottom"><span><i class="eb-dot" aria-hidden="true"></i>MADE FOR YOUR MOMENT</span><button id="emberBootSkip" type="button">Continue</button></div>
-</section>
-
+<link rel="stylesheet" href="ember_right_panel.css?v=1.10.18-p1">
+</head><body>
 <div id="app">
 <header>
 <div class="hl"><button class="hb" id="bHist" aria-label="Chat history">☰</button><button class="hb" id="bProv" aria-label="Providers" aria-expanded="false" title="Providers: live engine status"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 2.5v3M12 2.5v3M15 2.5v3M9 18.5v3M12 18.5v3M15 18.5v3M2.5 9h3M2.5 12h3M2.5 15h3M18.5 9h3M18.5 12h3M18.5 15h3"/></svg></button></div>
 <div class="who"><b id="pName">Ember</b><span class="ember-signal" aria-label="Ember active"><i></i><i></i><i></i></span><button id="engs" class="engpill" aria-label="Engine status. Tap to open the Keys tab"></button></div>
-<div class="hr"><button id="bNewTop" class="hb" type="button" aria-label="New chat" title="New chat">＋</button><button id="bBrowserTop" class="hb" aria-label="Browser" title="Browser">🌐</button><button id="bActionMenu" class="hb" aria-label="Open actions" aria-haspopup="menu" aria-expanded="false" title="Actions">✦<span class="act-caret">▾</span></button><div id="headerActionsMenu" class="header-actions-menu hidden" role="menu" aria-label="Ember actions"><button id="bCommandCenter" class="action-item" role="menuitem" aria-label="Open Ember Command Centre" aria-controls="emberCommandCenter" aria-expanded="false"><span class="action-emoji">◫</span><span class="action-txt"><b>Ember Command Centre</b><small>Live model requests, routing and workspace status</small></span></button><button id="bKeysMenu" class="action-item" role="menuitem" aria-label="API keys and providers, opens to the right"><span class="action-emoji">⛁</span><span class="action-txt"><b>API Keys</b><small>Your engine keys, providers and which one answers</small></span></button><button id="bGlobe" class="action-item" role="menuitem" aria-label="Browser"><span class="action-emoji">🌐</span><span class="action-txt"><b>Browser</b><small>Built-in browser to search and read pages</small></span></button><button id="bTermux" class="action-item" role="menuitem" aria-label="Open the Termux tab"><span class="action-emoji">💻</span><span class="action-txt"><b>Termux</b><small>Termux mode, pen-test persona and the built-in terminal</small></span></button><button id="bSet" class="action-item" role="menuitem" aria-label="Settings"><span class="action-emoji">⚙️</span><span class="action-txt"><b>Settings</b><small>Persona, memory, engines, GitHub, music, permissions, backup</small></span></button></div></div>
+<div class="hr"><button id="bBrowserTop" class="hb" aria-label="Browser" title="Browser">🌐</button><button id="bActionMenu" class="hb" aria-label="Open actions" aria-haspopup="menu" aria-expanded="false" title="Actions">✦<span class="act-caret">▾</span></button><div id="headerActionsMenu" class="header-actions-menu hidden" role="menu" aria-label="Ember actions"><button id="bCommandCenter" class="action-item" role="menuitem" aria-label="Open Ember Command Centre" aria-controls="emberCommandCenter" aria-expanded="false"><span class="action-emoji">◫</span><span class="action-txt"><b>Ember Command Centre</b><small>Live model requests, routing and workspace status</small></span></button><button id="bKeysMenu" class="action-item" role="menuitem" aria-label="API keys and providers, opens to the right"><span class="action-emoji">⛁</span><span class="action-txt"><b>API Keys</b><small>Your engine keys, providers and which one answers</small></span></button><button id="bGlobe" class="action-item" role="menuitem" aria-label="Browser"><span class="action-emoji">🌐</span><span class="action-txt"><b>Browser</b><small>Built-in browser to search and read pages</small></span></button><button id="bTermux" class="action-item" role="menuitem" aria-label="Open the Termux tab"><span class="action-emoji">💻</span><span class="action-txt"><b>Termux</b><small>Termux mode, pen-test persona and the built-in terminal</small></span></button><button id="bSet" class="action-item" role="menuitem" aria-label="Settings"><span class="action-emoji">⚙️</span><span class="action-txt"><b>Settings</b><small>Persona, memory, engines, GitHub, music, permissions, backup</small></span></button></div></div>
 <div id="provDrop" class="provdrop hidden" role="menu" aria-label="Providers"></div>
 </header>
 <div id="projBadge" class="projbadge hidden"><button id="projBadgeOpen" class="pb-main" aria-label="Open the Projects tab"><span class="pb-ico">📁</span><span id="projBadgeName"></span></button><button id="projBadgeX" class="pb-x" aria-label="Close the open project" title="Close project">✕</button></div>
@@ -87,11 +43,10 @@ window.addEventListener('load',loaded,{once:true});window.addEventListener('page
   </div>
 </section>
 <footer class="comp">
-<div id="emberProviderFooter" class="ember-provider-footer" role="status" aria-live="polite" aria-atomic="true"><span class="epf-orbit" aria-hidden="true"></span><span id="emberProviderText">Provider activity · ready</span><button type="button" id="emberProviderPause" aria-label="Pause provider history rotation" aria-pressed="false" hidden>Pause</button></div>
 <div class="mrow"><button id="bModes" class="mpill" aria-haspopup="menu" aria-expanded="false" aria-label="Modes: Chill, Sharp or Deep"><span class="mp-ic" aria-hidden="true">◐</span><span>Modes</span><b id="modesLbl">Chill</b><span class="mp-ch" aria-hidden="true">▾</span></button><div class="modes mpop hidden" id="modes" role="menu" aria-label="Modes"><button data-m="chill" role="menuitemradio">Chill<small>Relaxed, short and easy</small></button><button data-m="sharp" role="menuitemradio">Sharp<small>Tight, direct, no padding</small></button><button data-m="deep" role="menuitemradio">Deep<small>Slower, careful, longer</small></button></div><button id="bDocsQuick" aria-label="Open Documents: attach a file or note" title="Documents: attach a file or note">📎 <span>Docs</span></button></div>
 <div class="tools"><button id="bPasteIn" aria-label="Paste into the message box">📋 Paste</button><button id="bCopyIn" aria-label="Copy the message box text">⧉ Copy</button><button id="bDevice">📟 Device</button><button id="bReact">🧠 Reasoning</button><button id="bGraph">🕸 Graph</button><button id="bSpark">✨ Spark</button><button id="bDeep">💡 Go deeper</button><button id="bPriv">🔓 Normal</button></div>
 <div id="plusChips" class="pchips hidden" aria-live="polite"></div>
-<div class="row"><div id="plusMenu" class="pmenu hidden" role="menu" aria-label="Add to message"></div><button id="bPlus" class="plus" aria-label="Add: tools and attachments" aria-haspopup="menu" aria-expanded="false" title="Add">+</button><textarea id="inp" rows="1" spellcheck="false" autocorrect="off" placeholder="Say anything…" enterkeyhint="send"></textarea><div class="side"><button id="bTalk" aria-label="Talk mode: hands-free conversation" aria-pressed="false" title="Talk mode: just talk. It sends when you stop, reads the reply aloud, then listens again. Tap again to stop.">🗣</button><button id="bMic" aria-label="Dictate: talk and your words are typed here" aria-pressed="false" title="Dictate: tap, talk, tap again. Your words are typed into the message box.">🎤</button><button id="bStop" class="hidden" aria-label="Stop generating" title="Stop response"></button><button id="bSend" aria-label="Send">➤</button></div></div>
+<div class="row"><div id="plusMenu" class="pmenu hidden" role="menu" aria-label="Add to message"></div><button id="bPlus" class="plus" aria-label="Add: tools and attachments" aria-haspopup="menu" aria-expanded="false" title="Add">+</button><textarea id="inp" rows="1" spellcheck="false" autocorrect="off" placeholder="Say anything…" enterkeyhint="send"></textarea><div class="side"><button id="bTalk" aria-label="Talk mode: hands-free conversation" aria-pressed="false" title="Talk mode: just talk. It sends when you stop, reads the reply aloud, then listens again. Tap again to stop.">🗣</button><button id="bMic" aria-label="Dictate: talk and your words are typed here" aria-pressed="false" title="Dictate: tap, talk, tap again. Your words are typed into the message box.">🎤</button><button id="bStop" class="hidden" aria-label="Stop generating" title="Stop response">■</button><button id="bSend" aria-label="Send">➤</button></div></div>
 </footer>
 </div>
 
@@ -101,6 +56,21 @@ window.addEventListener('load',loaded,{once:true});window.addEventListener('page
   <div class="ecc-panel-content">
     <section class="ecc-card"><div class="ecc-card-title"><span class="ecc-icon">◈</span><h3>Thought Inspector</h3><span class="ecc-chip">SUMMARY</span></div><p class="ecc-description">Ember’s public three-phase summary, not private internal reasoning.</p><pre id="eccThought" aria-live="polite">No three-phase summary received yet.</pre></section>
     <section class="ecc-card"><div class="ecc-card-title"><span class="ecc-icon ecc-blue">▦</span><h3>Memory Matrix</h3><span id="eccMemoryCount" class="ecc-chip">0</span></div><p class="ecc-description">File excerpts present in the latest observed model request. Not the entire library or repository.</p><ul id="eccMemory"></ul><p id="eccMemoryEmpty" class="ecc-empty">No file excerpts observed in the context window.</p><small id="eccContextStatus">Waiting for a model request.</small></section>
+    <section class="ecc-card" id="eccGitHub" data-gtab="connect" aria-label="GitHub">
+      <div class="ecc-card-title"><span class="ecc-icon">ϟ</span><h3>Repository Cockpit</h3><span class="ecc-chip" id="eccGitChip">—</span></div>
+      <p id="eccRepoSummary" class="ecc-description"></p>
+      <div class="ecc-gtabs" role="tablist" aria-label="Command Centre workflow">
+        <button type="button" role="tab" id="eccGTab_connect" aria-selected="true" data-gtab="connect">1 · Brain</button>
+        <button type="button" role="tab" id="eccGTab_repos" aria-selected="false" data-gtab="repos">2 · Search</button>
+        <button type="button" role="tab" id="eccGTab_build" aria-selected="false" data-gtab="build">3 · Run &amp; Push</button>
+      </div>
+      <div id="repoWorkspace" class="ecc-gbody">
+        <div id="ghCard"><div id="ghHub"></div></div>
+        <div id="repoRunnerFeature"></div>
+        <div id="ghRunnerCard" data-ghp="build"><div class="ct">GitHub Actions Runner</div><div id="ghAdvanced"></div></div>
+        <div class="rr-section" data-ghp="build"><h3>Quick actions</h3><div class="ecc-actions"><button data-ecc-action="build"><span>▶</span><b>Run Build<small>Dispatch the configured build workflow</small></b></button><button data-ecc-action="cache"><span>↻</span><b>Clear Cache<small>Repository read caches only</small></b></button><button data-ecc-action="push"><span>↥</span><b>Push to GitHub<small>Run installed whole-repository sync</small></b></button></div><div class="btnrow"><button class="btn g" id="eccRunnerStatus" type="button">Check runner status</button></div><p id="eccActionStatus" role="status" class="ecc-description">Actions use your Repo Runner configuration. Every step is time-stamped in the Live Terminal.</p></div>
+      </div>
+    </section>
   </div>
 </aside>
 
@@ -110,7 +80,6 @@ window.addEventListener('load',loaded,{once:true});window.addEventListener('page
 <button class="btn" id="bNew">＋ New chat</button>
 <button class="rcbtn" id="hHead" aria-label="Open recent chats"><span class="rci">🕘</span><span class="rct"><b id="hTitle">Recent Chats (0)</b><small>Search, rename, delete</small></span><span class="chev">›</span></button>
 <button class="rcbtn" id="bSitesOpen" aria-label="Open saved sites"><span class="rci">🔖</span><span class="rct"><b>Saved Sites</b><small>Shortcuts the AI can read</small></span><span class="chev">›</span></button>
-<button class="rcbtn" id="bArtOpen" aria-label="Open artifacts"><span class="rci">🧩</span><span class="rct"><b id="artTitle">Artifacts (0)</b><small>Search, filter, open</small></span><i class="art-newdot hidden" id="artDot" aria-hidden="true"></i><span class="chev">›</span></button>
 </div>
 <div class="dpane hidden" id="dp_projects">
 <div id="pjActive" class="pj-active hidden"><span class="pj-dot"></span><span class="pj-an">Open: <b id="pjActiveName"></b></span><button class="btn g" id="pjClose" aria-label="Close the open project">Close</button></div>
@@ -233,10 +202,10 @@ window.addEventListener('load',loaded,{once:true});window.addEventListener('page
 
 
 <div class="card" data-tab="keys"><div class="ct">Paste keys · auto-sort by name</div>
-<p class="hint">Tap <b>Paste &amp; detect</b> to read your clipboard, or paste anything into the box (keys, a note, a doc dump) and tap <b>Detect</b>. Ember works out which key belongs to which provider, saves only the ones you have not added yet, and lists each with its name. <b>Save note</b> keeps the text in the box. Keys stay on this phone.</p>
+<p class="hint">Copy your keys from anywhere and tap <b>Paste &amp; detect</b>. Ember works out which key belongs to which provider, saves only the ones you have not added yet, and lists each with its name. Keys stay on this phone.</p>
 <div class="btnrow"><button class="btn" id="pkGo">Paste &amp; detect</button><button class="btn g" id="pkCopy">Copy named list</button></div>
-<textarea id="pkBox" class="pad" placeholder="Paste keys, a note or a doc dump here, then tap Detect…" spellcheck="false" autocomplete="off"></textarea>
-<div class="btnrow"><button class="btn" id="pkRun">Detect</button><button class="btn g" id="padSave">Save note</button><button class="btn g danger" id="padClear">Clear</button></div>
+<textarea id="pkBox" class="pad" placeholder="Or paste here, then tap Detect…" spellcheck="false" autocomplete="off"></textarea>
+<button class="btn g" id="pkRun">Detect</button>
 <div id="pkOut" class="rep"></div></div>
 
 <div class="card" data-tab="keys"><div class="ct">Engine keys <span id="provNames"></span></div>
@@ -247,13 +216,16 @@ window.addEventListener('load',loaded,{once:true});window.addEventListener('page
 <div id="kList"></div>
 <div class="btnrow"><button class="btn g" id="bCheckAll">Check all</button></div>
 <div class="ct" style="margin-top:14px">Add one by hand</div>
-<div class="btnrow"><select id="kProv"><option value="groq">Groq</option><option value="mistral">Mistral</option><option value="gemini">Gemini</option><option value="cohere">Cohere (Prototype)</option><option value="anthropic">Claude (paid · pin to use)</option><option value="openrouter">OpenRouter</option><option value="plugsky">Plugsky AI</option><option value="longcat">LongCat AI (opt-in · daily quota)</option></select><input type="password" id="kIn" placeholder="Paste a key" autocomplete="off" spellcheck="false"><button class="btn" id="bKAdd" style="width:auto;padding:0 16px">Add</button></div>
+<div class="btnrow"><select id="kProv"><option value="groq">Groq</option><option value="mistral">Mistral</option><option value="gemini">Gemini</option><option value="cohere">Cohere (Prototype)</option><option value="anthropic">Claude (paid · pin to use)</option><option value="openrouter">OpenRouter</option><option value="plugsky">Plugsky AI</option><option value="stability">Stability AI · media only</option></select><input type="password" id="kIn" placeholder="Paste a key" autocomplete="off" spellcheck="false"><button class="btn" id="bKAdd" style="width:auto;padding:0 16px">Add</button></div>
 <p class="hint">More than one key per engine is fine. When one is rate-limited, the next one takes over, then the next engine.</p></div>
 
 
 
 
-
+<div class="card collapsed" data-tab="keys"><div class="ct">Notepad · paste anything, pull the keys out</div>
+<textarea id="padText" class="pad" placeholder="Paste a note, a doc dump, anything with keys buried in it…" spellcheck="false"></textarea>
+<div class="btnrow"><button class="btn" id="padSave">Save note</button><button class="btn g" id="padExtract">Extract keys</button><button class="btn g danger" id="padClear">Clear</button></div>
+<p class="hint" id="padStatus"></p></div>
 
 <div class="card" data-tab="general"><div class="ct">About you</div>
 <label class="lb">Your name</label><input type="text" id="sName" placeholder="What should it call you?">
@@ -405,7 +377,7 @@ window.addEventListener('load',loaded,{once:true});window.addEventListener('page
 <div class="btnrow"><button class="btn" id="bExp">Export backup</button><button class="btn g" id="bImp">Import backup</button></div>
 <input type="file" id="fImp" accept="application/json,.json" hidden>
 <button class="btn g danger" id="bWipe" style="margin-top:10px">Delete everything</button>
-<p class="hint" id="ver">Ember V1.10.36 · Built-in tools only · no keyless third-party APIs</p></div>
+<p class="hint" id="ver">Ember V1.10.18 · The Cockpit Update · Full-screen flat settings · Brain → Search → Queue → Run & Push</p></div>
 </div></section>
 
 <section id="react" class="sheet"><div class="sh"><b>Reasoning</b><button class="hb" id="bRx" aria-label="Close reasoning">✕</button></div>
@@ -571,18 +543,18 @@ window.addEventListener('load',loaded,{once:true});window.addEventListener('page
 
 <div class="modal" id="dlg"><div class="mc"><h2 id="dT"></h2><p id="dX"></p><input type="text" id="dI" class="hidden"><div class="btnrow" style="margin-top:14px"><button class="btn" id="dOk">OK</button><button class="btn g" id="dNo">Cancel</button></div></div></div>
 <div id="toast"></div>
-<script src="ember_taskgate.js?v=1.10.50"></script><script src="store.js"></script><script src="ember_keyscan.js"></script><script src="ember_document_engine.js?v=1.10.40"></script><script src="providers.js?v=1.10.51"></script><script src="ember_media.js"></script><script src="ember_downloads.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js?v=1.10.18-p12"></script><script src="ai_scraper.js?v=1.10.51"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js?v=1.10.18-p12"></script><script src="ember_timeline.js?v=1.10.51"></script><script src="ember_steps.js"></script><script src="ember_artifacts.js?v=1.10.39"></script>
-<script src="ember_deliverables.js?v=1.10.51"></script><script src="ember_panel_layout.js?v=1.10.12-panel1"></script><script src="ember_output_archive.js?v=panel-wired-2"></script><script src="ember_command_center.js?v=panel-wired-2"></script>
-<script src="ember_graphics.js?v=1.10.41"></script><script src="ember_typewriter.js?v=1.10.47"></script><script src="ember_builtins.js?v=1.10.36"></script><script src="ember_keyless_media.js?v=1.10.33"></script><script src="app.js?v=1.10.51"></script><script src="ember_native.js"></script><script src="ai.js?v=panel-wired-2"></script><script src="ember_music_ui.js"></script><script src="ember_getmusic.js"></script><script src="ember_react_ui.js"></script><script src="ember_think_inline.js"></script><script src="ember_device.js?v=1.10.18-p11"></script>
+<script src="store.js"></script><script src="ember_keyscan.js"></script><script src="providers.js"></script><script src="ember_media.js"></script><script src="ember_downloads.js"></script><script src="safety.js"></script><script src="ember_player.js"></script><script src="ember_audd.js"></script><script src="ai_music.js"></script><script src="nine_nine.js"></script><script src="persona.js"></script><script src="ember_schema.js"></script><script src="ember_context.js"></script><script src="ai_docs.js"></script><script src="ai_scraper.js"></script><script src="ai_sites.js"></script><script src="ai_agent.js"></script><script src="ember_engine.js"></script><script src="ember_react.js"></script><script src="ember_timeline.js"></script><script src="ember_steps.js"></script><script src="ember_pdf.js"></script><script src="ember_artifacts.js"></script>
+<script src="ember_deliverables.js"></script><script src="ember_panel_layout.js?v=1.10.12-panel1"></script><script src="ember_output_archive.js?v=panel-wired-2"></script><script src="ember_command_center.js?v=panel-wired-2"></script>
+<script src="app.js?v=panel-wired-2"></script><script src="ember_native.js"></script><script src="ai.js?v=panel-wired-2"></script><script src="ember_music_ui.js"></script><script src="ember_getmusic.js"></script><script src="ember_react_ui.js"></script><script src="ember_think_inline.js"></script><script src="ember_device.js"></script>
 <script src="ember_docs_lib.js"></script>
-<script src="ember_graph.js"></script><script src="ember_github.js?v=panel-wired-2"></script><script src="ember_learn.js"></script>
+<script src="ember_graph.js"></script><script src="ember_github.js?v=panel-wired-2"></script><script src="ember_github_ui.js"></script><script src="ember_repo_runner.js?v=repo-console-1"></script><script src="ember_learn.js"></script>
 <script src="ember_find.js"></script><script src="ember_tasks.js"></script><script src="ember_keys.js"></script>
 <script src="ember_browser.js"></script>
 <script src="ember_term.js"></script>
-<script src="ember_voice.js"></script><script src="ember_lyrics.js"></script><script src="ember_musicbrain.js?v=1.10.18-p12"></script><script src="ember_projects.js"></script><script src="ember_lyric_thoughts.js"></script><script src="ember_prov_ui.js?v=1.10.49"></script><script src="ember_pastekeys.js"></script><script src="ember_plus.js?v=1.10.18-p12"></script>
-<script src="ember_plugins.js?v=1.10.38"></script>
+<script src="ember_voice.js"></script><script src="ember_lyrics.js"></script><script src="ember_projects.js"></script><script src="ember_lyric_thoughts.js"></script><script src="ember_prov_ui.js"></script><script src="ember_pastekeys.js"></script><script src="ember_plus.js?v=panel-wired-2"></script>
+<script src="ember_plugins.js"></script>
 
-<script src="ember_ui.js?v=1.10.18-p11"></script><script src="ember_extras.js"></script><script src="ember_create.js"></script><script src="ember_engines.js"></script>
+<script src="ember_ui.js"></script><script src="ember_extras.js"></script><script src="ember_create.js"></script><script src="ember_engines.js"></script>
 <script>
 // Apply termux-mode-on class to body when S is available, for CSS theming
 (function pollTermux(){
@@ -688,27 +660,22 @@ window.addEventListener('load',loaded,{once:true});window.addEventListener('page
 })();
 </script>
 <script src="ember_v79.js"></script><script src="ember_v80.js"></script><script src="ember_v83.js"></script><script src="ember_v89.js"></script>
-<script src="ember_features.js?v=1.10.18-p11"></script><script src="ember_workspace.js?v=panel-wired-2"></script><script src="ember_action_menu.js"></script><script src="ember_prov_next.js?v=1.10.49"></script><script src="ember_icons.js?v=1.10.11"></script><script src="ember_v104.js?v=1.10.4"></script><script src="ember_mediaplus.js?v=1.10.5"></script><script src="ember_brainpush.js?v=1.10.5"></script><script src="ember_v110.js?v=1.10.10"></script><script src="ember_apis.js?v=1.10.18-p12"></script><script src="ember_back.js?v=1.10.51"></script>
-<script src="ember_cockpit.js?v=1.10.51"></script>
-<script src="ember_gitbrain.js?v=1.10.27"></script>
-<script src="ember_keyless.js?v=1.10.25"></script><script src="ember_menu.js?v=1.10.25"></script>
+<script src="ember_features.js"></script><script src="ember_workspace.js?v=panel-wired-2"></script><script src="ember_action_menu.js"></script><script src="ember_prov_next.js?v=1.10.3"></script><script src="ember_icons.js?v=1.10.11"></script><script src="ember_v104.js?v=1.10.4"></script><script src="ember_mediaplus.js?v=1.10.5"></script><script src="ember_brainpush.js?v=1.10.5"></script><script src="ember_v110.js?v=1.10.10"></script><script src="ember_apis.js?v=1.10.12"></script><script src="ember_back.js?v=panel-wired-2"></script>
+<script src="ember_cockpit.js?v=panel-wired-2"></script>
+<script src="ember_keyless.js?v=panel-wired-2"></script>
 <!-- 1.10.17: adapters must follow cockpit + keyless; all preceding script order is preserved. -->
 <button type="button" id="erpBackdrop" hidden aria-label="Close tools panel"></button><aside id="emberRightPanel" class="erp-sidebar" role="dialog" aria-modal="true" aria-labelledby="erpTitle" hidden inert><header class="erp-side-head"><div class="erp-brandrow"><h2 id="erpTitle">Ember</h2><img class="erp-ember-logo" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJFbWJlciI+CiAgPGRlZnM+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9ImJnIiBjeD0iNTAlIiBjeT0iNDAlIiByPSI3NSUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMxYzFjMWMiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMDAwMDAwIi8+CiAgICA8L3JhZGlhbEdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJmbCIgeDE9IjAiIHkxPSIxIiB4Mj0iMCIgeTI9IjAiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjVhMDAiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIwLjYiIHN0b3AtY29sb3I9IiNmZjhhMDAiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZiMzQ3Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJjb3JlIiB4MT0iMCIgeTE9IjEiIHgyPSIwIiB5Mj0iMCI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZDlhMCIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNmZmZmZmYiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTEyIiBmaWxsPSJ1cmwoI2JnKSIvPgogIDxjaXJjbGUgY3g9IjI1NiIgY3k9IjMwMCIgcj0iMTcwIiBmaWxsPSIjZmY2YTAwIiBvcGFjaXR5PSIwLjE0Ii8+CiAgPHBhdGggZD0iTTI1NiA3MGMyMCA1OCA5NiAxMDQgOTYgMTkyIDAgNjItNDMgMTEwLTk2IDExMHMtOTYtNDgtOTYtMTEwYzAtMzggMTgtNjYgNDAtOTIgNCAyOCAxOCA0NCAzNCA1MC0xMC01OCA2LTEwNiAyMi0xNTB6IiBmaWxsPSJ1cmwoI2ZsKSIvPgogIDxwYXRoIGQ9Ik0yNTYgMjMyYzEwIDMwIDUyIDU2IDUyIDEwNCAwIDM0LTIzIDU4LTUyIDU4cy01Mi0yNC01Mi01OGMwLTIyIDEwLTM4IDIyLTUyIDMgMTYgMTEgMjUgMjAgMjgtNi0zMiAyLTU4IDEwLTgweiIgZmlsbD0idXJsKCNjb3JlKSIvPgogIDxjaXJjbGUgY3g9IjI1NiIgY3k9IjQxNCIgcj0iNiIgZmlsbD0iI2ZmNmEwMCIgb3BhY2l0eT0iMC45Ii8+CiAgPGNpcmNsZSBjeD0iMjE0IiBjeT0iNDMwIiByPSI0IiBmaWxsPSIjZmY4YTAwIiBvcGFjaXR5PSIwLjciLz4KICA8Y2lyY2xlIGN4PSIzMDAiIGN5PSI0MjYiIHI9IjQiIGZpbGw9IiNmZmZmZmYiIG9wYWNpdHk9IjAuNiIvPgo8L3N2Zz4K" alt="Ember flame logo"><button type="button" id="erpClose" aria-label="Close tools panel">×</button></div><p class="erp-sub">Your tools, organized around what you want to do.</p><label class="erp-search" aria-label="Search categories and tools">⌕ <input id="erpToolSearch" type="search" placeholder="Find a tool or setting" autocomplete="off"></label></header>
 <div class="erp-list" id="erpGroups">
 <section class="erp-group open"><button type="button" class="erp-group-head" aria-controls="erpItems1" aria-expanded="true"><span class="erp-icon">✧</span><span class="erp-label"><b>Chat & AI</b><small>Talk, think, and work with your AI engines.</small></span><span class="erp-chev">⌄</span></button><div class="erp-items" id="erpItems1"><button type="button" class="erp-item" data-name="Start a conversation">Start a conversation <span>↗</span></button><button type="button" class="erp-item" data-name="Choose an AI engine">Choose an AI engine <span>›</span></button><button type="button" class="erp-item" data-name="Memory & persona">Memory & persona <span>›</span></button></div></section>
 <section class="erp-group"><button type="button" class="erp-group-head" aria-controls="erpItems2" aria-expanded="false"><span class="erp-icon">✦</span><span class="erp-label"><b>Create</b><small>Make music, lyrics, documents, and ideas.</small></span><span class="erp-chev">⌄</span></button><div class="erp-items" id="erpItems2"><button type="button" class="erp-item" data-name="Create music">Create music <span>›</span></button><button type="button" class="erp-item" data-name="Write lyrics">Write lyrics <span>›</span></button><button type="button" class="erp-item" data-name="Draft a document">Draft a document <span>›</span></button></div></section>
 <section class="erp-group"><button type="button" class="erp-group-head" aria-controls="erpItems3" aria-expanded="false"><span class="erp-icon">⌕</span><span class="erp-label"><b>Research & web</b><small>Search the web, browse pages, and gather sources.</small></span><span class="erp-chev">⌄</span></button><div class="erp-items" id="erpItems3"><button type="button" class="erp-item" data-name="Web search">Web search <span>›</span></button><button type="button" class="erp-item" data-name="Open browser">Open browser <span>›</span></button><button type="button" class="erp-item" data-name="Scrape a page">Scrape a page <span>›</span></button></div></section>
-<section class="erp-group"><button type="button" class="erp-group-head" aria-controls="erpItems4" aria-expanded="false"><span class="erp-icon">▷</span><span class="erp-label"><b>Media & downloads</b><small>Play, find, and save audio or video.</small></span><span class="erp-chev">⌄</span></button><div class="erp-items" id="erpItems4"><button type="button" class="erp-item" data-name="Music player & search">Music player & search <span>›</span></button><button type="button" class="erp-item" data-name="Downloads">Downloads <span>›</span></button></div></section>
+<section class="erp-group"><button type="button" class="erp-group-head" aria-controls="erpItems4" aria-expanded="false"><span class="erp-icon">▷</span><span class="erp-label"><b>Media & downloads</b><small>Play, find, and save audio or video.</small></span><span class="erp-chev">⌄</span></button><div class="erp-items" id="erpItems4"><button type="button" class="erp-item" data-name="Music player">Music player <span>›</span></button><button type="button" class="erp-item" data-name="Find media">Find media <span>›</span></button><button type="button" class="erp-item" data-name="Downloads">Downloads <span>›</span></button></div></section>
 <section class="erp-group"><button type="button" class="erp-group-head" aria-controls="erpItems5" aria-expanded="false"><span class="erp-icon">▤</span><span class="erp-label"><b>Projects & files</b><small>Keep work together and manage your outputs.</small></span><span class="erp-chev">⌄</span></button><div class="erp-items" id="erpItems5"><button type="button" class="erp-item" data-name="Projects">Projects <span>›</span></button><button type="button" class="erp-item" data-name="Tasks">Tasks <span>›</span></button><button type="button" class="erp-item" data-name="Files & deliverables">Files & deliverables <span>›</span></button></div></section>
 <section class="erp-group"><button type="button" class="erp-group-head" aria-controls="erpItems6" aria-expanded="false"><span class="erp-icon">⌘</span><span class="erp-label"><b>Device & tools</b><small>Connect your phone, terminal, and integrations.</small></span><span class="erp-chev">⌄</span></button><div class="erp-items" id="erpItems6"><button type="button" class="erp-item" data-name="Device controls">Device controls <span>›</span></button><button type="button" class="erp-item" data-name="Terminal"><span>Terminal</span><span class="erp-badge">ADVANCED</span></button><button type="button" class="erp-item" data-name="GitHub & integrations">GitHub & integrations <span>›</span></button></div></section>
-<section class="erp-group"><button type="button" class="erp-group-head" aria-controls="erpItems7" aria-expanded="false" data-direct="App settings"><span class="erp-icon">⚙</span><span class="erp-label"><b>Settings & connections</b><small>Manage providers, API keys, privacy, and app setup.</small></span><span class="erp-chev">›</span></button><div class="erp-items" id="erpItems7"><button type="button" class="erp-item" data-name="AI providers & API keys">AI providers & API keys <span>›</span></button><button type="button" class="erp-item" data-name="Permissions & background">Permissions & background <span>›</span></button><button type="button" class="erp-item" data-name="App settings">App settings <span>›</span></button></div></section>
+<section class="erp-group"><button type="button" class="erp-group-head" aria-controls="erpItems7" aria-expanded="false"><span class="erp-icon">⚙</span><span class="erp-label"><b>Settings & connections</b><small>Manage providers, API keys, privacy, and app setup.</small></span><span class="erp-chev">⌄</span></button><div class="erp-items" id="erpItems7"><button type="button" class="erp-item" data-name="AI providers & API keys">AI providers & API keys <span>›</span></button><button type="button" class="erp-item" data-name="Permissions & privacy">Permissions & privacy <span>›</span></button><button type="button" class="erp-item" data-name="App settings">App settings <span>›</span></button></div></section>
 <p id="erpNoResults" hidden role="status">No matching tools or settings.</p></div>
 <footer class="erp-bottom"><section class="erp-cc" id="erpCc"><button type="button" class="erp-cc-head" id="erpCcToggle" aria-expanded="false"><span class="erp-cc-icon">◫</span><span class="erp-cc-title"><b>Command Centre</b><small>Workspace status · activity · routing</small></span><span class="erp-live"><i class="erp-dot"></i> CONNECTED</span><span class="erp-cc-arrow">⌃</span></button><div class="erp-cc-body"><div class="erp-metrics"><div class="erp-metric"><small>WORKSPACE</small><strong>Network available</strong></div><div class="erp-metric"><small>ACTIVE ENGINE</small><strong id="erpActiveEngine">Auto route</strong></div></div><div class="erp-log" id="erpActivityLog"><em>●</em> App status<br><span style="color:#71869e">Awaiting app status</span></div><div class="erp-cc-actions"><button type="button" data-cc="activity">Activity log</button><button type="button" data-cc="routing">Engine routing</button><button type="button" data-cc="status">Status</button></div></div></section><div class="erp-footnote">Tap a category to browse · Tap Command Centre to expand</div></footer></aside>
 <section id="erpTasks" role="dialog" aria-modal="true" aria-labelledby="erpTasksTitle" hidden inert><header><h2 id="erpTasksTitle">Tasks &amp; timers</h2><button type="button" id="erpTasksClose">Close</button></header><p>Timers run while Ember is open; overdue timers fire when the app reopens.</p><div id="erpTasksList"></div></section>
-<script src="ember_right_panel.js?v=1.10.20-nopanel"></script>
-<script src="ember_artbox.js?v=1.10.30"></script><script src="ember_v129.js?v=1.10.51"></script>
+<script src="ember_right_panel.js?v=1.10.18-p1"></script>
 <script src="ember_wiring.js"></script>
-<script src="ember_chat_polish.js?v=1.10.41"></script><script src="ember_visuals.js?v=1.10.51"></script>
-<script src="ember_builds.js?v=1.10.48"></script><script src="ember_image_lookup.js?v=1.10.48"></script><script src="ember_finish.js?v=1.10.51"></script>
-<link rel="stylesheet" href="ember_repair.css?v=1.10.51"><script src="ember_repair.js?v=1.10.51"></script>
 </body></html>

@@ -37,7 +37,7 @@
     // 1.10.18 Part 7: Settings is ONE panel. Eight rows, one job each; tap a row to open its sub menu.
     const ROWS = [
       {id:'general', title:'Memory & persona', desc:'Your name, persona, tone, read aloud and voice, memory, look, backup', sections:['general']},
-      {id:'keys', title:'AI keys & providers', desc:'Every AI chat key and provider in one place: Free Mode, which engine answers, routing and fallback', sections:['features','engine','providers']},
+      {id:'keys', title:'AI providers & API keys', desc:'Add keys, choose which engine answers, routing and fallback, all in one place', sections:['features','engine','providers']},
       {id:'scraping', title:'Web scraping & search', desc:'Every scraper and search key, the free reader, health checks and tests', sections:['scraping']},
       {id:'hacking', title:'Termux & terminal', desc:'Termux mode, pen-test persona and the built-in terminal', sections:['hacking']},
       {id:'device', title:'Device tools', desc:'Wi-Fi, storage and RAM, battery, diagnostics and document reading', sections:['device']},
@@ -292,10 +292,10 @@
       bar.append(badge);
       function countKeys() {
         let active = 0, saved = 0;
-        (W.Prov.ACTIVE_IDS || W.Prov.IDS).forEach(id => W.Prov.entries(id).forEach(e => { saved++; if (e.st?.ok && !e.st.limited && !W.Prov.isCool(e.key)) active++; }));
+        (W.Prov.ACTIVE_IDS || W.Prov.IDS).forEach(id => W.Prov.entries(id).forEach(e => { saved++; if (!e.bad && e.st?.ok !== false && !W.Prov.isCool(e.key)) active++; }));
         const text = active + ' active API key' + (active === 1 ? '' : 's');
         if (badge.textContent !== text) badge.textContent = text;
-        badge.title = active + ' verified usable · ' + saved + ' saved. Unchecked, rejected, rate-limited and cooling keys are not counted.';
+        badge.title = active + ' usable · ' + saved + ' saved. Rejected and resting keys are not counted. Nothing is tested in the background.';
         badge.setAttribute('aria-label',badge.title);
       }
       countKeys(); W.addEventListener('ember-provider-stats',countKeys); W.addEventListener('ember-names',countKeys); W.addEventListener('storage',countKeys);

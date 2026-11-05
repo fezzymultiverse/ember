@@ -1,242 +1,117 @@
 {
-  "tests": 47,
-  "passed": 47,
-  "failed": 0,
-  "results": [
+  "count": 22,
+  "checks": [
     {
-      "name": "byte hash providers.js",
-      "pass": true,
-      "detail": ""
+      "name": "new document engine loads in real mobile app",
+      "status": "PASS"
     },
     {
-      "name": "byte hash ai.js",
-      "pass": true,
-      "detail": ""
+      "name": "existing settings survive app boot",
+      "status": "PASS"
     },
     {
-      "name": "byte hash ember_github.js",
-      "pass": true,
-      "detail": ""
+      "name": "mobile app fits phone width",
+      "status": "PASS"
     },
     {
-      "name": "byte hash ember_repo_runner.js",
-      "pass": true,
-      "detail": ""
+      "name": "bundled PDF engine generates a real embedded-font file",
+      "status": "PASS"
     },
     {
-      "name": "byte hash repo-runner-template.cjs",
-      "pass": true,
-      "detail": ""
+      "name": "Word exporter generates a real ZIP-based DOCX",
+      "status": "PASS"
     },
     {
-      "name": "byte hash ember_command_center.js",
-      "pass": true,
-      "detail": ""
+      "name": "PDF/Word rendering makes no external request",
+      "status": "PASS"
     },
     {
-      "name": "byte hash ai_scraper.js",
-      "pass": true,
-      "detail": ""
+      "name": "mobile preview uses multiple actual A4 sheets",
+      "status": "PASS"
     },
     {
-      "name": "byte hash ember_downloads.js",
-      "pass": true,
-      "detail": ""
+      "name": "preview labels every page",
+      "status": "PASS"
     },
     {
-      "name": "byte hash ember_plugins.js",
-      "pass": true,
-      "detail": ""
+      "name": "existing Save PDF action still downloads the intended file",
+      "status": "PASS"
     },
     {
-      "name": "412 default switches: 20 tools plus preserved Forge, unofficial OFF",
-      "pass": true,
-      "detail": ""
+      "name": "markdown download preserves original content",
+      "status": "PASS"
     },
     {
-      "name": "412 all toggles persist, terminal events, abilities update immediately",
-      "pass": true,
-      "detail": ""
+      "name": "html download preserves original content",
+      "status": "PASS"
     },
     {
-      "name": "412 plugins and inline cockpit include all switches without overflow",
-      "pass": true,
-      "detail": ""
+      "name": "native Save contract retains name, MIME and full payload",
+      "status": "PASS"
     },
     {
-      "name": "412 single-tool route runs automatically and timeline matches terminal",
-      "pass": true,
-      "detail": ""
+      "name": "native Save cancellation remains cancellation",
+      "status": "PASS"
     },
     {
-      "name": "412 chooser waits indefinitely; accessible radio cards and once choice",
-      "pass": true,
-      "detail": ""
+      "name": "typewriter stays gradual and retains complete final text",
+      "status": "PASS"
     },
     {
-      "name": "412 always preference persists and skips chooser",
-      "pass": true,
-      "detail": ""
+      "name": "artifact markup remains hidden during typing",
+      "status": "PASS"
     },
     {
-      "name": "412 Auto policy, disabled tools never called, all-failure max 3 attempts",
-      "pass": true,
-      "detail": ""
+      "name": "typewriter Stop clears pending work",
+      "status": "PASS"
     },
     {
-      "name": "412 essay → grammar → structuring → real local PDF; no optional media",
-      "pass": true,
-      "detail": ""
+      "name": "preloaded PDF export works offline",
+      "status": "PASS"
     },
     {
-      "name": "412 real DOCX zip signature and Markdown artifact export",
-      "pass": true,
-      "detail": ""
+      "name": "desktop app has no horizontal page overflow",
+      "status": "PASS"
     },
     {
-      "name": "412 grammar OFF is never called in document chain",
-      "pass": true,
-      "detail": ""
+      "name": "document work adds no browser runtime errors",
+      "status": "PASS"
     },
     {
-      "name": "412 public page evidence includes published names and source; no fabricated identity",
-      "pass": true,
-      "detail": ""
+      "name": "settings still preserved after reload and all exports",
+      "status": "PASS"
     },
     {
-      "name": "412 configured scraper chosen automatically using public API; no new key storage",
-      "pass": true,
-      "detail": ""
+      "name": "new engine survives a cold offline app reload",
+      "status": "PASS"
     },
     {
-      "name": "412 scraping OFF prevents public fetching",
-      "pass": true,
-      "detail": ""
+      "name": "cold offline PDF export loads cached renderer",
+      "status": "PASS"
+    }
+  ],
+  "initialRuntimeErrors": [],
+  "allRuntimeErrors": [],
+  "a4Geometry": [
+    {
+      "w": 794,
+      "h": 1123,
+      "label": "Page 1 of 4"
     },
     {
-      "name": "412 all remaining keyless adapters respond to mocked HTTP",
-      "pass": true,
-      "detail": ""
+      "w": 794,
+      "h": 1123,
+      "label": "Page 2 of 4"
     },
     {
-      "name": "412 chooser keyboard cancellation leaves no running task",
-      "pass": true,
-      "detail": ""
+      "w": 794,
+      "h": 1123,
+      "label": "Page 3 of 4"
     },
     {
-      "name": "412 10-second timeout aborts fetch and fallback succeeds",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "412 plain chat triggers router, normal Artifact Card, actual Save PDF download",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "412 strict keyless requests omit cookies/auth, have AbortController, never cache",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "412 zero browser page errors and no sideways page overflow",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 default switches: 20 tools plus preserved Forge, unofficial OFF",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 all toggles persist, terminal events, abilities update immediately",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 plugins and inline cockpit include all switches without overflow",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 single-tool route runs automatically and timeline matches terminal",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 chooser waits indefinitely; accessible radio cards and once choice",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 always preference persists and skips chooser",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 Auto policy, disabled tools never called, all-failure max 3 attempts",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 essay → grammar → structuring → real local PDF; no optional media",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 real DOCX zip signature and Markdown artifact export",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 grammar OFF is never called in document chain",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 public page evidence includes published names and source; no fabricated identity",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 configured scraper chosen automatically using public API; no new key storage",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 scraping OFF prevents public fetching",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 all remaining keyless adapters respond to mocked HTTP",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 chooser keyboard cancellation leaves no running task",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 10-second timeout aborts fetch and fallback succeeds",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 plain chat triggers router, normal Artifact Card, actual Save PDF download",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 strict keyless requests omit cookies/auth, have AbortController, never cache",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "1280 zero browser page errors and no sideways page overflow",
-      "pass": true,
-      "detail": ""
+      "w": 794,
+      "h": 1123,
+      "label": "Page 4 of 4"
     }
   ]
 }

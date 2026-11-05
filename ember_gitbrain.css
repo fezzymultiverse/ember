@@ -61,3 +61,9 @@ html body.cockpit-ui #settings #cockpitSearchBox input{border:0!important;backgr
 .gw-btns .btn{flex:1 1 auto;width:auto!important}
 .gw-ib .btn{width:auto!important;min-width:64px}
 .gw-body{max-height:min(62dvh,600px)}
+
+/* 1.10.56: the Search row was squashed: global .btn{width:100%} and #gitWidget input[type=search]{width:100%} fought inside a flex row. */
+#gitWidget .gw-row{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;width:100%}
+#gitWidget .gw-row input[type=search]{flex:1 1 180px;width:auto!important;min-width:0;margin:0;-webkit-appearance:none;appearance:none}
+#gitWidget .gw-row .btn{flex:0 0 auto;width:auto!important;min-width:96px;min-height:44px;padding:0 20px;margin:0}
+#gitWidget #gwSearchView>.lb{display:block;margin:6px 0 8px}

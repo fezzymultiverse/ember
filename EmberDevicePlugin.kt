@@ -1,6 +1,9 @@
 package com.fezzy.ember
 
 import android.Manifest
+import android.app.Activity
+import androidx.activity.result.ActivityResult
+import com.getcapacitor.annotation.ActivityCallback
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
@@ -31,6 +34,37 @@ import com.getcapacitor.annotation.PermissionCallback
 )
 class EmberDevicePlugin : Plugin() {
 
+    // Artifact Save As: works on scoped storage without WRITE_EXTERNAL_STORAGE.
+    @PluginMethod
+    fun saveFile(call: PluginCall) {
+        val data = call.getString("data")
+        if (data.isNullOrEmpty() || data.length > 90000000) { call.reject("Empty file or file exceeds the 64 MB save limit"); return }
+        val name = (call.getString("name") ?: "Ember-artifact").replace(Regex("[\\\\/:*?\"<>|\\x00-\\x1f]"), "_").take(120)
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = call.getString("mime") ?: "application/octet-stream"
+            putExtra(Intent.EXTRA_TITLE, name)
+        }
+        try { startActivityForResult(call, intent, "artifactSaveResult") }
+        catch (e: Exception) { call.reject("No system file picker available: " + (e.message ?: "unknown error")) }
+    }
+
+    @ActivityCallback
+    private fun artifactSaveResult(call: PluginCall?, result: ActivityResult) {
+        if (call == null) return
+        if (result.resultCode != Activity.RESULT_OK) { call.resolve(JSObject().put("cancelled", true)); return }
+        val uri = result.data?.data
+        if (uri == null) { call.reject("No save location returned"); return }
+        bridge.execute {
+            try {
+                val bytes = android.util.Base64.decode(call.getString("data") ?: "", android.util.Base64.DEFAULT)
+                val stream = context.contentResolver.openOutputStream(uri, "w") ?: throw Exception("Cannot open selected location")
+                stream.use { it.write(bytes); it.flush() }
+                call.resolve(JSObject().put("ok", true).put("path", uri.toString()).put("bytes", bytes.size))
+            } catch (e: Exception) { call.reject("File was not saved: " + (e.message ?: "write failed")) }
+        }
+    }
+
     @PluginMethod
     fun getInfo(call: PluginCall) {
         val r = JSObject()
@@ -42,36 +76,6 @@ class EmberDevicePlugin : Plugin() {
         r.put("android", Build.VERSION.RELEASE ?: "")
         r.put("sdk", Build.VERSION.SDK_INT)
         call.resolve(r)
-    }
-
-    // V1.10.21: save a file into Downloads/Ember. The WebView ignores blob downloads and has no Web Share, so artifacts never reached the phone.
-    @PluginMethod
-    fun saveFile(call: PluginCall) {
-        val name = (call.getString("name") ?: "ember-file").replace(Regex("[\\\\/:*?\"<>|]"), "_")
-        val mime = call.getString("mime") ?: "application/octet-stream"
-        val b64 = call.getString("data")
-        if (b64.isNullOrEmpty()) { call.reject("No data to save"); return }
-        try {
-            val bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val v = android.content.ContentValues().apply {
-                    put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, name)
-                    put(android.provider.MediaStore.MediaColumns.MIME_TYPE, mime)
-                    put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Ember")
-                }
-                val uri = context.contentResolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, v)
-                    ?: throw Exception("Downloads is not available")
-                context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
-                    ?: throw Exception("Could not open the file for writing")
-            } else {
-                val dir = java.io.File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Ember")
-                dir.mkdirs()
-                java.io.File(dir, name).writeBytes(bytes)
-            }
-            val r = JSObject()
-            r.put("path", "Downloads/Ember/" + name)
-            call.resolve(r)
-        } catch (e: Exception) { call.reject(e.message ?: "Save failed") }
     }
 
     // V1.6.7: one-tap "Open Termux" for the EMBER TERMUX panel. Launches the app's normal launcher activity; reads nothing from it.

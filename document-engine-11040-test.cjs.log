@@ -1,0 +1,42 @@
+PASS two passes contain 16 authoring + 16 preflight standards
+PASS ordinary chat is returned unchanged
+PASS questions do not become document generation
+PASS negative document requests remain negative
+PASS document contract applied: Create a PDF report
+PASS document contract applied: Draft a Word document
+PASS document contract applied: Write a markdown file
+PASS document contract applied: Make a printable HTML document
+PASS document contract applied: Create a 2 A4 page report
+PASS caller request is not mutated
+PASS standards injection is idempotent
+PASS existing safety instructions preserved
+PASS background jobs and JSON are untouched
+PASS short go-ahead inherits earlier file request
+PASS same-engine continuation gets document standards
+PASS A4 qualifier accepted in page target
+PASS inspection warns but never changes content
+PASS page estimate is explicitly not exact
+PASS loading preserves pin, switches and custom settings
+PASS all zero-price text variants discovered including names without :free
+PASS paid, image-only, unknown-price, per-request and conditional-price models excluded
+PASS auto OpenRouter uses a verified free model
+PASS max output clamped to catalog ceiling
+PASS unsupported native tools disabled without changing caller
+PASS zero token prices cannot disguise paid mixed-media models
+PASS document contract reaches provider request path
+PASS unsupported temperature parameter is omitted
+PASS unsupported response_format uses JSON instructions instead
+PASS explicit Free Mode preference persists
+PASS catalog can be refreshed without an API key
+PASS Cohere catalog follows all pages and deduplicates
+PASS document tasks prefer stronger Cohere model without changing provider pin
+PASS Cohere receives larger document budget and full contract
+PASS malformed pagination cannot loop forever
+PASS Gemini follows catalog pagination
+PASS Free Mode OFF never calls keyless fallback
+PASS strict pin and authentication failure never silently switch providers
+PASS native background route also excludes paid OpenRouter models
+PASS free model 429 advances to another free model without paid leakage
+PASS model rate limit preserves healthy key and cooldown
+PASS partial stream failure never mixes output from another provider
+41 checks passed
