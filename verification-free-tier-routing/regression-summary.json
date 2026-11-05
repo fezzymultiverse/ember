@@ -1,0 +1,144 @@
+{
+  "completedTests": [
+    {
+      "test": "free-tier-sticky-routing-test.cjs",
+      "result": "PASS",
+      "exit": 0,
+      "passLines": 45
+    },
+    {
+      "test": "document-skills-free-only-test.cjs",
+      "result": "PASS",
+      "exit": 0,
+      "passLines": 110
+    },
+    {
+      "test": "safety-test.js",
+      "result": "PASS",
+      "exit": 0,
+      "passLines": 44
+    },
+    {
+      "test": "keyscan-test.js",
+      "result": "PASS",
+      "exit": 0,
+      "passLines": 44
+    },
+    {
+      "test": "artifact-test.js",
+      "result": "FAIL",
+      "exit": 1,
+      "passLines": 0,
+      "originalArchiveResult": "FAIL",
+      "classification": "PRE_EXISTING_FAILURE"
+    },
+    {
+      "test": "context-test.js",
+      "result": "PASS",
+      "exit": 0,
+      "passLines": 63
+    },
+    {
+      "test": "agent-test.js",
+      "result": "FAIL",
+      "exit": 1,
+      "passLines": 68,
+      "originalArchiveResult": "FAIL",
+      "classification": "PRE_EXISTING_FAILURE"
+    },
+    {
+      "test": "music-test.js",
+      "result": "FAIL",
+      "exit": 2,
+      "passLines": 4,
+      "originalArchiveResult": "FAIL",
+      "classification": "PRE_EXISTING_FAILURE"
+    },
+    {
+      "test": "lyrics-test.js",
+      "result": "PASS",
+      "exit": 0,
+      "passLines": 23
+    },
+    {
+      "test": "scrape-test.js",
+      "result": "PASS",
+      "exit": 0,
+      "passLines": 74
+    },
+    {
+      "test": "voice-native-test.js",
+      "result": "SKIP",
+      "exit": 0,
+      "passLines": 0
+    },
+    {
+      "test": "knowledge-brain-test.js",
+      "result": "FAIL",
+      "exit": 1,
+      "passLines": 24,
+      "originalArchiveResult": "FAIL",
+      "classification": "PRE_EXISTING_FAILURE"
+    },
+    {
+      "test": "command-center-test.js",
+      "result": "FAIL",
+      "exit": 1,
+      "passLines": 1,
+      "originalArchiveResult": "FAIL",
+      "classification": "PRE_EXISTING_FAILURE"
+    },
+    {
+      "test": "download94-test.js",
+      "result": "PASS",
+      "exit": 0,
+      "passLines": 12
+    },
+    {
+      "test": "v1992-repo-runner-test.js",
+      "result": "FAIL",
+      "exit": 1,
+      "passLines": 0,
+      "originalArchiveResult": "FAIL",
+      "classification": "PRE_EXISTING_FAILURE"
+    },
+    {
+      "test": "fact-search-11052-test.cjs",
+      "result": "PASS",
+      "exit": 0,
+      "passLines": 10
+    },
+    {
+      "test": "file-direct-11054-test.cjs",
+      "result": "PASS",
+      "exit": 0,
+      "passLines": 12
+    },
+    {
+      "test": "free-tier-sticky-browser-test.cjs",
+      "result": "PASS",
+      "passLines": 22
+    },
+    {
+      "test": "typewriter-11047.cjs",
+      "result": "PASS",
+      "assertions": 23
+    }
+  ],
+  "fullHistoricalSuiteRun": false,
+  "interruptedAdditionalCheck": {
+    "test": "local-pdf-boot-test.cjs",
+    "result": "INCOMPLETE",
+    "note": "Additional historical browser coverage was interrupted at the overall validation time limit; no pass claimed."
+  },
+  "nativeBuildChecks": {
+    "capacitorAddAndroid": "PASS",
+    "applyExistingAndroidPatch": "PASS",
+    "capacitorSyncAndroid": "PASS",
+    "androidApkCompiled": false,
+    "androidDeviceTested": false
+  },
+  "liveProviderCredentialsUsed": false,
+  "inferenceTraffic": "Mocked only. No live provider availability or account plan was certified.",
+  "note": "Inherited failing tests were reproduced against the untouched uploaded archive. They are not counted as passes. Unrelated code was not edited to fix historical fixtures."
+}

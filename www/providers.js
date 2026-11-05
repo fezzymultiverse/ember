@@ -37,7 +37,7 @@ function load() {
   if (LS.get('ember_puter_on', null) !== null) LS.del('ember_puter_on');
   if (LS.get('ember_pin', null) === 'puter') LS.del('ember_pin');
   const pm = LS.get('ember_pin_model', null); if (pm && pm.id === 'puter') LS.del('ember_pin_model');
-  const lg = LS.get('ember_last_good', null); if (lg === 'puter' || lg === 'cohere') LS.del('ember_last_good');
+  const lg = LS.get('ember_last_good', null); if (lg === 'puter') LS.del('ember_last_good');
   // V1.10.37: Together AI and Fireworks AI removed. Any saved key, pin or switch for them is erased once so nothing for a removed service stays on the phone.
   ['together','fireworks','longcat'].forEach(x => { if (k && Object.prototype.hasOwnProperty.call(k, x)) { delete k[x]; LS.set('ember_keys', k); }
     if (LS.get('ember_pin', null) === x) LS.del('ember_pin'); const pm2 = LS.get('ember_pin_model', null); if (pm2 && pm2.id === x) LS.del('ember_pin_model');
@@ -59,8 +59,8 @@ function setPinnedModel(id, model) { pinnedModel = (id && CFG[id] && model) ? { 
 let strictPin = LS.get('ember_pin_strict', true) !== false;
 function setStrict(v) { strictPin = !!v; LS.set('ember_pin_strict', strictPin); }
 const onlyPinned = lane => !!(strictPin && pinnedEngine && lane != 'util');
-function orderFor(lane) { const enabled = LS.get('ember_route_enabled', {}); let base = (ORDER[lane] || ORDER.fast).concat(['openrouter', 'plugsky'].filter(id => id === 'openrouter' ? enabled[id] !== false : enabled[id] === true)).filter(id => CFG[id].kind !== 'media' && enabled[id] !== false); const liveIds = base.filter(id => keys[id] && keys[id].some(e => !e.bad)); if (liveIds.length) base = liveIds; /* V1.10.21: only engines that hold a live key; per-provider OFF switch */ if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
-    const lg = lane == 'fast' ? LS.get('ember_last_good', null) : null;
+function orderFor(lane) { const enabled = LS.get('ember_route_enabled', {}); let base = (ORDER[lane] || ORDER.fast).concat(['openrouter', 'plugsky'].filter(id => enabled[id] !== false)).filter(id => CFG[id].kind !== 'media' && enabled[id] !== false); const liveIds = base.filter(id => keys[id] && keys[id].some(e => !e.bad)); if (liveIds.length) base = liveIds; /* V1.10.21: only engines that hold a live key; per-provider OFF switch */ if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
+    const lg = LS.get(lane === 'util' ? 'ember_last_good_util' : 'ember_last_good', null);
     if (lg && base.includes(lg) && keys[lg] && keys[lg].some(e => !e.bad)) return [lg].concat(base.filter(x => x != lg));
     return base; } return [pinnedEngine].concat(base.filter(id => id != pinnedEngine)); }
 const save = () => { LS.set('ember_keys', keys); emitStats(); };
@@ -84,6 +84,16 @@ function record(id, model, ok, ms, status, usage) {
 let sticky = LS.get('ember_key_sticky', {}) || {};
 const tail = k => String(k || '').slice(-8);
 const stickyAt = id => { const list = keys[id] || [], i = list.findIndex(e => tail(e.key) === sticky[id]); return i < 0 ? 0 : i; };
+function rememberSuccess(id, key, model, lane) {
+  const e = (keys[id] || []).find(x => x.key === key); if (!e || !model) return;
+  e.lastGoodModel = model; stick(id, key);
+  if (lane && !pinnedEngine) LS.set(lane === 'util' ? 'ember_last_good_util' : 'ember_last_good', id);
+  save();
+}
+function preferWorking(id, key, list) {
+  const e = (keys[id] || []).find(x => x.key === key), m = e && e.lastGoodModel;
+  return m && list.includes(m) ? [m].concat(list.filter(x => x !== m)) : list;
+}
 function stick(id, key) { if (!key || sticky[id] === tail(key)) return; sticky[id] = tail(key); LS.set('ember_key_sticky', sticky); emitStats(); }
 function rotation(id, lane) {
   const list = keys[id] || [];
@@ -287,31 +297,61 @@ function rememberModels(id, rows) {
       parameters: Array.isArray(m.supported_parameters) ? m.supported_parameters : null };
   }); all[id] = by; LS.set('ember_model_metadata', all);
 }
-function isFreeModel(id, model) {
+// Free-tier eligibility is distinct from catalog availability. Never infer an account plan from a successful reply.
+const ACCOUNT_FREE = ['groq','gemini','cohere'];
+// Reviewed 2026-11-05: https://ai.google.dev/gemini-api/docs/pricing (free INPUT and OUTPUT, Standard tier).
+// Live catalogs decide existence; this policy only decides free-tier eligibility. Unknown new paid models are never guessed free.
+const GEM_FREE_MODELS = new Set(['gemini-3.8-flash','gemini-3.6-flash','gemini-3.5-flash-lite','gemini-3.1-flash-lite','gemini-3-flash-preview','gemini-2.5-pro','gemini-2.5-flash','gemini-2.5-flash-lite']);
+function freeTierConfirmed(id, key) {
+  const e = (keys[id] || []).find(x => x.key === key);
+  // Reconfirm monthly; billing can change outside Ember. No hidden paid probes.
+  const at = Number(e && e.freeTierConfirmedAt) || 0, age = Date.now() - at;
+  return !!(e && e.tier !== 'paid' && at > 0 && age >= 0 && age < 30 * 86400000);
+}
+function confirmFreeTier(id, key, confirmed) {
+  if (!ACCOUNT_FREE.includes(id)) return false;
+  const e = (keys[id] || []).find(x => x.key === key); if (!e) return false;
+  if (confirmed) { e.freeTierConfirmedAt = Date.now(); e.tier = 'free'; e.tierAt = Date.now(); }
+  else delete e.freeTierConfirmedAt;
+  save(); return true;
+}
+function freePolicy(id) {
+  if (ACCOUNT_FREE.includes(id)) return 'Use only a Free-plan key (Cohere: trial/evaluation). Confirm this key below after checking the provider dashboard. Paid-plan keys can be billed for the same model; Ember cannot verify your billing plan through the model catalog. Confirmation expires after 30 days. Revoke it if your plan changes.';
+  if (id === 'mistral') return 'Blocked in free-only mode: current Mistral documentation says API access requires billing activation. Keys are kept, not deleted. No paid API request is sent.';
+  if (id === 'anthropic') return 'Blocked in free-only mode: the direct Claude API has no verified permanent free tier. No paid request is sent.';
+  if (id === 'plugsky') return 'Free-only: plugsky-micro and plugsky-lite. No upgrade or paid-model fallback.';
+  if (id === 'openrouter') return 'Free-only: fresh zero-price text catalog entries, plus a zero-price provider ceiling on every request.';
+  return 'No verified free inference route.';
+}
+function isFreeModel(id, model, key) {
+  if (!CFG[id] || !model || /embed|rerank|whisper|tts|audio|video|image|imagen|veo|sora|moderation|guard|ocr|orpheus|transcribe/i.test(model)) return false;
   const md = LS.get('ember_model_metadata', {}), e = md[id] && md[id][model];
-  return !!(id === 'openrouter' && e && e.free && e.text && Number(e.verifiedAt) > 0 && Date.now() - Number(e.verifiedAt) >= 0 && Date.now() - Number(e.verifiedAt) < 3600000);
+  if (id === 'openrouter') return !!(e && e.free && e.text && Number(e.verifiedAt) > 0 && Date.now() - Number(e.verifiedAt) >= 0 && Date.now() - Number(e.verifiedAt) < 3600000);
+  if (id === 'plugsky') return /^plugsky-(micro|lite)$/.test(model);
+  if (!ACCOUNT_FREE.includes(id)) return false;
+  if (!(key ? freeTierConfirmed(id,key) : (keys[id] || []).some(x => freeTierConfirmed(id,x.key)))) return false;
+  if (id === 'gemini') return (GEM_FREE_MODELS.has(model) || /^gemma-4(?:-|$)/.test(model)) && !(gemEntry(key)?.noFree || []).includes(model);
+  // Groq Free-plan and Cohere trial accounts enforce their own quota; no upgrading or payment is ever attempted.
+  return id === 'groq' || /^command-|^north-mini-code/.test(model);
 }
-function assertFreeRoute(id, model) {
-  if (!isFreeModel(id, model)) throw Object.assign(new Error('Free-only AI policy blocked ' + id + '/' + model + ': current zero-price text inference could not be verified. Account-specific free allowances are not proof that this key cannot be billed.'), {code:'free_only',status:403});
+function assertFreeRoute(id, model, key) {
+  if (!isFreeModel(id, model, key)) throw Object.assign(new Error('Free-only AI blocked ' + id + '/' + model + '. ' + freePolicy(id)), {code:'free_only',status:403});
 }
-function routeModels(id, list) {
-  // Free-only applies to auto, pins, continuations, util and native plans alike.
-  return list.filter(m => isFreeModel(id,m));
-}
+function routeModels(id, list, key) { return list.filter(m => isFreeModel(id,m,key)); }
 async function freeModelsOf(id, fresh) {
   id = id || 'openrouter';
-  if (id !== 'openrouter') throw new Error('Zero-price catalog is supported for OpenRouter; other providers have account-specific free quotas.');
-  const cache = LS.get('ember_models', {});
-  let list = !fresh && cache[id] && Date.now() - cache[id].at < MC ? cache[id].list : null;
-  if (!Array.isArray(list) || !list.length || !list.some(m => isFreeModel(id,m))) {
+  if (id !== 'openrouter') return (await modelsOf(id,fresh)).filter(m => isFreeModel(id,m));
+  const cache = LS.get('ember_models', {}), c = cache[id];
+  let list = !fresh && c && Date.now() - c.at < MC ? c.list : null;
+  if (!Array.isArray(list) || !list.some(m => isFreeModel(id,m))) {
     const e = (keys[id] || []).find(x => !x.bad);
-    list = await listModels(id, e ? e.key : '');
-    cache[id] = { at: Date.now(), list }; LS.set('ember_models', cache);
+    list = await listModels(id,e ? e.key : '');
+    cache[id] = {at:Date.now(),list}; LS.set('ember_models',cache);
   }
-  return Array.from(new Set(list.filter(m => isFreeModel(id,m) && !/content[-_]safety|guard|moderation|embed|rerank/i.test(m)))).sort();
+  return Array.from(new Set(routeModels(id,rank(id,list,'fast')))).sort();
 }
 async function listModels(id, key) {
-  const c = CFG[id], deadline = Date.now() + 15000;
+  const c = CFG[id], deadline = Date.now() + 6000;
   const catalogTimeout = () => { const ms = deadline - Date.now(); if (ms <= 0) throw Object.assign(new Error('Model catalog timed out.'), {code:'timeout',status:0}); return ms; };
   if (c.kind === 'media') { await jfetch(c.base + '/v1/user/account', { headers: { Authorization: 'Bearer ' + key } }, catalogTimeout()); return []; }
   if (c.kind == 'oai') {
@@ -390,7 +430,7 @@ function rank(id, list, lane) {
 }
 const MC = 12 * 3600 * 1000;
 async function modelsFor(id, key, lane) {
-  const fin = r => id === 'gemini' ? gemAdjust(gemEntry(key), r) : r; // V1.10.46: a free Gemini key skips paid-only models
+  const fin = r => preferWorking(id, key, id === 'gemini' ? gemAdjust(gemEntry(key), r) : r); // V1.10.46: a free Gemini key skips paid-only models
   const cache = LS.get('ember_models', {});
   if (id === 'openrouter' && cache[id] && !(cache[id].list || []).some(m => isFreeModel(id,m))) {
     const list = await listModels(id,key); cache[id] = {at:Date.now(),list}; LS.set('ember_models',cache);
@@ -528,14 +568,14 @@ function fitBody(id, model, body) {
   return body;
 }
 async function call(id, key, model, o) {
-  assertFreeRoute(id, model);
+  assertFreeRoute(id, model, key);
   const c = CFG[id], t0 = performance.now();
   o = Object.assign({}, o);
   const md = LS.get('ember_model_metadata', {}), info = md[id] && md[id][model];
   if (info && info.maxOutput) o.max = Math.min(o.max || 400, info.maxOutput);
   if (info && info.parameters && !info.parameters.includes('tools')) o.tools = null;
-  if (!o._requestDeadline) o._requestDeadline = Date.now() + (o.documentMode ? 90000 : 25000);
-  const requestTimeout = Math.max(1, Math.min(o.documentMode ? 90000 : 25000, o._requestDeadline - Date.now(), o._providerDeadline ? o._providerDeadline - Date.now() : Infinity));
+  if (!o._requestDeadline) o._requestDeadline = Date.now() + (o.documentMode ? 45000 : 10000);
+  const requestTimeout = Math.max(1, Math.min(o.documentMode ? 45000 : 10000, o._requestDeadline - Date.now(), o._providerDeadline ? o._providerDeadline - Date.now() : Infinity));
   if (requestTimeout <= 1) throw Object.assign(new Error('Provider time budget reached.'), { code: 'timeout', status: 0 });
   let text = '';
   if (c.kind == 'oai') {
@@ -696,7 +736,7 @@ async function ingest(text, pre) {
 // ---------- Free Mode: Pollinations.ai, no key ----------
 // Anonymous Pollinations is rate-limited (about one request per 15 s) and third-party: chat text leaves the phone.
 // Background jobs (titles, memory, summaries) never use it.
-const PL = { get: 'https://text.pollinations.ai/', openai: 'https://text.pollinations.ai/openai', timeout: 15000 };
+const PL = { get: 'https://text.pollinations.ai/', openai: 'https://text.pollinations.ai/openai', timeout: 6000 };
 const FREE_BUSY = 'Free Mode is busy right now. Try again in a moment.';
 // callPollinations(prompt): plain GET to text.pollinations.ai/<encoded prompt>.
 // When o.messages is given (a chat with its system prompt), it POSTs the OpenAI-style body instead, because the
@@ -770,7 +810,7 @@ function factsBlock(id, model, failed) {
   const st = status();
   const inv = IDS.filter(x => keys[x].length).map(x => CFG[x].name + ' ' + keys[x].filter(e => !e.bad).length + '/' + keys[x].length + ' usable').join(', ') || 'none';
   const L = ['RUNTIME FACTS (written by the app at send time; these are true and override anything he or you assume):'];
-  L.push('- AI BILLING POLICY: free-only is mandatory regardless of the Free Mode preference. Only fresh verified zero-price OpenRouter text models and existing anonymous Free Mode are eligible. Paid/unknown-tier routes, pins and inference tier probes cannot override this. If free capacity fails, report it; never upgrade or silently buy credits.');
+  L.push('- AI BILLING POLICY: free-only is mandatory regardless of Free Mode. Eligible routes: verified zero-price OpenRouter text, Plugsky micro/lite, explicit user-confirmed Free-plan Groq/Gemini or Cohere trial keys, and anonymous Free Mode. Account confirmation is not provider billing verification. Mistral and direct Claude stay blocked without a verified free API tier. Pins cannot override billing policy. Never upgrade, buy credits or run hidden inference probes.');
   if (id == 'pollinations') L.push('- This reply comes from Free Mode (Pollinations.ai). You do not know which model they run. You are NOT Gemini, Claude, ChatGPT, Llama, Mistral or any named model. If asked what you are, say: "I am Ember, running on Free Mode. I do not know which model is behind it." Never name a model you cannot verify.');
   else if (id) L.push('- This reply is written by engine "' + CFG[id].name + '", model id "' + model + '", using an API key HE saved in Settings > Keys.');
   else L.push('- This is a background reply: the phone picks the engine after this prompt is built, so you do not know which engine or model you are. Do not name one.');
@@ -808,11 +848,11 @@ async function modelsOf(id, fresh) {
     if (!e) throw Object.assign(new Error('No ' + CFG[id].name + ' key saved.'), { status: 0 });
     list = await listModels(id, e.key); cache[id] = { at: Date.now(), list }; LS.set('ember_models', cache);
   }
-  const ok = list.filter(m => !/embed|whisper|guard|tts|moderation|rerank|flux|stable-diffusion|imagen|veo|sora|playai|ocr|orpheus|transcribe/i.test(m));
+  const ok = routeModels(id, rank(id,list,'fast')); 
   const isFree = m => /:free$/.test(m);
   return ok.slice().sort((a, b) => (isFree(b) - isFree(a)) || a.localeCompare(b));
 }
-const cachedModels = id => { const c = LS.get('ember_models', {}); return c[id] && c[id].list ? c[id].list.filter(m => !/embed|whisper|guard|tts|moderation|rerank|flux|stable-diffusion|imagen|veo|sora|playai|ocr|orpheus|transcribe/i.test(m)).sort() : []; };
+const cachedModels = id => { const c = LS.get('ember_models', {}); return c[id] && c[id].list ? routeModels(id, rank(id,c[id].list,'fast')) : []; };
 
 // ---------- the router ----------
 // Free Mode ON: Pollinations goes first, then the keys. OFF: keys first. Either way Pollinations is the last resort,
@@ -825,13 +865,13 @@ async function runInner(lane, o, tok) {
   const halted = () => { if (tok && tok.stop) throw HANDOFF(); if (routeCancelled || (tok && tok.abort)) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' }); };
   const trying = (name, model) => { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-try', { detail: { name, model } })); } catch (e) { /* no listener */ } } }; // V1.8.3: once the native worker took the request, the page makes no further paid calls
   // when an engine failed and a different one answered, tell the UI (ai.js shows a toast). Background jobs stay silent.
-  const done = r => { if (!pinnedEngine && lane == 'fast' && r.provider && CFG[r.provider] && r.provider != 'anthropic' && r.provider != 'cohere') LS.set('ember_last_good', r.provider); if (pinnedEngine && r.provider != pinnedEngine) { const p0 = failed.find(x => x.id == pinnedEngine); r.pinMiss = { want: pinnedEngine, why: p0 ? (p0.why || '') : 'no usable key' }; } const f = failed.find(x => x.id != r.provider); if (f && pl && !(pinnedEngine && r.provider == pinnedEngine)) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
-  const routeDeadline = Date.now() + (o.documentMode ? 330000 : 150000);
+  const done = r => { if (!pinnedEngine && r.provider && CFG[r.provider] && r.provider != 'anthropic') LS.set(lane === 'util' ? 'ember_last_good_util' : 'ember_last_good', r.provider); if (pinnedEngine && r.provider != pinnedEngine) { const p0 = failed.find(x => x.id == pinnedEngine); r.pinMiss = { want: pinnedEngine, why: p0 ? (p0.why || '') : 'no usable key' }; } const f = failed.find(x => x.id != r.provider); if (f && pl && !(pinnedEngine && r.provider == pinnedEngine)) { try { window.dispatchEvent(new CustomEvent('ember-switch', { detail: { from: f.id, to: r.provider, status: f.status || 0, why: f.why || '' } })); } catch (e) { /* no UI listening */ } } return r; };
+  const routeDeadline = Date.now() + (o.documentMode ? 120000 : 45000);
   let providerDeadline = Infinity;
   let tried = false, routeStop = null;
   halted();
   if (o.routeProvider && !CFG[o.routeProvider]) throw Object.assign(new Error('The original engine cannot continue this tool result. No other engine was called for this follow-up.'), { code: 'fail' });
-  if (pl && !o.routeProvider && freeOn() && !pinnedEngine) { // V1.9.15: with an engine pinned, Free Mode no longer goes first (it was failing, costing seconds and showing a 'Switched to' toast)
+  if (pl && !o.routeProvider && freeOn() && !pinnedEngine && (!hasKeys() || LS.get('ember_cockpit_pollinations',false))) { // V1.9.15: with an engine pinned, Free Mode no longer goes first (it was failing, costing seconds and showing a 'Switched to' toast)
     tried = true;
     try { trying('Free Mode', 'openai'); const o2 = withFacts(o, lane, 'pollinations', 'openai', failed); const r = await callPollinations(flat(o2), o2); return done({ text: r.text, provider: 'pollinations', model: r.model, ms: r.ms }); }
     catch (er) { errs.push('Free Mode: ' + er.message); failed.push({ id: 'pollinations', status: er.status, why: er.message }); }
@@ -842,18 +882,18 @@ async function runInner(lane, o, tok) {
   for (const id of routeIds) {
     halted(); if (Date.now() >= routeDeadline) break;
     if (pinnedEngine && failed.some(x => x.id == pinnedEngine && [0, 402, 413, 429, 500, 502, 503, 504].includes(Number(x.status) || 0))) capFail = true;
-    providerDeadline = Math.min(routeDeadline, Date.now() + (o.documentMode ? 100000 : 40000));
+    providerDeadline = Math.min(routeDeadline, Date.now() + (o.documentMode ? 55000 : 16000));
     // V1.10.53: a document request used to stay on one engine for up to 100 s, walking every model on every key. After 2 failed or timed-out attempts on the same engine it now moves on to the next engine. A pinned engine stays strict.
     let provFails = 0; const docGiveUp = () => !!o.documentMode && provFails >= 2 && !o.routeProvider && !pinStrict(lane);
     if (!o.routeProvider && pinStrict(lane) && id != pinnedEngine) break; // V1.9.15: strict pin
-    if (id !== 'openrouter') { const why = 'Free-only AI: ' + CFG[id].name + ' has account-specific or unverified billing; no inference request was sent. Use a verified zero-price OpenRouter model or anonymous Free Mode.'; errs.push(why); failed.push({id,status:403,why}); continue; }
+    if (['mistral','anthropic','stability'].includes(id) || (ACCOUNT_FREE.includes(id) && !keys[id].some(e => freeTierConfirmed(id,e.key)))) { const why = 'Free-only AI: ' + freePolicy(id); errs.push(why); failed.push({id,status:403,why}); continue; }
     const soft = id === 'openrouter' && pinnedEngine !== id;
     for (const e of rotation(id, lane)) {
       if (Date.now() >= providerDeadline || docGiveUp()) break;
-      if (e.bad || isCool(e.key)) { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-skip', { detail: { id, why: e.bad ? 'key rejected' : 'resting after a rate limit' } })); } catch (_) { /* no listener */ } } continue; } // V1.9.78: a skipped engine is a real step
+      if (e.bad || isCool(e.key) || (ACCOUNT_FREE.includes(id) && !freeTierConfirmed(id,e.key))) { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-skip', { detail: { id, why: e.bad ? 'key rejected' : 'resting after a rate limit' } })); } catch (_) { /* no listener */ } } continue; } // V1.9.78: a skipped engine is a real step
       halted();
       let models;
-      try { models = routeModels(id, await modelsFor(id, e.key, o.documentMode && id === 'cohere' ? 'deep' : lane)); }
+      try { models = routeModels(id, await modelsFor(id, e.key, o.documentMode && id === 'cohere' ? 'deep' : lane), e.key); }
       catch (er) {
         if (er.code === 'cancelled' || routeCancelled) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' });
         if (authFailure(er)) { e.bad = true; save(); } else if (er.status == 429) coolKey(e.key, er.retryAfter);
@@ -863,21 +903,22 @@ async function runInner(lane, o, tok) {
       const pm = pinnedModel && pinnedModel.id == id ? pinnedModel.model : null;
       const routeModel = o.routeProvider === id && o.routeModel ? String(o.routeModel) : null;
       // V1.10.46: a Gemini key known to be free tries up to 6 models (so Gemma is reachable); every other case keeps the old 3 (5 for opt-in engines)
-      let pool = routeModel ? [routeModel] : (pm ? [pm] : models), cap = routeModel || pm ? 1 : (soft ? 5 : (id === 'gemini' && gemTier(e) === 'free' ? GEM_FREE_TRIES : 3));
-      pool = routeModels(id,pool);
-      if (!pool.length) { const why = 'Free-only AI blocked the selected model(s): no fresh zero-price text model is verified. Pins never override this rule.'; errs.push(why); failed.push({id,status:403,why}); }
+      let pool = routeModel ? [routeModel] : (pm ? [pm] : models), cap = routeModel || pm ? 1 : models.length;
+      pool = routeModels(id,pool,e.key);
+      if (!pool.length) { const why = 'Free-only AI blocked the selected model(s): no eligible free-tier text model is available for this key. Pins never override this rule.'; errs.push(why); failed.push({id,status:403,why}); }
       for (let mi = 0; mi < pool.length && mi < cap; mi++) {
         const m = pool[mi];
         halted(); if (Date.now() >= providerDeadline || docGiveUp()) break;
         if (modelResting(id,e.key,m)) continue;
-        trying(CFG[id].name, m); try { const r = await call(id, e.key, m, Object.assign(withFacts(o, lane, id, m, failed), { _providerDeadline: providerDeadline })); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); if (id === 'gemini') gemClear(e, m); record(id,m,true,r.ms,200,r.usage); stick(id, e.key); save(); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
+        trying(CFG[id].name, m); try { const r = await call(id, e.key, m, Object.assign(withFacts(o, lane, id, m, failed), { _providerDeadline: providerDeadline })); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); if (id === 'gemini') gemClear(e, m); record(id,m,true,r.ms,200,r.usage); rememberSuccess(id, e.key, m); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
         catch (er) {
           if (er.code === 'cancelled' || routeCancelled) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' });
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
           record(id,m,false,0,er.status); provFails++; e.st = Object.assign({},e.st || {},{at:Date.now(),code:er.status || 0,msg:String(er.message || '').slice(0,160),model:m});
-          if (id === 'gemini' && gemNote(e, m, er) && !routeModel && !pm) { pool = gemAdjust(e, pool); cap = Math.max(cap, GEM_FREE_TRIES); } // V1.10.46: this key just showed it is free: paid-only models to the back, Gemma becomes reachable in this same route
+          if (id === 'gemini') gemNote(e, m, er); // Keep iteration stable: reordering a failed pool mid-loop skipped candidates. // V1.10.46: this key just showed it is free: paid-only models to the back, Gemma becomes reachable in this same route
           if (er.partial || (o._emitted && o._emitted.value)) { save(); throw Object.assign(er,{code:'partial_stream',message:'Stream interrupted after partial output. Retry explicitly to avoid mixing providers.'}); }
           if (er.status === 404 && !pm && !routeModel) { const c = LS.get('ember_models', {}); delete c[id]; LS.set('ember_models', c); }
+          if (er.code === 'timeout' || (!er.status && /network|CORS/i.test(er.message || ''))) { coolKey(e.key,15); save(); providerDeadline = Date.now(); break; }
           if (authFailure(er)) { e.bad=true; e.st.ok=false; save(); break; }
           if (er.status == 402 && !(er.metadata && er.metadata.limit_source === 'openrouter_in_flight_budget')) { coolKey(e.key,er.retryAfter || 300); save(); break; }
           if (er.status == 429 || er.status == 402) { modelRest(id,e.key,m,er.retryAfter || 60); e.st.ok=true; e.st.limited=true; save(); continue; }
@@ -937,11 +978,11 @@ function nativePlan(lane) {
   const out = [], cache = LS.get('ember_models', {});
   for (const id of orderFor(lane)) {
     if (onlyPinned(lane) && id != pinnedEngine) break;
-    if (CFG[id].kind != 'oai') continue;
+    if (CFG[id].kind != 'oai' || id !== 'openrouter') continue;
     for (const e of rotation(id, lane)) {
       if (e.bad || isCool(e.key)) continue;
       const c = cache[id]; if (!c || !c.list || !c.list.length) continue;
-      const models = pinnedModel && pinnedModel.id == id ? [pinnedModel.model] : routeModels(id,rank(id,c.list,lane)).slice(0,3); for(const m of models)if(m && isFreeModel(id,m) && !modelResting(id,e.key,m))out.push({id,base:CFG[id].base,key:e.key,model:m,freeVerifiedAt:LS.get('ember_model_metadata',{})[id][m].verifiedAt});
+      const models = pinnedModel && pinnedModel.id == id ? [pinnedModel.model] : routeModels(id,preferWorking(id,e.key,rank(id,c.list,lane)),e.key); for(const m of models)if(m && isFreeModel(id,m) && !modelResting(id,e.key,m))out.push({id,base:CFG[id].base,key:e.key,model:m,freeVerifiedAt:LS.get('ember_model_metadata',{})[id][m].verifiedAt});
     }
   }
   return out.slice(0, 18);
@@ -991,5 +1032,5 @@ function detail(id) {
 }
 async function pingAll() { await Promise.all(ACTIVE_IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); } // AI engines only (Stability: Prov.ping('stability') from its own card)
 function status() { const o = {}; IDS.forEach(id => { o[id] = stateOf(id); }); return o; }
-window.Prov = { freeOnly: true, assertFreeRoute, _rank: rank, _gemAdjust: gemAdjust, tierOf: (id, key) => id === 'gemini' ? gemTier(gemEntry(key)) : '', probeTier: key => gemProbe(gemEntry(key)), stats, setEnabled, record, rotation, peek, stick, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels, freeModelsOf, isFreeModel };
+window.Prov = { freeOnly: true, freeTierConfirmed, confirmFreeTier, freePolicy, rememberSuccess, assertFreeRoute, _rank: rank, _gemAdjust: gemAdjust, tierOf: (id, key) => id === 'gemini' ? gemTier(gemEntry(key)) : '', probeTier: key => gemProbe(gemEntry(key)), stats, setEnabled, record, rotation, peek, stick, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels, freeModelsOf, isFreeModel };
 })();

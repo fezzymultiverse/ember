@@ -1,0 +1,11 @@
+PASS web search runs and its sources reach the prompt
+PASS only http(s) results are used
+PASS the thinking line lists the extra sources as links
+PASS a failing search leaves Wikipedia alone and says so
+PASS a search that never answers is cut off and the turn continues
+PASS Web Search off in settings: no search call is made
+PASS Web Search pill on overrides the settings switch
+PASS no Wikipedia page but search results: sources are still used
+PASS nothing found anywhere keeps the old honest message
+PASS no agent add-on loaded: behaves exactly as V1.10.51
+passed 10
