@@ -1,0 +1,445 @@
+{
+  "count": 110,
+  "checks": [
+    {
+      "name": "settings retained: ember_pin",
+      "status": "PASS"
+    },
+    {
+      "name": "settings retained: ember_pin_model",
+      "status": "PASS"
+    },
+    {
+      "name": "settings retained: ember_free_pref",
+      "status": "PASS"
+    },
+    {
+      "name": "settings retained: ember_route_enabled",
+      "status": "PASS"
+    },
+    {
+      "name": "settings retained: custom",
+      "status": "PASS"
+    },
+    {
+      "name": "ordinary chat is untouched",
+      "status": "PASS"
+    },
+    {
+      "name": "utility output not given document instructions",
+      "status": "PASS"
+    },
+    {
+      "name": "JSON output not given document instructions",
+      "status": "PASS"
+    },
+    {
+      "name": "how-to question does not create a document",
+      "status": "PASS"
+    },
+    {
+      "name": "negative request stays negative",
+      "status": "PASS"
+    },
+    {
+      "name": "artifact type: Create a PDF report",
+      "status": "PASS"
+    },
+    {
+      "name": "full authoring budget: pdf",
+      "status": "PASS"
+    },
+    {
+      "name": "does not mutate caller: pdf",
+      "status": "PASS"
+    },
+    {
+      "name": "keeps safety/persona: pdf",
+      "status": "PASS"
+    },
+    {
+      "name": "idempotent injection: pdf",
+      "status": "PASS"
+    },
+    {
+      "name": "artifact type: Make an HTML document",
+      "status": "PASS"
+    },
+    {
+      "name": "full authoring budget: html",
+      "status": "PASS"
+    },
+    {
+      "name": "does not mutate caller: html",
+      "status": "PASS"
+    },
+    {
+      "name": "keeps safety/persona: html",
+      "status": "PASS"
+    },
+    {
+      "name": "idempotent injection: html",
+      "status": "PASS"
+    },
+    {
+      "name": "artifact type: Build a website",
+      "status": "PASS"
+    },
+    {
+      "name": "full authoring budget: html",
+      "status": "PASS"
+    },
+    {
+      "name": "does not mutate caller: html",
+      "status": "PASS"
+    },
+    {
+      "name": "keeps safety/persona: html",
+      "status": "PASS"
+    },
+    {
+      "name": "idempotent injection: html",
+      "status": "PASS"
+    },
+    {
+      "name": "artifact type: Improve this HTML page",
+      "status": "PASS"
+    },
+    {
+      "name": "full authoring budget: html",
+      "status": "PASS"
+    },
+    {
+      "name": "does not mutate caller: html",
+      "status": "PASS"
+    },
+    {
+      "name": "keeps safety/persona: html",
+      "status": "PASS"
+    },
+    {
+      "name": "idempotent injection: html",
+      "status": "PASS"
+    },
+    {
+      "name": "artifact type: Write a Markdown report",
+      "status": "PASS"
+    },
+    {
+      "name": "full authoring budget: markdown",
+      "status": "PASS"
+    },
+    {
+      "name": "does not mutate caller: markdown",
+      "status": "PASS"
+    },
+    {
+      "name": "keeps safety/persona: markdown",
+      "status": "PASS"
+    },
+    {
+      "name": "idempotent injection: markdown",
+      "status": "PASS"
+    },
+    {
+      "name": "artifact type: Create a report as a PDF and a Word document",
+      "status": "PASS"
+    },
+    {
+      "name": "full authoring budget: document",
+      "status": "PASS"
+    },
+    {
+      "name": "does not mutate caller: document",
+      "status": "PASS"
+    },
+    {
+      "name": "keeps safety/persona: document",
+      "status": "PASS"
+    },
+    {
+      "name": "idempotent injection: document",
+      "status": "PASS"
+    },
+    {
+      "name": "HTML gets its own execution contract",
+      "status": "PASS"
+    },
+    {
+      "name": "HTML has two preflight passes",
+      "status": "PASS"
+    },
+    {
+      "name": "HTML knows preview restrictions",
+      "status": "PASS"
+    },
+    {
+      "name": "HTML distinguishes styled print from text PDF",
+      "status": "PASS"
+    },
+    {
+      "name": "PDF contract teaches actual renderer syntax",
+      "status": "PASS"
+    },
+    {
+      "name": "PDF contract teaches colours, area graphs and source captions",
+      "status": "PASS"
+    },
+    {
+      "name": "Markdown gets portable-source contract",
+      "status": "PASS"
+    },
+    {
+      "name": "Markdown distinguishes unsupported extensions",
+      "status": "PASS"
+    },
+    {
+      "name": "HTML continuation stays HTML",
+      "status": "PASS"
+    },
+    {
+      "name": "200 page target accepted",
+      "status": "PASS"
+    },
+    {
+      "name": "201 page target outside bounded budget",
+      "status": "PASS"
+    },
+    {
+      "name": "short page targets preserved",
+      "status": "PASS"
+    },
+    {
+      "name": "page instructions honest about estimates",
+      "status": "PASS"
+    },
+    {
+      "name": "planning marked as estimate",
+      "status": "PASS"
+    },
+    {
+      "name": "long documents can continue beyond former four-part ceiling",
+      "status": "PASS"
+    },
+    {
+      "name": "continuation respects cancellation",
+      "status": "PASS"
+    },
+    {
+      "name": "continuation stops on no output",
+      "status": "PASS"
+    },
+    {
+      "name": "Markdown Setext headings parsed",
+      "status": "PASS"
+    },
+    {
+      "name": "long fences do not close on shorter inner fence",
+      "status": "PASS"
+    },
+    {
+      "name": "escaped Markdown table pipes retained",
+      "status": "PASS"
+    },
+    {
+      "name": "signed chart rendered: bar",
+      "status": "PASS"
+    },
+    {
+      "name": "chart source retained: bar",
+      "status": "PASS"
+    },
+    {
+      "name": "finite chart geometry: bar",
+      "status": "PASS"
+    },
+    {
+      "name": "signed chart rendered: column",
+      "status": "PASS"
+    },
+    {
+      "name": "chart source retained: column",
+      "status": "PASS"
+    },
+    {
+      "name": "finite chart geometry: column",
+      "status": "PASS"
+    },
+    {
+      "name": "signed chart rendered: hbar",
+      "status": "PASS"
+    },
+    {
+      "name": "chart source retained: hbar",
+      "status": "PASS"
+    },
+    {
+      "name": "finite chart geometry: hbar",
+      "status": "PASS"
+    },
+    {
+      "name": "signed chart rendered: line",
+      "status": "PASS"
+    },
+    {
+      "name": "chart source retained: line",
+      "status": "PASS"
+    },
+    {
+      "name": "finite chart geometry: line",
+      "status": "PASS"
+    },
+    {
+      "name": "signed chart rendered: area",
+      "status": "PASS"
+    },
+    {
+      "name": "chart source retained: area",
+      "status": "PASS"
+    },
+    {
+      "name": "finite chart geometry: area",
+      "status": "PASS"
+    },
+    {
+      "name": "signed bar baseline inside graph",
+      "status": "PASS"
+    },
+    {
+      "name": "negative and positive bars lie either side of baseline",
+      "status": "PASS"
+    },
+    {
+      "name": "negative pie rejected instead of distorted",
+      "status": "PASS"
+    },
+    {
+      "name": "oversized charts never silently truncate",
+      "status": "PASS"
+    },
+    {
+      "name": "unsupported chart types rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "area and line paths do not share mutable canvas points",
+      "status": "PASS"
+    },
+    {
+      "name": "EasyVoice synthesis cannot bypass free-only policy",
+      "status": "PASS"
+    },
+    {
+      "name": "only explicitly zero-price text models verified",
+      "status": "PASS"
+    },
+    {
+      "name": "name suffix alone cannot prove zero price",
+      "status": "PASS"
+    },
+    {
+      "name": "missing modality proof blocked",
+      "status": "PASS"
+    },
+    {
+      "name": "free-only route in fast",
+      "status": "PASS"
+    },
+    {
+      "name": "free-only route in deep",
+      "status": "PASS"
+    },
+    {
+      "name": "free-only route in util",
+      "status": "PASS"
+    },
+    {
+      "name": "unverified providers never receive inference",
+      "status": "PASS"
+    },
+    {
+      "name": "all API requests carry zero-price ceilings",
+      "status": "PASS"
+    },
+    {
+      "name": "document skill contract reaches actual request body",
+      "status": "PASS"
+    },
+    {
+      "name": "paid model pin cannot bypass policy",
+      "status": "PASS"
+    },
+    {
+      "name": "native plan excludes paid pins",
+      "status": "PASS"
+    },
+    {
+      "name": "unknown-tier strict pin reports failure without switching",
+      "status": "PASS"
+    },
+    {
+      "name": "native plan only contains fresh verified models",
+      "status": "PASS"
+    },
+    {
+      "name": "tool continuation model cannot bypass free-only",
+      "status": "PASS"
+    },
+    {
+      "name": "all account-specific and paid AI routes fail closed",
+      "status": "PASS"
+    },
+    {
+      "name": "tier detection never sends a paid probe",
+      "status": "PASS"
+    },
+    {
+      "name": "expired metadata blocked before inference",
+      "status": "PASS"
+    },
+    {
+      "name": "future metadata timestamps fail closed",
+      "status": "PASS"
+    },
+    {
+      "name": "429 fallback remains inside verified free models",
+      "status": "PASS"
+    },
+    {
+      "name": "runtime acknowledges enabled scraping API",
+      "status": "PASS"
+    },
+    {
+      "name": "runtime directs Ember to real scrape tool",
+      "status": "PASS"
+    },
+    {
+      "name": "runtime never exposes key values",
+      "status": "PASS"
+    },
+    {
+      "name": "disabled scraper is reported honestly",
+      "status": "PASS"
+    },
+    {
+      "name": "scraping settings not silently enabled",
+      "status": "PASS"
+    },
+    {
+      "name": "native worker enforces price cap and freshness",
+      "status": "PASS"
+    },
+    {
+      "name": "native ping has no historical unverified fallback",
+      "status": "PASS"
+    },
+    {
+      "name": "native mirror stays identical: EmberAiWorker.kt",
+      "status": "PASS"
+    },
+    {
+      "name": "native mirror stays identical: EmberPingWorker.kt",
+      "status": "PASS"
+    }
+  ]
+}

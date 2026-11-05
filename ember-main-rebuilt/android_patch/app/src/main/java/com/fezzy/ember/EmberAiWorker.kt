@@ -85,10 +85,17 @@ class EmberAiWorker(appContext: Context, params: WorkerParameters) : Worker(appC
         t.replace(Regex("<tool_call>[\\s\\S]*?</tool_call>", RegexOption.IGNORE_CASE), "").replace(Regex("</?tool_call>", RegexOption.IGNORE_CASE), "").trim()
 
     private fun post(url: String, key: String?, body: String, provider: String = "pollinations", model: String = "openai"): String? {
+        // Free-only: stale legacy native plans must never reach billed providers.
+        if (key != null) {
+            if (provider != "openrouter" || url != "https://openrouter.ai/api/v1/chat/completions") return null
+            val cap = JSONObject(body).optJSONObject("provider")?.optJSONObject("max_price") ?: return null
+            if (listOf("prompt", "completion", "request", "image").any { !cap.has(it) || cap.optDouble(it, -1.0) != 0.0 }) return null
+        }
         if (key != null && !EmberRouteHealth.ready(applicationContext,provider,key,model)) return null
         val started = System.currentTimeMillis()
         val c = URL(url).openConnection() as HttpURLConnection
         try {
+            c.instanceFollowRedirects = false
             c.requestMethod = "POST"; c.connectTimeout = 15000; c.readTimeout = 45000
             c.setRequestProperty("Content-Type", "application/json")
             if (!key.isNullOrEmpty()) c.setRequestProperty("Authorization", "Bearer $key")
@@ -118,8 +125,12 @@ class EmberAiWorker(appContext: Context, params: WorkerParameters) : Worker(appC
         fun viaPlan(): JSONObject? {
             for (i in 0 until plan.length()) {
                 val p = plan.getJSONObject(i)
+                val verified = p.optLong("freeVerifiedAt", 0L)
+                val age = System.currentTimeMillis() - verified
+                if (p.optString("id") != "openrouter" || p.optString("base") != "https://openrouter.ai/api/v1" || verified <= 0L || age < 0L || age >= 3600000L) continue
                 val requestBody = JSONObject().put("model", p.getString("model")).put("messages", msgs).put("max_tokens", max)
                 if (p.optString("id") != "puter") requestBody.put("temperature", temp)
+                requestBody.put("provider", JSONObject().put("max_price", JSONObject().put("prompt",0).put("completion",0).put("request",0).put("image",0)))
                 val body = requestBody.toString()
                 try {
                     val t = post(p.getString("base").trimEnd('/') + "/chat/completions", p.getString("key"), body, p.optString("id"), p.getString("model"))

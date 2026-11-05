@@ -1386,6 +1386,7 @@ function handoff() {
   const N = window.EmberNative;
   if (!N || !N.aiAvailable || S.bgReplies === false || !busy || !curTurn || handedTurn === curTurn || !conv) return null;
   const p = Prov.pending && Prov.pending(); if (!p || !p.o) return null;
+  if (['groq','gemini','cohere','plugsky'].includes(Prov.getPinned() || LS.get('ember_last_good',null))) return null; // Keep direct routes on the page; existing native workers only support verified zero-price OpenRouter.
   const plan = Prov.nativePlan(p.lane); if (Prov.onlyPinned && Prov.onlyPinned(p.lane) && !plan.length) return null; // V1.9.15: strict pin the background task cannot serve: stay on the page, no silent Free Mode
   handedTurn = curTurn;
   if (window.EmberGithub && conv.ghReadTurns) conv.ghReadTurns[curTurn] = window.EmberGithub.lastRead();

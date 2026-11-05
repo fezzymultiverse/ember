@@ -95,3 +95,14 @@ html[data-ember-theme=light] body #app :is(#etDock,#etDock .et-bar,.comp .modero
 html[data-ember-theme=light] body #ekmInline :is(select,input){background:#edf0f5;color:#26354c;border-color:#c8d1df}
 html[data-ember-theme=light] body #ekmInline .ekm-group h4{background:#edf0f5;color:#26354c}
 html[data-ember-theme=light] body #ekmInline a{color:#175caa}
+
+/* Free-tier key confirmation stays within the existing provider card on narrow phones. */
+#ekmInline .ekm-key{flex-wrap:wrap}
+#ekmInline .ekm-key>div{flex:1 1 130px}
+#ekmInline .ekm-free-policy{padding:0 12px 12px;margin:0;overflow-wrap:anywhere}
+#ekmInline .ekm-free-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+#ekmInline #ekmFreeConfirm[hidden]{display:none!important}
+#ekmInline #ekmFreeConfirm label{display:block;font-size:13px;line-height:1.5}
+#ekmInline #ekmFreeCheck{width:auto;min-width:20px;min-height:20px;vertical-align:middle;margin-right:8px}
+#ekmInline .ekm-free-actions button{min-height:44px;border:1px solid var(--b);border-radius:10px;padding:8px 12px;background:var(--p2);color:var(--t);cursor:pointer}
+#ekmInline .ekm-free-actions button:disabled{opacity:.5;cursor:default}

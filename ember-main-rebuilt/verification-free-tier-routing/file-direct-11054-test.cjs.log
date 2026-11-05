@@ -1,0 +1,14 @@
+PASS "a pdf and a Document" is ONE document artifact (Save PDF + Word)
+PASS "make a pdf of my notes" stays a pdf
+PASS "pdf and word" and "word and pdf" are documents
+PASS a plain essay stays a document
+PASS page target still reads 5
+PASS fallback builds a document artifact from the evidence
+PASS fallback has headings, sources table and the web source
+PASS fallback says honestly how it was made
+PASS no evidence: no fake document
+PASS not a file request: no document
+PASS persona: file request turns the tool catalog and tool block off
+PASS app: tool-call answer to a file request goes straight to writing the file
+
+12 checks passed

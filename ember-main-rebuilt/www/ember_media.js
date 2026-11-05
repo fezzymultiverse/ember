@@ -16,6 +16,8 @@
  async function responseError(r){let p={};try{p=await r.json();}catch(_){}return Object.assign(new Error((p.errors||[]).join('; ')||p.message||p.error?.message||'Provider HTTP '+r.status),{status:r.status,retryAfter:retryTime(r)});}
  async function stability(kind,prompt,options,job){
    const P=W.Prov, model=kind==='image'?'stable-image-core':'stable-audio-2.5';
+   if (!P || !P.assertFreeRoute) throw new Error('Free-only AI policy unavailable; media API blocked.');
+   P.assertFreeRoute('stability',model);
    const candidates=P.rotation('stability','media:'+model); let last;
    for(const e of candidates){
      if(e.bad || P.isCool(e.key) || P.modelResting('stability',e.key,model))continue;

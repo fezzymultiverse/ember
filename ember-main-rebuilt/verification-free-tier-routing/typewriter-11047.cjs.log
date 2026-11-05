@@ -1,0 +1,41 @@
+file: /home/user/ember/ember-main-rebuilt/www/ember_typewriter.js
+
+1. final text slightly different from the streamed text
+  ok   no blank flash when the final text is trimmed
+  ok   shown ends equal to the final text
+  ok   finish() resolves true
+  ok   did not re-type the whole reply (paints after finish stay small)
+  ok   mid-text correction keeps the common start on screen
+  ok   mid-text correction ends exactly on the new text
+
+2. a genuinely different text still starts over (tool round / retry)
+  ok   screen is cleared once
+  ok   then the new text is typed
+
+3. app in the background
+  ok   whole reply is shown within ~1s of the page being hidden
+  ok   finish() resolved while hidden
+  ok   streaming while hidden paints at once
+
+4. half-typed artifact tag never shows
+  ok   "<a" ... "<artif" are hidden
+  ok   a full <artifact tag becomes the "Writing artifact" line
+  ok   a normal anchor tag in the text is untouched
+
+5. long replies paint less often
+  ok   long reply fully typed
+       paints for a 12720-char burst: 319
+  ok   paint count for a 12.5k burst is bounded (<= 400)
+  ok   no single paint dumps more than 96 characters
+
+6. emoji are never split
+  ok   no paint ends on a lone high surrogate
+  ok   typed to the end
+
+7. plain behaviour is unchanged
+  ok   appended chunks only ever grow on screen
+  ok   finish resolves true with the full text
+  ok   cancel resolves false and clears
+  ok   reset empties state
+
+23 passed, 0 failed

@@ -1,0 +1,46 @@
+PASS successful key stays sticky across replies and lanes
+PASS successful model stays sticky across replies and lanes
+PASS cached working route sends inference directly without model discovery
+PASS successful model saved independently of health observations
+PASS working route survives a reload
+PASS model quota tries another model on the SAME key
+PASS new working model replaces the failed model, not the key
+PASS Retry-After is respected without sleeping
+PASS authentication failure changes key only when necessary
+PASS rejected key alone is marked bad
+PASS working sixth model is reachable, not cut off by old top-three cap
+PASS resting models do not consume a fixed candidate cap
+PASS Cohere can become sticky provider instead of being cleared on reload
+PASS reload no longer deletes a working Cohere preference
+PASS Gemini direct route works on confirmed free project
+PASS Gemini paid-only model is blocked even on confirmed free key
+PASS Gemini known free Flash-Lite remains eligible
+PASS unknown future Gemini names fail closed
+PASS documented free Gemma 4 family is not skipped
+PASS Plugsky free models work directly without paid models
+PASS Plugsky is available in auto routing with a saved key
+PASS unconfirmed account never sends paid-risk inference
+PASS catalog success alone does not enable free-tier inference
+PASS explicit account confirmation enables free-tier route
+PASS revocation blocks the very next request
+PASS expired account confirmation fails closed
+PASS future account confirmation fails closed
+PASS mistral paid-only route stays blocked even when pinned or account flag set
+PASS anthropic paid-only route stays blocked even when pinned or account flag set
+PASS stability paid-only route stays blocked even when pinned or account flag set
+PASS OpenRouter retains fresh verified zero-price metadata
+PASS OpenRouter retains zero-price ceiling for every request
+PASS OpenRouter working route skips repeated catalog requests
+PASS native plan never includes unverified account-tier routes
+PASS paid model pin cannot override billing guard
+PASS tool continuation still enforces billing and modality policy
+PASS stalled provider fails over without retrying every key and model
+PASS ordinary inference watchdog is at most ten seconds
+PASS partial stream never mixes keys, models or providers
+PASS cancel stops active stream with no fallback
+PASS health/catalog checks never overwrite successful model affinity
+PASS metrics never expose raw API keys
+PASS completed native answer also remembers exact working model
+PASS next native plan starts with the actual successful model
+PASS native health events alone cannot overwrite reply affinity
+45 new routing checks passed.
