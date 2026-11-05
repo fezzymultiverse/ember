@@ -16,10 +16,12 @@ const CFG = {
   anthropic: { name: 'Claude', base: 'https://api.anthropic.com/v1', kind: 'claude', color: '#d97757' }
 };
 const IDS = Object.keys(CFG);
+// V1.10.60: paid-plan engines are removed from routing for good. Keys already saved are kept (never deleted), but they are never used, pinned or listed in the order.
+const PAID_IDS = ['mistral', 'anthropic', 'stability'];
 // Automatic profile for this installation. Mistral stays active because it is working for him.
 const ACTIVE_IDS = IDS.filter(id => CFG[id].kind !== 'media');
 // fast = quick everyday replies. deep = slow, careful turns. util = background jobs (memory, titles).
-const ORDER = { fast: ['groq', 'mistral', 'gemini', 'cohere'], deep: ['mistral', 'groq', 'gemini', 'cohere'], util: ['mistral', 'gemini', 'groq', 'cohere'] }; // V1.10.55: background jobs (summaries, memory, titles) start on Mistral/Gemini so they stop eating Groq's small per-minute token pool // V1.10.21: Groq and Mistral first, Cohere only as the last resort
+const ORDER = { fast: ['groq', 'gemini', 'cohere'], deep: ['groq', 'gemini', 'cohere'], util: ['gemini', 'groq', 'cohere'] }; // V1.10.55: background jobs (summaries, memory, titles) start on Mistral/Gemini so they stop eating Groq's small per-minute token pool // V1.10.21: Groq and Mistral first, Cohere only as the last resort
 
 // V1.5.6: pasted keys often carry invisible junk (zero-width chars, quotes, "Bearer ", "key=", a trailing comma). Any of it makes
 // the provider answer 401/403 even though the key itself is fine, so every key is cleaned before it is stored or sent.
@@ -48,18 +50,18 @@ function load() {
 let keys = load();
 let freePref = LS.get('ember_free_pref', null); // null = auto (Free Mode on only while the user has no keys); true/false = the user's own choice
 // V1.6.1: engine pin. null/'auto' = router decides (Groq first in fast/util since it's near-instant). Any CFG id = try that engine's keys first, every lane.
-let pinnedEngine = LS.get('ember_pin', null); if (pinnedEngine && !CFG[pinnedEngine]) pinnedEngine = null;
-function setPinned(id) { pinnedEngine = (id && CFG[id] && CFG[id].kind !== 'media') ? id : null; LS.set('ember_pin', pinnedEngine); }
+let pinnedEngine = LS.get('ember_pin', null); if (pinnedEngine && (!CFG[pinnedEngine] || PAID_IDS.includes(pinnedEngine))) { pinnedEngine = null; LS.del('ember_pin'); }
+function setPinned(id) { pinnedEngine = (id && CFG[id] && CFG[id].kind !== 'media' && !PAID_IDS.includes(id)) ? id : null; LS.set('ember_pin', pinnedEngine); }
 // V1.6.8: model pin. {id, model} or null. Strict: when set, that engine only ever uses that exact model (no silent swap to another one).
 let pinnedModel = LS.get('ember_pin_model', null);
-if (pinnedModel && !(pinnedModel.id && pinnedModel.model && CFG[pinnedModel.id])) pinnedModel = null;
-function setPinnedModel(id, model) { pinnedModel = (id && CFG[id] && model) ? { id, model: String(model) } : null; LS.set('ember_pin_model', pinnedModel); }
+if (pinnedModel && !(pinnedModel.id && pinnedModel.model && CFG[pinnedModel.id]) || (pinnedModel && PAID_IDS.includes(pinnedModel.id))) { pinnedModel = null; LS.del('ember_pin_model'); }
+function setPinnedModel(id, model) { pinnedModel = (id && CFG[id] && model && !PAID_IDS.includes(id)) ? { id, model: String(model) } : null; LS.set('ember_pin_model', pinnedModel); }
 // V1.9.15: strict pin. With an engine pinned, a failure is shown plainly (real reason) instead of silently answering from another engine.
 // That silent swap, always landing on Groq first in the default order, is what kept pushing him back to Groq. Background jobs (util) still fail over.
 let strictPin = LS.get('ember_pin_strict', true) !== false;
 function setStrict(v) { strictPin = !!v; LS.set('ember_pin_strict', strictPin); }
 const onlyPinned = lane => !!(strictPin && pinnedEngine && lane != 'util');
-function orderFor(lane) { const enabled = LS.get('ember_route_enabled', {}); let base = (ORDER[lane] || ORDER.fast).concat(['openrouter', 'plugsky'].filter(id => enabled[id] !== false)).filter(id => CFG[id].kind !== 'media' && enabled[id] !== false); const liveIds = base.filter(id => keys[id] && keys[id].some(e => !e.bad)); if (liveIds.length) base = liveIds; /* V1.10.21: only engines that hold a live key; per-provider OFF switch */ if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
+function orderFor(lane) { const enabled = LS.get('ember_route_enabled', {}); let base = (ORDER[lane] || ORDER.fast).concat(['openrouter', 'plugsky'].filter(id => enabled[id] !== false)).filter(id => CFG[id].kind !== 'media' && !PAID_IDS.includes(id) && enabled[id] !== false); const liveIds = base.filter(id => keys[id] && keys[id].some(e => !e.bad)); if (liveIds.length) base = liveIds; /* V1.10.21: only engines that hold a live key; per-provider OFF switch */ if (!pinnedEngine) { // V1.9.78: stay on the engine that last answered (fast lane) instead of restarting at the top of the list every message
     const lg = LS.get(lane === 'util' ? 'ember_last_good_util' : 'ember_last_good', null);
     if (lg && base.includes(lg) && keys[lg] && keys[lg].some(e => !e.bad)) return [lg].concat(base.filter(x => x != lg));
     return base; } return [pinnedEngine].concat(base.filter(id => id != pinnedEngine)); }
@@ -299,6 +301,10 @@ function rememberModels(id, rows) {
 }
 // Free-tier eligibility is distinct from catalog availability. Never infer an account plan from a successful reply.
 const ACCOUNT_FREE = ['groq','gemini','cohere'];
+// V1.10.60: the free-only lock is permanent (was opt-in in 1.10.59). Keys must be confirmed Free; Mistral/Claude/Stability are never routed.
+// V1.10.60: the lock is now permanent. There is no switch to turn it off.
+const freeLock = () => true;
+function setFreeLock() { /* permanent: free-only cannot be switched off */ }
 // Reviewed 2026-11-05: https://ai.google.dev/gemini-api/docs/pricing (free INPUT and OUTPUT, Standard tier).
 // Live catalogs decide existence; this policy only decides free-tier eligibility. Unknown new paid models are never guessed free.
 const GEM_FREE_MODELS = new Set(['gemini-3.8-flash','gemini-3.6-flash','gemini-3.5-flash-lite','gemini-3.1-flash-lite','gemini-3-flash-preview','gemini-2.5-pro','gemini-2.5-flash','gemini-2.5-flash-lite']);
@@ -335,12 +341,13 @@ function isFreeModel(id, model, key) {
   return id === 'groq' || /^command-|^north-mini-code/.test(model);
 }
 function assertFreeRoute(id, model, key) {
+  if (!freeLock()) return;
   if (!isFreeModel(id, model, key)) throw Object.assign(new Error('Free-only AI blocked ' + id + '/' + model + '. ' + freePolicy(id)), {code:'free_only',status:403});
 }
-function routeModels(id, list, key) { return list.filter(m => isFreeModel(id,m,key)); }
+function routeModels(id, list, key) { return freeLock() ? list.filter(m => isFreeModel(id,m,key)) : list; }
 async function freeModelsOf(id, fresh) {
   id = id || 'openrouter';
-  if (id !== 'openrouter') return (await modelsOf(id,fresh)).filter(m => isFreeModel(id,m));
+  if (id !== 'openrouter') return freeLock() ? (await modelsOf(id,fresh)).filter(m => isFreeModel(id,m)) : await modelsOf(id,fresh);
   const cache = LS.get('ember_models', {}), c = cache[id];
   let list = !fresh && c && Date.now() - c.at < MC ? c.list : null;
   if (!Array.isArray(list) || !list.some(m => isFreeModel(id,m))) {
@@ -886,11 +893,11 @@ async function runInner(lane, o, tok) {
     // V1.10.53: a document request used to stay on one engine for up to 100 s, walking every model on every key. After 2 failed or timed-out attempts on the same engine it now moves on to the next engine. A pinned engine stays strict.
     let provFails = 0; const docGiveUp = () => !!o.documentMode && provFails >= 2 && !o.routeProvider && !pinStrict(lane);
     if (!o.routeProvider && pinStrict(lane) && id != pinnedEngine) break; // V1.9.15: strict pin
-    if (['mistral','anthropic','stability'].includes(id) || (ACCOUNT_FREE.includes(id) && !keys[id].some(e => freeTierConfirmed(id,e.key)))) { const why = 'Free-only AI: ' + freePolicy(id); errs.push(why); failed.push({id,status:403,why}); continue; }
+    if (freeLock() && (['mistral','anthropic','stability'].includes(id) || (ACCOUNT_FREE.includes(id) && !keys[id].some(e => freeTierConfirmed(id,e.key))))) { const why = 'Free-only AI: ' + freePolicy(id); errs.push(why); failed.push({id,status:403,why}); continue; }
     const soft = id === 'openrouter' && pinnedEngine !== id;
     for (const e of rotation(id, lane)) {
       if (Date.now() >= providerDeadline || docGiveUp()) break;
-      if (e.bad || isCool(e.key) || (ACCOUNT_FREE.includes(id) && !freeTierConfirmed(id,e.key))) { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-skip', { detail: { id, why: e.bad ? 'key rejected' : 'resting after a rate limit' } })); } catch (_) { /* no listener */ } } continue; } // V1.9.78: a skipped engine is a real step
+      if (e.bad || isCool(e.key) || (freeLock() && ACCOUNT_FREE.includes(id) && !freeTierConfirmed(id,e.key))) { if (pl) { try { window.dispatchEvent(new CustomEvent('ember-skip', { detail: { id, why: e.bad ? 'key rejected' : 'resting after a rate limit' } })); } catch (_) { /* no listener */ } } continue; } // V1.9.78: a skipped engine is a real step
       halted();
       let models;
       try { models = routeModels(id, await modelsFor(id, e.key, o.documentMode && id === 'cohere' ? 'deep' : lane), e.key); }
@@ -1032,5 +1039,5 @@ function detail(id) {
 }
 async function pingAll() { await Promise.all(ACTIVE_IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); } // AI engines only (Stability: Prov.ping('stability') from its own card)
 function status() { const o = {}; IDS.forEach(id => { o[id] = stateOf(id); }); return o; }
-window.Prov = { freeOnly: true, freeTierConfirmed, confirmFreeTier, freePolicy, rememberSuccess, assertFreeRoute, _rank: rank, _gemAdjust: gemAdjust, tierOf: (id, key) => id === 'gemini' ? gemTier(gemEntry(key)) : '', probeTier: key => gemProbe(gemEntry(key)), stats, setEnabled, record, rotation, peek, stick, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels, freeModelsOf, isFreeModel };
+window.Prov = { get freeOnly() { return freeLock(); }, freeLock, setFreeLock, freeTierConfirmed, confirmFreeTier, freePolicy, rememberSuccess, assertFreeRoute, _rank: rank, _gemAdjust: gemAdjust, tierOf: (id, key) => id === 'gemini' ? gemTier(gemEntry(key)) : '', probeTier: key => gemProbe(gemEntry(key)), stats, setEnabled, record, rotation, peek, stick, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels, freeModelsOf, isFreeModel };
 })();

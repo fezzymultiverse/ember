@@ -35,6 +35,7 @@
     // and a key that fails is skipped automatically. The only test is the "Test providers" button.
     const card = D.createElement('div'); card.className = 'card ekm-inline'; card.id = 'ekmInline';
     card.innerHTML = '<div class="ct">API keys</div><p class="hint">Add or remove keys here. Ember uses a key until it fails, then moves to the next one. Nothing is tested in the background.</p>' +
+      '<label class="ekm-lock" style="display:flex;gap:10px;align-items:flex-start;margin:10px 0"><input type="checkbox" id="ekmLock" checked disabled><span><b>Free-only (always on)</b><br><small>Only keys you confirm as Free/trial are used. Mistral and Claude are removed from routing; saved keys stay on the phone but are never used.</small></span></label>' +
       '<form id="ekmForm"><label for="ekmProvider">AI provider</label><select id="ekmProvider">' + P.IDS.map(id => '<option value="'+esc(id)+'">'+esc(P.CFG[id].name)+(id==='stability'?' · media only':'')+'</option>').join('')+'</select>'+
       '<p id="ekmTier" class="ekm-hint"></p><label for="ekmInput">API key</label><div class="ekm-entry"><input id="ekmInput" type="password" placeholder="Paste a key" autocomplete="off" autocapitalize="none" spellcheck="false" required><button type="submit" id="ekmAdd" class="btn">Add key</button></div></form>' +
       '<p id="ekmStatus" role="status" aria-live="polite">Keys stay in this app’s local storage and go only to their own provider.</p>' +
@@ -50,9 +51,9 @@
         const cur = entries.length > 1 && P.peek ? P.peek(id, 'fast').at : -1;
         return '<section class="ekm-group"><h4>'+logo+esc(P.CFG[id].name)+'<small>'+entries.length+'</small></h4>'+entries.map((e,i) => {
           const freeKey = ['groq','gemini','cohere'].includes(id);
-          const tierButton = freeKey ? '<button type="button" data-ekm-free="'+esc(id)+'" data-ekm-index="'+i+'">'+(P.freeTierConfirmed(id,e.key)?'Free ✓ · revoke':'Confirm free tier')+'</button>' : '';
+          const tierButton = freeKey && P.freeLock() ? '<button type="button" data-ekm-free="'+esc(id)+'" data-ekm-index="'+i+'">'+(P.freeTierConfirmed(id,e.key)?'Free ✓ · revoke':'Confirm free tier')+'</button>' : '';
           return '<div class="ekm-key"><div><b>'+esc(P.mask(e.key))+'</b>'+(i === cur ? '<small>In use now</small>' : '')+(e.lastGoodModel ? '<small>Working model: '+esc(e.lastGoodModel)+'</small>' : '')+'</div>'+tierButton+'<button type="button" data-ekm-remove="'+esc(id)+'" data-ekm-index="'+i+'" aria-label="Remove '+esc(P.CFG[id].name)+' key '+(i+1)+'">Remove</button></div>';
-        }).join('')+'<p class="ekm-hint ekm-free-policy">'+esc(P.freePolicy(id))+'</p></section>';
+        }).join('')+(P.freeLock()?'<p class="ekm-hint ekm-free-policy">'+esc(P.freePolicy(id))+'</p>':'')+'</section>';
       }).join('') || '<p class="ekm-empty">No AI keys saved. Add your first key above.</p>';
       if (list.dataset.rendered !== html) { list.innerHTML = html; list.dataset.rendered = html; }
     }
@@ -70,6 +71,8 @@
     W.EmberKeyManager = { open, close: () => {}, isOpen: () => false, tiers: TIERS, version:'1.10.56' };
     W.EmberAppearance = {set:setTheme,get:()=>theme};
     $('ekmProvider').onchange = tier;
+    $('ekmLock').checked = P.freeLock();
+    $('ekmLock').disabled = true; // V1.10.60: permanent, no off switch
     $('ekmForm').addEventListener('submit', async e => {
       e.preventDefault(); if (adding) return;
       const id = $('ekmProvider').value, key = $('ekmInput').value;
@@ -77,7 +80,7 @@
       adding = true; $('ekmAdd').disabled = true;
       try {
         const r = await P.addKey(id,key); $('ekmInput').value = '';
-        status(!r.ok ? r.why === 'already added' ? 'This key is already saved.' : 'The key could not be added.' : ['groq','gemini','cohere'].includes(id) ? 'Key saved. Confirm its free/trial tier below before use.' : ['mistral','anthropic','stability'].includes(id) ? 'Key saved, but inference is blocked: no verified free API tier.' : 'Key saved. Ember will use eligible free models on your next message.');
+        status(!r.ok ? r.why === 'already added' ? 'This key is already saved.' : 'The key could not be added.' : P.freeLock() && ['groq','gemini','cohere'].includes(id) ? 'Key saved. Confirm its free/trial tier below before use.' : ['mistral','anthropic','stability'].includes(id) ? 'Key saved, but inference is blocked: no verified free API tier.' : 'Key saved. Ember will use eligible free models on your next message.');
         W.dispatchEvent(new Event('ember-names'));
       } catch (_) { status('The key could not be saved.'); }
       finally { adding=false; $('ekmAdd').disabled=false; paint(); }

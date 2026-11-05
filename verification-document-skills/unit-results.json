@@ -1,5 +1,5 @@
 {
-  "count": 110,
+  "count": 111,
   "checks": [
     {
       "name": "settings retained: ember_pin",
@@ -11,6 +11,10 @@
     },
     {
       "name": "settings retained: ember_free_pref",
+      "status": "PASS"
+    },
+    {
+      "name": "settings retained: ember_free_lock",
       "status": "PASS"
     },
     {

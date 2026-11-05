@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.10.60 - Free-only is permanent, paid engines removed from routing
+- Changed: the free-only lock can no longer be turned off. Mistral, Claude and Stability are never routed, pinned or listed in the engine order. Keys already saved for them are kept, not deleted, and are never sent anywhere.
+- Unchanged: Groq, Gemini and Cohere keys still need your own "Free" confirmation (renews every 30 days); OpenRouter stays zero-price models only; Plugsky stays micro/lite; anonymous Free Mode stays available.
+- Files changed: www/providers.js, ember_repair.js, sw.js, package.json, CHANGELOG.md.
+
 ## 1.10.57 - Read-First false blocks fixed, Termux reconnect + opener, one-tap yt-dlp setup
 - Fixed: "Read-First blocked this code answer: no live file was read from Knowledge Brain Repo" appeared on ordinary replies (for example an HTML page request followed by "It must be complex, professional, robust"). Cause: app.js blocked any reply that merely CONTAINED code, even when 1.10.56 had already decided the Brain had nothing to do with the question. The block now applies only when this turn really required a Brain read (proof.required). A real required read that fails is still blocked, as designed.
 - Checked, no change needed: keys are already sticky (1.10.56). The key that answers is used again on the next message; the next key is used only after it fails. New tests/sticky-keys-11057-test.cjs proves it with three mocked keys (stays on key 1, fails over to 2, stays on 2, fails over to 3, stays on 3, stores only the last 8 characters).
@@ -2331,3 +2336,8 @@ Optional unified patch against original root: ember-command-center.patch
 New UI source: www/ember_command_center.css and www/ember_command_center.js; component markup lives in www/index.html.
 ~~~~~~~~
 
+
+## 1.10.59
+- Free-only lock is now opt-in (Settings > API keys > "Strict free-only lock"). Default OFF: every saved key (Groq, Gemini, Mistral, Cohere, ...) routes as in 1.10.57; free-tier Gemini keys still skip paid-only models. ON: strict free-only with per-key confirmation.
+- Fixes "No engine answered. Free-only AI: Use only a Free-plan key..." and the 403 on pinned Groq.
+- Sticky key/model routing kept. New test: tests/free-lock-optin-test.cjs.
