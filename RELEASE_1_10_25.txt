@@ -1,7 +1,0 @@
-EMBER V1.10.25
-BOOT     Rising ember sparks, shock rings after the flame lights, live status line (engines, keys, free models), progress bar, S.O.I footer.
-BOOT     Ends when the app has really loaded (min 2.8 s, max 6 s); tap still skips.
-ROUTING  A document ask never becomes a picture because Create image was armed (unless PDF mode is armed too).
-MEDIA    Stability pictures stored as bytes and shown as data URLs.
-PDF      Pictures via ![caption](img:...), 12000-token ceiling, per-engine tests in + > Media & Music, lyrics reference trimmed.
-NOTE     All fixes are in www/ (the real app). Earlier V1.10.23/24 zips patched the stale root copies.

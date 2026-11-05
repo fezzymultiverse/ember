@@ -1,8 +1,0 @@
-EMBER V1.10.38 - SETTINGS: AI KEYS, SCRAPING AND MEDIA EACH IN ONE PAGE
-AI KEYS    Settings row renamed "AI keys & providers": Free Mode, which engine answers, every AI key (paste & detect, per-engine list, add by hand), provider routing and fallback switches.
-SCRAPING   Row "Web scraping & search": every scraper and search key, free reader, health checks, tests (unchanged content, clearer name).
-MEDIA      Row "Media" (was "Music & downloads"): NEW top card "Media keys & engines" holds the Stability AI key (add, check, remove) and the keyless music/video endpoints, moved here from + > Media & Music. Below it: song ID, player, music control, YouTube / yt-dlp downloads.
-PLUS MENU  + > Media & Music no longer holds keys; it shows one row that opens Settings > Media. Its action toggles (Create audio/video, Music Brain, identify a song) stay.
-FILES      www/ember_cockpit.js, www/ember_plugins.js, www/index.html (cache-bust), www/sw.js.
-TESTED     Headless Chromium at 412x915: row names, Media card renders, Stability key add/remove flow, keyless panel present, AI and scraping pages open, no page errors. A fake key was rejected as expected (no network).
-NOT TESTED Android device, APK rebuild, a real Stability key.

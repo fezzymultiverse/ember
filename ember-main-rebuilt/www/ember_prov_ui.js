@@ -54,7 +54,7 @@ function lastChecked() { const P = window.Prov; let t = lastAt; try { aiIds().fo
 function needsCheck() { const P = window.Prov; try { return aiIds().some(id => (P.entries(id) || []).length && P.stateOf(id) === 'unknown'); } catch (e) { return false; } }
 function summary() {
   const P = window.Prov, ids = aiIds().filter(id => (P.entries(id) || []).length);
-  if (busy) return 'Checking your keys…';
+  if (busy) return 'Testing…';
   if (!ids.length) return 'No keys saved yet';
   const ok = ids.filter(id => P.stateOf(id) === 'ok').length;
   return ok + ' of ' + ids.length + ' provider' + (ids.length === 1 ? '' : 's') + ' ready';
@@ -62,10 +62,10 @@ function summary() {
 function paint() {
   const d = $('provDrop'), P = window.Prov; if (!d || !P) return;
   const t = lastChecked();
-  d.innerHTML = '<div class="pdh"><div><b>API &amp; Engine Health</b><small class="pdsummary">' + esc(summary()) + '</small></div><button class="pdre" id="pdRe" aria-label="Check all providers now"' + (busy ? ' disabled' : '') + '>' + (busy ? '…' : '↻ Check') + '</button></div>' +
+  d.innerHTML = '<div class="pdh"><div><b>API &amp; Engine Health</b><small class="pdsummary">' + esc(summary()) + '</small></div><button class="pdre" id="pdRe" aria-label="Test all providers now"' + (busy ? ' disabled' : '') + '>' + (busy ? '…' : '↻ Test') + '</button></div>' +
     aiIds().map(rowFor).join('') + freeRow() +
     '<div class="pdleg"><span><i class="pdd ok"></i>Catalog / recent reply</span><span><i class="pdd limited"></i>Rate limited</span><span><i class="pdd bad"></i>Key/API error</span><span><i class="pdd none"></i>No key</span></div>' +
-    '<p class="pdnote">' + (t ? 'Checked ' + new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '. ' : 'Not checked yet. ') + 'A provider with no key can never show green.</p>';
+    '<p class="pdnote">' + (t ? 'Last tested ' + new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '. ' : 'Not tested yet. ') + 'Nothing is checked in the background. Tap Test when you want to.</p>';
 }
 async function check() {
   const P = window.Prov; if (!P || busy) return;
@@ -79,7 +79,7 @@ function toggle(force) {
   const d = $('provDrop'), b = $('bProv'); if (!d || !b) return;
   open = force === undefined ? !open : !!force;
   d.classList.toggle('hidden', !open); b.classList.toggle('on', open); b.setAttribute('aria-expanded', open ? 'true' : 'false');
-  if (open) { paint(); if (!sessionChecked && needsCheck()) check(); } // once: later opens only show the last status
+  if (open) paint(); // 1.10.56: opening never tests anything; only the Test button does
   clearInterval(tk); tk = 0;
   if (open) tk = setInterval(() => { try { if (!busy) paint(); } catch (e) { /* repaint is best effort */ } }, 1000);
 }
@@ -95,9 +95,7 @@ if ($('bProv')) {
   document.addEventListener('click', e => { if (open && !e.target.closest('#provDrop') && !e.target.closest('#bProv')) toggle(false); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && open) toggle(false); });
   window.addEventListener('ember-names', () => { if (open && !busy) paint(); });
-  // quiet first check so the header pill and the dots are right without opening anything
-  setTimeout(() => { try { if (window.Prov && window.Prov.hasKeys() && needsCheck()) check(); } catch (e) { /* not ready */ } }, 1500);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && window.Prov && window.Prov.hasKeys() && !busy && needsCheck()) check(); });
+  // 1.10.56: no start-up check and no check when the app comes back to the screen. Ember uses your keys as normal; Test runs only when you tap it.
 }
 
 // 📎 Docs: opens the Documents tab (one paperclip there attaches files or a note)

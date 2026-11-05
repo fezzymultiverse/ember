@@ -1,7 +1,0 @@
-EMBER V1.10.37 - TOGETHER AI AND FIREWORKS AI REMOVED
-REMOVED    Together AI and Fireworks AI are gone from the live build (www/): engine config, model list and picker, key scanner, key links, AI Features switches, Providers menu, key dropdown, icons and service-worker cache entries.
-CLEANUP    On first run a saved key, pin, last-good or opt-in switch for either engine is erased once, like the old Puter cleanup.
-UNTOUCHED  Groq, Mistral, Gemini, Cohere, Claude, OpenRouter, Plugsky and LongCat work as before.
-FILES      www/providers.js, ember_features.js, ember_menu.js, ember_keys.js, ember_keyscan.js, app.js, index.html, sw.js, provider-icons/ATTRIBUTION.txt (together.svg and fireworks.svg deleted).
-TESTED     Syntax check (node --check) on every edited JS file; no remaining references in www/.
-NOT TESTED Browser run, APK rebuild. Old copies at the zip root (providers.js, app.js, index.html) are stale and were not edited.

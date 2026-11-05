@@ -78,13 +78,20 @@ function record(id, model, ok, ms, status, usage) {
   if (usage) { m.tokens = (m.tokens || 0) + (Number(usage.total_tokens) || 0); p.tokens = (p.tokens || 0) + (Number(usage.total_tokens) || 0); }
   LS.set('ember_route_metrics', metrics); emitStats();
 }
+// V1.10.56: sticky keys. The key that last ANSWERED goes first every time and stays first until it fails (rate limit, rejected, error).
+// Only then does the router move to the next key; the key that answers next becomes the new sticky key. No round-robin after each reply.
+// What is stored is the last 8 characters of the key (to tell keys apart), never the whole key.
+let sticky = LS.get('ember_key_sticky', {}) || {};
+const tail = k => String(k || '').slice(-8);
+const stickyAt = id => { const list = keys[id] || [], i = list.findIndex(e => tail(e.key) === sticky[id]); return i < 0 ? 0 : i; };
+function stick(id, key) { if (!key || sticky[id] === tail(key)) return; sticky[id] = tail(key); LS.set('ember_key_sticky', sticky); emitStats(); }
 function rotation(id, lane) {
-  const list = keys[id] || [], k = id + ':' + lane, at = cursors.get(k) || 0;
+  const list = keys[id] || [];
   if (!list.length) return [];
-  cursors.set(k, (at + 1) % list.length); return list.slice(at).concat(list.slice(0,at));
+  const at = stickyAt(id); return list.slice(at).concat(list.slice(0, at));
 }
-// V1.10.3: read-only look at the key cursor for the "next up" dot. It never advances the cursor.
-function peek(id, lane) { const n = (keys[id] || []).length; return { n, at: n ? (cursors.get(id + ':' + lane) || 0) % n : 0 }; }
+// read-only look at the key cursor for the "next up" dot and the Providers bar. It never changes the cursor.
+function peek(id, lane) { const n = (keys[id] || []).length; return { n, at: n ? stickyAt(id) : 0 }; }
 function stats() {
   const out = JSON.parse(JSON.stringify(metrics));
   IDS.forEach(id => { const p = out[id] || (out[id] = { requests:0, success:0, failed:0, models:{} }); p.cooldowns = [];
@@ -492,18 +499,30 @@ function learnTpm(id, model, er) {
   const t = LS.get('ember_tpm', {}) || {}; t[id + '|' + model] = Math.max(1500, Math.floor(lim * 0.92)); LS.set('ember_tpm', t); return true;
 }
 function fitBody(id, model, body) {
+  // V1.10.56: the old fitter threw away every earlier message until only the last one was left, so a short follow-up ("does that", "yes do it")
+  // reached the model with no idea what it referred to. Now the order is: drop tools, shorten old long messages, shrink the system prompt to a floor,
+  // and only then drop the OLDEST turns, always keeping the last 3 exchanges. Dropped questions are kept as a one-line recap in the system prompt.
   const bud = tpmBudget(id, model); if (!bud || !body || !Array.isArray(body.messages)) return body;
   body.messages = body.messages.map(m => Object.assign({}, m)); // never trim the caller's own chat history
+  const M = body.messages;
   const txt = m => !!m && typeof m.content === 'string';
   const size = () => estTok(body.messages) + (body.tools ? estTok(body.tools) : 0);
   const want = Math.min(body.max_tokens || 400, bud), minOut = Math.min(want, 700);
   const over = () => size() + minOut > bud;
   const cut = (s, keep) => { s = String(s); if (s.length <= keep) return s; const h = Math.floor(keep * 0.6); return s.slice(0, h) + '\n[...trimmed to fit the engine token limit...]\n' + s.slice(s.length - (keep - h)); };
+  const KEEP = 6; // system + the last 6 messages (3 exchanges) survive until the very last step
+  const orphan = () => { while (M.length > 2 && M[1] && M[1].role === 'tool') M.splice(1, 1); };
   if (over() && body.tools) { delete body.tools; delete body.tool_choice; }
-  for (let i = 1; over() && i < body.messages.length - 1; i++) if (txt(body.messages[i]) && body.messages[i].content.length > 1500) body.messages[i].content = cut(body.messages[i].content, 1500);
-  while (over() && body.messages.length > 2) { body.messages.splice(1, 1); while (body.messages.length > 2 && body.messages[1].role === 'tool') body.messages.splice(1, 1); }
-  if (over() && txt(body.messages[0])) { const rest = size() - estTok(body.messages[0].content); body.messages[0].content = cut(body.messages[0].content, Math.max(1500, Math.floor((bud - minOut - rest) * 3.2))); }
-  const last = body.messages[body.messages.length - 1];
+  for (let i = 1; over() && i < M.length - KEEP; i++) if (txt(M[i]) && M[i].content.length > 700) M[i].content = cut(M[i].content, 700);
+  const sysFloor = Math.max(2200, Math.floor(bud * 3.2 * 0.4));
+  if (over() && txt(M[0]) && M[0].content.length > sysFloor) { const rest = size() - estTok(M[0].content); M[0].content = cut(M[0].content, Math.max(sysFloor, Math.floor((bud - minOut - rest) * 3.2))); }
+  for (let i = Math.max(1, M.length - KEEP); over() && i < M.length - 1; i++) if (txt(M[i]) && M[i].content.length > 1800) M[i].content = cut(M[i].content, 1800);
+  const dropped = [];
+  while (over() && M.length > KEEP + 1) { const m = M.splice(1, 1)[0]; if (m && m.role === 'user' && txt(m)) dropped.push(String(m.content).replace(/\s+/g, ' ').trim().slice(0, 140)); orphan(); }
+  while (over() && M.length > 3) { const m = M.splice(1, 1)[0]; if (m && m.role === 'user' && txt(m)) dropped.push(String(m.content).replace(/\s+/g, ' ').trim().slice(0, 140)); orphan(); }
+  if (dropped.length && txt(M[0])) M[0].content += '\n\n[Earlier in this chat (older messages were trimmed to fit the engine limit). He had asked: ' + dropped.slice(-4).join(' | ') + ' Use this to understand short follow-ups.]';
+  if (over() && txt(M[0])) { const rest = size() - estTok(M[0].content); M[0].content = cut(M[0].content, Math.max(1200, Math.floor((bud - minOut - rest) * 3.2))); }
+  const last = M[M.length - 1];
   if (over() && txt(last)) { const rest = size() - estTok(last.content); last.content = cut(last.content, Math.max(800, Math.floor((bud - minOut - rest) * 3.2))); }
   body.max_tokens = Math.max(256, Math.min(body.max_tokens || 400, bud - size()));
   return body;
@@ -636,7 +655,7 @@ async function addKey(id, key) {
   key = clean(key);
   if (!key || !keys[id]) return { ok: false, why: 'empty' };
   if (keys[id].some(e => e.key === key)) return { ok: false, why: 'already added' };
-  const e = { key, st: null }; keys[id].push(e); save(); await health(id, e);
+  const e = { key, st: null }; keys[id].push(e); save(); /* V1.10.56: no test on add; Test is a button, and a real reply is the real check */
   // Tier is inferred only from actual user requests; no hidden generation probe on key add.
   return { ok: true, e };
 }
@@ -836,7 +855,7 @@ async function runInner(lane, o, tok) {
         const m = pool[mi];
         halted(); if (Date.now() >= providerDeadline || docGiveUp()) break;
         if (modelResting(id,e.key,m)) continue;
-        trying(CFG[id].name, m); try { const r = await call(id, e.key, m, Object.assign(withFacts(o, lane, id, m, failed), { _providerDeadline: providerDeadline })); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); if (id === 'gemini') gemClear(e, m); record(id,m,true,r.ms,200,r.usage); save(); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
+        trying(CFG[id].name, m); try { const r = await call(id, e.key, m, Object.assign(withFacts(o, lane, id, m, failed), { _providerDeadline: providerDeadline })); e.st = Object.assign({}, e.st || {}, { at: Date.now(), ok: true, limited: false, code: 0, msg: '', lat: r.ms || 0, model: m }); if (id === 'gemini') gemClear(e, m); record(id,m,true,r.ms,200,r.usage); stick(id, e.key); save(); return done({ text: r.text, provider: id, model: m, ms: r.ms }); }
         catch (er) {
           if (er.code === 'cancelled' || routeCancelled) throw Object.assign(new Error('Reply cancelled.'), { code: 'cancelled' });
           errs.push(CFG[id].name + (er.status ? ' (' + er.status + ')' : '') + ': ' + er.message); failed.push({ id, status: er.status, why: er.message });
@@ -914,7 +933,7 @@ function nativePlan(lane) {
 }
 // V1.9.8: one honest state per engine. none = no key saved (never green), unknown = keys saved but not checked in the last 30 min,
 // ok = a key answered a live check or a real reply recently, limited = valid but resting, bad = every key rejected or unreachable.
-const FRESH = 30 * 60 * 1000;
+const FRESH = 12 * 60 * 60 * 1000; // V1.10.56: nothing re-checks keys in the background any more, so a result stays valid for 12 h
 function stateOf(id) {
   const l = keys[id] || [];
   if (!l.length) return 'none';
@@ -957,5 +976,5 @@ function detail(id) {
 }
 async function pingAll() { await Promise.all(ACTIVE_IDS.filter(id => keys[id].length).map(id => ping(id))); return status(); } // AI engines only (Stability: Prov.ping('stability') from its own card)
 function status() { const o = {}; IDS.forEach(id => { o[id] = stateOf(id); }); return o; }
-window.Prov = { _rank: rank, _gemAdjust: gemAdjust, tierOf: (id, key) => id === 'gemini' ? gemTier(gemEntry(key)) : '', probeTier: key => gemProbe(gemEntry(key)), stats, setEnabled, record, rotation, peek, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels, freeModelsOf, isFreeModel };
+window.Prov = { _rank: rank, _gemAdjust: gemAdjust, tierOf: (id, key) => id === 'gemini' ? gemTier(gemEntry(key)) : '', probeTier: key => gemProbe(gemEntry(key)), stats, setEnabled, record, rotation, peek, stick, modelRest, modelResting, coolKey, isCool, authFailure, route: lane => orderFor(lane), toolDecls, stateOf, detail, ping, pingAll, holdInflight, stopInflight, abortInflight, pending, nativePlan, CFG, IDS, ACTIVE_IDS, keys: () => keys, hasKeys, entries, addKey, removeKey, extract, ingest, clean, health, healthAll, run, status, mask, reload: () => { keys = load(); }, setFree, freeOn, label, callPollinations, setPinned, getPinned: () => pinnedEngine, setStrict, getStrict: () => strictPin, onlyPinned, engineVoice, setPinnedModel, getPinnedModel: () => pinnedModel, pinNote, factsBlock, modelsOf, cachedModels, freeModelsOf, isFreeModel };
 })();

@@ -1,6 +1,0 @@
-PASS every fact is drawn once
-PASS original indexes kept
-FAIL groups are details.mg with counts
-FAIL unmatched facts fall into Other
-PASS empty list says Nothing yet
-3 passed, 2 failed

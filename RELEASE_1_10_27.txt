@@ -1,9 +1,0 @@
-EMBER V1.10.27 - SETTINGS SEARCH + GITHUB WIDGET
-SEARCH   Settings: "Search settings" box on top of the menu. Finds any control or card in every section and jumps to it.
-         Right panel search: "Search Settings for ..." row sends the word into it.
-GITHUB   One widget at the BOTTOM of Settings, tap to expand: Brain | Search | Push | Terminal.
-         Loads ONLY Ember's Brain (fezzymultiverse/ember-brain). Search repos (read-only) > View (README + file map) > Add > Push (one commit, no force-push).
-TERMINAL GitHub Terminal kept: its own tab in the widget, also mirrored in the Command Centre terminal (GIT tag).
-STRIPPED Command Centre GitHub card (Brain/Search/Run & Push), Actions runner, SSH key gate, output repo, whole-repo sync queue.
-         ember_repo_runner.js and ember_github_ui.js moved to archive/www. ember_brainpush.js now has its own search.
-NOT TESTED  Android device, live GitHub push, FILE_INTEGRITY / WIRING manifests (not regenerated), old legacy tests that expect the removed runner UI.

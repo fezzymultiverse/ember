@@ -79,17 +79,34 @@ class EmberDevicePlugin : Plugin() {
     }
 
     // V1.6.7: one-tap "Open Termux" for the EMBER TERMUX panel. Launches the app's normal launcher activity; reads nothing from it.
+    // V1.10.57: three ways in, and an honest reason when all fail: launcher intent, then an explicit MAIN/LAUNCHER query, then Termux's own activity.
     @PluginMethod
     fun openApp(call: PluginCall) {
         val pkg = call.getString("package") ?: "com.termux"
         val r = JSObject()
+        val pm = context.packageManager
+        var installed = false
+        try { pm.getPackageInfo(pkg, 0); installed = true } catch (e: Exception) { installed = false }
+        var last = ""
+        val tries = ArrayList<Intent>()
+        try { pm.getLaunchIntentForPackage(pkg)?.let { tries.add(it) } } catch (e: Exception) { last = e.message ?: "" }
         try {
-            val i = context.packageManager.getLaunchIntentForPackage(pkg)
-            if (i == null) { r.put("ok", false); r.put("error", "not installed"); call.resolve(r); return }
-            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(i)
-            r.put("ok", true)
-        } catch (e: Exception) { r.put("ok", false); r.put("error", e.message ?: "could not open") }
+            val q = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setPackage(pkg)
+            @Suppress("DEPRECATION")
+            val ri = pm.queryIntentActivities(q, 0)
+            if (ri.isNotEmpty()) tries.add(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setClassName(pkg, ri[0].activityInfo.name))
+        } catch (e: Exception) { last = e.message ?: last }
+        if (pkg == "com.termux") tries.add(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setClassName("com.termux", "com.termux.app.TermuxActivity"))
+        for (i in tries) {
+            try {
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                context.startActivity(i)
+                r.put("ok", true); call.resolve(r); return
+            } catch (e: Exception) { last = e.message ?: "could not open" }
+        }
+        r.put("ok", false)
+        r.put("installed", installed)
+        r.put("error", if (!installed) "Termux is not installed or Android hides it from Ember (update the APK so the package-visibility entry is in the manifest)" else if (last.isNotEmpty()) last else "Android refused to open it")
         call.resolve(r)
     }
 

@@ -1,4 +1,4 @@
-/* Ember 1.10.51: isolated key management, appearance and observed activity UI.
+/* Ember 1.10.56: API keys + AI providers in one Settings screen (inline key form), appearance and observed activity UI.
  * Uses the existing Prov store/router; does not migrate or export credentials. */
 'use strict';
 (() => {
@@ -29,63 +29,54 @@
   W.matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', () => { if (theme === 'system') setTheme(theme); });
   function boot() {
     const P = W.Prov; if (!P) return;
-    let lastFocus = null, prior = [], checking = false, adding = false;
-    const backdrop = D.createElement('button'); backdrop.id = 'ekmBackdrop'; backdrop.hidden = true; backdrop.setAttribute('aria-label','Close API keys');
-    const panel = D.createElement('aside'); panel.id = 'emberKeyManager'; panel.hidden = true; panel.inert = true;
-    panel.setAttribute('role','dialog'); panel.setAttribute('aria-modal','true'); panel.setAttribute('aria-labelledby','ekmTitle');
-    panel.innerHTML = '<header><div><small>EMBER / CONNECTIONS</small><h2 id="ekmTitle">API keys</h2><p>Add, check or remove your AI keys. Routing stays in Settings.</p></div><button type="button" id="ekmClose" aria-label="Close API keys">×</button></header>' +
-      '<div class="ekm-body"><form id="ekmForm"><label for="ekmProvider">AI provider</label><select id="ekmProvider">' + P.IDS.map(id => '<option value="'+esc(id)+'">'+esc(P.CFG[id].name)+(id==='stability'?' · media only':'')+'</option>').join('')+'</select>'+
-      '<p id="ekmTier" class="ekm-hint"></p><label for="ekmInput">API key</label><div class="ekm-entry"><input id="ekmInput" type="password" placeholder="Paste a key" autocomplete="off" autocapitalize="none" spellcheck="false" required><button type="submit" id="ekmAdd">Add key</button></div></form>'+
-      '<p id="ekmStatus" role="status" aria-live="polite">Keys stay in this app’s local storage. They are sent only to their provider; not included in this release ZIP.</p>'+
-      '<div class="ekm-toolbar"><h3>Saved keys</h3><button type="button" id="ekmCheck">Refresh catalogs</button></div><p class="ekm-hint">Catalog checks do not generate replies or prove available chat quota. The model is selected automatically when you send a message, unless you explicitly pinned one.</p><div id="ekmList"></div></div>';
-    D.body.append(backdrop,panel);
-    function tier() { const t = TIERS[$('ekmProvider').value]; $('ekmTier').innerHTML = esc(t[0])+' <a href="'+t[1]+'" target="_blank" rel="noopener noreferrer">Provider details ↗</a>'; }
+    let adding = false;
+    // 1.10.56: API keys and AI providers are ONE place. The key form and the saved-key list live inline at the top of "AI providers & API keys";
+    // the engine pin, routing and fallback are right under them. No side panel. Keys have no test button and no health bar: Ember simply uses them,
+    // and a key that fails is skipped automatically. The only test is the "Test providers" button.
+    const card = D.createElement('div'); card.className = 'card ekm-inline'; card.id = 'ekmInline';
+    card.innerHTML = '<div class="ct">API keys</div><p class="hint">Add or remove keys here. Ember uses a key until it fails, then moves to the next one. Nothing is tested in the background.</p>' +
+      '<form id="ekmForm"><label for="ekmProvider">AI provider</label><select id="ekmProvider">' + P.IDS.map(id => '<option value="'+esc(id)+'">'+esc(P.CFG[id].name)+(id==='stability'?' · media only':'')+'</option>').join('')+'</select>'+
+      '<p id="ekmTier" class="ekm-hint"></p><label for="ekmInput">API key</label><div class="ekm-entry"><input id="ekmInput" type="password" placeholder="Paste a key" autocomplete="off" autocapitalize="none" spellcheck="false" required><button type="submit" id="ekmAdd" class="btn">Add key</button></div></form>' +
+      '<p id="ekmStatus" role="status" aria-live="polite">Keys stay in this app’s local storage and go only to their own provider.</p>' +
+      '<div class="ekm-toolbar"><h3>Saved keys</h3></div><div id="ekmList"></div>';
+    function tier() { const t = TIERS[$('ekmProvider').value]; $('ekmTier').innerHTML = t ? esc(t[0])+' <a href="'+t[1]+'" target="_blank" rel="noopener noreferrer">Provider details ↗</a>' : ''; }
     function status(text) { $('ekmStatus').textContent = text; }
     function paint() {
-      if (panel.hidden) return;
-      const list = $('ekmList');
+      const list = $('ekmList'); if (!list) return;
       const html = P.IDS.map(id => {
         const entries = P.entries(id) || []; if (!entries.length) return '';
         const logo = W.EmberProviderBadge ? W.EmberProviderBadge(id) : '';
+        const cur = entries.length > 1 && P.peek ? P.peek(id, 'fast').at : -1;
         return '<section class="ekm-group"><h4>'+logo+esc(P.CFG[id].name)+'<small>'+entries.length+'</small></h4>'+entries.map((e,i) => {
-          const st = e.st, msg = !st ? 'Saved · not checked' : st.lat && st.ok ? 'Replied successfully · '+(st.model||'') : st.limited ? 'Limited · '+(st.msg||'wait for quota reset') : st.ok ? 'Catalog reachable · generation not verified' : 'Check failed · '+(st.code||'network');
-          return '<div class="ekm-key"><div><b>'+esc(P.mask(e.key))+'</b><small>'+esc(msg)+'</small></div><button type="button" data-ekm-remove="'+esc(id)+'" data-ekm-index="'+i+'" aria-label="Remove '+esc(P.CFG[id].name)+' key '+(i+1)+'">Remove</button></div>';
+          return '<div class="ekm-key"><div><b>'+esc(P.mask(e.key))+'</b>'+(i === cur ? '<small>In use now</small>' : '')+'</div><button type="button" data-ekm-remove="'+esc(id)+'" data-ekm-index="'+i+'" aria-label="Remove '+esc(P.CFG[id].name)+' key '+(i+1)+'">Remove</button></div>';
         }).join('')+'</section>';
       }).join('') || '<p class="ekm-empty">No AI keys saved. Add your first key above.</p>';
       if (list.dataset.rendered !== html) { list.innerHTML = html; list.dataset.rendered = html; }
     }
-    function close() {
-      panel.hidden = true; panel.inert = true; backdrop.hidden = true; D.body.classList.remove('ember-keys-open');
-      prior.forEach(([node,inert]) => { node.inert = inert; }); prior = [];
-      if (lastFocus?.isConnected && !lastFocus.closest('[inert]')) lastFocus.focus({preventScroll:true});
-    }
+    const host = $('cockpit_engine') || $('cockpit_keys') || $('kList')?.closest('.cockpit-section');
+    if (host) host.prepend(card);
+    // The old per-key list (dots, check buttons, "Check all") is retired: it duplicated this list and tested keys.
+    $('cockpitProviderList')?.setAttribute('hidden','');
+    ['pkBox','notes'].forEach(id => { const c=$(id)?.closest('.card'); if (c) { c.classList.add('ember-legacy-key-card'); c.setAttribute('aria-hidden','true'); } });
     function open(provider) {
-      if (!panel.hidden) return;
-      lastFocus = D.activeElement;
-      // Older key summary panel stays unused; no duplicate credential stores.
-      const old = $('keysSidePanel'); if (old) { old.classList.remove('show'); old.setAttribute('aria-hidden','true'); }
-      const oldBg = $('kspBackdrop'); if (oldBg) oldBg.hidden = true;
-      $('headerActionsMenu')?.classList.add('hidden');
-      prior = ['app','settings','emberRightPanel','emberCommandCenter'].map($).filter(Boolean).map(n => [n,n.inert]);
-      prior.forEach(([n]) => { n.inert = true; });
-      panel.hidden = false; panel.inert = false; backdrop.hidden = false; D.body.classList.add('ember-keys-open');
+      if (W.EmberHub && W.EmberHub.section) W.EmberHub.section('engine');
       if (provider && P.CFG[provider]) $('ekmProvider').value = provider;
-      tier(); paint(); $('ekmProvider').focus({preventScroll:true});
+      tier(); paint();
+      requestAnimationFrame(() => { try { card.scrollIntoView({ block:'start' }); $('ekmInput').focus({ preventScroll:true }); } catch (_) { /* focus is best effort */ } });
     }
-    W.EmberKeyManager = { open, close, isOpen: () => !panel.hidden, tiers: TIERS, version:'1.10.51' };
+    W.EmberKeyManager = { open, close: () => {}, isOpen: () => false, tiers: TIERS, version:'1.10.56' };
     W.EmberAppearance = {set:setTheme,get:()=>theme};
-    $('ekmClose').onclick = close; backdrop.onclick = close;
     $('ekmProvider').onchange = tier;
     $('ekmForm').addEventListener('submit', async e => {
       e.preventDefault(); if (adding) return;
       const id = $('ekmProvider').value, key = $('ekmInput').value;
       if (!P.clean(key)) { status('Paste an API key first.'); return; }
-      adding = true; $('ekmAdd').disabled = true; status('Saving key and loading the provider’s available catalog…');
+      adding = true; $('ekmAdd').disabled = true;
       try {
         const r = await P.addKey(id,key); $('ekmInput').value = '';
-        status(!r.ok ? r.why === 'already added' ? 'This key is already saved.' : 'The key could not be added.' : r.e?.st?.ok ? 'Key saved. Catalog reachable; generation will be checked by your next chat message.' : 'Key saved, but its catalog check failed. Check the provider/account restrictions and connectivity.');
+        status(!r.ok ? r.why === 'already added' ? 'This key is already saved.' : 'The key could not be added.' : 'Key saved. Ember will use it on your next message.');
         W.dispatchEvent(new Event('ember-names'));
-      } catch (_) { status('Check failed. The provider may be offline or blocked; any saved key is kept for retry.'); }
+      } catch (_) { status('The key could not be saved.'); }
       finally { adding=false; $('ekmAdd').disabled=false; paint(); }
     });
     $('ekmList').addEventListener('click', e => {
@@ -93,41 +84,21 @@
       const id = b.dataset.ekmRemove, entry = P.entries(id)?.[Number(b.dataset.ekmIndex)];
       if (entry) { P.removeKey(id,entry.key); status(P.CFG[id].name+' key removed.'); paint(); W.dispatchEvent(new Event('ember-names')); }
     });
-    $('ekmCheck').onclick = async () => {
-      if (checking) return; checking=true; $('ekmCheck').disabled=true; status('Refreshing saved-key catalogs. No chat generation is sent.');
-      try { await P.healthAll(); status('Catalog refresh finished. A successful chat is still needed to verify generation quota.'); }
-      catch (_) { status('Some catalog checks failed. Check connectivity and provider account settings.'); }
-      finally { checking=false; $('ekmCheck').disabled=false; paint(); }
-    };
     W.addEventListener('ember-provider-stats',paint);
-    panel.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); return; }
-      if (e.key !== 'Tab') return;
-      const nodes = [...panel.querySelectorAll('button:not(:disabled),input,select,a[href]')].filter(n => n.getClientRects().length);
-      if (!nodes.length) return;
-      if (e.shiftKey && D.activeElement===nodes[0]) { e.preventDefault(); nodes.at(-1).focus(); }
-      else if (!e.shiftKey && D.activeElement===nodes.at(-1)) { e.preventDefault(); nodes[0].focus(); }
-    });
     D.addEventListener('click', e => {
       const entry = e.target.closest('[data-open-key-manager],[data-name="AI providers & API keys"]');
       if (entry) { e.preventDefault(); e.stopImmediatePropagation(); open(); }
     },true);
-    // Move only the crowded credential-entry cards out of the old settings page.
-    ['pkBox','notes'].forEach(id => { const card=$(id)?.closest('.card'); if (card) { card.classList.add('ember-legacy-key-card'); card.setAttribute('aria-hidden','true'); } });
-    const host = $('cockpit_engine') || $('cockpit_keys') || $('kList')?.closest('.cockpit-section');
-    if (host) {
-      const entry=D.createElement('div');entry.className='card ekm-settings-entry';entry.innerHTML='<div class="ct">API keys</div><p class="hint">Key entry has its own panel. Your engine pins, fallbacks and routing options remain below.</p><button type="button" class="btn g" data-open-key-manager>Manage API keys →</button>';host.prepend(entry);
-    }
-    // A separate appearance entry does not modify the current settings categories.
+    // Appearance stays at the top of the Settings list. The separate "API keys" row is gone: its job is inside "AI providers & API keys".
     const menu=$('cockpitMenu') || $('cockpitSettingsMenu') || D.querySelector('#settings .cockpit-menu');
     const appearance=D.createElement('div');appearance.className='ekm-appearance';appearance.innerHTML='<label for="emberAppearanceSelect">Appearance</label><select id="emberAppearanceSelect" data-ember-appearance><option value="dark">Dark</option><option value="light">Light</option><option value="system">Use device setting</option></select>';
     if (menu) {
-      const keyEntry=D.createElement('button');keyEntry.type='button';keyEntry.className='cmenu-row';keyEntry.dataset.openKeyManager='';keyEntry.innerHTML='<span class="cmenu-t"><b>API keys</b><small>Add or remove AI keys in a dedicated right-side panel</small></span><span class="cmenu-c" aria-hidden="true">›</span>';
-      menu.prepend(keyEntry);menu.prepend(appearance);
-      const routing=menu.querySelector('[data-crow="keys"]'); if(routing){routing.querySelector('b').textContent='AI providers & routing';routing.querySelector('small').textContent='Choose engines, model pins, routing and fallback policies';}
+      menu.prepend(appearance);
+      const routing=menu.querySelector('[data-crow="keys"]'); if(routing){routing.querySelector('b').textContent='AI providers & API keys';routing.querySelector('small').textContent='Add keys, choose which engine answers, routing and fallback, all in one place';}
     } else { const sb=$('settings')?.querySelector('.sb'); if(sb)sb.prepend(appearance); }
     $('emberAppearanceSelect')?.addEventListener('change',e=>setTheme(e.target.value)); setTheme(theme);
-    tier();
+    if (P.CFG.groq) $('ekmProvider').value = 'groq';
+    tier(); paint();
   }
   if (D.readyState==='loading') D.addEventListener('DOMContentLoaded',boot); else boot();
 })();

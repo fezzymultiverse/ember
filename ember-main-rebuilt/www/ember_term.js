@@ -693,7 +693,7 @@ function startWatch() {
 }
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { if (cfg.state !== 'bar') setPanel('bar'); stopWatch(); clearTimeout(retryT); return; }
-  if (state !== 'on' && watchUntil > Date.now() - 600000 && !userDown) startWatch();
+  if (state !== 'on' && !userDown && (cfg.auto || watchUntil > Date.now() - 600000)) startWatch(); // V1.10.57: also when Connect was used earlier (cfg.auto). Before, a link that dropped while you were in Termux was never retried after 10 minutes.
 });
 // ---- Setup view ----
 function paintSetup() {
@@ -723,8 +723,10 @@ function paintSetup() {
 async function openTermux() {
   setPanel('bar'); // V1.9.8: Ember's panel folds itself away so it never sits over Termux; the arrow reopens it
   const N = window.EmberNative;
-  try { if (N && N.openTermux) { const r = await N.openTermux(); if (r && r.ok) return; } } catch (e) { /* fall back */ }
-  toast('Could not open Termux. Open it from your home screen; Ember keeps trying to connect.');
+  let why = '';
+  try { if (N && N.openTermux) { const r = await N.openTermux(); if (r && r.ok) return; why = (r && r.error) || ''; } else why = 'this APK has no Termux opener (update the APK)'; } catch (e) { why = (e && e.message) || ''; }
+  // V1.10.57: say WHY it failed. 'not installed' / 'blocked by Android' / 'old APK' need different fixes.
+  toast('Could not open Termux' + (why ? ' (' + why + ')' : '') + '. Open it from your home screen; Ember keeps trying to connect.');
 }
 
 // ---- Ask Ember (chat inside the panel) ----

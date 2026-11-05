@@ -1,9 +1,0 @@
-Ember 1.10.50 - fast replies to normal questions, tools only for orders
-- NEW www/ember_taskgate.js (window.EmberTaskGate): tells a normal question/chat line from an order (search, find, download, build, fix, please..., a link, a file, news/weather/prices, "yes" to an offer, "try again" after an order). Word lists at the top of the file are editable.
-- Normal message: no GitHub read, no tool list shown to the model, no native tool calling. One model call, answered straight away.
-- Order: everything works as before (Read-First for code, web search, scraping, music, downloads).
-- ember_github.js: prefetch() no longer reads the repo on non-code turns (it used to fetch the live tree + up to 3 files on EVERY message while a token was saved). isCodeQuestion(): weak words (app, file, error, build, server, token...) only count when the message is an order.
-- persona.js: tool list only for orders; chat summarising (condense) can no longer hold a reply longer than 0.4s.
-- package.json 1.10.50, sw cache ember-v1.10.50-task-gate, precache + index.html wired.
-Files changed: www/ember_taskgate.js (new), ember_github.js, persona.js, index.html, sw.js, package.json, package-lock.json (root copies synced).
-Not changed: placeholders for ember_chat_polish.* / ember_graphics.js are still empty (originals missing from the package).
