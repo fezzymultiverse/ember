@@ -116,7 +116,7 @@
       + '<span class="art-tx"><b>' + esc(x.title) + '</b><small>' + esc(x.kind) + ' · ' + (x.priv ? '🔒 ' : '') + esc(x.chat)
       + (x.ts && U ? ' · ' + U.day(x.ts) + ' ' + U.time(x.ts) : '') + '</small></span>'
       + (fresh.has(x.key) ? '<i class="art-new" aria-label="New"></i>' : '') + '<span class="chev" aria-hidden="true">›</span></button>').join('')
-      || '<p class="hint">' + (items.length ? 'Nothing matches.' : 'No artifacts yet. When Ember makes a PDF, document, page or code file it shows up here.') + '</p>';
+      || '<div class="empty-state"><span class="es-ic" aria-hidden="true"><svg class="ic"><use href="#i-search"/></svg></span><b>' + (items.length ? 'Nothing matches' : 'No artifacts yet') + '</b><p>' + (items.length ? 'Try another word or filter.' : 'Ask Horizon to make a PDF and it lands here.') + '</p></div>';
   }
 
   async function openItem(x) {

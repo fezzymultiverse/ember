@@ -1,6 +1,0 @@
-/* Additive document-preview fixes only. App chrome, save and typing are untouched. */
-/* Contain child margins so the existing paginator measures the entire article,
-   including its first heading and last paragraph, rather than under-counting. */
-.artifact-paper.a4-page .artifact-markdown{display:flow-root;overflow-wrap:anywhere}
-.artifact-paper.a4-page img{max-width:100%;height:auto}
-.artifact-paper.a4-page pre{white-space:pre-wrap;overflow-wrap:anywhere}

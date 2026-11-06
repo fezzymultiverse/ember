@@ -1,10 +1,11 @@
 node_modules/
+/android/
+/ios/
+dist/
+*.log
 *.keystore
 *.jks
-.env
 local.properties
-android/.gradle/
-android/build/
-android/app/build/
-android/app/release.keystore
 .DS_Store
+.gradle/
+.idea/

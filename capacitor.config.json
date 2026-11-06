@@ -1,19 +1,17 @@
 {
-  "appId": "com.fezzy.ember",
-  "appName": "Ember",
+  "appId": "com.festers.horizon",
+  "appName": "Horizon",
   "webDir": "www",
-  "backgroundColor": "#000000",
+  "server": {
+    "androidScheme": "https"
+  },
   "android": {
-    "allowMixedContent": true,
-    "backgroundColor": "#000000"
+    "allowMixedContent": false,
+    "backgroundColor": "#ffffff"
   },
   "plugins": {
     "CapacitorHttp": {
       "enabled": true
     }
-  },
-  "server": {
-    "androidScheme": "https",
-    "cleartext": true
   }
 }
